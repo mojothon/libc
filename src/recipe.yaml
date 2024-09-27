@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+
+context:
+  version: "0.1.0"
+
+package:
+  name: "libc"
+  version: 0.1.0
+
+source:
+  - path: .
+  - path: ../LICENSE
+  - path: ../tests
+
+build:
+  script:
+    - mkdir -p ${PREFIX}/lib/mojo
+    - magic run mojo package libc
+    - cp libc.mojopkg ${PREFIX}/lib/mojo/libc.mojopkg
+
+requirements:
+  run:
+    - max >= 24.5.0,<25
+
+tests:
+  - script:
+      # commands to run to test the package. If any of the commands
+      # returns with an error code, the test is considered failed.
+      # if I don't copy everything into a test dir, mojo test runs the tests in the .magic dir and fails :|
+      - magic run test
+
+    files:
+      # Extra files to be copied to the test directory from the "work directory"
+      source:
+        - libc.mojopkg
+        - mojoproject.toml
+        - tests
+
+about:
+  homepage: https://github.com/mojothon/libc
+  license: MIT
+  license_file: LICENSE
+  summary: a standard C library for Mojo programming language.. https://github.com/mojothon/libc
+  repository: https://github.com/mojothon/libc

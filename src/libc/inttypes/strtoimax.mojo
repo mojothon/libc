@@ -1,0 +1,2 @@
+fn strtoimax():
+    pass

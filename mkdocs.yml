@@ -1,0 +1,43 @@
+site_name: libc
+site_author: llango
+site_description: a standard C library for Mojo programming language. 
+site_favicon: favicon.ico
+
+repo_url: https://github.com/mojothon/libc
+edit_uri: edit/master/docs/docs
+copyright: Copyright &copy; <a target=_blanks href="https://www.github.com/llango">llango</a>
+
+theme:
+  name: shadocs
+  logo: '/images/logo.png'
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.instant
+    - navigation.tabs
+  language: cn
+  highlightjs: true
+  hljs_languages:
+    - python 
+    - javascript
+    - shell
+    - django
+  
+
+# Footer
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/mojothon
+      name: llango 
+
+markdown_extensions:
+  - admonition
+  - toc:
+      toc_depth: 2
+      permalink: True
+
+# Page tree
+nav:
+  - index: index.md
+  - version: version.md

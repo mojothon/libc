@@ -1,0 +1,2 @@
+fn setlocale():
+    pass

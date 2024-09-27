@@ -1,0 +1,2 @@
+fn localeconv():
+    pass
