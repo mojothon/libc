@@ -1,3 +1,8 @@
+# -----------------------------------
+# author: llango
+# email: rontomai@gmail.com
+# github: github.com/llango
+# ----------------------------------
 alias sa_family_t = UInt16
 alias socklen_t = UInt32
 alias in_addr_t = UInt32

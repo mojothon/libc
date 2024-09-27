@@ -1,3 +1,8 @@
+# -----------------------------------
+# author: llango
+# email: rontomai@gmail.com
+# github: github.com/llango
+# ----------------------------------
 alias off_t = Int64
 alias mode_t = UInt32
 

@@ -1,3 +1,8 @@
+# -----------------------------------
+# author: llango
+# email: rontomai@gmail.com
+# github: github.com/llango
+# ----------------------------------
 alias LOG_PID = -1
 alias LOG_CONS = -1
 alias LOG_NDELAY = -1

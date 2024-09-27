@@ -1,3 +1,8 @@
+# -----------------------------------
+# author: llango
+# email: rontomai@gmail.com
+# github: github.com/llango
+# ----------------------------------
 from utils.static_tuple import StaticTuple
 from memory import UnsafePointer
 from libc.constant import *

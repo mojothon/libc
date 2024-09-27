@@ -1,3 +1,8 @@
+# -----------------------------------
+# author: llango
+# email: rontomai@gmail.com
+# github: github.com/llango
+# ----------------------------------
 from sys import external_call
 from libc.utils import string_to_char_ptr
 from .addr import socketaddr, addrinfo

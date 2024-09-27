@@ -1,3 +1,8 @@
+# -----------------------------------
+# author: llango
+# email: rontomai@gmail.com
+# github: github.com/llango
+# ----------------------------------
 # errno -l  test ubuntu x86_64
 alias EPERM = 1 # 不允许的操作
 alias ENOENT = 2 # 没有那个文件或目录

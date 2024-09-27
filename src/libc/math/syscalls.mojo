@@ -2,7 +2,6 @@
 # author: llango
 # email: rontomai@gmail.com
 # github: github.com/llango
-# update: 2024-09-27
 # ----------------------------------
 from sys import external_call
 from memory import UnsafePointer
