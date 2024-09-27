@@ -1,8 +1,7 @@
 # libc
--------------------------------------------------
 a standard C library for Mojo programming language.
 
-**Developing .................................**
+[**Developing ....**]
 
 ## package build
 
