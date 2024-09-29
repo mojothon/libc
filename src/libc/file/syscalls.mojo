@@ -12,6 +12,13 @@ struct FILE:
     pass
 
 
+fn fflush(arg: UnsafePointer[FILE]) -> Int32:
+    """
+
+    """
+    return external_call["fflush", Int32, UnsafePointer[FILE]](arg)
+
+
 
 fn fcntl(fildes: c_int, cmd: c_int) -> c_int:
     """Libc POSIX `fcntl` function.
