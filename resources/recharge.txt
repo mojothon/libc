@@ -1,0 +1,47 @@
+C                 Mojo
+
+void              Int8
+int               Int32
+short             Int16
+char              Int8
+u_char            UInt8
+s_char            Int8
+u_short           UInt16
+u_int             UInt32
+float             Float32
+double            Float64                
+ptr_addr          Int                     # a Pointer address.
+
+long               UInt32
+u_long          UInt32
+long_long         Int64
+u_long_long    UInt64
+mode_t            UInt32
+off_t             Int64
+size_t            UInt64
+
+
+
+
+fn _c_long_dtype() -> DType:
+    # https://en.wikipedia.org/wiki/64-bit_computing#64-bit_data_models
+
+    @parameter
+    if is_64bit() and os_is_windows():
+        return UInt32  # LLP64
+    elif is_64bit():
+        return UInt64  # LP64
+    else:
+        return UInt32  # ILP32
+
+
+fn _c_u_long_dtype() -> DType:
+    # https://en.wikipedia.org/wiki/64-bit_computing#64-bit_data_models
+
+    @parameter
+    if is_64bit() and os_is_windows():
+        return UInt32  # LLP64
+    elif is_64bit():
+        return UInt64  # LP64
+    else:
+        return UInt32  # ILP32
