@@ -1,3 +1,11 @@
+# -----------------------------------
+# author: llango
+# email: rontomai@gmail.com
+# github: github.com/llango
+# ----------------------------------
+from sys import external_call
+from memory import UnsafePointer
+
 fn setjmp(env: UnsafePointer[Int32]) -> Int32:
     """C library <setjmp.h> function `setjmp`.
     
