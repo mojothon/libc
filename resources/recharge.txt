@@ -19,6 +19,7 @@ u_long_long    UInt64
 mode_t            UInt32
 off_t             Int64
 size_t            UInt64
+pid_t             Int32
 void *restrict    UnsafePointer[Int8]
 char *restrict    UnsafePointer[Int8]
 void **restrict   UnsafePointer[UnsafePointer[Int8]]
