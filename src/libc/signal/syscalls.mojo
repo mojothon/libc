@@ -91,7 +91,7 @@ fn sigaction(sig: Int32, act: UnsafePointer[Int8], oldact: UnsafePointer[Int8]) 
         If the action is SIG_DFL, the default action for the signal is used.
         Otherwise, the action is specified by the handler argument.
     """
-    return external_call['sigaction', Int32, UnsafePointer[Int8], UnsafePointer[Int8]](sig, act, oldact)
+    return external_call['sigaction', Int32, Int32, UnsafePointer[Int8], UnsafePointer[Int8]](sig, act, oldact)
 
 
 fn sigaltstack(ss: UnsafePointer[Int8], oss: UnsafePointer[Int8]) -> Int32:
@@ -156,6 +156,7 @@ fn sigfillset(set: UnsafePointer[Int8]) -> Int32:
 
 fn signal(signum: Int32, handler: UnsafePointer[Int8]) -> UnsafePointer[Int8]:
     """C library <signal.h> function `signal`.
+    
     Reference:
         https://man7.org/linux/man-pages/man3/signal.3.html
     
@@ -172,8 +173,7 @@ fn signal(signum: Int32, handler: UnsafePointer[Int8]) -> UnsafePointer[Int8]:
 
         The signal() function returns the old action for the signal.
 
-        The signal() function is equivalent to setting the handler to the specified action and
-        then calling sigaction(signum, handler).
+        The signal() function is equivalent to setting the handler to the specified action and then calling sigaction(signum, handler).
     """
 
     return external_call['signal', UnsafePointer[Int8], Int32, UnsafePointer[Int8]](signum, handler) 

@@ -1,2 +1,0 @@
-fn remque():
-    pass

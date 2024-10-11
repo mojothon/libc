@@ -75,7 +75,7 @@ fn sched_getaffinity(pid: Int32, cpusetsize: Int32, cpuset: UnsafePointer[Int32]
         On success, sched_getaffinity() returns 0. On error, -1 is returned, and errno is set to indicate the error.
 
     """
-    return external_call["sched_getaffinity", Int32, Int32, UnsafePointer[Int32]](pid, cpusetsize, cpuset) 
+    return external_call["sched_getaffinity", Int32, Int32, Int32, UnsafePointer[Int32]](pid, cpusetsize, cpuset) 
 
 
 fn sched_getcpucount()-> Int32:
@@ -176,7 +176,7 @@ fn sched_setaffinity(pid: Int32, cpusetsize: Int32, cpuset: UnsafePointer[Int32]
         On success, sched_setaffinity() returns 0. On error, -1 is returned, and errno is set to indicate the error.
         
     """
-    return external_call["sched_setaffinity", Int32, Int32, UnsafePointer[Int32]](pid, cpusetsize, cpuset)
+    return external_call["sched_setaffinity", Int32, Int32, Int32, UnsafePointer[Int32]](pid, cpusetsize, cpuset)
 
 
 fn sched_setparam(pid: Int32, param: UnsafePointer[sched_param]) -> Int32:

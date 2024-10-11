@@ -120,7 +120,7 @@ fn fetestexceptflag():
     pass 
 
 
-fn fegetenv() -> Int32:
+fn fegetenv():
     pass 
 
 

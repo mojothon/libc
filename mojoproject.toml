@@ -4,7 +4,7 @@ channels = ["https://repo.prefix.dev/mojo-force", "conda-forge", "https://conda.
 description = "a standard C library for Mojo programming language."
 name = "libc"
 platforms = ["osx-arm64", "linux-64"]
-version = "0.1.0"
+version = "0.1.1"
 
 
 [tasks]
