@@ -132,9 +132,6 @@ fn munlockall() -> Int32:
 
     Reference:
         https://man7.org/linux/man-pages/man2/munlockall.2.html
-    
-    Args:
-        None.
 
     Description:
         munlockall() unlocks all the pages of the process's address space, allowing them to be
@@ -166,7 +163,7 @@ fn mmap(addr: UnsafePointer[Int8], length: Int64, prot: Int32, flags: Int32, fd:
     Returns:
         The address of the mapped region, or MAP_FAILED on error.
     """
-    return external_call["mmap", UnsafePointer[Int8], Int64, Int32, Int32, Int32, Int64](addr, length, prot, flags, fd, offset)
+    return external_call["mmap", UnsafePointer[Int8], UnsafePointer[Int8], Int64, Int32, Int32, Int32, Int64](addr, length, prot, flags, fd, offset)
 
 
 fn mprotect(addr: UnsafePointer[Int8], length: Int64, prot: Int32) -> Int32:
