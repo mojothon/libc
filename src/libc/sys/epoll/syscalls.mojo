@@ -42,18 +42,17 @@ fn epoll_create1(flags: Int32) -> Int32:
     return external_call["epoll_create1", Int32, Int32](flags)
     
 
-@register_passable("trivial")
-struct event_data:
-    ptr: UnsafePointer[Int8]
-    fd: Int32
-    u32: UInt32
-    u64: UInt64
+# @register_passable("trivial")
+# struct event_data:
+#     ptr: UnsafePointer[Int8]
+#     fd: Int32
+#     u32: UInt32
+#     u64: UInt64
 
 
 @register_passable("trivial")
 struct epoll_event:
-    events: UInt32
-    data: event_data
+    pass
 
 
 fn epoll_ctl(epfd: Int32, op: Int32, fd: Int32, event: UnsafePointer[epoll_event]) -> Int32:
@@ -74,7 +73,7 @@ fn epoll_ctl(epfd: Int32, op: Int32, fd: Int32, event: UnsafePointer[epoll_event
     Returns:
         0 on success, or -1 on error.
     """
-    return external_call["epoll_ctl", Int32, Int32, Int32, UnsafePointer[epoll_event]](epfd, op, fd, event)    
+    return external_call["epoll_ctl", Int32, Int32, Int32, Int32, UnsafePointer[epoll_event]](epfd, op, fd, event)    
 
 
 
