@@ -1,1 +1,1 @@
-from . import syscalls
+from .syscalls import *
