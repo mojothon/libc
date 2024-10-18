@@ -83,21 +83,7 @@ fn inet_pton(
 
 
 
-fn socket(domain: c_int, type: c_int, protocol: c_int) -> c_int:
-    """Libc POSIX `socket` function.
 
-    Reference: https://man7.org/linux/man-pages/man3/socket.3p.html
-    Fn signature: int socket(int domain, int type, int protocol)
-
-    Args:
-        domain: Address Family see AF_ alises.
-        type: Socket Type see SOCK_ alises.
-        protocol: Protocol see IPPROTO_ alises.
-    Returns: A pointer to a socket.
-    """
-    return external_call[
-        "socket", c_int, c_int, c_int, c_int  # FnName, RetType  # Args
-    ](domain, type, protocol)
 
 
 fn setsockopt(
@@ -131,15 +117,6 @@ fn setsockopt(
     ](socket, level, option_name, option_value, option_len)
 
 
-fn bind(socket: c_int, address: UnsafePointer[socketaddr], address_len: socklen_t) -> c_int:
-    """Libc POSIX `bind` function.
-
-    Reference: https://man7.org/linux/man-pages/man3/bind.3p.html
-    Fn signature: int bind(int socket, const struct socketaddr *address, socklen_t address_len)
-    """
-    return external_call[
-        "bind", c_int, c_int, UnsafePointer[socketaddr], socklen_t  # FnName, RetType  # Args
-    ](socket, address, address_len)
 
 
 fn listen(socket: c_int, backlog: c_int) -> c_int:
@@ -196,106 +173,6 @@ fn connect(socket: c_int, address: UnsafePointer[socketaddr], address_len: sockl
     ](socket, address, address_len)
 
 
-fn recv(
-    socket: c_int, buffer: UnsafePointer[c_void], length: c_size_t, flags: c_int
-) -> c_ssize_t:
-    """Libc POSIX `recv` function.
-
-    Reference: https://man7.org/linux/man-pages/man3/recv.3p.html
-    Fn signature: ssize_t recv(int socket, void *buffer, size_t length, int flags)
-    """
-    return external_call[
-        "recv",
-        c_ssize_t,  # FnName, RetType
-        c_int,
-        UnsafePointer[c_void],
-        c_size_t,
-        c_int,  # Args
-    ](socket, buffer, length, flags)
-
-
-fn recvfrom(
-    socket: c_int,
-    buffer: UnsafePointer[c_void],
-    length: c_size_t,
-    flags: c_int,
-    address: UnsafePointer[socketaddr],
-    address_len: UnsafePointer[socklen_t],
-) -> c_ssize_t:
-    """Libc POSIX `recvfrom` function.
-
-    Reference: https://man7.org/linux/man-pages/man3/recvfrom.3p.html
-    Fn signature: ssize_t recvfrom(int socket, void *restrict buffer, size_t length, int flags, struct sockaddr *restrict address, socklen_t *restrict address_len)
-    """
-    return external_call[
-        "recvfrom",
-        c_ssize_t,  # FnName, RetType
-        c_int,
-        UnsafePointer[c_void],
-        c_size_t,
-        c_int,
-        UnsafePointer[socketaddr],  # Args
-        UnsafePointer[socklen_t],  # Args
-    ](socket, buffer, length, flags, address, address_len)
-
-
-fn send(
-    socket: c_int, buffer: UnsafePointer[c_void], length: c_size_t, flags: c_int
-) -> c_ssize_t:
-    """Libc POSIX `send` function.
-
-    Reference: https://man7.org/linux/man-pages/man3/send.3p.html
-    Fn signature: ssize_t send(int socket, const void *buffer, size_t length, int flags)
-
-    Args:
-        socket: A pointer to a socket.
-        buffer: A pointer to a buffer to store the address of the accepted socket.
-        length: A pointer to a buffer to store the length of the address of the accepted socket.
-        flags: A pointer to a buffer to store the length of the address of the accepted socket.
-    Returns: A pointer to a socket.
-    """
-    return external_call[
-        "send",
-        c_ssize_t,  # FnName, RetType
-        c_int,
-        UnsafePointer[c_void],
-        c_size_t,
-        c_int,  # Args
-    ](socket, buffer, length, flags)
-
-
-fn sendto(
-    socket: c_int,
-    message: UnsafePointer[c_void],
-    length: c_size_t,
-    flags: c_int,
-    dest_addr: UnsafePointer[socketaddr],
-    dest_len: socklen_t,
-) -> c_ssize_t:
-    """Libc POSIX `sendto` function.
-
-    Reference: https://man7.org/linux/man-pages/man3/sendto.3p.html
-    Fn signature: ssize_t sendto(int socket, const void *message, size_t length, int flags, const struct sockaddr *dest_addr, socklen_t dest_len)
-
-    Args:
-        socket: A pointer to a socket.
-        message: A pointer to a buffer to store the address of the accepted socket.
-        length: A pointer to a buffer to store the length of the address of the accepted socket.
-        flags: A pointer to a buffer to store the length of the address of the accepted socket.
-        dest_addr: A pointer to a buffer to store the length of the address of the accepted socket.
-        dest_len: A pointer to a buffer to store the length of the address of the accepted socket.
-    Returns: A pointer to a socket.
-    """
-    return external_call[
-        "sendto",
-        c_ssize_t,  # FnName, RetType
-        c_int,
-        UnsafePointer[c_void],
-        c_size_t,
-        c_int,
-        UnsafePointer[socketaddr],
-        socklen_t,  # Args
-    ](socket, message, length, flags, dest_addr, dest_len)
 
 
 fn shutdown(socket: c_int, how: c_int) -> c_int:
