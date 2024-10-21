@@ -9,6 +9,7 @@ from memory import UnsafePointer
 
 fn fstatvfs(fd: Int32, buf: UnsafePointer[Int8]) -> Int32:
     """Libc POSIX `fstatvfs` function.
+
     Reference:
         https://man7.org/linux/man-pages/man2/fstatvfs.2.html
     
@@ -35,7 +36,7 @@ fn fstatvfs(fd: Int32, buf: UnsafePointer[Int8]) -> Int32:
         - `f_flag`: Flags indicating the capabilities of the file system.
         - `f_namemax`: The maximum length of a file name.
     """
-    return external_call["sys_fstatvfs", Int32, Int32, UnsafePointer[Int8]](fd, buf)
+    return external_call["fstatvfs", Int32, Int32, UnsafePointer[Int8]](fd, buf)
 
 
 fn statvfs(path: UnsafePointer[Int8], buf: UnsafePointer[Int8]) -> Int32:
@@ -68,4 +69,4 @@ fn statvfs(path: UnsafePointer[Int8], buf: UnsafePointer[Int8]) -> Int32:
         - `f_flag`: Flags indicating the capabilities of the file system.
         - `f_namemax`: The maximum length of a file name.
     """
-    return external_call["sys_statvfs", Int32, UnsafePointer[Int8], UnsafePointer[Int8]](path, buf)
+    return external_call["statvfs", Int32, UnsafePointer[Int8], UnsafePointer[Int8]](path, buf)
