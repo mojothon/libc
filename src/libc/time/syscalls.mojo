@@ -117,7 +117,7 @@ fn difftime(time1: Int64, time0: Int64) -> Float64:
 
 
 fn gettimeofday(tv: UnsafePointer[Int64], tz: UnsafePointer[Int64]) -> Int32:
-    """C library <sys/time.h> function `gettimeofday`.
+    """C library <time.h> function `gettimeofday`.
 
     Reference:
         https://man7.org/linux/man-pages/man2/gettimeofday.2.html
@@ -133,7 +133,7 @@ fn gettimeofday(tv: UnsafePointer[Int64], tz: UnsafePointer[Int64]) -> Int32:
 
 
 fn gmtime(s: UnsafePointer[Int64]) -> UnsafePointer[Int64]:
-    """C library <time.h> function `gmtime`.    
+    """C library <time.h> function `gmtime`.
 
     Reference:
         https://man7.org/linux/man-pages/man3/gmtime.3.html
