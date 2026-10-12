@@ -3,6 +3,27 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.0] - 2026-10-12
+
+### Added
+
+- `libc.search` stops being a set of empty stubs: `hcreate`, `hsearch` and
+  `hdestroy` over an `ENTRY` row, with `FIND`/`ENTER`, plus `insque` and
+  `remque` over a `qelem` node.
+- `libc.inttypes` gains `wcstoimax` and `wcstoumax`.
+
+### Fixed
+
+- `strtoumax` called `strtoimax` and reinterpreted the result, so every
+  unsigned conversion went through the signed path. It now calls
+  `strtoumax`.
+- `libc.inttypes` took `char *` as an `Int8` pointer; the rest of the package
+  uses a byte pointer, so the two did not mix.
+- `hcreate_r`, `hdestroy_r` and `hsearch_r` were empty stubs and are gone.
+  They need `struct hsearch_data`, which is GNU-only and whose size is
+  platform-internal (16 bytes on glibc, something else on Darwin), so there
+  is no honest binding to give.
+
 ## [0.4.1] - 2026-10-12
 
 ### Fixed
