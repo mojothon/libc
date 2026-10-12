@@ -239,9 +239,7 @@ def listen(socket: Int32, backlog: Int32) -> Int32:
         backlog: A pointer to a buffer to store the length of the address of the accepted socket.
     Returns: A pointer to a socket.
     """
-    return external_call["listen", Int32](  # FnName, RetType  # Args
-        socket, backlog
-    )
+    return external_call["listen", Int32, Int32, Int32](socket, backlog)
 
 
 def accept(

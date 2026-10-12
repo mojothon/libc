@@ -37,7 +37,7 @@ def fchmod(fd: Int32, mode: Int32) -> Int32:
     return external_call["fchmod", Int32, Int32, Int32](fd, mode)
 
 
-def fchmodat(fd: Int32, path: c_ptr[UInt8], mode: Int32) -> Int32:
+def fchmodat(fd: Int32, path: c_ptr[UInt8], mode: Int32, flags: Int32) -> Int32:
     """Libc POSIX `fchmodat` function.
 
     Args:
@@ -47,8 +47,8 @@ def fchmodat(fd: Int32, path: c_ptr[UInt8], mode: Int32) -> Int32:
 
     Returns: A pointer to a socket.
     """
-    return external_call["fchmodat", Int32, Int32, c_ptr[UInt8], Int32](
-        fd, path, mode
+    return external_call["fchmodat", Int32, Int32, c_ptr[UInt8], Int32, Int32](
+        fd, path, mode, flags
     )
 
 

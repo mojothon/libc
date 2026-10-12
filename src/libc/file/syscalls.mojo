@@ -322,7 +322,7 @@ def fgetc(stream: c_ptr[FILE]) -> c_int:
         [Reference](https://man7.org/linux/man-pages/man3/fgetc_3p.html).
         Fn signature: `int fgetc(FILE *stream)`.
     """
-    return external_call["fgets", c_int, c_ptr[FILE]](stream)
+    return external_call["fgetc", c_int, c_ptr[FILE]](stream)
 
 
 def fgets(s: c_ptr[c_char], n: c_int, stream: c_ptr[FILE]) -> c_ptr[c_char]:

@@ -142,31 +142,6 @@ def fabsf(x: Float32) -> Float32:
     return external_call["fabsf", Float32, Float32](x)
 
 
-def fabsl(x: Float64) -> Float64:
-    """C library <math.h> function `fabsl`.
-
-    Link:
-        https://man7.org/linux/man-pages/man3/fabs.3.html
-
-    Prototype:
-        float fabs(float x)
-
-    Description:
-        Computes the absolute value of floating-point number.
-
-    Arguments:
-        x: The number for which the absolute value is to be computed.
-
-    Return value:
-        Return the absolute value of x. if x is a NaN, A NasN is returned.  If x is -0, +0 is returned.If x is negative infinity or positive infinity, positive infinity is returned.
-
-    """
-    return external_call["fabsl", Float64, Float64](x)
-
-
-# ------------------------------------------------------------------------------------
-# 计算整数除法的商和余数
-# ------------------------------------------------------------------------------------
 struct div_t(TrivialRegisterPassable):
     var quot: Int32
     var rem: Int32
@@ -304,34 +279,6 @@ def fmod(x: Float64, y: Float64) -> Float64:
     return external_call["fmod", Float64, Float64, Float64](x, y)
 
 
-def fmodl(x: Float64, y: Float64) -> Float64:
-    """C library <math.h> function `fmodl`.
-
-    Link:
-        https://man7.org/linux/man-pages/man3/fmodl.3.html
-
-    Prototype:
-        long double fmod(long double x, long double y)
-
-    Description:
-        The functionality described on this reference page is aligned with the ISO C standard. Any conflict between the requirements described here and the ISO C standard is unintentional. This volume of POSIX.1‐2017 defers to the ISO C standard.
-
-    Arguments:
-        x
-        y
-
-    Return value:
-        These functions shall return the value x-i*y, for some integer i
-        such that, if y is non-zero, the result has the same sign as x
-        and magnitude less than the magnitude of y.
-    """
-    return external_call["fmodl", Float64, Float64, Float64](x, y)
-
-
-# -------------------------------------------------------------------
-# 除法运算的有符号余数
-# -------------------------------------------------------------------
-# 后续补充docstrings。
 def remainderf(x: Float32, y: Float32) -> Float32:
     return external_call["remainderf", Float32, Float32, Float32](x, y)
 
@@ -340,13 +287,6 @@ def remainder(x: Float64, y: Float64) -> Float64:
     return external_call["remainder", Float64, Float64, Float64](x, y)
 
 
-def remainderl(x: Float64, y: Float64) -> Float64:
-    return external_call["remainderl", Float64, Float64, Float64](x, y)
-
-
-# -------------------------------------------------------------------
-# 有符号余数以及除法运算的最后三位
-# -------------------------------------------------------------------
 def remquof(x: Float32, y: Float32, quo: Int32) -> Float32:
     # 有问题后续补充
     return external_call["remquof", Float32, Float32, Float32, Int32](x, y, quo)
@@ -356,13 +296,6 @@ def remquo(x: Float64, y: Float64, quo: Int32) -> Float64:
     return external_call["remquo", Float64, Float64, Float64, Int32](x, y, quo)
 
 
-def remquol(x: Float64, y: Float64, quo: Int32) -> Float64:
-    return external_call["remquol", Float64, Float64, Float64, Int32](x, y, quo)
-
-
-# -------------------------------------------------------------------------
-# 融合乘加运算
-# -------------------------------------------------------------------------
 def fmaf(x: Float32, y: Float32, z: Float32) -> Float32:
     return external_call["fmaf", Float32, Float32, Float32, Float32](x, y, z)
 
@@ -371,13 +304,6 @@ def fma(x: Float64, y: Float64, z: Float64) -> Float64:
     return external_call["fma", Float64, Float64, Float64, Float64](x, y, z)
 
 
-def fmal(x: Float64, y: Float64, z: Float64) -> Float64:
-    return external_call["fmal", Float64, Float64, Float64, Float64](x, y, z)
-
-
-# ---------------------------------------------------------------------------
-# 两个浮点值中较大的一个
-# ---------------------------------------------------------------------------
 def fmaxf(x: Float32, y: Float32) -> Float32:
     return external_call["fmaxf", Float32, Float32, Float32](x, y)
 
@@ -386,13 +312,6 @@ def fmax(x: Float64, y: Float64) -> Float64:
     return external_call["fmax", Float64, Float64, Float64](x, y)
 
 
-def fmaxl(x: Float64, y: Float64) -> Float64:
-    return external_call["fmal", Float64, Float64, Float64](x, y)
-
-
-# -----------------------------------------------------------------------------
-# 两个浮点值中较小的一个
-# -----------------------------------------------------------------------------
 def fminf(x: Float32, y: Float32) -> Float32:
     return external_call["fminf", Float32, Float32, Float32](x, y)
 
@@ -401,28 +320,12 @@ def fmin(x: Float64, y: Float64) -> Float64:
     return external_call["fmin", Float64, Float64, Float64](x, y)
 
 
-def fminl(x: Float64, y: Float64) -> Float64:
-    return external_call["fminl", Float64, Float64, Float64](x, y)
-
-
-# ----------------------------------------------------------------------
-# 两个浮点值的正差
-# ----------------------------------------------------------------------
 def fdimf(x: Float32, y: Float32) -> Float32:
     return external_call["fdimf", Float32, Float32, Float32](x, y)
 
 
 def fdimf(x: Float64, y: Float64) -> Float64:
     return external_call["fdim", Float64, Float64, Float64](x, y)
-
-
-def fdiml(x: Float64, y: Float64) -> Float64:
-    return external_call["fdiml", Float64, Float64, Float64](x, y)
-
-
-# --------------------------------------------------------------------
-# 返回NaN （非数字）
-# --------------------------------------------------------------------
 
 
 def nanf(arg: UInt8) -> Float32:
@@ -433,13 +336,6 @@ def nan(arg: UInt8) -> Float64:
     return external_call["nan", Float64, UInt8](arg)
 
 
-def nanl(arg: UInt8) -> Float64:
-    return external_call["nanl", Float64, UInt8](arg)
-
-
-# -------------------------------------------------
-#  指数函数
-# -----------------------------------------------------
 def exp(x: Float64) -> Float64:
     """C library <math.h> function `exp`.
 
@@ -1046,13 +942,15 @@ def atan(x: Float64) -> Float64:
         https://man7.org/linux/man-pages/man3/atan.3.html
 
     Prototype:
-        double atan(double x)
+        double atan2(double y, double x)
 
     Description:
-        Computes the arctangent of x (given in radians).
+        Computes the arc tangent of y/x, using the signs of both to pick the
+        quadrant.
 
     Arguments:
-        x: The angle in radians.
+        y: The numerator.
+        x: The denominator.
 
     Return value:
         The arctangent in the range (-π/2, π/2).
@@ -1070,10 +968,12 @@ def atanf(x: Float32) -> Float32:
         float atanf(float x)
 
     Description:
-        Computes the arctangent of x (given in radians).
+        Computes the arc tangent of y/x, using the signs of both to pick the
+        quadrant.
 
     Arguments:
-        x: The angle in radians.
+        y: The numerator.
+        x: The denominator.
 
     Return value:
         The arctangent in the range (-π/2, π/2).
@@ -1081,28 +981,30 @@ def atanf(x: Float32) -> Float32:
     return external_call["atanf", Float32, Float32](x)
 
 
-def atan2(x: Float64) -> Float64:
+def atan2(y: Float64, x: Float64) -> Float64:
     """C library <math.h> function `atan2`.
 
     Link:
         https://man7.org/linux/man-pages/man3/atan2.3.html
 
     Prototype:
-        double atan(double x)
+        double atan2(double y, double x)
 
     Description:
-        Computes the arctangent of x (given in radians).
+        Computes the arc tangent of y/x, using the signs of both to pick the
+        quadrant.
 
     Arguments:
-        x: The angle in radians.
+        y: The numerator.
+        x: The denominator.
 
     Return value:
         The arctangent in the range (-π/2, π/2).
     """
-    return external_call["atan2", Float64, Float64](x)
+    return external_call["atan2", Float64, Float64, Float64](y, x)
 
 
-def atan2f(x: Float32) -> Float32:
+def atan2f(y: Float32, x: Float32) -> Float32:
     """C library <math.h> function `atan2f`.
 
     Link:
@@ -1112,15 +1014,17 @@ def atan2f(x: Float32) -> Float32:
         float atanf(float x)
 
     Description:
-        Computes the arctangent of x (given in radians).
+        Computes the arc tangent of y/x, using the signs of both to pick the
+        quadrant.
 
     Arguments:
-        x: The angle in radians.
+        y: The numerator.
+        x: The denominator.
 
     Return value:
         The arctangent in the range (-π/2, π/2).
     """
-    return external_call["atan2f", Float32, Float32](x)
+    return external_call["atan2f", Float32, Float32, Float32](y, x)
 
 
 def sin(x: Float64) -> Float64:
@@ -1550,7 +1454,7 @@ def erf(arg: Float64) -> Float64:
         The error of x .
 
     """
-    return external_call["erff", Float64, Float64](arg)
+    return external_call["erf", Float64, Float64](arg)
 
 
 def lgamma(x: Float64) -> Float64:
@@ -2247,50 +2151,6 @@ def nextafterf(x: Float32, y: Float32) -> Float32:
         The next representable floating-point value after x in the direction of y.
     """
     return external_call["nextafterf", Float32, Float32, Float32](x, y)
-
-
-def nexttoward(x: Float64, y: Float64) -> Float64:
-    """C library <math.h> function `nexttoward`.
-
-    Link:
-        https://man7.org/linux/man-pages/man3/nexttoward.3.html
-
-    Prototype:
-        double nexttoward(double x, double y)
-
-    Description:
-        Computes the next representable floating-point value from to y.
-
-    Arguments:
-        x
-        y
-
-    Return value:
-        The next representable floating-point value after from x to y.
-    """
-    return external_call["nexttoward", Float64, Float64, Float64](x, y)
-
-
-def nexttowardf(x: Float32, y: Float32) -> Float32:
-    """C library <math.h> function `nexttowardf`.
-
-    Link:
-        https://man7.org/linux/man-pages/man3/nexttowardf.3.html
-
-    Prototype:
-        float nexttowardf(float x, float y)
-
-    Description:
-        Computes the next representable floating-point value from to y.
-
-    Arguments:
-        x
-        y
-
-    Return value:
-        The next representable floating-point value after x in the direction of y.
-    """
-    return external_call["nexttowardf", Float32, Float32, Float32](x, y)
 
 
 def copysign(x: Float64, y: Float64) -> Float64:

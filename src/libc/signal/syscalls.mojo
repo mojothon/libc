@@ -32,30 +32,6 @@ def kill(pid: Int32, sig: Int32) -> Int32:
     return external_call["kill", Int32, Int32, Int32](pid, sig)
 
 
-def Kill(pid: Int32, sig: Int32) -> Int32:
-    """C library <signal.h> function `kill`.
-
-    Reference:
-        https://man7.org/linux/man-pages/man2/kill.2.html
-
-    Prototype:
-        int kill(pid_t pid, int sig)
-
-    Description:
-        The kill() function sends a signal to the process specified by pid.
-        The signal sent is specified by sig. If sig is 0, no signal is sent, but error checking is still performed.
-        If sig is SIGKILL or SIGSTOP, the process is killed or stopped, respectively.
-        If sig is SIGSEGV, the program is terminated with a segmentation fault.
-        If sig is SIGFPE, the program is terminated with a floating-point exception.
-        If sig is SIGILL, the program is terminated with an illegal instruction.
-        If sig is SIGBUS, the program is terminated with a bus error.
-
-    Return Value:
-        On success, kill() returns 0. On error, -1 is returned, and errno is set to indicate the error.
-    """
-    return external_call["Kill", Int32, Int32, Int32](pid, sig)
-
-
 def craise(sig: Int32) -> Int32:
     """C library <signal.h> function `raise`.
 

@@ -123,26 +123,6 @@ def dup3(oldfd: Int32, newfd: Int32, flags: Int32) -> Int32:
     )
 
 
-def environ() -> c_ptr[UInt8]:
-    """Libc POSIX `environ` function.
-
-    Reference:
-        https://man7.org/linux/man-pages/man7/environ.7.html
-
-    Description:
-        environ is a global variable in the C library that points to an array of strings,
-        each of which is a variable setting in the form of a "name=value" string.
-        The first entry in the array is the environment string that was passed to the program.
-        Each subsequent entry in the array is a string that contains one or more environment variables.
-        Each environment variable has the form "name=value", where "name" is the environment variable name
-        and "value" is the value assigned to it.
-
-    Returns:
-        The pointer to the array of strings.
-    """
-    return external_call["environ", c_ptr[UInt8]]()
-
-
 def execve(
     path: c_ptr[UInt8], argv: c_ptr[c_ptr[UInt8]], envp: c_ptr[c_ptr[UInt8]]
 ) -> Int32:
@@ -815,28 +795,6 @@ def truncate(path: c_ptr[UInt8], length: Int64) -> Int32:
         0 on success, -1 on error.
     """
     return external_call["truncate", Int32, c_ptr[UInt8], Int64](path, length)
-
-
-def truncateat(dirfd: Int32, path: c_ptr[UInt8], length: Int64) -> Int32:
-    """Libc POSIX `truncateat` function.
-
-    Reference:
-        https://man7.org/linux/man-pages/man2/truncateat.2.html
-
-    Description:
-        truncateat() changes the size of the file specified by path.
-
-    Args:
-        dirfd: File descriptor.
-        path: Path to the file.
-        length: Length.
-
-    Returns:
-        0 on success, -1 on error.
-    """
-    return external_call["truncateat", Int32, Int32, c_ptr[UInt8], Int64](
-        dirfd, path, length
-    )
 
 
 def write(fd: Int32, buf: c_ptr[UInt8], count: UInt32) -> Int:

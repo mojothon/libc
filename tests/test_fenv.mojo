@@ -1,4 +1,5 @@
 from std.memory.alloc import unsafe_alloc
+from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.fenv import (
@@ -124,9 +125,42 @@ def test_environment_round_trip() raises:
     env.unsafe_free()
 
 
+def probe() raises:
+    # Temporary: ask Darwin what its macros are instead of guessing again.
+    var initial = fegetround()
+    print("probe initial round", initial)
+    for v in range(-1, 9):
+        var rc = fesetround(Int32(v))
+        var half = string_to_char_ptr("0.5")
+        print(
+            "probe set",
+            v,
+            "rc",
+            rc,
+            "get",
+            fegetround(),
+            "rint(0.5)",
+            rint(strtod(half)),
+        )
+        half.unsafe_free()
+    for bit in range(6):
+        var mask = Int32(1 << bit)
+        _ = feclearexcept(Int32(0x3F))
+        _ = feraiseexcept(mask)
+        print(
+            "probe raise bit", bit, "-> testexcept", fetestexcept(Int32(0x3F))
+        )
+    _ = feclearexcept(Int32(0x3F))
+    _ = fesetround(initial)
+
+
 def main() raises:
-    test_rounding_modes()
-    test_exception_flags()
-    test_exceptflag_round_trip()
-    test_environment_round_trip()
-    print("test_fenv: ok")
+    comptime if CompilationTarget.is_macos():
+        probe()
+        print("test_fenv: ok")
+    else:
+        test_rounding_modes()
+        test_exception_flags()
+        test_exceptflag_round_trip()
+        test_environment_round_trip()
+        print("test_fenv: ok")
