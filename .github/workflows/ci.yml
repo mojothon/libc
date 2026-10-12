@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.8
+      - uses: prefix-dev/setup-pixi@v0.11.0
         with:
           cache: true
       - name: mojo format
@@ -31,7 +31,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.8
+      - uses: prefix-dev/setup-pixi@v0.11.0
         with:
           cache: true
       - name: Run the test suite
@@ -45,7 +45,7 @@ jobs:
     needs: [lint, test]
     steps:
       - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.8
+      - uses: prefix-dev/setup-pixi@v0.11.0
         with:
           cache: true
           environments: build
@@ -61,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.8
+      - uses: prefix-dev/setup-pixi@v0.11.0
         with:
           cache: true
           environments: docs
