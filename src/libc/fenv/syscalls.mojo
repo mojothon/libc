@@ -15,8 +15,11 @@ from libc.constant import c_ptr
 #                arm64:                  the AArch64 FPSR,    1 2 4 8 10
 #
 #   rounding     x86-64, both platforms: the x87 control word, 0 400 800 c00
-#                arm64 glibc:            the FPCR bits, 0 400000 800000 c00000
-#                arm64 Darwin:           the modes numbered, 0 1 2 3
+#                arm64, both platforms:  the FPCR mode bits, 0 400000 800000 c00000
+#
+# The arm64 ones were measured on Darwin rather than guessed: `fesetround`
+# returns non-zero for 1, 2, 3, 400, 800 and c00 there, and 0 for 400000,
+# 800000 and c00000, which is the FPCR bit for each mode.
 comptime FE_INVALID: Int32 = 0x01
 comptime FE_DIVBYZERO: Int32 = (
     Int32(0x04) if CompilationTarget.is_x86() else Int32(0x02)
@@ -35,19 +38,13 @@ comptime FE_ALL_EXCEPT: Int32 = (
 )
 comptime FE_TONEAREST: Int32 = 0
 comptime FE_UPWARD: Int32 = (
-    Int32(0x800) if CompilationTarget.is_x86() else (
-        Int32(2) if CompilationTarget.is_macos() else Int32(0x400000)
-    )
+    Int32(0x800) if CompilationTarget.is_x86() else Int32(0x400000)
 )
 comptime FE_DOWNWARD: Int32 = (
-    Int32(0x400) if CompilationTarget.is_x86() else (
-        Int32(3) if CompilationTarget.is_macos() else Int32(0x800000)
-    )
+    Int32(0x400) if CompilationTarget.is_x86() else Int32(0x800000)
 )
 comptime FE_TOWARDZERO: Int32 = (
-    Int32(0xC00) if CompilationTarget.is_x86() else (
-        Int32(1) if CompilationTarget.is_macos() else Int32(0xC00000)
-    )
+    Int32(0xC00) if CompilationTarget.is_x86() else Int32(0xC00000)
 )
 
 
