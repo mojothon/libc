@@ -18,11 +18,14 @@ from libc.utils import char_ptr_to_string, null_ptr, string_to_char_ptr
 
 def test_hsearch() raises:
     # One table per process, so this test owns it from hcreate to hdestroy.
+    print("probe: before hcreate")
     assert_true(Int(hcreate(16)) != 0, "the table was created")
+    print("probe: after hcreate")
 
     var one = string_to_char_ptr("one")
     var two = string_to_char_ptr("two")
     var data_one = string_to_char_ptr("1")
+    print("probe: before enter")
 
     assert_true(
         Int(hsearch(ENTRY(one, data_one.unsafe_bitcast[NoneType]()), ENTER))
@@ -30,7 +33,9 @@ def test_hsearch() raises:
         "the first row went in",
     )
 
+    print("probe: after enter")
     var found = hsearch(ENTRY(one, null_ptr[NoneType]()), FIND)
+    print("probe: after find")
     assert_true(Int(found) != 0, "the key is there after ENTER")
     assert_equal(char_ptr_to_string(found[].key), "one")
     assert_equal(char_ptr_to_string(found[].data.unsafe_bitcast[UInt8]()), "1")
@@ -51,7 +56,9 @@ def test_hsearch() raises:
         Int(hsearch(ENTRY(one, null_ptr[NoneType]()), FIND)) != 0, "so does one"
     )
 
+    print("probe: before hdestroy")
     hdestroy()
+    print("probe: after hdestroy")
 
     missing.unsafe_free()
     data_one.unsafe_free()
@@ -68,7 +75,9 @@ def test_queue() raises:
     third[] = qelem(null_ptr[UInt8](), null_ptr[UInt8]())
 
     # A lone node links to nobody.
+    print("probe: before insque")
     insque(first.unsafe_bitcast[NoneType](), null_ptr[NoneType]())
+    print("probe: after insque")
     assert_equal(Int(first[].q_forw), 0)
     assert_equal(Int(first[].q_back), 0)
 
@@ -84,7 +93,9 @@ def test_queue() raises:
     assert_equal(Int(second[].q_back), Int(third))
 
     # Unlinking the middle node stitches the other two back together.
+    print("probe: before remque")
     remque(third.unsafe_bitcast[NoneType]())
+    print("probe: after remque")
     assert_equal(Int(first[].q_forw), Int(second))
     assert_equal(Int(second[].q_back), Int(first))
 
