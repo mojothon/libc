@@ -19,6 +19,9 @@ All notable changes to this project are documented here. The format follows
   `strtoumax`.
 - `libc.inttypes` took `char *` as an `Int8` pointer; the rest of the package
   uses a byte pointer, so the two did not mix.
+- `hdestroy` was documented as leaving the keys alone. BSD, Darwin included,
+  calls `free` on every key; glibc does not. Handing it keys in Mojo-allocated
+  memory aborted on macOS, so the test now uses `malloc` keys.
 - `hcreate_r`, `hdestroy_r` and `hsearch_r` were empty stubs and are gone.
   They need `struct hsearch_data`, which is GNU-only and whose size is
   platform-internal (16 bytes on glibc, something else on Darwin), so there

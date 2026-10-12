@@ -3,4 +3,4 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-comptime __version__ = "0.4.1"
+comptime __version__ = "0.5.0"
