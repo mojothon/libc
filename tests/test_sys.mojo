@@ -118,11 +118,14 @@ def test_statvfs() raises:
     assert_true(buf[].f_bsize > 0, "the file system has a block size")
     assert_true(buf[].f_blocks > 0, "the file system has blocks")
     assert_true(buf[].f_frsize > 0, "the file system has a fragment size")
-    # Left alone on purpose: APFS reports 0 for `f_namemax`, so a name limit is
-    # not something both platforms promise.
+    # A block size bigger than a megabyte would mean these bytes are not where
+    # the struct says they are.
     assert_true(
-        buf[].f_bfree <= buf[].f_blocks, "free blocks are not more than blocks"
+        buf[].f_bsize <= 1 << 20, "the block size is a sane number of bytes"
     )
+    # Left alone on purpose: APFS reports 0 for `f_namemax`, and shares space
+    # between volumes, so `f_bfree` can exceed `f_blocks`. Neither is something
+    # both platforms promise.
 
     buf.unsafe_free()
 
