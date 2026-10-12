@@ -115,6 +115,9 @@ def test_statvfs() raises:
     assert_equal(statvfs(path, buf), 0, "statvfs succeeded")
     path.unsafe_free()
 
+    var raw = buf.unsafe_bitcast[UInt64]()
+    for i in range(14):
+        print("probe word", i, raw.unsafe_load(i))
     print(
         "probe bsize",
         buf[].f_bsize,
