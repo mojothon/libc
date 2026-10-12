@@ -2,7 +2,26 @@
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.unistd import getcwd, getpid, swab
+from libc.unistd import (
+    alarm,
+    chown,
+    fchown,
+    fchownat,
+    getcwd,
+    getegid,
+    geteuid,
+    getgid,
+    getpagesize,
+    getpid,
+    getuid,
+    lchown,
+    nice,
+    setegid,
+    seteuid,
+    sleep,
+    swab,
+)
+from libc.utils import string_to_char_ptr
 
 
 def test_getcwd() raises:
@@ -42,8 +61,50 @@ def test_getpid() raises:
     assert_true(getpid() > 0)
 
 
+def test_ids() raises:
+    """`getgid` and `getegid`, and setting an id to what it already is."""
+    assert_true(getgid() >= 0, "the real group id is not negative")
+    assert_true(getegid() >= 0, "and neither is the effective one")
+
+    # Handing an effective id the value it already has is the only way to
+    # call these from a test without changing what the process may do.
+    assert_equal(seteuid(geteuid()), 0, "seteuid to the current euid")
+    assert_equal(setegid(getegid()), 0, "setegid to the current egid")
+
+
+def test_alarm_and_sleep() raises:
+    """Both can be asked for nothing, and neither one waits."""
+    assert_equal(alarm(0), 0, "no alarm was set, so none was replaced")
+    assert_equal(sleep(0), 0, "and there was nothing to sleep through")
+
+
+def test_nice_and_pagesize() raises:
+    assert_true(nice(0) >= -1, "asking what the niceness is changes nothing")
+    assert_true(getpagesize() > 0, "a page is some number of bytes")
+
+
+def test_chown_on_what_is_not_there() raises:
+    """All four say -1 for a file that does not exist.
+
+    Giving a real file to somebody else is not a thing a test should do,
+    so this is the part of them a test can safely ask about.
+    """
+    var nowhere = string_to_char_ptr("/nonexistent/libc-test")
+
+    assert_equal(chown(nowhere, getuid(), getgid()), -1)
+    assert_equal(lchown(nowhere, getuid(), getgid()), -1)
+    assert_equal(fchown(-1, getuid(), getgid()), -1, "no such descriptor")
+    assert_equal(fchownat(-1, nowhere, getuid(), getgid(), 0), -1)
+
+    nowhere.unsafe_free()
+
+
 def main() raises:
     test_getcwd()
     test_swab()
     test_getpid()
+    test_ids()
+    test_alarm_and_sleep()
+    test_nice_and_pagesize()
+    test_chown_on_what_is_not_there()
     print("test_unistd: ok")
