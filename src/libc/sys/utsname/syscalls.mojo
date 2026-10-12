@@ -3,13 +3,14 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-from sys import external_call
-from memory import UnsafePointer
+from std.ffi import external_call
+from std.memory import Pointer
+from libc.constant import c_ptr
 
 
-fn uname() -> UnsafePointer[Int8]:
+def uname() -> c_ptr[Int8]:
     """C library <sys/un.h> function `uname`.
     Returns a pointer to a `struct utsname` containing information about the
     current operating system.
     """
-    return external_call["uname", UnsafePointer[Int8]]()
+    return external_call["uname", c_ptr[Int8]]()

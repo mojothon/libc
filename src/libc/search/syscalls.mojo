@@ -4,33 +4,34 @@
 # github: github.com/llango
 # ----------------------------------
 
-fn hcreate_r():
-    pass 
 
-
-fn hcreate():
+def hcreate_r():
     pass
 
 
-fn hdestroy():
+def hcreate():
     pass
 
 
-fn hdestroy_r():
+def hdestroy():
     pass
 
 
-fn hsearch():
+def hdestroy_r():
     pass
 
 
-fn hsearch_r():
+def hsearch():
     pass
 
 
-fn insque():
-    pass 
+def hsearch_r():
+    pass
 
 
-fn remque():
+def insque():
+    pass
+
+
+def remque():
     pass

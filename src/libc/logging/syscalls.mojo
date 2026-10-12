@@ -3,13 +3,11 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-from sys import external_call
-from libc.constant import * 
+from std.ffi import external_call
+from libc.constant import *
 
 
-fn openlog(
-    ident: UnsafePointer[c_char], logopt: c_int, facility: c_int
-) -> c_void:
+def openlog(ident: c_ptr[c_char], logopt: c_int, facility: c_int) -> c_void:
     """Libc POSIX `openlog` function.
 
     Args:
@@ -25,12 +23,12 @@ fn openlog(
         Fn signature: `void openlog(const char *ident, int logopt,
             int facility)`.
     """
-    return external_call[
-        "openlog", c_void, UnsafePointer[c_char], c_int, c_int
-    ](ident, logopt, facility)
+    return external_call["openlog", c_void, c_ptr[c_char], c_int, c_int](
+        ident, logopt, facility
+    )
 
 
-fn syslog(priority: c_int, message: UnsafePointer[c_char]) -> c_void:
+def syslog(priority: c_int, message: c_ptr[c_char]) -> c_void:
     """Libc POSIX `syslog` function.
 
     Args:
@@ -45,14 +43,12 @@ fn syslog(priority: c_int, message: UnsafePointer[c_char]) -> c_void:
         Fn signature: `void syslog(int priority, const char *message,
             ... /* arguments */)`.
     """
-    return external_call["syslog", c_void, c_int, UnsafePointer[c_char]](
+    return external_call["syslog", c_void, c_int, c_ptr[c_char]](
         priority, message
     )
 
 
-
-
-fn setlogmask(maskpri: c_int) -> c_int:
+def setlogmask(maskpri: c_int) -> c_int:
     """Libc POSIX `setlogmask` function.
 
     Args:
@@ -68,7 +64,7 @@ fn setlogmask(maskpri: c_int) -> c_int:
     return external_call["setlogmask", c_int, c_int](maskpri)
 
 
-fn closelog():
+def closelog():
     """Libc POSIX `closelog` function.
 
     Notes:

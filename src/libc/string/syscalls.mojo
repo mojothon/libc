@@ -3,12 +3,13 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-from sys import external_call
-from memory import UnsafePointer
+from std.ffi import external_call
+from std.memory import Pointer
+from libc.constant import c_ptr
 
 
-@always_inline("nodebug")
-fn strcat(s1: UnsafePointer[UInt8], s2: UnsafePointer[UInt8]) -> UnsafePointer[UInt8]:
+@inline(.nodebug)
+def strcat(s1: c_ptr[UInt8], s2: c_ptr[UInt8]) -> c_ptr[UInt8]:
     """C library <string.h> function `strcat`.
 
     Reference:
@@ -16,16 +17,18 @@ fn strcat(s1: UnsafePointer[UInt8], s2: UnsafePointer[UInt8]) -> UnsafePointer[U
 
     Prototype:
         char *strcat(char *s1, const char *s2)
-    
+
     Description:
         Appends the string pointed to by s2 to the end of the string pointed to by s1.
     """
 
-    return external_call["strcat", UnsafePointer[UInt8], UnsafePointer[UInt8], UnsafePointer[UInt8]](s1, s2)
+    return external_call["strcat", c_ptr[UInt8], c_ptr[UInt8], c_ptr[UInt8]](
+        s1, s2
+    )
 
 
-@always_inline("nodebug")
-fn strcpy(s1: UnsafePointer[UInt8], s2: UnsafePointer[UInt8]) -> UnsafePointer[UInt8]:
+@inline(.nodebug)
+def strcpy(s1: c_ptr[UInt8], s2: c_ptr[UInt8]) -> c_ptr[UInt8]:
     """C library <string.h> function `strcpy`.
 
     Reference:
@@ -33,16 +36,18 @@ fn strcpy(s1: UnsafePointer[UInt8], s2: UnsafePointer[UInt8]) -> UnsafePointer[U
 
     Prototype:
         char *strcpy(char *s1, const char *s2)
-    
+
     Description:
         Copies the string pointed to by s2 (including the terminating null character) to the array pointed to by s1.
     """
 
-    return external_call["strcpy", UnsafePointer[UInt8], UnsafePointer[UInt8], UnsafePointer[UInt8]](s1, s2)
+    return external_call["strcpy", c_ptr[UInt8], c_ptr[UInt8], c_ptr[UInt8]](
+        s1, s2
+    )
 
 
-@always_inline("nodebug")
-fn strncpy(s1: UnsafePointer[UInt8], s2: UnsafePointer[UInt8], n: UInt64) -> UnsafePointer[UInt8]:
+@inline(.nodebug)
+def strncpy(s1: c_ptr[UInt8], s2: c_ptr[UInt8], n: UInt64) -> c_ptr[UInt8]:
     """C library <string.h> function `strncpy`.
 
     Reference:
@@ -50,76 +55,72 @@ fn strncpy(s1: UnsafePointer[UInt8], s2: UnsafePointer[UInt8], n: UInt64) -> Uns
 
     Prototype:
         char *strncpy(char *s1, const char *s2, size_t n)
-    
+
     Description:
         Copies at most n characters from the string pointed to by s2 (including the terminating null character) to the array
         pointed to by s1. If the length of s2 is less than n, null characters are appended to the end of s1 to ensure that it
         is exactly n characters long.
-    
+
     Return Value:
         The function returns a pointer to the resulting string s1.
     """
 
-    return external_call["strncpy", UnsafePointer[UInt8], UnsafePointer[UInt8], UnsafePointer[UInt8], UInt64](s1, s2, n)
+    return external_call[
+        "strncpy", c_ptr[UInt8], c_ptr[UInt8], c_ptr[UInt8], UInt64
+    ](s1, s2, n)
 
 
-@always_inline("nodebug")
-fn memcpy(
-    dest: UnsafePointer[NoneType], src: UnsafePointer[NoneType], n: UInt64
-) -> UnsafePointer[NoneType]:
-    return external_call["memcpy", UnsafePointer[NoneType]](dest, src, n)
+@inline(.nodebug)
+def memcpy(
+    dest: c_ptr[NoneType], src: c_ptr[NoneType], n: UInt64
+) -> c_ptr[NoneType]:
+    return external_call["memcpy", c_ptr[NoneType]](dest, src, n)
 
 
-@always_inline("nodebug")
-fn mempcopy(
-    dest: UnsafePointer[NoneType], src: UnsafePointer[NoneType], n: UInt64
-) -> UnsafePointer[NoneType]:
-    return external_call["mempcopy", UnsafePointer[NoneType]](dest, src, n)
+@inline(.nodebug)
+def mempcopy(
+    dest: c_ptr[NoneType], src: c_ptr[NoneType], n: UInt64
+) -> c_ptr[NoneType]:
+    return external_call["mempcopy", c_ptr[NoneType]](dest, src, n)
 
 
-@always_inline("nodebug")
-fn memmove(
-    dest: UnsafePointer[NoneType], src: UnsafePointer[NoneType], n: UInt64
-) -> UnsafePointer[NoneType]:
-    return external_call["memmove", UnsafePointer[NoneType]](dest, src, n)
+@inline(.nodebug)
+def memmove(
+    dest: c_ptr[NoneType], src: c_ptr[NoneType], n: UInt64
+) -> c_ptr[NoneType]:
+    return external_call["memmove", c_ptr[NoneType]](dest, src, n)
 
 
-@always_inline("nodebug")
-fn memset(
-    s: UnsafePointer[NoneType], c: Int32, n: UInt64
-) -> UnsafePointer[NoneType]:
-    return external_call["memset", UnsafePointer[NoneType]](s, c, n)
+@inline(.nodebug)
+def memset(s: c_ptr[NoneType], c: Int32, n: UInt64) -> c_ptr[NoneType]:
+    return external_call["memset", c_ptr[NoneType]](s, c, n)
 
 
-@always_inline("nodebug")
-fn strcopy(
-    dest: UnsafePointer[UInt8], src: UnsafePointer[UInt8]
-) -> UnsafePointer[UInt8]:
-    return external_call["strcpy", UnsafePointer[UInt8]](dest, src)
+@inline(.nodebug)
+def strcopy(dest: c_ptr[UInt8], src: c_ptr[UInt8]) -> c_ptr[UInt8]:
+    return external_call["strcpy", c_ptr[UInt8]](dest, src)
 
 
-@always_inline("nodebug")
-fn strncopy(
-    dest: UnsafePointer[UInt8], src: UnsafePointer[UInt8], n: UInt64
-) -> UnsafePointer[UInt8]:
-    return external_call["strncpy", UnsafePointer[UInt8]](dest, src, n)
+@inline(.nodebug)
+def strncopy(dest: c_ptr[UInt8], src: c_ptr[UInt8], n: UInt64) -> c_ptr[UInt8]:
+    return external_call["strncpy", c_ptr[UInt8]](dest, src, n)
 
 
-@always_inline("nodebug")
-fn strdup(s: UnsafePointer[UInt8]) -> UnsafePointer[UInt8]:
-    return external_call["strdup", UnsafePointer[UInt8]](s)
+@inline(.nodebug)
+def strdup(s: c_ptr[UInt8]) -> c_ptr[UInt8]:
+    return external_call["strdup", c_ptr[UInt8]](s)
 
 
-@always_inline("nodebug")
-fn strndup(s: UnsafePointer[UInt8], n: UInt64) -> UnsafePointer[UInt8]:
-    return external_call["strndup", UnsafePointer[UInt8]](s, n)
+@inline(.nodebug)
+def strndup(s: c_ptr[UInt8], n: UInt64) -> c_ptr[UInt8]:
+    return external_call["strndup", c_ptr[UInt8]](s, n)
 
 
-@always_inline("nodebug")
-fn strlen(s: UnsafePointer[UInt8]) -> UInt64:
+@inline(.nodebug)
+def strlen(s: c_ptr[UInt8]) -> UInt64:
     return external_call["strlen", UInt64](s)
 
 
-@always_inline("nodebug")
-fn strnlen(s: UnsafePointer[UInt8], maxlen: UInt64) -> UInt64:
+@inline(.nodebug)
+def strnlen(s: c_ptr[UInt8], maxlen: UInt64) -> UInt64:
     return external_call["strnlen", UInt64](s, maxlen)

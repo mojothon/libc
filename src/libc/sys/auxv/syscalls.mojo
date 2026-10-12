@@ -3,10 +3,10 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-from sys import external_call
+from std.ffi import external_call
 
 
-fn getauxval(type: UInt64) -> UInt64:
+def getauxval(type: UInt64) -> UInt64:
     """C library <sys/auxv.h> function `getauxval`.
 
     Reference:
@@ -18,4 +18,4 @@ fn getauxval(type: UInt64) -> UInt64:
     Returns:
         The value associated with the given identifier, or 0 if the identifier is not found.
     """
-    return  external_call["getauxval", UInt64, UInt64](type)
+    return external_call["getauxval", UInt64, UInt64](type)

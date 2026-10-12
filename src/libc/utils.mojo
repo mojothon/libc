@@ -3,28 +3,28 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-from memory import UnsafePointer
-from sys import external_call
+from std.ffi import external_call
+from std.memory.alloc import unsafe_alloc
+from std.sys import CompilationTarget
+from std.sys.info import is_64bit
 
-from sys.info import is_x86, is_64bit
-
-from .constant import c_schar
+from .constant import c_char, c_int, c_ptr, c_schar, c_void
 
 
-fn strlen(s: UnsafePointer[UInt8]) -> Int:
+def strlen(s: c_ptr[UInt8]) -> Int:
     """
-        Libc POSIX `strlen` function.
+    Libc POSIX `strlen` function.
 
-        Reference: https://man7.org/linux/man-pages/man3/strlen.3p.html
-        Fn signature: size_t strlen(const char *s)
+    Reference: https://man7.org/linux/man-pages/man3/strlen.3p.html
+    Fn signature: size_t strlen(const char *s)
 
-        Args: s: A pointer to a C string.
-        Returns: The length of the string.
+    Args: s: A pointer to a C string.
+    Returns: The length of the string.
     """
-    return external_call["strlen", Int, UnsafePointer[UInt8]](s)
+    return external_call["strlen", Int, c_ptr[UInt8]](s)
 
 
-fn exit(status: c_int):
+def exit(status: c_int):
     """Libc POSIX `exit` function.
 
     Reference: https://man7.org/linux/man-pages/man3/exit.3.html
@@ -37,43 +37,56 @@ fn exit(status: c_int):
     _ = external_call["exit", c_void, c_int](status)
 
 
-fn string_to_char_ptr(s: String) -> UnsafePointer[UInt8]:
+def string_to_char_ptr(s: String) -> c_ptr[UInt8]:
     """
-        Convert a string(only ASCII-characters) to a char pointer .
+    Convert a string(only ASCII-characters) to a char pointer.
+
+    The returned buffer is NUL terminated and owned by the caller: release
+    it with `ptr.unsafe_free()` when it is no longer needed.
     """
-    var length = len(s)
-    var ptr = UnsafePointer[UInt8]().alloc(length)
-    for i in range(length):
-        ptr.store(i, ord(s[i]))
-    ptr.store(length, 0)
+    var length = s.byte_length()
+    var ptr = unsafe_alloc[UInt8](length + 1)
+    var i = 0
+    for byte in s.bytes():
+        ptr.unsafe_store(i, byte)
+        i += 1
+    ptr.unsafe_store(length, 0)
     return ptr
 
 
-fn char_ptr_to_string(c: UnsafePointer[UInt8]) -> String:
+def char_ptr_to_string(c: c_ptr[UInt8]) -> String:
     """
-        Convert a char pointer to a string.
+    Convert a char pointer to a string.
     """
-    length = strlen(c)
-    return String(c, length+1)
+    var length = strlen(c)
+    return String(unsafe_from_utf8=Span[UInt8](unsafe_ptr=c, length=length))
 
 
-@register_passable("trivial")
-struct CString:
-    var data: UnsafePointer[c_schar]
+struct CString(TrivialRegisterPassable, Writable):
+    """A borrowed view over a NUL terminated C string."""
 
-    fn __init__(inout self, data: UnsafePointer[c_char]):
-        self.data = data.bitcast[c_schar]()
+    var data: c_ptr[c_schar]
 
-    fn __str__(self) -> String:
+    def __init__(out self, data: c_ptr[c_char]):
+        self.data = data.unsafe_bitcast[c_schar]()
+
+    def __str__(self) -> String:
         """
-            Convert a CString to a String.
+        Convert a CString to a String.
         """
-        return StringRef(self.data)
+        var bytes = self.data.unsafe_bitcast[UInt8]()
+        return String(
+            unsafe_from_utf8=Span[UInt8](unsafe_ptr=bytes, length=strlen(bytes))
+        )
+
+    def write_to[W: Writer](self, mut writer: W):
+        """Write the wrapped C string, so `print()` and `String()` work."""
+        writer.write(self.__str__())
 
 
-@always_inline("nodebug")
-fn is_x86_64() -> Bool:
+@inline(.nodebug)
+def is_x86_64() -> Bool:
     """
-        Check if the current platform is x86_64.
+    Check if the current platform is x86_64.
     """
-    return is_x86() and is_64bit()
+    return CompilationTarget.is_x86() and is_64bit()

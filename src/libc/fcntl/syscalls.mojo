@@ -3,12 +3,12 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-from memory import UnsafePointer
-from sys import external_call
+from std.memory import Pointer
+from std.ffi import external_call
+from libc.constant import c_ptr
 
 
-
-fn creat(path: UnsafePointer[Int8], mode: UInt32) -> Int32:
+def creat(path: c_ptr[Int8], mode: UInt32) -> Int32:
     """Libc POSIX `creat` function.
 
     Args:
@@ -22,12 +22,10 @@ fn creat(path: UnsafePointer[Int8], mode: UInt32) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/creat.3p.html).
         Fn signature: `int creat(const char *path, mode_t mode)`.
     """
-    return external_call["creat", Int32, UnsafePointer[Int8], UInt32](
-        path, mode
-    )
+    return external_call["creat", Int32, c_ptr[Int8], UInt32](path, mode)
 
 
-fn fcntl(fildes: Int32, cmd: Int32) -> Int32:
+def fcntl(fildes: Int32, cmd: Int32) -> Int32:
     """Libc POSIX `fcntl` function.
 
     Args:
@@ -44,7 +42,7 @@ fn fcntl(fildes: Int32, cmd: Int32) -> Int32:
     return external_call["fcntl", Int32, Int32, Int32](fildes, cmd)
 
 
-fn open(path: UnsafePointer[Int8], oflag: Int32) -> Int32:
+def open(path: c_ptr[Int8], oflag: Int32) -> Int32:
     """Libc POSIX `open` function.
 
     Args:
@@ -58,12 +56,10 @@ fn open(path: UnsafePointer[Int8], oflag: Int32) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/open.3p.html).
         Fn signature: `int open(const char *path, int oflag, ...)`.
     """
-    return external_call["open", Int32, UnsafePointer[Int8], Int32](
-        path, oflag
-    )
+    return external_call["open", Int32, c_ptr[Int8], Int32](path, oflag)
 
 
-fn openat(fd: Int32, path: UnsafePointer[Int8], oflag: Int32) -> Int32:
+def openat(fd: Int32, path: c_ptr[Int8], oflag: Int32) -> Int32:
     """Libc POSIX `open` function.
 
     Args:
@@ -78,6 +74,6 @@ fn openat(fd: Int32, path: UnsafePointer[Int8], oflag: Int32) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/open.3p.html).
         Fn signature: `int openat(int fd, const char *path, int oflag, ...)`.
     """
-    return external_call["openat", Int32, Int32, UnsafePointer[Int8], Int32](
+    return external_call["openat", Int32, Int32, c_ptr[Int8], Int32](
         fd, path, oflag
     )

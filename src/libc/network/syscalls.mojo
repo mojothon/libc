@@ -3,11 +3,11 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-from sys import external_call
+from std.ffi import external_call
 from libc.constant import *
 
 
-fn htonl(hostlong: c_uint) -> c_uint:
+def htonl(hostlong: c_uint) -> c_uint:
     """Libc POSIX `htonl` function.
 
     Reference: https://man7.org/linux/man-pages/man3/htonl.3p.html
@@ -18,7 +18,7 @@ fn htonl(hostlong: c_uint) -> c_uint:
     return external_call["htonl", c_uint, c_uint](hostlong)
 
 
-fn htons(hostshort: c_ushort) -> c_ushort:
+def htons(hostshort: c_ushort) -> c_ushort:
     """Libc POSIX `htons` function.
 
     Reference: https://man7.org/linux/man-pages/man3/htonl.3p.html
@@ -31,7 +31,7 @@ fn htons(hostshort: c_ushort) -> c_ushort:
     return external_call["htons", c_ushort, c_ushort](hostshort)
 
 
-fn ntohl(netlong: c_uint) -> c_uint:
+def ntohl(netlong: c_uint) -> c_uint:
     """Libc POSIX `ntohl` function.
 
     Reference: https://man7.org/linux/man-pages/man3/htonl.3p.html
@@ -44,7 +44,7 @@ fn ntohl(netlong: c_uint) -> c_uint:
     return external_call["ntohl", c_uint, c_uint](netlong)
 
 
-fn ntohs(netshort: c_ushort) -> c_ushort:
+def ntohs(netshort: c_ushort) -> c_ushort:
     """Libc POSIX `ntohs` function.
 
     Reference: https://man7.org/linux/man-pages/man3/htonl.3p.html

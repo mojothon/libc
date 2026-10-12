@@ -3,36 +3,38 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-from sys import external_call
-from memory import UnsafePointer
+from std.ffi import external_call
+from std.memory import Pointer
+from libc.constant import c_ptr
 
-fn setjmp(env: UnsafePointer[Int32]) -> Int32:
+
+def setjmp(env: c_ptr[Int32]) -> Int32:
     """C library <setjmp.h> function `setjmp`.
-    
+
     Reference:
         https://man7.org/linux/man-pages/man3/setjmp.3.html
-    
+
     Prototype:
         int setjmp(jmp_buf env)
-    
+
     Description:
         The setjmp() function saves the current values of the registers in the jmp_buf structure pointed to by env.
         The return value is the value that setjmp() will return to if it encounters an exception.
         The setjmp() function returns 0 if it succeeds; it returns a non-zero value if it encounters an exception.
         The setjmp() function can be called from any function, including functions that are not marked with the __attribute__((__noreturn__)) attribute.
     """
-    return external_call["setjmp", Int32, UnsafePointer[Int32]](env)
+    return external_call["setjmp", Int32, c_ptr[Int32]](env)
 
 
-fn longjmp(env: UnsafePointer[Int32], val: Int32) -> Int32:
+def longjmp(env: c_ptr[Int32], val: Int32) -> Int32:
     """C library <setjmp.h> function `longjmp`.
-    
+
     Reference:
         https://man7.org/linux/man-pages/man3/longjmp.3.html
-    
+
     Prototype:
         void longjmp(jmp_buf env, int val)
-    
+
     Description:
         The longjmp() function restores the values of the registers saved in the jmp_buf structure pointed to by env,
         and then returns the value val to the caller of setjmp().
@@ -43,4 +45,4 @@ fn longjmp(env: UnsafePointer[Int32], val: Int32) -> Int32:
         If longjmp() is called outside the scope of the function that called setjmp(),
         the behavior is undefined.
     """
-    return external_call["longjmp", Int32, UnsafePointer[Int32], Int32](env, val)
+    return external_call["longjmp", Int32, c_ptr[Int32], Int32](env, val)

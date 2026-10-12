@@ -3,24 +3,20 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-from libc.constant import * 
-from sys import external_call
+from libc.constant import *
+from std.ffi import external_call
 
 
-@register_passable("trivial")
-struct FILE:
+struct FILE(TrivialRegisterPassable):
     pass
 
 
-fn fflush(arg: UnsafePointer[FILE]) -> Int32:
-    """
-
-    """
-    return external_call["fflush", Int32, UnsafePointer[FILE]](arg)
+def fflush(arg: c_ptr[FILE]) -> Int32:
+    """ """
+    return external_call["fflush", Int32, c_ptr[FILE]](arg)
 
 
-
-fn fcntl(fildes: c_int, cmd: c_int) -> c_int:
+def fcntl(fildes: c_int, cmd: c_int) -> c_int:
     """Libc POSIX `fcntl` function.
 
     Args:
@@ -38,7 +34,7 @@ fn fcntl(fildes: c_int, cmd: c_int) -> c_int:
     return external_call["fcntl", c_int, c_int, c_int](fildes, cmd)
 
 
-fn close(fildes: c_int) -> c_int:
+def close(fildes: c_int) -> c_int:
     """Libc POSIX `close` function.
 
     Args:
@@ -54,7 +50,7 @@ fn close(fildes: c_int) -> c_int:
     return external_call["close", c_int, c_int](fildes)
 
 
-fn open(path: UnsafePointer[c_char], oflag: c_int) -> c_int:
+def open(path: c_ptr[c_char], oflag: c_int) -> c_int:
     """Libc POSIX `open` function.
 
     Args:
@@ -69,12 +65,10 @@ fn open(path: UnsafePointer[c_char], oflag: c_int) -> c_int:
         Fn signature: `int open(const char *path, int oflag, ...)`.
     """
 
-    return external_call["open", c_int, UnsafePointer[c_char], c_int](
-        path, oflag
-    )
+    return external_call["open", c_int, c_ptr[c_char], c_int](path, oflag)
 
 
-fn openat(fd: c_int, path: UnsafePointer[c_char], oflag: c_int) -> c_int:
+def openat(fd: c_int, path: c_ptr[c_char], oflag: c_int) -> c_int:
     """Libc POSIX `open` function.
 
     Args:
@@ -89,14 +83,12 @@ fn openat(fd: c_int, path: UnsafePointer[c_char], oflag: c_int) -> c_int:
         [Reference](https://man7.org/linux/man-pages/man3/open.3p.html).
         Fn signature: `int openat(int fd, const char *path, int oflag, ...)`.
     """
-    return external_call["openat", c_int, c_int, UnsafePointer[c_char], c_int](
+    return external_call["openat", c_int, c_int, c_ptr[c_char], c_int](
         fd, path, oflag
     )
 
 
-fn fopen(
-    pathname: UnsafePointer[c_char], mode: UnsafePointer[c_char]
-) -> UnsafePointer[FILE]:
+def fopen(pathname: c_ptr[c_char], mode: c_ptr[c_char]) -> c_ptr[FILE]:
     """Libc POSIX `fopen` function.
 
     Args:
@@ -113,13 +105,13 @@ fn fopen(
     """
     return external_call[
         "fopen",
-        UnsafePointer[FILE],
-        UnsafePointer[c_char],
-        UnsafePointer[c_char],
+        c_ptr[FILE],
+        c_ptr[c_char],
+        c_ptr[c_char],
     ](pathname, mode)
 
 
-fn fdopen(fildes: c_int, mode: UnsafePointer[c_char]) -> UnsafePointer[FILE]:
+def fdopen(fildes: c_int, mode: c_ptr[c_char]) -> c_ptr[FILE]:
     """Libc POSIX `fdopen` function.
 
     Args:
@@ -133,16 +125,16 @@ fn fdopen(fildes: c_int, mode: UnsafePointer[c_char]) -> UnsafePointer[FILE]:
         [Reference](https://man7.org/linux/man-pages/man3/fdopen.3p.html).
         Fn signature: `FILE *fdopen(int fildes, const char *mode)`.
     """
-    return external_call[
-        "fdopen", UnsafePointer[FILE], c_int, UnsafePointer[c_char]
-    ](fildes, mode)
+    return external_call["fdopen", c_ptr[FILE], c_int, c_ptr[c_char]](
+        fildes, mode
+    )
 
 
-fn freopen(
-    pathname: UnsafePointer[c_char],
-    mode: UnsafePointer[c_char],
-    stream: UnsafePointer[FILE],
-) -> UnsafePointer[FILE]:
+def freopen(
+    pathname: c_ptr[c_char],
+    mode: c_ptr[c_char],
+    stream: c_ptr[FILE],
+) -> c_ptr[FILE]:
     """Libc POSIX `freopen` function.
 
     Args:
@@ -160,16 +152,16 @@ fn freopen(
     """
     return external_call[
         "freopen",
-        UnsafePointer[FILE],
-        UnsafePointer[c_char],
-        UnsafePointer[c_char],
-        UnsafePointer[FILE],
+        c_ptr[FILE],
+        c_ptr[c_char],
+        c_ptr[c_char],
+        c_ptr[FILE],
     ](pathname, mode, stream)
 
 
-fn fmemopen(
-    buf: UnsafePointer[c_void], size: c_uint, mode: UnsafePointer[c_char]
-) -> UnsafePointer[FILE]:
+def fmemopen(
+    buf: c_ptr[c_void], size: c_uint, mode: c_ptr[c_char]
+) -> c_ptr[FILE]:
     """Libc POSIX `fmemopen` function.
 
     Args:
@@ -187,14 +179,14 @@ fn fmemopen(
     """
     return external_call[
         "fmemopen",
-        UnsafePointer[FILE],
-        UnsafePointer[c_void],
+        c_ptr[FILE],
+        c_ptr[c_void],
         c_uint,
-        UnsafePointer[c_char],
+        c_ptr[c_char],
     ](buf, size, mode)
 
 
-fn creat(path: UnsafePointer[c_char], mode: mode_t) -> c_int:
+def creat(path: c_ptr[c_char], mode: mode_t) -> c_int:
     """Libc POSIX `creat` function.
 
     Args:
@@ -208,12 +200,10 @@ fn creat(path: UnsafePointer[c_char], mode: mode_t) -> c_int:
         [Reference](https://man7.org/linux/man-pages/man3/creat.3p.html).
         Fn signature: `int creat(const char *path, mode_t mode)`.
     """
-    return external_call["creat", c_int, UnsafePointer[c_char], mode_t](
-        path, mode
-    )
+    return external_call["creat", c_int, c_ptr[c_char], mode_t](path, mode)
 
 
-fn fseek(stream: UnsafePointer[FILE], offset: c_long, whence: c_int) -> c_int:
+def fseek(stream: c_ptr[FILE], offset: c_long, whence: c_int) -> c_int:
     """Libc POSIX `fseek` function.
 
     Args:
@@ -229,12 +219,12 @@ fn fseek(stream: UnsafePointer[FILE], offset: c_long, whence: c_int) -> c_int:
         [Reference](https://man7.org/linux/man-pages/man3/fseek.3p.html).
         Fn signature: `int fseek(FILE *stream, long offset, int whence)`.
     """
-    return external_call["fseek", c_int, UnsafePointer[FILE], c_long, c_int](
+    return external_call["fseek", c_int, c_ptr[FILE], c_long, c_int](
         stream, offset, whence
     )
 
 
-fn fseeko(stream: UnsafePointer[FILE], offset: off_t, whence: c_int) -> c_int:
+def fseeko(stream: c_ptr[FILE], offset: off_t, whence: c_int) -> c_int:
     """Libc POSIX `fseeko` function.
 
     Args:
@@ -250,12 +240,12 @@ fn fseeko(stream: UnsafePointer[FILE], offset: off_t, whence: c_int) -> c_int:
         [Reference](https://man7.org/linux/man-pages/man3/fseek.3p.html).
         Fn signature: `int fseeko(FILE *stream, off_t offset, int whence)`.
     """
-    return external_call["fseeko", c_int, UnsafePointer[FILE], off_t, c_int](
+    return external_call["fseeko", c_int, c_ptr[FILE], off_t, c_int](
         stream, offset, whence
     )
 
 
-fn lseek(fildes: c_int, offset: off_t, whence: c_int) -> off_t:
+def lseek(fildes: c_int, offset: off_t, whence: c_int) -> off_t:
     """Libc POSIX `lseek` function.
 
     Args:
@@ -276,7 +266,7 @@ fn lseek(fildes: c_int, offset: off_t, whence: c_int) -> off_t:
     )
 
 
-fn fputc(c: c_int, stream: UnsafePointer[FILE]) -> c_int:
+def fputc(c: c_int, stream: c_ptr[FILE]) -> c_int:
     """Libc POSIX `fputc` function.
 
     Args:
@@ -290,10 +280,10 @@ fn fputc(c: c_int, stream: UnsafePointer[FILE]) -> c_int:
         [Reference](https://man7.org/linux/man-pages/man3/fputc_3p.html).
         Fn signature: `int fputc(int c, FILE *stream)`.
     """
-    return external_call["fputc", c_int, c_int, UnsafePointer[FILE]](c, stream)
+    return external_call["fputc", c_int, c_int, c_ptr[FILE]](c, stream)
 
 
-fn fputs(s: UnsafePointer[c_char], stream: UnsafePointer[FILE]) -> c_int:
+def fputs(s: c_ptr[c_char], stream: c_ptr[FILE]) -> c_int:
     """Libc POSIX `fputs` function.
 
     [Reference](https://man7.org/linux/man-pages/man3/fputs.3p.html).
@@ -307,12 +297,12 @@ fn fputs(s: UnsafePointer[c_char], stream: UnsafePointer[FILE]) -> c_int:
     return external_call[
         "fputs",
         c_int,
-        UnsafePointer[c_char],
-        UnsafePointer[FILE],
+        c_ptr[c_char],
+        c_ptr[FILE],
     ](s, stream)
 
 
-fn fgetc(stream: UnsafePointer[FILE]) -> c_int:
+def fgetc(stream: c_ptr[FILE]) -> c_int:
     """Libc POSIX `fgetc` function.
 
     Args:
@@ -325,12 +315,10 @@ fn fgetc(stream: UnsafePointer[FILE]) -> c_int:
         [Reference](https://man7.org/linux/man-pages/man3/fgetc_3p.html).
         Fn signature: `int fgetc(FILE *stream)`.
     """
-    return external_call["fgets", c_int, UnsafePointer[FILE]](stream)
+    return external_call["fgets", c_int, c_ptr[FILE]](stream)
 
 
-fn fgets(
-    s: UnsafePointer[c_char], n: c_int, stream: UnsafePointer[FILE]
-) -> UnsafePointer[c_char]:
+def fgets(s: c_ptr[c_char], n: c_int, stream: c_ptr[FILE]) -> c_ptr[c_char]:
     """Libc POSIX `fgets` function.
 
     Args:
@@ -348,14 +336,14 @@ fn fgets(
     """
     return external_call[
         "fgets",
-        UnsafePointer[c_char],
-        UnsafePointer[c_char],
+        c_ptr[c_char],
+        c_ptr[c_char],
         c_int,
-        UnsafePointer[FILE],
+        c_ptr[FILE],
     ](s, n, stream)
 
 
-fn dprintf(fildes: c_int, format: UnsafePointer[c_char]) -> c_int:
+def dprintf(fildes: c_int, format: c_ptr[c_char]) -> c_int:
     """Libc POSIX `dprintf` function.
 
     Args:
@@ -370,17 +358,15 @@ fn dprintf(fildes: c_int, format: UnsafePointer[c_char]) -> c_int:
         Fn signature: `int dprintf(int fildes,
             const char *restrict format, ...)`.
     """
-    return external_call["dprintf", c_int, c_int, UnsafePointer[c_char]](
-        fildes, format
-    )
+    return external_call["dprintf", c_int, c_int, c_ptr[c_char]](fildes, format)
 
 
-fn printf[*T: AnyType](format: UnsafePointer[c_char], *args: *T) -> c_int:
+def printf[*T: AnyType](format: c_ptr[c_char], *args: *T) -> c_int:
     """Libc POSIX `printf` function
     Reference: https://man7.org/linux/man-pages/man3/fprintf.3p.html
     Fn signature: int printf(const char *restrict format, ...).
 
-    Args: format: A UnsafePointer to a C string containing the format.
+    Args: format: A pointer to a C string containing the format.
         args: The optional arguments.
     Returns: The number of bytes written or -1 in case of failure.
     """
@@ -390,10 +376,10 @@ fn printf[*T: AnyType](format: UnsafePointer[c_char], *args: *T) -> c_int:
     ](format, args)
 
 
-fn snprintf(
-    s: UnsafePointer[c_char],
+def snprintf(
+    s: c_ptr[c_char],
     n: c_uint,
-    format: UnsafePointer[c_char],
+    format: c_ptr[c_char],
 ) -> c_int:
     """Libc POSIX `snprintf` function.
 
@@ -413,13 +399,13 @@ fn snprintf(
     return external_call[
         "snprintf",
         c_int,
-        UnsafePointer[c_char],
+        c_ptr[c_char],
         c_uint,
-        UnsafePointer[c_char],
+        c_ptr[c_char],
     ](s, n, format)
 
 
-fn sprintf(s: UnsafePointer[c_char], format: UnsafePointer[c_char]) -> c_int:
+def sprintf(s: c_ptr[c_char], format: c_ptr[c_char]) -> c_int:
     """Libc POSIX `sprintf` function.
 
     Args:
@@ -434,12 +420,12 @@ fn sprintf(s: UnsafePointer[c_char], format: UnsafePointer[c_char]) -> c_int:
         Fn signature: ``int sprintf(char *restrict s,`.
             const char *restrict format, ...)`.
     """
-    return external_call[
-        "sprintf", c_int, UnsafePointer[c_char], UnsafePointer[c_char]
-    ](s, format)
+    return external_call["sprintf", c_int, c_ptr[c_char], c_ptr[c_char]](
+        s, format
+    )
 
 
-fn fscanf(stream: UnsafePointer[FILE], format: UnsafePointer[c_char]) -> c_int:
+def fscanf(stream: c_ptr[FILE], format: c_ptr[c_char]) -> c_int:
     """Libc POSIX `fscanf` function.
 
     Args:
@@ -454,12 +440,12 @@ fn fscanf(stream: UnsafePointer[FILE], format: UnsafePointer[c_char]) -> c_int:
         Fn signature: ``int fscanf(FILE *restrict stream,`.
             const char *restrict format, ...)`.
     """
-    return external_call[
-        "fscanf", c_int, UnsafePointer[FILE], UnsafePointer[c_char]
-    ](stream, format)
+    return external_call["fscanf", c_int, c_ptr[FILE], c_ptr[c_char]](
+        stream, format
+    )
 
 
-fn scanf(format: UnsafePointer[c_char]) -> c_int:
+def scanf(format: c_ptr[c_char]) -> c_int:
     """Libc POSIX `scanf` function.
 
     Args:
@@ -472,10 +458,10 @@ fn scanf(format: UnsafePointer[c_char]) -> c_int:
         [Reference](https://man7.org/linux/man-pages/man3/fscanf.3p.html).
         Fn signature: ``int scanf(const char *restrict format, ...)`.`.
     """
-    return external_call["scanf", c_int, UnsafePointer[c_char]](format)
+    return external_call["scanf", c_int, c_ptr[c_char]](format)
 
 
-fn sscanf(s: UnsafePointer[c_char], format: UnsafePointer[c_char]) -> c_int:
+def sscanf(s: c_ptr[c_char], format: c_ptr[c_char]) -> c_int:
     """Libc POSIX `sscanf` function.
 
     Args:
@@ -490,16 +476,16 @@ fn sscanf(s: UnsafePointer[c_char], format: UnsafePointer[c_char]) -> c_int:
         Fn signature: ``int sscanf(const char *restrict s,`.
             const char *restrict format, ...)`.
     """
-    return external_call[
-        "sscanf", c_int, UnsafePointer[c_char], UnsafePointer[c_char]
-    ](s, format)
+    return external_call["sscanf", c_int, c_ptr[c_char], c_ptr[c_char]](
+        s, format
+    )
 
 
-fn fread(
-    ptr: UnsafePointer[c_void],
+def fread(
+    ptr: c_ptr[c_void],
     size: c_uint,
     nitems: c_uint,
-    stream: UnsafePointer[FILE],
+    stream: c_ptr[FILE],
 ) -> c_uint:
     """Libc POSIX `fread` function.
 
@@ -520,14 +506,14 @@ fn fread(
     return external_call[
         "fread",
         c_uint,
-        UnsafePointer[c_void],
+        c_ptr[c_void],
         c_uint,
         c_uint,
-        UnsafePointer[FILE],
+        c_ptr[FILE],
     ](ptr, size, nitems, stream)
 
 
-fn rewind(stream: UnsafePointer[FILE]) -> c_void:
+def rewind(stream: c_ptr[FILE]) -> c_void:
     """Libc POSIX `rewind` function.
 
     Args:
@@ -540,13 +526,13 @@ fn rewind(stream: UnsafePointer[FILE]) -> c_void:
         [Reference](https://man7.org/linux/man-pages/man3/rewind.3p.html).
         Fn signature: `void rewind(FILE *stream)`.
     """
-    return external_call["rewind", c_void, UnsafePointer[FILE]](stream)
+    return external_call["rewind", c_void, c_ptr[FILE]](stream)
 
 
-fn getline(
-    lineptr: UnsafePointer[UnsafePointer[FILE]],
-    n: UnsafePointer[c_uint],
-    stream: UnsafePointer[FILE],
+def getline(
+    lineptr: c_ptr[c_ptr[FILE]],
+    n: c_ptr[c_uint],
+    stream: c_ptr[FILE],
 ) -> c_uint:
     """Libc POSIX `getline` function.
 
@@ -567,14 +553,14 @@ fn getline(
     return external_call[
         "getline",
         c_uint,
-        UnsafePointer[UnsafePointer[FILE]],
-        UnsafePointer[c_uint],
-        UnsafePointer[FILE],
+        c_ptr[c_ptr[FILE]],
+        c_ptr[c_uint],
+        c_ptr[FILE],
     ](lineptr, n, stream)
 
 
-fn pread(
-    fildes: c_int, buf: UnsafePointer[c_void], nbyte: c_uint, offset: off_t
+def pread(
+    fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint, offset: off_t
 ) -> c_uint:
     """Libc POSIX `pread` function.
 
@@ -592,12 +578,12 @@ fn pread(
         Fn signature: `ssize_t pread(int fildes, void *buf, size_t nbyte,
             off_t offset)`.
     """
-    return external_call[
-        "pread", c_uint, c_int, UnsafePointer[c_void], c_uint, off_t
-    ](fildes, buf, nbyte, offset)
+    return external_call["pread", c_uint, c_int, c_ptr[c_void], c_uint, off_t](
+        fildes, buf, nbyte, offset
+    )
 
 
-fn read(fildes: c_int, buf: UnsafePointer[c_void], nbyte: c_uint) -> c_uint:
+def read(fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint) -> c_uint:
     """Libc POSIX `read` function.
 
     Args:
@@ -612,13 +598,13 @@ fn read(fildes: c_int, buf: UnsafePointer[c_void], nbyte: c_uint) -> c_uint:
         [Reference](https://man7.org/linux/man-pages/man3/read.3p.html).
         Fn signature: `sssize_t read(int fildes, void *buf, size_t nbyte)`.
     """
-    return external_call[
-        "read", c_uint, c_int, UnsafePointer[c_void], c_uint
-    ](fildes, buf, nbyte)
+    return external_call["read", c_uint, c_int, c_ptr[c_void], c_uint](
+        fildes, buf, nbyte
+    )
 
 
-fn pwrite(
-    fildes: c_int, buf: UnsafePointer[c_void], nbyte: c_uint, offset: off_t
+def pwrite(
+    fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint, offset: off_t
 ) -> c_uint:
     """Libc POSIX `pwrite` function.
 
@@ -636,12 +622,12 @@ fn pwrite(
         Fn signature: `ssize_t pwrite(int fildes, const void *buf, size_t nbyte,
             off_t offset)`.
     """
-    return external_call[
-        "pwrite", c_uint, c_int, UnsafePointer[c_void], c_uint, off_t
-    ](fildes, buf, nbyte, offset)
+    return external_call["pwrite", c_uint, c_int, c_ptr[c_void], c_uint, off_t](
+        fildes, buf, nbyte, offset
+    )
 
 
-fn write(fildes: c_int, buf: UnsafePointer[c_void], nbyte: c_uint) -> c_uint:
+def write(fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint) -> c_uint:
     """Libc POSIX `write` function.
 
     Args:
@@ -657,12 +643,12 @@ fn write(fildes: c_int, buf: UnsafePointer[c_void], nbyte: c_uint) -> c_uint:
         Fn signature: `ssize_t write(int fildes, const void *buf,
             size_t nbyte)`.
     """
-    return external_call[
-        "write", c_uint, c_int, UnsafePointer[c_void], c_uint
-    ](fildes, buf, nbyte)
+    return external_call["write", c_uint, c_int, c_ptr[c_void], c_uint](
+        fildes, buf, nbyte
+    )
 
 
-fn fclose(stream: UnsafePointer[FILE]) -> c_int:
+def fclose(stream: c_ptr[FILE]) -> c_int:
     """Libc POSIX `fclose` function.
 
     Args:
@@ -675,10 +661,10 @@ fn fclose(stream: UnsafePointer[FILE]) -> c_int:
         [Reference](https://man7.org/linux/man-pages/man3/fclose.3p.html).
         Fn signature: `int fclose(FILE *stream)`.
     """
-    return external_call["fclose", c_int, UnsafePointer[FILE]](stream)
+    return external_call["fclose", c_int, c_ptr[FILE]](stream)
 
 
-fn ftell(stream: UnsafePointer[FILE]) -> c_long:
+def ftell(stream: c_ptr[FILE]) -> c_long:
     """Libc POSIX `ftell` function.
 
     Args:
@@ -691,10 +677,10 @@ fn ftell(stream: UnsafePointer[FILE]) -> c_long:
         [Reference](https://man7.org/linux/man-pages/man3/ftell.3p.html).
         Fn signature: `long ftell(FILE *stream)`.
     """
-    return external_call["ftell", c_long, UnsafePointer[FILE]](stream)
+    return external_call["ftell", c_long, c_ptr[FILE]](stream)
 
 
-fn ftello(stream: UnsafePointer[FILE]) -> off_t:
+def ftello(stream: c_ptr[FILE]) -> off_t:
     """Libc POSIX `ftello` function.
 
     Args:
@@ -707,10 +693,10 @@ fn ftello(stream: UnsafePointer[FILE]) -> off_t:
         [Reference](https://man7.org/linux/man-pages/man3/ftell.3p.html).
         Fn signature: `off_t ftello(FILE *stream)`.
     """
-    return external_call["ftello", off_t, UnsafePointer[FILE]](stream)
+    return external_call["ftello", off_t, c_ptr[FILE]](stream)
 
 
-fn clearerr(stream: UnsafePointer[FILE]) -> c_void:
+def clearerr(stream: c_ptr[FILE]) -> c_void:
     """Libc POSIX `feof` function.
 
     Args:
@@ -723,10 +709,10 @@ fn clearerr(stream: UnsafePointer[FILE]) -> c_void:
         [Reference](https://man7.org/linux/man-pages/man3/clearerr.3p.html).
         Fn signature: `void clearerr(FILE *stream)`.
     """
-    return external_call["clearerr", c_void, UnsafePointer[FILE]](stream)
+    return external_call["clearerr", c_void, c_ptr[FILE]](stream)
 
 
-fn feof(stream: UnsafePointer[FILE]) -> c_int:
+def feof(stream: c_ptr[FILE]) -> c_int:
     """Libc POSIX `feof` function.
 
     Args:
@@ -740,10 +726,10 @@ fn feof(stream: UnsafePointer[FILE]) -> c_int:
         [Reference](https://man7.org/linux/man-pages/man3/feof.3p.html).
         Fn signature: `int feof(FILE *stream)`.
     """
-    return external_call["feof", c_int, UnsafePointer[FILE]](stream)
+    return external_call["feof", c_int, c_ptr[FILE]](stream)
 
 
-fn ferror(stream: UnsafePointer[FILE]) -> c_int:
+def ferror(stream: c_ptr[FILE]) -> c_int:
     """Libc POSIX `ferror` function.
 
     Args:
@@ -756,10 +742,10 @@ fn ferror(stream: UnsafePointer[FILE]) -> c_int:
         [Reference](https://man7.org/linux/man-pages/man3/ferror.3p.html).
         Fn signature: `int ferror(FILE *stream)`.
     """
-    return external_call["ferror", c_int, UnsafePointer[FILE]](stream)
+    return external_call["ferror", c_int, c_ptr[FILE]](stream)
 
 
-fn ioctl(fildes: c_int, request: c_int) -> c_int:
+def ioctl(fildes: c_int, request: c_int) -> c_int:
     """Libc POSIX `ioctl` function.
 
     Args:

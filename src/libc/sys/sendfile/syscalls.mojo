@@ -3,11 +3,14 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-from sys import external_call
-from memory import UnsafePointer
+from std.ffi import external_call
+from std.memory import Pointer
+from libc.constant import c_ptr
 
 
-fn sendfile(out_fd: Int32, in_fd: Int32, offset: UnsafePointer[Int64], count: Int64) -> Int64:
+def sendfile(
+    out_fd: Int32, in_fd: Int32, offset: c_ptr[Int64], count: Int64
+) -> Int64:
     """C library <sys/sendfile.h> function `sendfile`.
 
     Reference:
@@ -25,6 +28,6 @@ fn sendfile(out_fd: Int32, in_fd: Int32, offset: UnsafePointer[Int64], count: In
     Returns:
         Int64: number of bytes transferred.
     """
-    return external_call["sendfile", Int64, Int32, Int32, UnsafePointer[Int64], Int64](
+    return external_call["sendfile", Int64, Int32, Int32, c_ptr[Int64], Int64](
         out_fd, in_fd, offset, count
     )

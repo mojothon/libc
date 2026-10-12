@@ -3,17 +3,23 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-from sys import external_call
-from memory import UnsafePointer
+from std.ffi import external_call
+from std.memory import Pointer
+from libc.constant import c_ptr
 
 
-@register_passable("trivial")
-struct Timeval:
+struct Timeval(TrivialRegisterPassable):
     var tv_sec: Int32
     var tv_usec: Int32
 
 
-fn select(nfds: Int32, read_set: UnsafePointer[NoneType], write_set: UnsafePointer[NoneType], error_set: UnsafePointer[NoneType], timeout: UnsafePointer[Timeval]) -> Int32:
+def select(
+    nfds: Int32,
+    read_set: c_ptr[NoneType],
+    write_set: c_ptr[NoneType],
+    error_set: c_ptr[NoneType],
+    timeout: c_ptr[Timeval],
+) -> Int32:
     """C library <sys/select.h> function `select`.
 
     Reference:
@@ -29,5 +35,12 @@ fn select(nfds: Int32, read_set: UnsafePointer[NoneType], write_set: UnsafePoint
     Returns:
         Int32: number of file descriptors ready .
     """
-    return external_call["select", Int32, Int32, UnsafePointer[NoneType], UnsafePointer[NoneType], UnsafePointer[NoneType], UnsafePointer[Timeval]](nfds, read_set, write_set, error_set, timeout)
-
+    return external_call[
+        "select",
+        Int32,
+        Int32,
+        c_ptr[NoneType],
+        c_ptr[NoneType],
+        c_ptr[NoneType],
+        c_ptr[Timeval],
+    ](nfds, read_set, write_set, error_set, timeout)

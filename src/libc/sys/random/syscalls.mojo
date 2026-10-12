@@ -3,11 +3,12 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-from sys import external_call
-from memory import UnsafePointer
+from std.ffi import external_call
+from std.memory import Pointer
+from libc.constant import c_ptr
 
 
-fn getrandom(buf: UnsafePointer[Int8], buflen: UInt64, flags: UInt32) -> UInt64:
+def getrandom(buf: c_ptr[Int8], buflen: UInt64, flags: UInt32) -> UInt64:
     """C library <sys/random.h> function `getrandom`.
 
     Reference:
@@ -21,4 +22,6 @@ fn getrandom(buf: UnsafePointer[Int8], buflen: UInt64, flags: UInt32) -> UInt64:
     Returns:
         The number of bytes written to the buffer.
     """
-    return external_call["getrandom", UInt64, UnsafePointer[Int8], UInt64, UInt32](buf, buflen, flags)
+    return external_call["getrandom", UInt64, c_ptr[Int8], UInt64, UInt32](
+        buf, buflen, flags
+    )

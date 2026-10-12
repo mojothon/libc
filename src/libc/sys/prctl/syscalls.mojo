@@ -3,23 +3,25 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-from sys import external_call
-from memory import UnsafePointer
+from std.ffi import external_call
+from std.memory import Pointer
 
 
-fn prctl(option: Int32, arg2: UInt64, arg3: UInt64, arg4: UInt64, arg5: UInt64) -> Int32:
+def prctl(
+    option: Int32, arg2: UInt64, arg3: UInt64, arg4: UInt64, arg5: UInt64
+) -> Int32:
     """C library <sys/prctl.h> function `prctl`.
 
     Reference:
         https://man7.org/linux/man-pages/man2/prctl.2.html
-    
+
     Args:
         option: The operation to perform.
         arg2: The argument 2.
         arg3: The argument 3.
         arg4: The argument 4.
         arg5: The argument 5.
-    
+
     Description:
         prctl() performs a privileged operation on the calling process.
         It is used to get and set various options controlling the behavior of the kernel.
@@ -49,10 +51,11 @@ fn prctl(option: Int32, arg2: UInt64, arg3: UInt64, arg4: UInt64, arg5: UInt64) 
         - `PR_SET_TIMERSLACK`: Set the timerslack of the calling process.
         - `PR_GET_TIMERSLACK`: Get the timerslack of the calling process.
         ...
-    
+
     return:
         The return value of the function is 0 on success, or -1 on error.
     """
 
-    return external_call["prctl", Int32, Int32, UInt64, UInt64, UInt64, UInt64](option, arg2, arg3, arg4, arg5)
-
+    return external_call["prctl", Int32, Int32, UInt64, UInt64, UInt64, UInt64](
+        option, arg2, arg3, arg4, arg5
+    )

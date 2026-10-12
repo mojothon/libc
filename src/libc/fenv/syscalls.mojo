@@ -3,13 +3,13 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-from sys import external_call
+from std.ffi import external_call
 
 
 # ------------------------------------------------
 # Floating-point environment
 # ------------------------------------------------
-fn fegetround() -> Int32:
+def fegetround() -> Int32:
     """C library <fenv.h> function `fegetround`.
 
     Reference:
@@ -27,8 +27,7 @@ fn fegetround() -> Int32:
     return external_call["fegetround", Int32]()
 
 
-
-fn fesetround(round: Int32) -> Int32:
+def fesetround(round: Int32) -> Int32:
     """C library <fenv.h> function `fesetround`.
 
     Reference:
@@ -46,7 +45,7 @@ fn fesetround(round: Int32) -> Int32:
     return external_call["fesetround", Int32, Int32](round)
 
 
-fn feclearexcept(excepts: Int32) -> Int32:
+def feclearexcept(excepts: Int32) -> Int32:
     """C library <fenv.h> function `feclearexcept`.
 
     Reference:
@@ -54,13 +53,13 @@ fn feclearexcept(excepts: Int32) -> Int32:
 
     Prototype:
         int feclearexcept(int excepts)
-    
+
     Description:
         The functionality described on this reference page is aligned
         with the ISO C standard. Any conflict between the requirements
         described here and the ISO C standard is unintentional. This
         volume of POSIX.1‐2017 defers to the ISO C standard.
-    
+
     Return Value:
         If the argument is zero or if all the specified exceptions were
         successfully cleared, feclearexcept() shall return zero.
@@ -69,7 +68,7 @@ fn feclearexcept(excepts: Int32) -> Int32:
     return external_call["feclearexcept", Int32, Int32](excepts)
 
 
-fn feraiseexcept(excepts: Int32) -> Int32:
+def feraiseexcept(excepts: Int32) -> Int32:
     """C library <fenv.h> function `feraiseexcept`.
 
     Reference:
@@ -77,13 +76,13 @@ fn feraiseexcept(excepts: Int32) -> Int32:
 
     Prototype:
         int feraiseexcept(int excepts)
-    
+
     Description:
         The functionality described on this reference page is aligned
         with the ISO C standard. Any conflict between the requirements
         described here and the ISO C standard is unintentional. This
         volume of POSIX.1‐2017 defers to the ISO C standard.
-    
+
     Return Value:
         If the argument is zero or if all the specified exceptions were
         successfully raised, feraiseexcept() shall return zero.
@@ -92,7 +91,7 @@ fn feraiseexcept(excepts: Int32) -> Int32:
     return external_call["feraiseexcept", Int32, Int32](excepts)
 
 
-fn fetestexcept(excepts: Int32) -> Int32:
+def fetestexcept(excepts: Int32) -> Int32:
     """C library <fenv.h> function `fetestexcept`.
 
     Reference:
@@ -100,61 +99,61 @@ fn fetestexcept(excepts: Int32) -> Int32:
 
     Prototype:
         int fetestexcept(int excepts)
-    
+
     Description:
         The functionality described on this reference page is aligned
        with the ISO C standard. Any conflict between the requirements
        described here and the ISO C standard is unintentional. This
        volume of POSIX.1‐2017 defers to the ISO C standard.
-    
+
     Return Value:
         The fetestexcept() function shall return the value of the
        bitwise-inclusive OR of the floating-point exception macros
        corresponding to the currently set floating-point exceptions
        included in excepts.
     """
-    return external_call["fetestexcept", Int32, Int32](excepts) 
+    return external_call["fetestexcept", Int32, Int32](excepts)
 
 
-fn fetestexceptflag():
-    pass 
+def fetestexceptflag():
+    pass
 
 
-fn fegetenv():
-    pass 
+def fegetenv():
+    pass
 
 
-fn fesetenv():
-    pass 
+def fesetenv():
+    pass
 
 
-fn fegetexceptflag():
-    pass 
+def fegetexceptflag():
+    pass
 
 
-fn fesetexcept():
-    pass 
+def fesetexcept():
+    pass
 
 
-fn fesetexceptflag():
-    pass 
+def fesetexceptflag():
+    pass
 
 
-fn feholdexcept():
-    pass 
+def feholdexcept():
+    pass
 
 
-fn feupdateenv():
-    pass 
+def feupdateenv():
+    pass
 
 
-fn feenableexcept():
-    pass 
+def feenableexcept():
+    pass
 
 
-fn fedisableexcept():
-    pass 
+def fedisableexcept():
+    pass
 
 
-fn fegetexcept():
-    pass 
+def fegetexcept():
+    pass

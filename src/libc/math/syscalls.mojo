@@ -3,13 +3,15 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-from sys import external_call
-from memory import UnsafePointer
+from std.ffi import external_call
+from std.memory import Pointer
+from libc.constant import c_ptr
+
 
 # -------------------------------------------------------
 #  计算整数值的绝对值
 # -------------------------------------------------------
-fn abs(j: Int32) -> Int32:
+def abs(j: Int32) -> Int32:
     """C library <math.h> function `abs`.
 
     Link:
@@ -30,7 +32,7 @@ fn abs(j: Int32) -> Int32:
     return external_call["abs", Int32, Int32](j)
 
 
-fn labs(j: Int64) -> Int64:
+def labs(j: Int64) -> Int64:
     """C library <math.h> function `labs`.
 
     Link:
@@ -51,7 +53,7 @@ fn labs(j: Int64) -> Int64:
     return external_call["labs", Int64, Int64](j)
 
 
-fn llabs(j: Int64) -> Int64:
+def llabs(j: Int64) -> Int64:
     """C library <math.h> function `labs`.
 
     Link:
@@ -72,7 +74,7 @@ fn llabs(j: Int64) -> Int64:
     return external_call["llabs", Int64, Int64](j)
 
 
-fn imaxabs(j: Int64) -> Int64:
+def imaxabs(j: Int64) -> Int64:
     """C library <math.h> function `labs`.
 
     Link:
@@ -96,7 +98,7 @@ fn imaxabs(j: Int64) -> Int64:
 # -------------------------------------------------------
 #  计算浮点值的绝对值
 # -------------------------------------------------------
-fn fabs(x: Float64) -> Float64:
+def fabs(x: Float64) -> Float64:
     """C library <math.h> function `fabs`.
 
     Link:
@@ -118,7 +120,7 @@ fn fabs(x: Float64) -> Float64:
     return external_call["fabs", Float64, Float64](x)
 
 
-fn fabsf(x: Float32) -> Float32:
+def fabsf(x: Float32) -> Float32:
     """C library <math.h> function `fabsf`.
 
     Link:
@@ -140,7 +142,7 @@ fn fabsf(x: Float32) -> Float32:
     return external_call["fabsf", Float32, Float32](x)
 
 
-fn fabsl(x: Float64) -> Float64:
+def fabsl(x: Float64) -> Float64:
     """C library <math.h> function `fabsl`.
 
     Link:
@@ -165,31 +167,27 @@ fn fabsl(x: Float64) -> Float64:
 # ------------------------------------------------------------------------------------
 # 计算整数除法的商和余数
 # ------------------------------------------------------------------------------------
-@register_passable('trivial')
-struct div_t:
-  var quot: Int32
-  var rem: Int32
+struct div_t(TrivialRegisterPassable):
+    var quot: Int32
+    var rem: Int32
 
 
-@register_passable('trivial')
-struct ldiv_t:
-  var quot: Int64
-  var rem: Int64
+struct ldiv_t(TrivialRegisterPassable):
+    var quot: Int64
+    var rem: Int64
 
 
-@register_passable('trivial')
-struct lldiv_t:
-  var quot: Int64
-  var rem: Int64
+struct lldiv_t(TrivialRegisterPassable):
+    var quot: Int64
+    var rem: Int64
 
 
-@register_passable('trivial')
-struct imaxdiv_t:
-  var quot: Int64
-  var rem: Int64
+struct imaxdiv_t(TrivialRegisterPassable):
+    var quot: Int64
+    var rem: Int64
 
 
-fn ldiv(numer: Int64, denom: Int64) -> ldiv_t:
+def ldiv(numer: Int64, denom: Int64) -> ldiv_t:
     """C library <math.h> function `ldiv`.
 
     Link:
@@ -199,7 +197,7 @@ fn ldiv(numer: Int64, denom: Int64) -> ldiv_t:
         ldiv_t div(long x, long y)
 
     Description:
-        Computes the quotient and remainder of  the division of the numerator numer by the denominator denom. 
+        Computes the quotient and remainder of  the division of the numerator numer by the denominator denom.
 
     Arguments:
         numer: the numerator
@@ -211,7 +209,7 @@ fn ldiv(numer: Int64, denom: Int64) -> ldiv_t:
     return external_call["ldiv", ldiv_t, Int64, Int64](numer, denom)
 
 
-fn lldiv(numer: Int64, denom: Int64) -> lldiv_t:
+def lldiv(numer: Int64, denom: Int64) -> lldiv_t:
     """C library <math.h> function `lldiv`.
 
     Link:
@@ -221,7 +219,7 @@ fn lldiv(numer: Int64, denom: Int64) -> lldiv_t:
         ldiv_t div(long x, long y)
 
     Description:
-        Computes the quotient and remainder of  the division of the numerator numer by the denominator denom. 
+        Computes the quotient and remainder of  the division of the numerator numer by the denominator denom.
 
     Arguments:
         numer: the numerator
@@ -233,7 +231,7 @@ fn lldiv(numer: Int64, denom: Int64) -> lldiv_t:
     return external_call["lldiv", lldiv_t, Int64, Int64](numer, denom)
 
 
-fn imaxdiv(numer: Int64, denom: Int64) -> imaxdiv_t:
+def imaxdiv(numer: Int64, denom: Int64) -> imaxdiv_t:
     """C library <math.h> function `imaxdiv`.
 
     Link:
@@ -243,7 +241,7 @@ fn imaxdiv(numer: Int64, denom: Int64) -> imaxdiv_t:
         ldiv_t div(long x, long y)
 
     Description:
-        Computes the quotient and remainder of  the division of the numerator numer by the denominator denom. 
+        Computes the quotient and remainder of  the division of the numerator numer by the denominator denom.
 
     Arguments:
         numer: the numerator
@@ -255,10 +253,10 @@ fn imaxdiv(numer: Int64, denom: Int64) -> imaxdiv_t:
     return external_call["imaxdiv", imaxdiv_t, Int64, Int64](numer, denom)
 
 
-#------------------------------------------
+# ------------------------------------------
 # 浮点除法运算的余数
-#------------------------------------------
-fn fmodf(x: Float32, y: Float32) -> Float32:
+# ------------------------------------------
+def fmodf(x: Float32, y: Float32) -> Float32:
     """C library <math.h> function `fmodf`.
 
     Link:
@@ -282,7 +280,7 @@ fn fmodf(x: Float32, y: Float32) -> Float32:
     return external_call["fmodf", Float32, Float32, Float32](x, y)
 
 
-fn fmod(x: Float64, y: Float64) -> Float64:
+def fmod(x: Float64, y: Float64) -> Float64:
     """C library <math.h> function `fmod`.
 
     Link:
@@ -306,7 +304,7 @@ fn fmod(x: Float64, y: Float64) -> Float64:
     return external_call["fmod", Float64, Float64, Float64](x, y)
 
 
-fn fmodl(x: Float64, y: Float64) -> Float64:
+def fmodl(x: Float64, y: Float64) -> Float64:
     """C library <math.h> function `fmodl`.
 
     Link:
@@ -334,91 +332,91 @@ fn fmodl(x: Float64, y: Float64) -> Float64:
 # 除法运算的有符号余数
 # -------------------------------------------------------------------
 # 后续补充docstrings。
-fn remainderf(x: Float32, y: Float32) -> Float32:
-    return external_call["remainderf", Float32, Float32, Float32](x,y)
+def remainderf(x: Float32, y: Float32) -> Float32:
+    return external_call["remainderf", Float32, Float32, Float32](x, y)
 
 
-fn remainder(x: Float64, y: Float64) -> Float64:
-    return external_call["remainder", Float64, Float64, Float64](x,y)
+def remainder(x: Float64, y: Float64) -> Float64:
+    return external_call["remainder", Float64, Float64, Float64](x, y)
 
 
-fn remainderl(x: Float64, y: Float64) -> Float64:
-    return external_call["remainderl", Float64, Float64, Float64](x,y)
+def remainderl(x: Float64, y: Float64) -> Float64:
+    return external_call["remainderl", Float64, Float64, Float64](x, y)
 
 
 # -------------------------------------------------------------------
 # 有符号余数以及除法运算的最后三位
 # -------------------------------------------------------------------
-fn remquof(x: Float32, y: Float32, quo: Int32) -> Float32:
+def remquof(x: Float32, y: Float32, quo: Int32) -> Float32:
     # 有问题后续补充
-    return external_call["remquof", Float32, Float32, Float32, Int32](x,y, quo)
+    return external_call["remquof", Float32, Float32, Float32, Int32](x, y, quo)
 
 
-fn remquo(x: Float64, y: Float64, quo: Int32) -> Float64:
-    return external_call["remquo", Float64, Float64, Float64, Int32](x,y, quo)
+def remquo(x: Float64, y: Float64, quo: Int32) -> Float64:
+    return external_call["remquo", Float64, Float64, Float64, Int32](x, y, quo)
 
 
-fn remquol(x: Float64, y: Float64, quo: Int32) -> Float64:
-    return external_call["remquol", Float64, Float64, Float64, Int32](x,y, quo)
+def remquol(x: Float64, y: Float64, quo: Int32) -> Float64:
+    return external_call["remquol", Float64, Float64, Float64, Int32](x, y, quo)
 
 
 # -------------------------------------------------------------------------
 # 融合乘加运算
 # -------------------------------------------------------------------------
-fn fmaf(x: Float32, y: Float32, z: Float32) -> Float32:
+def fmaf(x: Float32, y: Float32, z: Float32) -> Float32:
     return external_call["fmaf", Float32, Float32, Float32, Float32](x, y, z)
 
 
-fn fma(x: Float64, y: Float64, z: Float64) -> Float64:
+def fma(x: Float64, y: Float64, z: Float64) -> Float64:
     return external_call["fma", Float64, Float64, Float64, Float64](x, y, z)
 
 
-fn fmal(x: Float64, y: Float64, z: Float64) -> Float64:
+def fmal(x: Float64, y: Float64, z: Float64) -> Float64:
     return external_call["fmal", Float64, Float64, Float64, Float64](x, y, z)
 
 
 # ---------------------------------------------------------------------------
 # 两个浮点值中较大的一个
 # ---------------------------------------------------------------------------
-fn fmaxf(x: Float32, y: Float32) -> Float32:
+def fmaxf(x: Float32, y: Float32) -> Float32:
     return external_call["fmaxf", Float32, Float32, Float32](x, y)
 
 
-fn fmax(x: Float64, y: Float64) -> Float64:
+def fmax(x: Float64, y: Float64) -> Float64:
     return external_call["fmax", Float64, Float64, Float64](x, y)
 
 
-fn fmaxl(x: Float64, y: Float64) -> Float64:
+def fmaxl(x: Float64, y: Float64) -> Float64:
     return external_call["fmal", Float64, Float64, Float64](x, y)
 
 
 # -----------------------------------------------------------------------------
 # 两个浮点值中较小的一个
 # -----------------------------------------------------------------------------
-fn fminf(x: Float32, y: Float32) -> Float32:
+def fminf(x: Float32, y: Float32) -> Float32:
     return external_call["fminf", Float32, Float32, Float32](x, y)
 
 
-fn fmin(x: Float64, y: Float64) -> Float64:
+def fmin(x: Float64, y: Float64) -> Float64:
     return external_call["fmin", Float64, Float64, Float64](x, y)
 
 
-fn fminl(x: Float64, y: Float64) -> Float64:
+def fminl(x: Float64, y: Float64) -> Float64:
     return external_call["fminl", Float64, Float64, Float64](x, y)
 
 
 # ----------------------------------------------------------------------
 # 两个浮点值的正差
 # ----------------------------------------------------------------------
-fn fdimf(x: Float32, y: Float32) -> Float32:
+def fdimf(x: Float32, y: Float32) -> Float32:
     return external_call["fdimf", Float32, Float32, Float32](x, y)
 
 
-fn fdimf(x: Float64, y: Float64) -> Float64:
+def fdimf(x: Float64, y: Float64) -> Float64:
     return external_call["fdim", Float64, Float64, Float64](x, y)
 
 
-fn fdiml(x: Float64, y: Float64) -> Float64:
+def fdiml(x: Float64, y: Float64) -> Float64:
     return external_call["fdiml", Float64, Float64, Float64](x, y)
 
 
@@ -426,20 +424,23 @@ fn fdiml(x: Float64, y: Float64) -> Float64:
 # 返回NaN （非数字）
 # --------------------------------------------------------------------
 
-fn nanf(arg: UInt8) -> Float32:
+
+def nanf(arg: UInt8) -> Float32:
     return external_call["nanf", Float32, UInt8](arg)
 
-fn nan(arg: UInt8) -> Float64:
+
+def nan(arg: UInt8) -> Float64:
     return external_call["nan", Float64, UInt8](arg)
 
 
-fn nanl(arg: UInt8) -> Float64:
+def nanl(arg: UInt8) -> Float64:
     return external_call["nanl", Float64, UInt8](arg)
+
 
 # -------------------------------------------------
 #  指数函数
 # -----------------------------------------------------
-fn exp(x: Float64) -> Float64:
+def exp(x: Float64) -> Float64:
     """C library <math.h> function `exp`.
 
     Link:
@@ -460,7 +461,7 @@ fn exp(x: Float64) -> Float64:
     return external_call["exp", Float64, Float64](x)
 
 
-fn expf(x: Float32) -> Float32:
+def expf(x: Float32) -> Float32:
     """C library <math.h> function `expf`.
 
     Link:
@@ -481,7 +482,7 @@ fn expf(x: Float32) -> Float32:
     return external_call["expf", Float32, Float32](x)
 
 
-fn expm1(x: Float64) -> Float64:
+def expm1(x: Float64) -> Float64:
     """C library <math.h> function `expm1`.
 
     Link:
@@ -502,7 +503,7 @@ fn expm1(x: Float64) -> Float64:
     return external_call["expm1", Float64, Float64](x)
 
 
-fn expm1f(x: Float32) -> Float32:
+def expm1f(x: Float32) -> Float32:
     """C library <math.h> function `expm1f`.
 
     Link:
@@ -523,7 +524,7 @@ fn expm1f(x: Float32) -> Float32:
     return external_call["expm1f", Float32, Float32](x)
 
 
-fn log2(x: Float64) -> Float64:
+def log2(x: Float64) -> Float64:
     """C library <math.h> function `log2`.
 
     Link:
@@ -544,7 +545,7 @@ fn log2(x: Float64) -> Float64:
     return external_call["log2", Float64, Float64](x)
 
 
-fn log2f(x: Float32) -> Float32:
+def log2f(x: Float32) -> Float32:
     """C library <math.h> function `log2f`.
 
     Link:
@@ -565,7 +566,7 @@ fn log2f(x: Float32) -> Float32:
     return external_call["log2f", Float32, Float32](x)
 
 
-fn log(x: Float64) -> Float64:
+def log(x: Float64) -> Float64:
     """C library <math.h> function `log`.
 
     Link:
@@ -586,7 +587,7 @@ fn log(x: Float64) -> Float64:
     return external_call["log", Float64, Float64](x)
 
 
-fn logf(x: Float32) -> Float32:
+def logf(x: Float32) -> Float32:
     """C library <math.h> function `logf`.
 
     Link:
@@ -607,7 +608,7 @@ fn logf(x: Float32) -> Float32:
     return external_call["logf", Float32, Float32](x)
 
 
-fn log10(x: Float64) -> Float64:
+def log10(x: Float64) -> Float64:
     """C library <math.h> function `log10`.
 
     Link:
@@ -628,7 +629,7 @@ fn log10(x: Float64) -> Float64:
     return external_call["log10", Float64, Float64](x)
 
 
-fn log10f(x: Float32) -> Float32:
+def log10f(x: Float32) -> Float32:
     """C library <math.h> function `log10f`.
 
     Link:
@@ -649,7 +650,7 @@ fn log10f(x: Float32) -> Float32:
     return external_call["log10f", Float32, Float32](x)
 
 
-fn log1p(x: Float64) -> Float64:
+def log1p(x: Float64) -> Float64:
     """C library <math.h> function `log1p`.
 
     Link:
@@ -670,7 +671,7 @@ fn log1p(x: Float64) -> Float64:
     return external_call["log1p", Float64, Float64](x)
 
 
-fn log1pf(x: Float32) -> Float32:
+def log1pf(x: Float32) -> Float32:
     """C library <math.h> function `log1pf`.
 
     Link:
@@ -692,7 +693,7 @@ fn log1pf(x: Float32) -> Float32:
     return external_call["log1pf", Float32, Float32](x)
 
 
-fn ilogb(x: Float64) -> Int32:
+def ilogb(x: Float64) -> Int32:
     """C library <math.h> function `ilogb`.
 
     Link:
@@ -713,7 +714,7 @@ fn ilogb(x: Float64) -> Int32:
     return external_call["ilogb", Int32, Float64](x)
 
 
-fn ilogbf(x: Float32) -> Int32:
+def ilogbf(x: Float32) -> Int32:
     """C library <math.h> function `ilogbf`.
 
     Link:
@@ -734,7 +735,7 @@ fn ilogbf(x: Float32) -> Int32:
     return external_call["ilogbf", Int32, Float32](x)
 
 
-fn logb(x: Float64) -> Float64:
+def logb(x: Float64) -> Float64:
     """C library <math.h> function `logb`.
 
     Link:
@@ -755,7 +756,7 @@ fn logb(x: Float64) -> Float64:
     return external_call["logb", Float64, Float64](x)
 
 
-fn logbf(x: Float32) -> Float32:
+def logbf(x: Float32) -> Float32:
     """C library <math.h> function `logbf`.
 
     Link:
@@ -777,9 +778,9 @@ fn logbf(x: Float32) -> Float32:
 
 
 # -----------------------------------------------------
-# Power functions 
+# Power functions
 # -----------------------------------------------------
-fn sqrt(x: Float64) -> Float64:
+def sqrt(x: Float64) -> Float64:
     """C library <math.h> function `sqrt`.
 
     Link:
@@ -800,7 +801,7 @@ fn sqrt(x: Float64) -> Float64:
     return external_call["sqrt", Float64, Float64](x)
 
 
-fn sqrtf(x: Float32) -> Float32:
+def sqrtf(x: Float32) -> Float32:
     """C library <math.h> function `sqrtf`.
 
     Link:
@@ -821,7 +822,7 @@ fn sqrtf(x: Float32) -> Float32:
     return external_call["sqrtf", Float32, Float32](x)
 
 
-fn cbrt(x: Float64) -> Float64:
+def cbrt(x: Float64) -> Float64:
     """C library <math.h> function `cbrt`.
 
     Link:
@@ -842,7 +843,7 @@ fn cbrt(x: Float64) -> Float64:
     return external_call["cbrt", Float64, Float64](x)
 
 
-fn cbrtf(x: Float32) -> Float32:
+def cbrtf(x: Float32) -> Float32:
     """C library <math.h> function `cbrtf`.
 
     Link:
@@ -863,7 +864,7 @@ fn cbrtf(x: Float32) -> Float32:
     return external_call["cbrtf", Float32, Float32](x)
 
 
-fn hypot(x: Float64, y: Float64) -> Float64:
+def hypot(x: Float64, y: Float64) -> Float64:
     """C library <math.h> function `hypot`.
 
     Link:
@@ -885,7 +886,7 @@ fn hypot(x: Float64, y: Float64) -> Float64:
     return external_call["hypot", Float64, Float64, Float64](x, y)
 
 
-fn hypotf(x: Float32, y: Float32) -> Float32:
+def hypotf(x: Float32, y: Float32) -> Float32:
     """C library <math.h> function `hypotf`.
 
     Link:
@@ -907,7 +908,7 @@ fn hypotf(x: Float32, y: Float32) -> Float32:
     return external_call["hypotf", Float32, Float32, Float32](x, y)
 
 
-fn pow(x: Float64, y: Float64) -> Float64:
+def pow(x: Float64, y: Float64) -> Float64:
     """C library <math.h> function `pow`.
 
     Link:
@@ -929,7 +930,7 @@ fn pow(x: Float64, y: Float64) -> Float64:
     return external_call["pow", Float64, Float64, Float64](x, y)
 
 
-fn powf(x: Float32, y: Float32) -> Float32:
+def powf(x: Float32, y: Float32) -> Float32:
     """C library <math.h> function `powf`.
 
     Link:
@@ -954,7 +955,7 @@ fn powf(x: Float32, y: Float32) -> Float32:
 # ------------------------------------------------------------------
 # Trigonometric functions
 # ------------------------------------------------------------------
-fn asin(x: Float64) -> Float64:
+def asin(x: Float64) -> Float64:
     """C library <math.h> function `asin`.
 
     Link:
@@ -975,7 +976,7 @@ fn asin(x: Float64) -> Float64:
     return external_call["asin", Float64, Float64](x)
 
 
-fn asinf(x: Float32) -> Float32:
+def asinf(x: Float32) -> Float32:
     """C library <math.h> function `asinf`.
 
     Link:
@@ -996,7 +997,7 @@ fn asinf(x: Float32) -> Float32:
     return external_call["asinf", Float32, Float32](x)
 
 
-fn acos(x: Float64) -> Float64:
+def acos(x: Float64) -> Float64:
     """C library <math.h> function `acos`.
 
     Link:
@@ -1017,7 +1018,7 @@ fn acos(x: Float64) -> Float64:
     return external_call["acos", Float64, Float64](x)
 
 
-fn acosf(x: Float32) -> Float32:
+def acosf(x: Float32) -> Float32:
     """C library <math.h> function `acosf`.
 
     Link:
@@ -1038,7 +1039,7 @@ fn acosf(x: Float32) -> Float32:
     return external_call["acosf", Float32, Float32](x)
 
 
-fn atan(x: Float64) -> Float64:
+def atan(x: Float64) -> Float64:
     """C library <math.h> function `atan`.
 
     Link:
@@ -1059,7 +1060,7 @@ fn atan(x: Float64) -> Float64:
     return external_call["atan", Float64, Float64](x)
 
 
-fn atanf(x: Float32) -> Float32:
+def atanf(x: Float32) -> Float32:
     """C library <math.h> function `atanf`.
 
     Link:
@@ -1080,7 +1081,7 @@ fn atanf(x: Float32) -> Float32:
     return external_call["atanf", Float32, Float32](x)
 
 
-fn atan2(x: Float64) -> Float64:
+def atan2(x: Float64) -> Float64:
     """C library <math.h> function `atan2`.
 
     Link:
@@ -1101,7 +1102,7 @@ fn atan2(x: Float64) -> Float64:
     return external_call["atan2", Float64, Float64](x)
 
 
-fn atan2f(x: Float32) -> Float32:
+def atan2f(x: Float32) -> Float32:
     """C library <math.h> function `atan2f`.
 
     Link:
@@ -1122,7 +1123,7 @@ fn atan2f(x: Float32) -> Float32:
     return external_call["atan2f", Float32, Float32](x)
 
 
-fn sin(x: Float64) -> Float64:
+def sin(x: Float64) -> Float64:
     """C library <math.h> function `sin`.
 
     Link:
@@ -1143,7 +1144,7 @@ fn sin(x: Float64) -> Float64:
     return external_call["sin", Float64, Float64](x)
 
 
-fn sinf(x: Float32) -> Float32:
+def sinf(x: Float32) -> Float32:
     """C library <math.h> function `sinf`.
 
     Link:
@@ -1164,7 +1165,7 @@ fn sinf(x: Float32) -> Float32:
     return external_call["sinf", Float32, Float32](x)
 
 
-fn cos(x: Float64) -> Float64:
+def cos(x: Float64) -> Float64:
     """C library <math.h> function `cos`.
 
     Link:
@@ -1185,7 +1186,7 @@ fn cos(x: Float64) -> Float64:
     return external_call["cos", Float64, Float64](x)
 
 
-fn cosf(x: Float32) -> Float32:
+def cosf(x: Float32) -> Float32:
     """C library <math.h> function `cosf`.
 
     Link:
@@ -1206,7 +1207,7 @@ fn cosf(x: Float32) -> Float32:
     return external_call["cosf", Float32, Float32](x)
 
 
-fn tan(x: Float64) -> Float64:
+def tan(x: Float64) -> Float64:
     """C library <math.h> function `tan`.
 
     Link:
@@ -1227,7 +1228,7 @@ fn tan(x: Float64) -> Float64:
     return external_call["tan", Float64, Float64](x)
 
 
-fn tanf(x: Float32) -> Float32:
+def tanf(x: Float32) -> Float32:
     """C library <math.h> function `tanf`.
 
     Link:
@@ -1248,12 +1249,12 @@ fn tanf(x: Float32) -> Float32:
     return external_call["tanf", Float32, Float32](x)
 
 
-#--------------------------------------------------
+# --------------------------------------------------
 # Hyperbolic functions
 # ---------------------------------------------
 
 
-fn sinh(x: Float64) -> Float64:
+def sinh(x: Float64) -> Float64:
     """C library <math.h> function `sinh`.
 
     Link:
@@ -1274,7 +1275,7 @@ fn sinh(x: Float64) -> Float64:
     return external_call["sinh", Float64, Float64](x)
 
 
-fn sinhf(x: Float32) -> Float32:
+def sinhf(x: Float32) -> Float32:
     """C library <math.h> function `sinhf`.
 
     Link:
@@ -1295,7 +1296,7 @@ fn sinhf(x: Float32) -> Float32:
     return external_call["sinhf", Float32, Float32](x)
 
 
-fn cosh(x: Float64) -> Float64:
+def cosh(x: Float64) -> Float64:
     """C library <math.h> function `cosh`.
 
     Link:
@@ -1316,7 +1317,7 @@ fn cosh(x: Float64) -> Float64:
     return external_call["cosh", Float64, Float64](x)
 
 
-fn coshf(x: Float32) -> Float32:
+def coshf(x: Float32) -> Float32:
     """C library <math.h> function `coshf`.
 
     Link:
@@ -1337,7 +1338,7 @@ fn coshf(x: Float32) -> Float32:
     return external_call["coshf", Float32, Float32](x)
 
 
-fn tanh(x: Float64) -> Float64:
+def tanh(x: Float64) -> Float64:
     """C library <math.h> function `tanh`.
 
     Link:
@@ -1358,7 +1359,7 @@ fn tanh(x: Float64) -> Float64:
     return external_call["tanh", Float64, Float64](x)
 
 
-fn tanhf(x: Float32) -> Float32:
+def tanhf(x: Float32) -> Float32:
     """C library <math.h> function `tanhf`.
 
     Link:
@@ -1379,7 +1380,7 @@ fn tanhf(x: Float32) -> Float32:
     return external_call["tanhf", Float32, Float32](x)
 
 
-fn asinh(x: Float64) -> Float64:
+def asinh(x: Float64) -> Float64:
     """C library <math.h> function `asinh`.
 
     Link:
@@ -1400,7 +1401,7 @@ fn asinh(x: Float64) -> Float64:
     return external_call["asinh", Float64, Float64](x)
 
 
-fn asinhf(x: Float32) -> Float32:
+def asinhf(x: Float32) -> Float32:
     """C library <math.h> function `asinhf`.
 
     Link:
@@ -1421,7 +1422,7 @@ fn asinhf(x: Float32) -> Float32:
     return external_call["asinhf", Float32, Float32](x)
 
 
-fn acosh(x: Float64) -> Float64:
+def acosh(x: Float64) -> Float64:
     """C library <math.h> function `acosh`.
 
     Link:
@@ -1442,7 +1443,7 @@ fn acosh(x: Float64) -> Float64:
     return external_call["acosh", Float64, Float64](x)
 
 
-fn acoshf(x: Float32) -> Float32:
+def acoshf(x: Float32) -> Float32:
     """C library <math.h> function `acoshf`.
 
     Link:
@@ -1463,7 +1464,7 @@ fn acoshf(x: Float32) -> Float32:
     return external_call["acoshf", Float32, Float32](x)
 
 
-fn atanh(x: Float64) -> Float64:
+def atanh(x: Float64) -> Float64:
     """C library <math.h> function `atanh`.
 
     Link:
@@ -1484,7 +1485,7 @@ fn atanh(x: Float64) -> Float64:
     return external_call["atanh", Float64, Float64](x)
 
 
-fn atanhf(x: Float32) -> Float32:
+def atanhf(x: Float32) -> Float32:
     """C library <math.h> function `atanhf`.
 
     Link:
@@ -1508,7 +1509,7 @@ fn atanhf(x: Float32) -> Float32:
 # ------------------------------------------------------------
 # Error and gamma functions
 # ------------------------------------------------------------
-fn erff(arg: Float32) -> Float32:
+def erff(arg: Float32) -> Float32:
     """C library <math.h> function `erff`.
 
     Link:
@@ -1530,7 +1531,7 @@ fn erff(arg: Float32) -> Float32:
     return external_call["erff", Float32, Float32](arg)
 
 
-fn erf(arg: Float64) -> Float64:
+def erf(arg: Float64) -> Float64:
     """C library <math.h> function `erf`.
 
     Link:
@@ -1552,7 +1553,7 @@ fn erf(arg: Float64) -> Float64:
     return external_call["erff", Float64, Float64](arg)
 
 
-fn lgamma(x: Float64) -> Float64:
+def lgamma(x: Float64) -> Float64:
     """C library <math.h> function `lgamma`.
 
     Link:
@@ -1573,7 +1574,7 @@ fn lgamma(x: Float64) -> Float64:
     return external_call["lgamma", Float64, Float64](x)
 
 
-fn lgammaf(x: Float32) -> Float32:
+def lgammaf(x: Float32) -> Float32:
     """C library <math.h> function `lgammaf`.
 
     Link:
@@ -1594,7 +1595,7 @@ fn lgammaf(x: Float32) -> Float32:
     return external_call["lgammaf", Float32, Float32](x)
 
 
-fn lgamma_r(x: Float64, signptr: UnsafePointer[Int32]) -> Float64:
+def lgamma_r(x: Float64, signptr: c_ptr[Int32]) -> Float64:
     """C library <math.h> function `lgamma_r`.
 
     Link:
@@ -1613,12 +1614,10 @@ fn lgamma_r(x: Float64, signptr: UnsafePointer[Int32]) -> Float64:
     Return value:
         On success, returns the natural logarithm of the absolute value of the gamma function of x.
     """
-    return external_call[
-        "lgamma_r", Float64, Float64, UnsafePointer[Int32]
-    ](x, signptr)
+    return external_call["lgamma_r", Float64, Float64, c_ptr[Int32]](x, signptr)
 
 
-fn lgammaf_r(x: Float32, signptr: UnsafePointer[Int32]) -> Float32:
+def lgammaf_r(x: Float32, signptr: c_ptr[Int32]) -> Float32:
     """C library <math.h> function `lgammaf_r`.
 
     Link:
@@ -1637,12 +1636,12 @@ fn lgammaf_r(x: Float32, signptr: UnsafePointer[Int32]) -> Float32:
     Return value:
         On success, returns the natural logarithm of the absolute value of the gamma function of x.
     """
-    return external_call[
-        "lgammaf_r", Float32, Float32, UnsafePointer[Int32]
-    ](x, signptr)
+    return external_call["lgammaf_r", Float32, Float32, c_ptr[Int32]](
+        x, signptr
+    )
 
 
-fn tgamma(x: Float64) -> Float64:
+def tgamma(x: Float64) -> Float64:
     """C library <math.h> function `tgamma`.
 
     Link:
@@ -1663,7 +1662,7 @@ fn tgamma(x: Float64) -> Float64:
     return external_call["tgamma", Float64, Float64](x)
 
 
-fn tgammaf(x: Float32) -> Float32:
+def tgammaf(x: Float32) -> Float32:
     """C library <math.h> function `tgammaf`.
 
     Link:
@@ -1684,7 +1683,7 @@ fn tgammaf(x: Float32) -> Float32:
     return external_call["tgammaf", Float32, Float32](x)
 
 
-fn gamma(x: Float64) -> Float64:
+def gamma(x: Float64) -> Float64:
     """C library <math.h> function `tgamma`.
 
     Link:
@@ -1705,7 +1704,7 @@ fn gamma(x: Float64) -> Float64:
     return external_call["tgamma", Float64, Float64](x)
 
 
-fn gammaf(x: Float32) -> Float32:
+def gammaf(x: Float32) -> Float32:
     """C library <math.h> function `tgammaf`.
 
     Link:
@@ -1729,7 +1728,7 @@ fn gammaf(x: Float32) -> Float32:
 # ----------------------------------------------------
 # Nearest Integer floating-point operations
 # ----------------------------------------------------
-fn ceil(x: Float64) -> Float64:
+def ceil(x: Float64) -> Float64:
     """C library <math.h> function `ceil`.
 
     Link:
@@ -1750,7 +1749,7 @@ fn ceil(x: Float64) -> Float64:
     return external_call["ceil", Float64, Float64](x)
 
 
-fn ceilf(x: Float32) -> Float32:
+def ceilf(x: Float32) -> Float32:
     """C library <math.h> function `ceilf`.
 
     Link:
@@ -1771,7 +1770,7 @@ fn ceilf(x: Float32) -> Float32:
     return external_call["ceilf", Float32, Float32](x)
 
 
-fn floor(x: Float64) -> Float64:
+def floor(x: Float64) -> Float64:
     """C library <math.h> function `floor`.
 
     Link:
@@ -1792,7 +1791,7 @@ fn floor(x: Float64) -> Float64:
     return external_call["floor", Float64, Float64](x)
 
 
-fn floorf(x: Float32) -> Float32:
+def floorf(x: Float32) -> Float32:
     """C library <math.h> function `floorf`.
 
     Link:
@@ -1813,7 +1812,7 @@ fn floorf(x: Float32) -> Float32:
     return external_call["floorf", Float32, Float32](x)
 
 
-fn round(x: Float64) -> Float64:
+def round(x: Float64) -> Float64:
     """C library <math.h> function `round`.
 
     Link:
@@ -1834,7 +1833,7 @@ fn round(x: Float64) -> Float64:
     return external_call["round", Float64, Float64](x)
 
 
-fn roundf(x: Float32) -> Float32:
+def roundf(x: Float32) -> Float32:
     """C library <math.h> function `roundf`.
 
     Link:
@@ -1855,7 +1854,7 @@ fn roundf(x: Float32) -> Float32:
     return external_call["roundf", Float32, Float32](x)
 
 
-fn trunc(x: Float64) -> Float64:
+def trunc(x: Float64) -> Float64:
     """C library <math.h> function `trunc`.
 
     Link:
@@ -1876,7 +1875,7 @@ fn trunc(x: Float64) -> Float64:
     return external_call["trunc", Float64, Float64](x)
 
 
-fn truncf(x: Float32) -> Float32:
+def truncf(x: Float32) -> Float32:
     """C library <math.h> function `truncf`.
 
     Link:
@@ -1897,7 +1896,7 @@ fn truncf(x: Float32) -> Float32:
     return external_call["truncf", Float32, Float32](x)
 
 
-fn rint(x: Float64) -> Float64:
+def rint(x: Float64) -> Float64:
     """C library <math.h> function `rint`.
 
     Link:
@@ -1918,7 +1917,7 @@ fn rint(x: Float64) -> Float64:
     return external_call["rint", Float64, Float64](x)
 
 
-fn rintf(x: Float32) -> Float32:
+def rintf(x: Float32) -> Float32:
     """C library <math.h> function `rintf`.
 
     Link:
@@ -1939,7 +1938,7 @@ fn rintf(x: Float32) -> Float32:
     return external_call["rintf", Float32, Float32](x)
 
 
-fn nearbyint(x: Float64) -> Float64:
+def nearbyint(x: Float64) -> Float64:
     """C library <math.h> function `nearbyint`.
 
     Link:
@@ -1960,7 +1959,7 @@ fn nearbyint(x: Float64) -> Float64:
     return external_call["nearbyint", Float64, Float64](x)
 
 
-fn nearbyintf(x: Float32) -> Float32:
+def nearbyintf(x: Float32) -> Float32:
     """C library <math.h> function `nearbyintf`.
 
     Link:
@@ -1985,7 +1984,8 @@ fn nearbyintf(x: Float32) -> Float32:
 # Floating-point manipulation functions
 # -----------------------------------------------------------------
 
-fn frexp(x: Float64, expptr: UnsafePointer[Int32]) -> Float64:
+
+def frexp(x: Float64, expptr: c_ptr[Int32]) -> Float64:
     """C library <math.h> function `frexp`.
 
     Link:
@@ -2004,12 +2004,10 @@ fn frexp(x: Float64, expptr: UnsafePointer[Int32]) -> Float64:
     Return value:
         Returns the mantissa with a value in the range [0.5, 1] or 0, such that x equals the mantissa multiplied by 2 raised to the power of expptr. If x is 0, the function returns 0 for both mantissa and exponent.
     """
-    return external_call["frexp", Float64, Float64, UnsafePointer[Int32]](
-        x, expptr
-    )
+    return external_call["frexp", Float64, Float64, c_ptr[Int32]](x, expptr)
 
 
-fn frexpf(x: Float32, expptr: UnsafePointer[Int32]) -> Float32:
+def frexpf(x: Float32, expptr: c_ptr[Int32]) -> Float32:
     """C library <math.h> function `frexpf`.
 
     Link:
@@ -2028,12 +2026,10 @@ fn frexpf(x: Float32, expptr: UnsafePointer[Int32]) -> Float32:
     Return value:
         Returns the mantissa with a value in the range [0.5, 1] or 0, such that x equals the mantissa multiplied by 2 raised to the power of expptr. If x is 0, the function returns 0 for both mantissa and exponent.
     """
-    return external_call["frexpf", Float32, Float32, UnsafePointer[Int32]](
-        x, expptr
-    )
+    return external_call["frexpf", Float32, Float32, c_ptr[Int32]](x, expptr)
 
 
-fn ldexp(x: Float64, exp: Int32) -> Float64:
+def ldexp(x: Float64, exp: Int32) -> Float64:
     """C library <math.h> function `ldexp`.
 
     Link:
@@ -2055,7 +2051,7 @@ fn ldexp(x: Float64, exp: Int32) -> Float64:
     return external_call["ldexp", Float64, Float64, Int32](x, exp)
 
 
-fn ldexpf(x: Float32, exp: Int32) -> Float32:
+def ldexpf(x: Float32, exp: Int32) -> Float32:
     """C library <math.h> function `ldexpf`.
 
     Link:
@@ -2077,7 +2073,7 @@ fn ldexpf(x: Float32, exp: Int32) -> Float32:
     return external_call["ldexpf", Float32, Float32, Int32](x, exp)
 
 
-fn modf(x: Float64, intptr: UnsafePointer[Float64]) -> Float64:
+def modf(x: Float64, intptr: c_ptr[Float64]) -> Float64:
     """C library <math.h> function `modf`.
 
     Link:
@@ -2096,12 +2092,10 @@ fn modf(x: Float64, intptr: UnsafePointer[Float64]) -> Float64:
     Return value:
         The fractional part of x with the same sign.
     """
-    return external_call["modf", Float64, Float64, UnsafePointer[Float64]](
-        x, intptr
-    )
+    return external_call["modf", Float64, Float64, c_ptr[Float64]](x, intptr)
 
 
-fn modff(x: Float32, intptr: UnsafePointer[Float32]) -> Float32:
+def modff(x: Float32, intptr: c_ptr[Float32]) -> Float32:
     """C library <math.h> function `modff`.
 
     Link:
@@ -2120,12 +2114,10 @@ fn modff(x: Float32, intptr: UnsafePointer[Float32]) -> Float32:
     Return value:
         The fractional part of x with the same sign.
     """
-    return external_call[
-        "modff", Float32, Float32, UnsafePointer[Float32]
-    ](x, intptr)
+    return external_call["modff", Float32, Float32, c_ptr[Float32]](x, intptr)
 
 
-fn scalbln(x: Float64, exp: Int64) -> Float64:
+def scalbln(x: Float64, exp: Int64) -> Float64:
     """C library <math.h> function `scalbln`.
 
     Link:
@@ -2147,7 +2139,7 @@ fn scalbln(x: Float64, exp: Int64) -> Float64:
     return external_call["scalbln", Float64, Float64, Int64](x, exp)
 
 
-fn scalblnf(x: Float32, exp: Int64) -> Float32:
+def scalblnf(x: Float32, exp: Int64) -> Float32:
     """C library <math.h> function `scalblnf`.
 
     Link:
@@ -2169,7 +2161,7 @@ fn scalblnf(x: Float32, exp: Int64) -> Float32:
     return external_call["scalblnf", Float32, Float32, Int64](x, exp)
 
 
-fn scalbn(x: Float64, exp: Int32) -> Float64:
+def scalbn(x: Float64, exp: Int32) -> Float64:
     """C library <math.h> function `scalbn`.
 
     Link:
@@ -2191,7 +2183,7 @@ fn scalbn(x: Float64, exp: Int32) -> Float64:
     return external_call["scalbn", Float64, Float64, Int32](x, exp)
 
 
-fn scalbnf(x: Float32, exp: Int32) -> Float32:
+def scalbnf(x: Float32, exp: Int32) -> Float32:
     """C library <math.h> function `scalbnf`.
 
     Link:
@@ -2213,7 +2205,7 @@ fn scalbnf(x: Float32, exp: Int32) -> Float32:
     return external_call["scalbnf", Float32, Float32, Int32](x, exp)
 
 
-fn nextafter(x: Float64, y: Float64) -> Float64:
+def nextafter(x: Float64, y: Float64) -> Float64:
     """C library <math.h> function `nextafter`.
 
     Link:
@@ -2235,7 +2227,7 @@ fn nextafter(x: Float64, y: Float64) -> Float64:
     return external_call["nextafter", Float64, Float64, Float64](x, y)
 
 
-fn nextafterf(x: Float32, y: Float32) -> Float32:
+def nextafterf(x: Float32, y: Float32) -> Float32:
     """C library <math.h> function `nextafterf`.
 
     Link:
@@ -2257,7 +2249,7 @@ fn nextafterf(x: Float32, y: Float32) -> Float32:
     return external_call["nextafterf", Float32, Float32, Float32](x, y)
 
 
-fn nexttoward(x: Float64, y: Float64) -> Float64:
+def nexttoward(x: Float64, y: Float64) -> Float64:
     """C library <math.h> function `nexttoward`.
 
     Link:
@@ -2279,7 +2271,7 @@ fn nexttoward(x: Float64, y: Float64) -> Float64:
     return external_call["nexttoward", Float64, Float64, Float64](x, y)
 
 
-fn nexttowardf(x: Float32, y: Float32) -> Float32:
+def nexttowardf(x: Float32, y: Float32) -> Float32:
     """C library <math.h> function `nexttowardf`.
 
     Link:
@@ -2301,7 +2293,7 @@ fn nexttowardf(x: Float32, y: Float32) -> Float32:
     return external_call["nexttowardf", Float32, Float32, Float32](x, y)
 
 
-fn copysign(x: Float64, y: Float64) -> Float64:
+def copysign(x: Float64, y: Float64) -> Float64:
     """C library <math.h> function `copysign`.
 
     Link:
@@ -2323,7 +2315,7 @@ fn copysign(x: Float64, y: Float64) -> Float64:
     return external_call["copysign", Float64, Float64, Float64](x, y)
 
 
-fn copysignf(x: Float32, y: Float32) -> Float32:
+def copysignf(x: Float32, y: Float32) -> Float32:
     """C library <math.h> function `copysignf`.
 
     Link:

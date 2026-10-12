@@ -3,20 +3,21 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-from sys import external_call
-from memory import UnsafePointer
+from std.ffi import external_call
+from std.memory import Pointer
+from libc.constant import c_ptr
 
 
-fn fstatvfs(fd: Int32, buf: UnsafePointer[Int8]) -> Int32:
+def fstatvfs(fd: Int32, buf: c_ptr[Int8]) -> Int32:
     """Libc POSIX `fstatvfs` function.
 
     Reference:
         https://man7.org/linux/man-pages/man2/fstatvfs.2.html
-    
+
     Args:
         fd: File descriptor.
         buf: Pointer to the buffer to store the result.
-    
+
     Description:
         The `fstatvfs` function returns information about the file system
         corresponding to the file referenced by the file descriptor `fd`.
@@ -36,20 +37,20 @@ fn fstatvfs(fd: Int32, buf: UnsafePointer[Int8]) -> Int32:
         - `f_flag`: Flags indicating the capabilities of the file system.
         - `f_namemax`: The maximum length of a file name.
     """
-    return external_call["fstatvfs", Int32, Int32, UnsafePointer[Int8]](fd, buf)
+    return external_call["fstatvfs", Int32, Int32, c_ptr[Int8]](fd, buf)
 
 
-fn statvfs(path: UnsafePointer[Int8], buf: UnsafePointer[Int8]) -> Int32:
+def statvfs(path: c_ptr[Int8], buf: c_ptr[Int8]) -> Int32:
     """Libc POSIX `statvfs` function.
 
     Reference:
         https://man7.org/linux/man-pages/man3/statvfs.3.html
-    
+
 
     Args:
         path: Pointer to the path to the file.
         buf: Pointer to the buffer to store the result.
-    
+
     Description:
         The `statvfs` function returns information about the file system
         corresponding to the file referenced by the path pointed to by `path`.
@@ -69,4 +70,4 @@ fn statvfs(path: UnsafePointer[Int8], buf: UnsafePointer[Int8]) -> Int32:
         - `f_flag`: Flags indicating the capabilities of the file system.
         - `f_namemax`: The maximum length of a file name.
     """
-    return external_call["statvfs", Int32, UnsafePointer[Int8], UnsafePointer[Int8]](path, buf)
+    return external_call["statvfs", Int32, c_ptr[Int8], c_ptr[Int8]](path, buf)

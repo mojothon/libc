@@ -3,23 +3,24 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-from sys import external_call
+from std.ffi import external_call
+from libc.constant import c_ptr
 
 
-#  void *handle = handle: UnsafePointer[Int8]
-# Here have some errors. 
+#  void *handle = handle: c_ptr[Int8]
+# Here have some errors.
 # 后续补充
-fn dlclose(handle: UnsafePointer[Int8])-> Int32:
-    return external_call['dlclose', Int32, UnsafePointer[Int8]](handle) 
+def dlclose(handle: c_ptr[Int8]) -> Int32:
+    return external_call["dlclose", Int32, c_ptr[Int8]](handle)
 
 
-fn dlerror(handle: UnsafePointer[Int8])-> Int32:
-    return external_call['dlerror', Int32, UnsafePointer[Int8]](handle) 
+def dlerror(handle: c_ptr[Int8]) -> Int32:
+    return external_call["dlerror", Int32, c_ptr[Int8]](handle)
 
 
-fn dlopen(handle: UnsafePointer[Int8])-> Int32:
-    return external_call['dlopen', Int32, UnsafePointer[Int8]](handle) 
+def dlopen(handle: c_ptr[Int8]) -> Int32:
+    return external_call["dlopen", Int32, c_ptr[Int8]](handle)
 
 
-fn dlsym(handle: UnsafePointer[Int8]) -> Int32:
-    return external_call['dlsym', Int32, UnsafePointer[Int8]](handle) 
+def dlsym(handle: c_ptr[Int8]) -> Int32:
+    return external_call["dlsym", Int32, c_ptr[Int8]](handle)

@@ -3,72 +3,72 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-alias off_t = Int64
-alias mode_t = UInt32
+comptime off_t = Int64
+comptime mode_t = UInt32
 
-alias FM_READ = "r"
-alias FM_WRITE = "w"
-alias FM_APPEND = "a"
-alias FM_BINARY = "b"
-alias FM_PLUS = "+"
+comptime FM_READ = "r"
+comptime FM_WRITE = "w"
+comptime FM_APPEND = "a"
+comptime FM_BINARY = "b"
+comptime FM_PLUS = "+"
 
-alias SEEK_SET = 0
-alias SEEK_CUR = 1
-alias SEEK_END = 2
+comptime SEEK_SET = 0
+comptime SEEK_CUR = 1
+comptime SEEK_END = 2
 
-alias O_RDONLY = 0
-alias O_WRONLY = 1
-alias O_RDWR = 2
-alias O_APPEND = 8
-alias O_CREAT = 512
-alias O_TRUNC = 1024
-alias O_EXCL = 2048
-alias O_SYNC = 8192
-alias O_NONBLOCK = 16384
-alias O_ACCMODE = 3
-alias O_CLOEXEC = 524288
+comptime O_RDONLY = 0
+comptime O_WRONLY = 1
+comptime O_RDWR = 2
+comptime O_APPEND = 8
+comptime O_CREAT = 512
+comptime O_TRUNC = 1024
+comptime O_EXCL = 2048
+comptime O_SYNC = 8192
+comptime O_NONBLOCK = 16384
+comptime O_ACCMODE = 3
+comptime O_CLOEXEC = 524288
 
 # from fcntl.h
-alias O_EXEC = -1
-alias O_SEARCH = -1
-alias O_DIRECTORY = -1
-alias O_DSYNC = -1
-alias O_NOCTTY = -1
-alias O_NOFOLLOW = -1
-alias O_RSYNC = -1
-alias O_TTY_INIT = -1
+comptime O_EXEC = -1
+comptime O_SEARCH = -1
+comptime O_DIRECTORY = -1
+comptime O_DSYNC = -1
+comptime O_NOCTTY = -1
+comptime O_NOFOLLOW = -1
+comptime O_RSYNC = -1
+comptime O_TTY_INIT = -1
 
-alias STDIN_FILENO = 0
-alias STDOUT_FILENO = 1
-alias STDERR_FILENO = 2
+comptime STDIN_FILENO = 0
+comptime STDOUT_FILENO = 1
+comptime STDERR_FILENO = 2
 
-alias F_DUPFD = 0
-alias F_GETFD = 1
-alias F_SETFD = 2
-alias F_GETFL = 3
-alias F_SETFL = 4
-alias F_GETOWN = 5
-alias F_SETOWN = 6
-alias F_GETLK = 7
-alias F_SETLK = 8
-alias F_SETLKW = 9
-alias F_RGETLK = 10
-alias F_RSETLK = 11
-alias F_CNVT = 12
-alias F_RSETLKW = 13
-alias F_DUPFD_CLOEXEC = 14
+comptime F_DUPFD = 0
+comptime F_GETFD = 1
+comptime F_SETFD = 2
+comptime F_GETFL = 3
+comptime F_SETFL = 4
+comptime F_GETOWN = 5
+comptime F_SETOWN = 6
+comptime F_GETLK = 7
+comptime F_SETLK = 8
+comptime F_SETLKW = 9
+comptime F_RGETLK = 10
+comptime F_RSETLK = 11
+comptime F_CNVT = 12
+comptime F_RSETLKW = 13
+comptime F_DUPFD_CLOEXEC = 14
 
 # TODO(cristian)
-alias FD_CLOEXEC = -1
-alias F_RDLCK = -1
-alias F_UNLCK = -1
-alias F_WRLCK = -1
+comptime FD_CLOEXEC = -1
+comptime F_RDLCK = -1
+comptime F_UNLCK = -1
+comptime F_WRLCK = -1
 
-alias AT_EACCESS = 512
-alias AT_FDCWD = -100
-alias AT_SYMLINK_NOFOLLOW = 256
-alias AT_REMOVEDIR = 512
-alias AT_SYMLINK_FOLLOW = 1024
-alias AT_NO_AUTOMOUNT = 2048
-alias AT_EMPTY_PATH = 4096
-alias AT_RECURSIVE = 32768
+comptime AT_EACCESS = 512
+comptime AT_FDCWD = -100
+comptime AT_SYMLINK_NOFOLLOW = 256
+comptime AT_REMOVEDIR = 512
+comptime AT_SYMLINK_FOLLOW = 1024
+comptime AT_NO_AUTOMOUNT = 2048
+comptime AT_EMPTY_PATH = 4096
+comptime AT_RECURSIVE = 32768
