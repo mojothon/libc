@@ -283,24 +283,27 @@ def fsync(fd: Int32) -> Int32:
     return external_call["fsync", Int32, Int32](fd)
 
 
-def getcwd(buf: c_ptr[UInt8], size: Int32) -> Int32:
+def getcwd(buf: c_ptr[UInt8], size: Int32) -> c_ptr[UInt8]:
     """Libc POSIX `getcwd` function.
 
     Reference:
         https://man7.org/linux/man-pages/man3/getcwd.3.html
 
     Description:
-        getcwd() returns a pointer to a null-terminated string that contains the current working
-        directory of the calling process.
+        Writes the absolute path of the current working directory into `buf`
+        and returns it.
 
     Args:
         buf: Pointer to the buffer to store the current working directory.
-        size: The maximum size of the buffer.
+        size: The size of the buffer in bytes, which has to leave room for
+            the path and the byte that ends it.
 
     Returns:
-        0 on success, -1 on error.
+        `buf` on success, or null on failure with `errno` set: `ERANGE` if
+        the path is longer than `size`, `EACCES` if a parent directory
+        cannot be read. It is not the 0 or -1 that most of these give back.
     """
-    return external_call["getcwd", Int32, c_ptr[UInt8], Int32](buf, size)
+    return external_call["getcwd", c_ptr[UInt8], c_ptr[UInt8], Int32](buf, size)
 
 
 def geteuid() -> Int32:
@@ -652,24 +655,27 @@ def rmdir(path: c_ptr[UInt8]) -> Int32:
     return external_call["rmdir", Int32, c_ptr[UInt8]](path)
 
 
-def swab(a: c_ptr[UInt8], b: c_ptr[UInt8], size: Int32) -> Int8:
+def swab(a: c_ptr[UInt8], b: c_ptr[UInt8], size: Int32):
     """Libc POSIX `swab` function.
 
     Reference:
-        https://man7.org/linux/man-pages/man2/swab.2.html
+        https://man7.org/linux/man-pages/man3/swab.3.html
 
     Description:
-        swab() swaps the bytes in the two buffers.
+        Copies `size` bytes from `a` to `b`, swapping each pair of adjacent
+        bytes on the way. An odd `size` is allowed and the last byte is
+        copied as it is.
 
     Args:
-        a: First buffer.
-        b: Second buffer.
-        size: Size of the buffer.
+        a: The buffer to read from.
+        b: The buffer to write to, which must not overlap `a`.
+        size: How many bytes to copy.
 
-    Returns:
-        0 on success, -1 on error.
+    Notes:
+        There is no result to report: C declares this one `void`, and it is
+        not one of the calls that reports failure in `errno` either.
     """
-    return external_call["swab", Int8, c_ptr[UInt8], c_ptr[UInt8], Int32](
+    external_call["swab", NoneType, c_ptr[UInt8], c_ptr[UInt8], Int32](
         a, b, size
     )
 
