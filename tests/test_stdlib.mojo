@@ -95,7 +95,13 @@ def test_paths() raises:
     var tmp = string_to_char_ptr("/tmp")
     # PATH_MAX, which is what realpath expects for the output buffer.
     var out = unsafe_alloc[UInt8](4096)
-    assert_equal(char_ptr_to_string(realpath(tmp, out)), "/tmp")
+    var resolved = char_ptr_to_string(realpath(tmp, out))
+    # Not compared against "/tmp": on macOS that is a symlink to
+    # /private/tmp. What holds everywhere is that the result is absolute
+    # and already canonical, so resolving it again is a no-op.
+    assert_true(resolved.byte_length() > 0)
+    assert_true(resolved.startswith("/"))
+    assert_equal(char_ptr_to_string(realpath(out, out)), resolved)
     tmp.unsafe_free()
     out.unsafe_free()
 
