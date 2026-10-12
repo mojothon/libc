@@ -7,7 +7,7 @@ the bottom.
 | Module | C header | Symbols |
 | --- | --- | --- |
 | `libc.math` | `<math.h>` | 115 |
-| `libc.stdlib` | `<stdlib.h>` | 33 |
+| `libc.stdlib` | `<stdlib.h>` | 32 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.unistd` | `<unistd.h>` | 41 |
 | `libc.file` | `<stdio.h>` file operations | 39 |
@@ -18,21 +18,21 @@ the bottom.
 | `libc.fenv` | `<fenv.h>` | 26 |
 | `libc.sys.mman` | `<sys/mman.h>` | 15 |
 | `libc.pthread` | `<pthread.h>` | 14 |
-| `libc.string` | `<string.h>` | 31 |
+| `libc.string` | `<string.h>` | 40 |
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 21 |
 | `libc.complex` | `<complex.h>` | 46 |
 | `libc.sched` | `<sched.h>` | 13 |
 | `libc.signal` | `<signal.h>` | 9 |
 | `libc.locale` | `<locale.h>` | 16 |
 | `libc.sys.epoll` | `<sys/epoll.h>` | 8 |
-| `libc.search` | `<search.h>` | 8 |
-| `libc.dirent` | `<dirent.h>` | 6 |
+| `libc.search` | `<search.h>` | 9 |
+| `libc.dirent` | `<dirent.h>` | 8 |
 | `libc.sys.wait` | `<sys/wait.h>` | 4 |
 | `libc.inttypes` | `<inttypes.h>` | 7 |
 | `libc.sys.resource` | `<sys/resource.h>` | 5 |
 | `libc.network` | `<arpa/inet.h>` byte order helpers | 4 |
 | `libc.logging` | `<syslog.h>` | 4 |
-| `libc.fcntl` | `<fcntl.h>` | 4 |
+| `libc.fcntl` | `<fcntl.h>` | 6 |
 | `libc.dlfcn` | `<dlfcn.h>` | 4 |
 | `libc.wchar` | `<wchar.h>` | 27 |
 | `libc.sys.statvfs` | `<sys/statvfs.h>` | 3 |
