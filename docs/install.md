@@ -17,7 +17,7 @@ or, in `pixi.toml`:
 channels = ["https://conda.modular.com/max", "conda-forge", "mojo-force"]
 
 [dependencies]
-libc = ">=0.5.0,<0.6"
+libc = ">=0.6.0,<0.7"
 mojo = ">=1.1.0,<2"
 ```
 
