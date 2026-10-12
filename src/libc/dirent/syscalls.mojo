@@ -3,28 +3,36 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-from sys import external_call
-from memory import UnsafePointer
+from std.ffi import external_call
+from std.memory import Pointer
 from libc.constant import *
 
 
-@value
-@register_passable("trivial")
-struct DIR:
+struct DIR(TrivialRegisterPassable):
     pass
 
 
-@value
-@register_passable("trivial")
+# Layout must match glibc's `struct dirent`: `d_name` is an inline `char[256]`,
+# not a pointer, so modelling it as a pointer both reads garbage and shifts the
+# field to the wrong offset.
 struct dirent:
     var d_ino: c_ulong
     var d_off: c_ulong
     var d_reclen: c_ushort
     var d_type: c_char
-    var d_name: UnsafePointer[c_char]
+    var d_name: Array[UInt8, 256]
+
+    def name(self) -> String:
+        """The NUL terminated entry name as a Mojo `String`."""
+        var bytes = List[UInt8](capacity=256)
+        var i = 0
+        while i < 256 and self.d_name[i] != 0:
+            bytes.append(self.d_name[i])
+            i += 1
+        return String(unsafe_from_utf8=Span[UInt8](bytes))
 
 
-fn closedir(arg: UnsafePointer[DIR]) -> Int32:
+def closedir(arg: c_ptr[DIR]) -> Int32:
     """Libc POSIX `closedir` function.
 
     Args:
@@ -38,19 +46,19 @@ fn closedir(arg: UnsafePointer[DIR]) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/closedir.3p.html).
         Fn signature: `  int closedir(DIR *dirp)`.
     """
-    return external_call["closedir", Int32, UnsafePointer[DIR]](arg)
+    return external_call["closedir", Int32, c_ptr[DIR]](arg)
 
 
-fn opendir(arg: UnsafePointer[c_char]) -> UnsafePointer[DIR]:
-    return external_call["opendir", UnsafePointer[DIR], UnsafePointer[c_char]](arg)
+def opendir(arg: c_ptr[c_char]) -> c_ptr[DIR]:
+    return external_call["opendir", c_ptr[DIR], c_ptr[c_char]](arg)
 
 
-fn readdir(arg: UnsafePointer[DIR]) -> UnsafePointer[dirent]:
-    return external_call["readdir", UnsafePointer[dirent], UnsafePointer[DIR]](arg)
+def readdir(arg: c_ptr[DIR]) -> c_ptr[dirent]:
+    return external_call["readdir", c_ptr[dirent], c_ptr[DIR]](arg)
 
 
-fn dirfd(arg: UnsafePointer[DIR])-> Int32:
-     """Libc POSIX `dirfd` function.
+def dirfd(arg: c_ptr[DIR]) -> Int32:
+    """Libc POSIX `dirfd` function.
 
     Args:
         arg: A file descriptor referring to the same directory.
@@ -65,4 +73,4 @@ fn dirfd(arg: UnsafePointer[DIR])-> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/dirfd.3p.html).
         Fn signature: `  int dirfd(DIR *dirp)`.
     """
-    return external_call["dirfd", Int32, UnsafePointer[DIR]](arg)
+    return external_call["dirfd", Int32, c_ptr[DIR]](arg)
