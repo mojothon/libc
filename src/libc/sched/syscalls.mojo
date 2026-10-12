@@ -58,7 +58,7 @@ def sched_get_priority_min(policy: Int32) -> Int32:
 
 
 def sched_getaffinity(
-    pid: Int32, cpusetsize: Int32, cpuset: c_ptr[Int32]
+    pid: Int32, cpusetsize: UInt64, cpuset: c_ptr[Int32]
 ) -> Int32:
     """C library <sched.h> function `sched_getaffinity`.
 
@@ -77,7 +77,7 @@ def sched_getaffinity(
 
     """
     return external_call[
-        "sched_getaffinity", Int32, Int32, Int32, c_ptr[Int32]
+        "sched_getaffinity", Int32, Int32, UInt64, c_ptr[Int32]
     ](pid, cpusetsize, cpuset)
 
 
@@ -165,7 +165,7 @@ def sched_rr_get_interval(pid: Int32, interval: c_ptr[timespec]) -> Int32:
 
 
 def sched_setaffinity(
-    pid: Int32, cpusetsize: Int32, cpuset: c_ptr[Int32]
+    pid: Int32, cpusetsize: UInt64, cpuset: c_ptr[Int32]
 ) -> Int32:
     """C library <sched.h> function `sched_setaffinity`.
 
@@ -186,7 +186,7 @@ def sched_setaffinity(
 
     """
     return external_call[
-        "sched_setaffinity", Int32, Int32, Int32, c_ptr[Int32]
+        "sched_setaffinity", Int32, Int32, UInt64, c_ptr[Int32]
     ](pid, cpusetsize, cpuset)
 
 

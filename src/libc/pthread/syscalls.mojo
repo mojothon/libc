@@ -146,7 +146,7 @@ def pthread_attr_setdetachstate(
 
 
 def pthread_attr_getguardsize(
-    attr: c_ptr[pthread_attr_t], guardsize: c_ptr[Int32]
+    attr: c_ptr[pthread_attr_t], guardsize: c_ptr[UInt64]
 ) -> Int32:
     """C library <pthread.h> function `pthread_attr_getguardsize`.
 
@@ -162,12 +162,12 @@ def pthread_attr_getguardsize(
        nonzero error number.
     """
     return external_call[
-        "pthread_attr_getguardsize", Int32, c_ptr[pthread_attr_t], c_ptr[Int32]
+        "pthread_attr_getguardsize", Int32, c_ptr[pthread_attr_t], c_ptr[UInt64]
     ](attr, guardsize)
 
 
 def pthread_attr_setguardsize(
-    attr: c_ptr[pthread_attr_t], guardsize: Int32
+    attr: c_ptr[pthread_attr_t], guardsize: UInt64
 ) -> Int32:
     """C library <pthread.h> function `pthread_attr_setguardsize`.
 
@@ -183,7 +183,7 @@ def pthread_attr_setguardsize(
        nonzero error number.
     """
     return external_call[
-        "pthread_attr_setguardsize", Int32, c_ptr[pthread_attr_t], Int32
+        "pthread_attr_setguardsize", Int32, c_ptr[pthread_attr_t], UInt64
     ](attr, guardsize)
 
 

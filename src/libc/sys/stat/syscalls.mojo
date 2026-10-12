@@ -105,7 +105,7 @@ def mkdirat(fd: Int32, path: c_ptr[UInt8], mode: Int32) -> Int32:
     )
 
 
-def mknod(path: c_ptr[UInt8], mode: Int32, dev: Int32) -> Int32:
+def mknod(path: c_ptr[UInt8], mode: Int32, dev: UInt64) -> Int32:
     """Libc POSIX `mknod` function.
 
     Args:
@@ -115,12 +115,12 @@ def mknod(path: c_ptr[UInt8], mode: Int32, dev: Int32) -> Int32:
 
     Returns: A pointer to a socket.
     """
-    return external_call["mknod", Int32, c_ptr[UInt8], Int32, Int32](
+    return external_call["mknod", Int32, c_ptr[UInt8], Int32, UInt64](
         path, mode, dev
     )
 
 
-def mknodat(fd: Int32, path: c_ptr[UInt8], mode: Int32, dev: Int32) -> Int32:
+def mknodat(fd: Int32, path: c_ptr[UInt8], mode: Int32, dev: UInt64) -> Int32:
     """Libc POSIX `mknodat` function.
 
     Args:
@@ -131,7 +131,7 @@ def mknodat(fd: Int32, path: c_ptr[UInt8], mode: Int32, dev: Int32) -> Int32:
 
     Returns: A pointer to a socket.
     """
-    return external_call["mknodat", Int32, Int32, c_ptr[UInt8], Int32, Int32](
+    return external_call["mknodat", Int32, Int32, c_ptr[UInt8], Int32, UInt64](
         fd, path, mode, dev
     )
 
