@@ -847,3 +847,331 @@ def writev(fd: Int32, iov: c_ptr[UInt8], iovcnt: UInt32) -> UInt32:
     return external_call["writev", UInt32, Int32, c_ptr[UInt8], UInt32](
         fd, iov, iovcnt
     )
+
+
+def chown(path: c_ptr[UInt8], owner: Int32, group: Int32) -> Int32:
+    """Libc POSIX `chown` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/chown.2.html
+
+    Description:
+        chown() changes the owner and the group of a file.
+
+    Args:
+        path: The file to change.
+        owner: The user ID to set, or -1 to leave it as it is.
+        group: The group ID to set, or -1 to leave it as it is.
+
+    Returns:
+        0 on success, -1 on error.
+
+    Notes:
+        Following a symbolic link is what this does and `lchown` is the one
+        that does not. Only a privileged process can give a file away, or
+        set its group to one it does not belong to.
+    """
+    return external_call["chown", Int32, c_ptr[UInt8], Int32, Int32](
+        path, owner, group
+    )
+
+
+def fchown(fd: Int32, owner: Int32, group: Int32) -> Int32:
+    """Libc POSIX `fchown` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/fchown.2.html
+
+    Description:
+        fchown() changes the owner and the group of an open file.
+
+    Args:
+        fd: A file descriptor for the file to change.
+        owner: The user ID to set, or -1 to leave it as it is.
+        group: The group ID to set, or -1 to leave it as it is.
+
+    Returns:
+        0 on success, -1 on error.
+
+    Notes:
+        Taking a descriptor rather than a path is what makes this the one to
+        use when the file could be moved or replaced between looking at it
+        and changing it.
+    """
+    return external_call["fchown", Int32, Int32, Int32, Int32](fd, owner, group)
+
+
+def lchown(path: c_ptr[UInt8], owner: Int32, group: Int32) -> Int32:
+    """Libc POSIX `lchown` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/lchown.2.html
+
+    Description:
+        lchown() changes the owner and the group of a symbolic link itself
+        rather than of what it points at.
+
+    Args:
+        path: The link to change.
+        owner: The user ID to set, or -1 to leave it as it is.
+        group: The group ID to set, or -1 to leave it as it is.
+
+    Returns:
+        0 on success, -1 on error.
+    """
+    return external_call["lchown", Int32, c_ptr[UInt8], Int32, Int32](
+        path, owner, group
+    )
+
+
+def fchownat(
+    dirfd: Int32, path: c_ptr[UInt8], owner: Int32, group: Int32, flags: Int32
+) -> Int32:
+    """Libc POSIX `fchownat` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/fchownat.2.html
+
+    Description:
+        fchownat() changes the owner and the group of a file named relative
+        to a directory that is open.
+
+    Args:
+        dirfd: A descriptor for the directory `path` is relative to, or
+            `AT_FDCWD` for the current one.
+        path: The file to change, relative to `dirfd` when it is not
+            absolute.
+        owner: The user ID to set, or -1 to leave it as it is.
+        group: The group ID to set, or -1 to leave it as it is.
+        flags: `AT_SYMLINK_NOFOLLOW` to change the link rather than what it
+            points at, or `AT_EMPTY_PATH` on Linux to change `dirfd` itself.
+
+    Returns:
+        0 on success, -1 on error.
+    """
+    return external_call[
+        "fchownat", Int32, Int32, c_ptr[UInt8], Int32, Int32, Int32
+    ](dirfd, path, owner, group, flags)
+
+
+def getgid() -> Int32:
+    """Libc POSIX `getgid` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/getgid.2.html
+
+    Description:
+        getgid() returns the real group ID of the calling process.
+
+    Returns:
+        The real group ID.
+    """
+    return external_call["getgid", Int32]()
+
+
+def getegid() -> Int32:
+    """Libc POSIX `getegid` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/getegid.2.html
+
+    Description:
+        getegid() returns the effective group ID of the calling process.
+
+    Returns:
+        The effective group ID.
+    """
+    return external_call["getegid", Int32]()
+
+
+def setuid(uid: Int32) -> Int32:
+    """Libc POSIX `setuid` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/setuid.2.html
+
+    Description:
+        setuid() sets the real, effective and saved user ID of the calling
+        process.
+
+    Args:
+        uid: The user ID to set.
+
+    Returns:
+        0 on success, -1 on error.
+
+    Notes:
+        For a privileged process this is one-way: once the real user ID is
+        set there is no setting it back. `seteuid` is the one that leaves
+        the saved ID alone and can be undone.
+    """
+    return external_call["setuid", Int32, Int32](uid)
+
+
+def setgid(gid: Int32) -> Int32:
+    """Libc POSIX `setgid` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/setgid.2.html
+
+    Description:
+        setgid() sets the real, effective and saved group ID of the calling
+        process.
+
+    Args:
+        gid: The group ID to set.
+
+    Returns:
+        0 on success, -1 on error.
+    """
+    return external_call["setgid", Int32, Int32](gid)
+
+
+def seteuid(euid: Int32) -> Int32:
+    """Libc POSIX `seteuid` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/seteuid.2.html
+
+    Description:
+        seteuid() sets the effective user ID of the calling process.
+
+    Args:
+        euid: The effective user ID to set.
+
+    Returns:
+        0 on success, -1 on error.
+
+    Notes:
+        The saved user ID is left alone, so a privileged process can set
+        this to something else and come back, which is what `setuid` will
+        not do. An unprivileged process can only set it to what its real or
+        saved user ID already is.
+    """
+    return external_call["seteuid", Int32, Int32](euid)
+
+
+def setegid(egid: Int32) -> Int32:
+    """Libc POSIX `setegid` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/setegid.2.html
+
+    Description:
+        setegid() sets the effective group ID of the calling process.
+
+    Args:
+        egid: The effective group ID to set.
+
+    Returns:
+        0 on success, -1 on error.
+
+    Notes:
+        An unprivileged process can only set it to what its real or saved
+        group ID already is.
+    """
+    return external_call["setegid", Int32, Int32](egid)
+
+
+def alarm(seconds: Int32) -> Int32:
+    """Libc POSIX `alarm` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/alarm.2.html
+
+    Description:
+        alarm() arranges for a `SIGALRM` to arrive in `seconds` seconds.
+
+    Args:
+        seconds: How long to wait, or 0 to cancel the one already waiting.
+
+    Returns:
+        How many seconds were left on the alarm this one replaces, or 0 if
+        there was none.
+
+    Notes:
+        One alarm per process: setting a second one replaces the first. It
+        does not wait for anything and returns at once.
+    """
+    return external_call["alarm", Int32, Int32](seconds)
+
+
+def pause() -> Int32:
+    """Libc POSIX `pause` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/pause.2.html
+
+    Description:
+        pause() waits until a signal arrives and its handler returns.
+
+    Returns:
+        -1, with `errno` set to `EINTR` when the signal's handler returns,
+        which is the only way out of it.
+
+    Notes:
+        This does not come back until a signal does, so it is the one call
+        here that a program cannot call and then carry on with.
+    """
+    return external_call["pause", Int32]()
+
+
+def sleep(seconds: Int32) -> Int32:
+    """Libc POSIX `sleep` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sleep.3.html
+
+    Description:
+        sleep() waits for `seconds` seconds, or until a signal that is not
+        ignored arrives.
+
+    Args:
+        seconds: How long to wait.
+
+    Returns:
+        0 if the whole time passed, or how many seconds were left when a
+        signal cut it short.
+    """
+    return external_call["sleep", Int32, Int32](seconds)
+
+
+def nice(inc: Int32) -> Int32:
+    """Libc POSIX `nice` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/nice.2.html
+
+    Description:
+        nice() adds `inc` to how nice this process is, which is how willing
+        it is to give up the processor: a bigger number is a politer one.
+
+    Args:
+        inc: How much to add, which can be negative, though only a
+            privileged process can take away what it did not give.
+
+    Returns:
+        The new niceness, which is -1 both when that is the answer and when
+        the call failed — check `errno` to tell them apart.
+    """
+    return external_call["nice", Int32, Int32](inc)
+
+
+def getpagesize() -> Int32:
+    """Libc `getpagesize` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/getpagesize.2.html
+
+    Description:
+        getpagesize() returns the size of a page in bytes.
+
+    Returns:
+        The size of a page.
+
+    Notes:
+        Not in POSIX anymore, which says to ask `sysconf` for `_SC_PAGESIZE`
+        instead, but it is in both glibc and Darwin and it is the number a
+        call like `mmap` wants.
+    """
+    return external_call["getpagesize", Int32]()
