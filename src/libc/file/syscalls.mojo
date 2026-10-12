@@ -560,6 +560,44 @@ def getline(
     ](lineptr, n, stream)
 
 
+def getdelim(
+    lineptr: c_ptr[c_ptr[c_char]],
+    n: c_ptr[c_size_t],
+    delimiter: c_int,
+    stream: c_ptr[FILE],
+) -> c_ssize_t:
+    """Libc POSIX `getdelim` function.
+
+    Args:
+        lineptr: A pointer to a pointer to a buffer to store the read
+            string, which is grown as needed and has to be given to `free`.
+        n: A pointer to how big that buffer is, which is kept up to date.
+        delimiter: The byte to read up to, which does not have to be a
+            newline.
+        stream: A pointer to a stream.
+
+    Returns:
+        How many bytes were read, or -1 at the end or on failure.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getdelim.3p.html).
+        Fn signature: `ssize_t getdelim(char **restrict lineptr,
+            size_t *restrict n, int delimiter, FILE *restrict stream);`.
+
+        `getline` is this one with the delimiter set to a newline. The
+        delimiter is kept in the string that comes back, so reading up to a
+        comma hands back a string that ends in one.
+    """
+    return external_call[
+        "getdelim",
+        c_ssize_t,
+        c_ptr[c_ptr[c_char]],
+        c_ptr[c_size_t],
+        c_int,
+        c_ptr[FILE],
+    ](lineptr, n, delimiter, stream)
+
+
 def pread(
     fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint, offset: off_t
 ) -> c_uint:
