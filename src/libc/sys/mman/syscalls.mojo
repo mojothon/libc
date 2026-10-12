@@ -8,7 +8,7 @@ from std.memory import Pointer
 from libc.constant import c_ptr
 
 
-def madvise(addr: c_ptr[Int8], length: Int64, advice: Int32) -> Int32:
+def madvise(addr: c_ptr[UInt8], length: Int64, advice: Int32) -> Int32:
     """C library <sys/mman.h> function `madvise`.
 
     Reference:
@@ -26,12 +26,12 @@ def madvise(addr: c_ptr[Int8], length: Int64, advice: Int32) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["madvise", Int32, c_ptr[Int8], Int64, Int32](
+    return external_call["madvise", Int32, c_ptr[UInt8], Int64, Int32](
         addr, length, advice
     )
 
 
-def mincore(addr: c_ptr[Int8], length: Int64, vec: c_ptr[Int8]) -> Int32:
+def mincore(addr: c_ptr[UInt8], length: Int64, vec: c_ptr[UInt8]) -> Int32:
     """C library <sys/mman.h> function `mincore`.
 
     Reference:
@@ -49,12 +49,12 @@ def mincore(addr: c_ptr[Int8], length: Int64, vec: c_ptr[Int8]) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["mincore", Int32, c_ptr[Int8], Int64, c_ptr[Int8]](
+    return external_call["mincore", Int32, c_ptr[UInt8], Int64, c_ptr[UInt8]](
         addr, length, vec
     )
 
 
-def mlock(addr: c_ptr[Int8], length: Int64) -> Int32:
+def mlock(addr: c_ptr[UInt8], length: Int64) -> Int32:
     """C library <sys/mman.h> function `mlock`.
 
     Reference:
@@ -71,10 +71,10 @@ def mlock(addr: c_ptr[Int8], length: Int64) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["mlock", Int32, c_ptr[Int8], Int64](addr, length)
+    return external_call["mlock", Int32, c_ptr[UInt8], Int64](addr, length)
 
 
-def mlock2(addr: c_ptr[Int8], length: Int64, flags: Int32) -> Int32:
+def mlock2(addr: c_ptr[UInt8], length: Int64, flags: Int32) -> Int32:
     """C library <sys/mman.h> function `mlock2`.
 
     Reference:
@@ -91,12 +91,12 @@ def mlock2(addr: c_ptr[Int8], length: Int64, flags: Int32) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["mlock2", Int32, c_ptr[Int8], Int64, Int32](
+    return external_call["mlock2", Int32, c_ptr[UInt8], Int64, Int32](
         addr, length, flags
     )
 
 
-def munlock(addr: c_ptr[Int8], length: Int64) -> Int32:
+def munlock(addr: c_ptr[UInt8], length: Int64) -> Int32:
     """C library <sys/mman.h> function `munlock`.
 
     Reference:
@@ -112,7 +112,7 @@ def munlock(addr: c_ptr[Int8], length: Int64) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["munlock", Int32, c_ptr[Int8], Int64](addr, length)
+    return external_call["munlock", Int32, c_ptr[UInt8], Int64](addr, length)
 
 
 def mlockall(flags: Int32) -> Int32:
@@ -151,13 +151,13 @@ def munlockall() -> Int32:
 
 
 def mmap(
-    addr: c_ptr[Int8],
+    addr: c_ptr[UInt8],
     length: Int64,
     prot: Int32,
     flags: Int32,
     fd: Int32,
     offset: Int64,
-) -> c_ptr[Int8]:
+) -> c_ptr[UInt8]:
     """C library <sys/mman.h> function `mmap`.
 
     Reference:
@@ -178,11 +178,11 @@ def mmap(
         The address of the mapped region, or MAP_FAILED on error.
     """
     return external_call[
-        "mmap", c_ptr[Int8], c_ptr[Int8], Int64, Int32, Int32, Int32, Int64
+        "mmap", c_ptr[UInt8], c_ptr[UInt8], Int64, Int32, Int32, Int32, Int64
     ](addr, length, prot, flags, fd, offset)
 
 
-def mprotect(addr: c_ptr[Int8], length: Int64, prot: Int32) -> Int32:
+def mprotect(addr: c_ptr[UInt8], length: Int64, prot: Int32) -> Int32:
     """C library <sys/mman.h> function `mprotect`.
 
     Reference:
@@ -200,12 +200,12 @@ def mprotect(addr: c_ptr[Int8], length: Int64, prot: Int32) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["mprotect", Int32, c_ptr[Int8], Int64, Int32](
+    return external_call["mprotect", Int32, c_ptr[UInt8], Int64, Int32](
         addr, length, prot
     )
 
 
-def msync(addr: c_ptr[Int8], length: Int64, flags: Int32) -> Int32:
+def msync(addr: c_ptr[UInt8], length: Int64, flags: Int32) -> Int32:
     """C library <sys/mman.h> function `msync`.
 
     Reference:
@@ -222,12 +222,12 @@ def msync(addr: c_ptr[Int8], length: Int64, flags: Int32) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["msync", Int32, c_ptr[Int8], Int64, Int32](
+    return external_call["msync", Int32, c_ptr[UInt8], Int64, Int32](
         addr, length, flags
     )
 
 
-def munmap(addr: c_ptr[Int8], length: Int64) -> Int32:
+def munmap(addr: c_ptr[UInt8], length: Int64) -> Int32:
     """C library <sys/mman.h> function `munmap`.
 
     Reference:
@@ -243,7 +243,7 @@ def munmap(addr: c_ptr[Int8], length: Int64) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["munmap", Int32, c_ptr[Int8], Int64](addr, length)
+    return external_call["munmap", Int32, c_ptr[UInt8], Int64](addr, length)
 
 
 def shm_open(name: String, oflag: Int32, mode: Int32) -> Int32:
@@ -287,7 +287,7 @@ def shm_unlink(name: String) -> Int32:
 
 
 def remap_file_pages(
-    addr: c_ptr[Int8], size: Int64, prot: Int32, pgoff: Int64, flags: Int32
+    addr: c_ptr[UInt8], size: Int64, prot: Int32, pgoff: Int64, flags: Int32
 ) -> Int32:
     """C library <sys/mman.h> function `remap_file_pages`.
 
@@ -309,11 +309,11 @@ def remap_file_pages(
         0 on success, -1 on error.
     """
     return external_call[
-        "remap_file_pages", Int32, c_ptr[Int8], Int64, Int32, Int64, Int32
+        "remap_file_pages", Int32, c_ptr[UInt8], Int64, Int32, Int64, Int32
     ](addr, size, prot, pgoff, flags)
 
 
-def posix_madvise(addr: c_ptr[Int8], length: Int64, advice: Int32) -> Int32:
+def posix_madvise(addr: c_ptr[UInt8], length: Int64, advice: Int32) -> Int32:
     """C library <sys/mman.h> function `posix_madvise`.
 
     Reference:
@@ -331,6 +331,6 @@ def posix_madvise(addr: c_ptr[Int8], length: Int64, advice: Int32) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["posix_madvise", Int32, c_ptr[Int8], Int64, Int32](
+    return external_call["posix_madvise", Int32, c_ptr[UInt8], Int64, Int32](
         addr, length, advice
     )

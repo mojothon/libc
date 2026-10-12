@@ -8,7 +8,7 @@ from std.memory import Pointer
 from libc.constant import c_ptr
 
 
-def fstatvfs(fd: Int32, buf: c_ptr[Int8]) -> Int32:
+def fstatvfs(fd: Int32, buf: c_ptr[UInt8]) -> Int32:
     """Libc POSIX `fstatvfs` function.
 
     Reference:
@@ -37,10 +37,10 @@ def fstatvfs(fd: Int32, buf: c_ptr[Int8]) -> Int32:
         - `f_flag`: Flags indicating the capabilities of the file system.
         - `f_namemax`: The maximum length of a file name.
     """
-    return external_call["fstatvfs", Int32, Int32, c_ptr[Int8]](fd, buf)
+    return external_call["fstatvfs", Int32, Int32, c_ptr[UInt8]](fd, buf)
 
 
-def statvfs(path: c_ptr[Int8], buf: c_ptr[Int8]) -> Int32:
+def statvfs(path: c_ptr[UInt8], buf: c_ptr[UInt8]) -> Int32:
     """Libc POSIX `statvfs` function.
 
     Reference:
@@ -70,4 +70,6 @@ def statvfs(path: c_ptr[Int8], buf: c_ptr[Int8]) -> Int32:
         - `f_flag`: Flags indicating the capabilities of the file system.
         - `f_namemax`: The maximum length of a file name.
     """
-    return external_call["statvfs", Int32, c_ptr[Int8], c_ptr[Int8]](path, buf)
+    return external_call["statvfs", Int32, c_ptr[UInt8], c_ptr[UInt8]](
+        path, buf
+    )

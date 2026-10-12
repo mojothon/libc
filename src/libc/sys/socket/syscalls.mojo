@@ -29,7 +29,7 @@ def bind(
 
 def recvfrom(
     socket: Int32,
-    buffer: c_ptr[Int8],
+    buffer: c_ptr[UInt8],
     length: UInt64,
     flags: Int32,
     address: c_ptr[socketaddr],
@@ -44,7 +44,7 @@ def recvfrom(
         "recvfrom",
         Int,
         Int32,
-        c_ptr[Int8],
+        c_ptr[UInt8],
         UInt64,
         Int32,
         c_ptr[socketaddr],
@@ -53,7 +53,7 @@ def recvfrom(
 
 
 def recv(
-    socket: Int32, buffer: c_ptr[Int8], length: UInt64, flags: Int32
+    socket: Int32, buffer: c_ptr[UInt8], length: UInt64, flags: Int32
 ) -> Int:
     """Libc POSIX `recv` function.
 
@@ -64,14 +64,14 @@ def recv(
         "recv",
         Int,  # FnName, RetType
         Int32,
-        c_ptr[Int8],
+        c_ptr[UInt8],
         UInt64,
         Int32,  # Args
     ](socket, buffer, length, flags)
 
 
 def send(
-    socket: Int32, buffer: c_ptr[Int8], length: UInt64, flags: Int32
+    socket: Int32, buffer: c_ptr[UInt8], length: UInt64, flags: Int32
 ) -> Int:
     """Libc POSIX `send` function.
 
@@ -89,7 +89,7 @@ def send(
         "send",
         Int,  # FnName, RetType
         Int32,
-        c_ptr[Int8],
+        c_ptr[UInt8],
         UInt64,
         Int32,  # Args
     ](socket, buffer, length, flags)
@@ -97,7 +97,7 @@ def send(
 
 def sendto(
     socket: Int32,
-    message: c_ptr[Int8],
+    message: c_ptr[UInt8],
     length: UInt64,
     flags: Int32,
     dest_addr: c_ptr[socketaddr],
@@ -121,7 +121,7 @@ def sendto(
         "sendto",
         Int,  # FnName, RetType
         Int32,
-        c_ptr[Int8],
+        c_ptr[UInt8],
         UInt64,
         Int32,
         c_ptr[socketaddr],

@@ -77,7 +77,7 @@ def craise(sig: Int32) -> Int32:
     return external_call["raise", Int32, Int32](sig)
 
 
-def sigaction(sig: Int32, act: c_ptr[Int8], oldact: c_ptr[Int8]) -> Int32:
+def sigaction(sig: Int32, act: c_ptr[UInt8], oldact: c_ptr[UInt8]) -> Int32:
     """C library <signal.h> function `sigaction`.
 
     Reference:
@@ -92,12 +92,12 @@ def sigaction(sig: Int32, act: c_ptr[Int8], oldact: c_ptr[Int8]) -> Int32:
         If the action is SIG_DFL, the default action for the signal is used.
         Otherwise, the action is specified by the handler argument.
     """
-    return external_call["sigaction", Int32, Int32, c_ptr[Int8], c_ptr[Int8]](
+    return external_call["sigaction", Int32, Int32, c_ptr[UInt8], c_ptr[UInt8]](
         sig, act, oldact
     )
 
 
-def sigaltstack(ss: c_ptr[Int8], oss: c_ptr[Int8]) -> Int32:
+def sigaltstack(ss: c_ptr[UInt8], oss: c_ptr[UInt8]) -> Int32:
     """C library <signal.h> function `sigaltstack`.
 
     Reference:
@@ -109,12 +109,12 @@ def sigaltstack(ss: c_ptr[Int8], oss: c_ptr[Int8]) -> Int32:
     Description:
         The sigaltstack() function sets the alternate signal stack.
     """
-    return external_call["sigaltstack", Int32, c_ptr[Int8], c_ptr[Int8]](
+    return external_call["sigaltstack", Int32, c_ptr[UInt8], c_ptr[UInt8]](
         ss, oss
     )
 
 
-def sigdelset(set: c_ptr[Int8], signo: Int32) -> Int32:
+def sigdelset(set: c_ptr[UInt8], signo: Int32) -> Int32:
     """C library <signal.h> function `sigdelset`.
 
     Reference:
@@ -126,10 +126,10 @@ def sigdelset(set: c_ptr[Int8], signo: Int32) -> Int32:
     Description:
         The sigdelset() function deletes the specified signal from the set.
     """
-    return external_call["sigdelset", Int32, c_ptr[Int8], Int32](set, signo)
+    return external_call["sigdelset", Int32, c_ptr[UInt8], Int32](set, signo)
 
 
-def sigemptyset(set: c_ptr[Int8]) -> Int32:
+def sigemptyset(set: c_ptr[UInt8]) -> Int32:
     """C library <signal.h> function `sigemptyset`.
 
     Reference:
@@ -141,10 +141,10 @@ def sigemptyset(set: c_ptr[Int8]) -> Int32:
     Description:
         The sigemptyset() function clears the set.
     """
-    return external_call["sigemptyset", Int32, c_ptr[Int8]](set)
+    return external_call["sigemptyset", Int32, c_ptr[UInt8]](set)
 
 
-def sigfillset(set: c_ptr[Int8]) -> Int32:
+def sigfillset(set: c_ptr[UInt8]) -> Int32:
     """C library <signal.h> function `sigfillset`.
 
     Reference:
@@ -156,10 +156,10 @@ def sigfillset(set: c_ptr[Int8]) -> Int32:
     Description:
         The sigfillset() function fills the set with all possible signals.
     """
-    return external_call["sigfillset", Int32, c_ptr[Int8]](set)
+    return external_call["sigfillset", Int32, c_ptr[UInt8]](set)
 
 
-def signal(signum: Int32, handler: c_ptr[Int8]) -> c_ptr[Int8]:
+def signal(signum: Int32, handler: c_ptr[UInt8]) -> c_ptr[UInt8]:
     """C library <signal.h> function `signal`.
 
     Reference:
@@ -181,12 +181,12 @@ def signal(signum: Int32, handler: c_ptr[Int8]) -> c_ptr[Int8]:
         The signal() function is equivalent to setting the handler to the specified action and then calling sigaction(signum, handler).
     """
 
-    return external_call["signal", c_ptr[Int8], Int32, c_ptr[Int8]](
+    return external_call["signal", c_ptr[UInt8], Int32, c_ptr[UInt8]](
         signum, handler
     )
 
 
-def sigprocmask(how: Int32, set: c_ptr[Int8], oldset: c_ptr[Int8]) -> Int32:
+def sigprocmask(how: Int32, set: c_ptr[UInt8], oldset: c_ptr[UInt8]) -> Int32:
     """C library <signal.h> function `sigprocmask`.
 
     Reference:
@@ -201,6 +201,6 @@ def sigprocmask(how: Int32, set: c_ptr[Int8], oldset: c_ptr[Int8]) -> Int32:
     Return Value:
         On success, sigprocmask() returns 0. On error, -1 is returned, and errno is set to indicate the error.
     """
-    return external_call["sigprocmask", Int32, Int32, c_ptr[Int8], c_ptr[Int8]](
-        how, set, oldset
-    )
+    return external_call[
+        "sigprocmask", Int32, Int32, c_ptr[UInt8], c_ptr[UInt8]
+    ](how, set, oldset)

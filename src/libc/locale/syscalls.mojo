@@ -63,7 +63,7 @@ def freelocale(locobj: locale_t) -> Int8:
 
 
 def newlocale(
-    category_mask: Int32, locale: c_ptr[Int8], base: locale_t
+    category_mask: Int32, locale: c_ptr[UInt8], base: locale_t
 ) -> locale_t:
     """C library <locale.h> function `newlocale`.
 
@@ -79,7 +79,7 @@ def newlocale(
     Return value:
         On success, the new locale object is returned. On error, NULL is returned.
     """
-    return external_call["newlocale", locale_t, Int32, c_ptr[Int8], locale_t](
+    return external_call["newlocale", locale_t, Int32, c_ptr[UInt8], locale_t](
         category_mask, locale, base
     )
 
@@ -102,7 +102,7 @@ def uselocale(locobj: locale_t) -> locale_t:
     return external_call["uselocale", locale_t, locale_t](locobj)
 
 
-def setlocale(category: Int32, locale: c_ptr[Int8]) -> c_ptr[Int8]:
+def setlocale(category: Int32, locale: c_ptr[UInt8]) -> c_ptr[UInt8]:
     """C library <locale.h> function `setlocale`.
 
     Reference:
@@ -117,7 +117,7 @@ def setlocale(category: Int32, locale: c_ptr[Int8]) -> c_ptr[Int8]:
     Return value:
         On success, the locale string is returned. On error, NULL is returned.
     """
-    return external_call["setlocale", c_ptr[Int8], Int32, c_ptr[Int8]](
+    return external_call["setlocale", c_ptr[UInt8], Int32, c_ptr[UInt8]](
         category, locale
     )
 

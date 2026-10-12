@@ -8,7 +8,7 @@ from std.memory import Pointer
 from libc.constant import c_ptr
 
 
-def getrandom(buf: c_ptr[Int8], buflen: UInt64, flags: UInt32) -> UInt64:
+def getrandom(buf: c_ptr[UInt8], buflen: UInt64, flags: UInt32) -> UInt64:
     """C library <sys/random.h> function `getrandom`.
 
     Reference:
@@ -22,6 +22,6 @@ def getrandom(buf: c_ptr[Int8], buflen: UInt64, flags: UInt32) -> UInt64:
     Returns:
         The number of bytes written to the buffer.
     """
-    return external_call["getrandom", UInt64, c_ptr[Int8], UInt64, UInt32](
+    return external_call["getrandom", UInt64, c_ptr[UInt8], UInt64, UInt32](
         buf, buflen, flags
     )

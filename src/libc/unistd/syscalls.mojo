@@ -8,7 +8,7 @@ from std.memory import Pointer
 from libc.constant import c_ptr
 
 
-def access(path: c_ptr[Int8], mode: Int32) -> Int32:
+def access(path: c_ptr[UInt8], mode: Int32) -> Int32:
     """Libc POSIX `access` function.
 
     Reference:
@@ -24,10 +24,10 @@ def access(path: c_ptr[Int8], mode: Int32) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["access", Int32, c_ptr[Int8], Int32](path, mode)
+    return external_call["access", Int32, c_ptr[UInt8], Int32](path, mode)
 
 
-def chdir(path: c_ptr[Int8]) -> Int32:
+def chdir(path: c_ptr[UInt8]) -> Int32:
     """Libc POSIX `chdir` function.
 
     Reference:
@@ -43,7 +43,7 @@ def chdir(path: c_ptr[Int8]) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["chdir", Int32, c_ptr[Int8]](path)
+    return external_call["chdir", Int32, c_ptr[UInt8]](path)
 
 
 def close(fd: Int32) -> Int32:
@@ -123,7 +123,7 @@ def dup3(oldfd: Int32, newfd: Int32, flags: Int32) -> Int32:
     )
 
 
-def environ() -> c_ptr[Int8]:
+def environ() -> c_ptr[UInt8]:
     """Libc POSIX `environ` function.
 
     Reference:
@@ -140,11 +140,11 @@ def environ() -> c_ptr[Int8]:
     Returns:
         The pointer to the array of strings.
     """
-    return external_call["environ", c_ptr[Int8]]()
+    return external_call["environ", c_ptr[UInt8]]()
 
 
 def execve(
-    path: c_ptr[Int8], argv: c_ptr[c_ptr[Int8]], envp: c_ptr[c_ptr[Int8]]
+    path: c_ptr[UInt8], argv: c_ptr[c_ptr[UInt8]], envp: c_ptr[c_ptr[UInt8]]
 ) -> Int32:
     """Libc POSIX `execve` function.
 
@@ -163,11 +163,11 @@ def execve(
         0 on success, -1 on error.
     """
     return external_call[
-        "execve", Int32, c_ptr[Int8], c_ptr[c_ptr[Int8]], c_ptr[c_ptr[Int8]]
+        "execve", Int32, c_ptr[UInt8], c_ptr[c_ptr[UInt8]], c_ptr[c_ptr[UInt8]]
     ](path, argv, envp)
 
 
-def execv(path: c_ptr[Int8], argv: c_ptr[c_ptr[Int8]]) -> Int32:
+def execv(path: c_ptr[UInt8], argv: c_ptr[c_ptr[UInt8]]) -> Int32:
     """Libc POSIX `execv` function.
 
     Reference:
@@ -183,12 +183,12 @@ def execv(path: c_ptr[Int8], argv: c_ptr[c_ptr[Int8]]) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["execv", Int32, c_ptr[Int8], c_ptr[c_ptr[Int8]]](
+    return external_call["execv", Int32, c_ptr[UInt8], c_ptr[c_ptr[UInt8]]](
         path, argv
     )
 
 
-def execvp(file: c_ptr[Int8], argv: c_ptr[c_ptr[Int8]]) -> Int32:
+def execvp(file: c_ptr[UInt8], argv: c_ptr[c_ptr[UInt8]]) -> Int32:
     """Libc POSIX `execvp` function.
 
     Reference:
@@ -205,7 +205,7 @@ def execvp(file: c_ptr[Int8], argv: c_ptr[c_ptr[Int8]]) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["execvp", Int32, c_ptr[Int8], c_ptr[c_ptr[Int8]]](
+    return external_call["execvp", Int32, c_ptr[UInt8], c_ptr[c_ptr[UInt8]]](
         file, argv
     )
 
@@ -303,7 +303,7 @@ def fsync(fd: Int32) -> Int32:
     return external_call["fsync", Int32, Int32](fd)
 
 
-def getcwd(buf: c_ptr[Int8], size: Int32) -> Int32:
+def getcwd(buf: c_ptr[UInt8], size: Int32) -> Int32:
     """Libc POSIX `getcwd` function.
 
     Reference:
@@ -320,7 +320,7 @@ def getcwd(buf: c_ptr[Int8], size: Int32) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["getcwd", Int32, c_ptr[Int8], Int32](buf, size)
+    return external_call["getcwd", Int32, c_ptr[UInt8], Int32](buf, size)
 
 
 def geteuid() -> Int32:
@@ -339,7 +339,7 @@ def geteuid() -> Int32:
 
 
 def getopt(
-    argc: Int32, argv: c_ptr[c_ptr[Int8]], optstring: c_ptr[Int8]
+    argc: Int32, argv: c_ptr[c_ptr[UInt8]], optstring: c_ptr[UInt8]
 ) -> Int32:
     """Libc POSIX `getopt` function.
 
@@ -358,7 +358,7 @@ def getopt(
         0 on success, -1 on error.
     """
     return external_call[
-        "getopt", Int32, Int32, c_ptr[c_ptr[Int8]], c_ptr[Int8]
+        "getopt", Int32, Int32, c_ptr[c_ptr[UInt8]], c_ptr[UInt8]
     ](argc, argv, optstring)
 
 
@@ -440,7 +440,7 @@ def isatty(fd: Int32) -> Int32:
     return external_call["isatty", Int32, Int32](fd)
 
 
-def link(oldpath: c_ptr[Int8], newpath: c_ptr[Int8]) -> Int32:
+def link(oldpath: c_ptr[UInt8], newpath: c_ptr[UInt8]) -> Int32:
     """Libc POSIX `link` function.
 
     Reference:
@@ -456,16 +456,16 @@ def link(oldpath: c_ptr[Int8], newpath: c_ptr[Int8]) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["link", Int32, c_ptr[Int8], c_ptr[Int8]](
+    return external_call["link", Int32, c_ptr[UInt8], c_ptr[UInt8]](
         oldpath, newpath
     )
 
 
 def linkat(
     olddirfd: Int32,
-    oldpath: c_ptr[Int8],
+    oldpath: c_ptr[UInt8],
     newdirfd: Int32,
-    newpath: c_ptr[Int8],
+    newpath: c_ptr[UInt8],
     flags: Int32,
 ) -> Int32:
     """Libc POSIX `linkat` function.
@@ -487,7 +487,7 @@ def linkat(
         0 on success, -1 on error.
     """
     return external_call[
-        "linkat", Int32, Int32, c_ptr[Int8], Int32, c_ptr[Int8], Int32
+        "linkat", Int32, Int32, c_ptr[UInt8], Int32, c_ptr[UInt8], Int32
     ](olddirfd, oldpath, newdirfd, newpath, flags)
 
 
@@ -532,7 +532,7 @@ def pipe(fds: c_ptr[Int32]) -> Int32:
     return external_call["pipe", Int32, c_ptr[Int32]](fds)
 
 
-def pread(fd: Int32, buf: c_ptr[Int8], count: UInt32, offset: Int8) -> UInt32:
+def pread(fd: Int32, buf: c_ptr[UInt8], count: UInt32, offset: Int8) -> UInt32:
     """Libc POSIX `pread` function.
 
     Reference:
@@ -552,12 +552,12 @@ def pread(fd: Int32, buf: c_ptr[Int8], count: UInt32, offset: Int8) -> UInt32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["pread", UInt32, Int32, c_ptr[Int8], UInt32, Int8](
+    return external_call["pread", UInt32, Int32, c_ptr[UInt8], UInt32, Int8](
         fd, buf, count, offset
     )
 
 
-def pwrite(fd: Int32, buf: c_ptr[Int8], count: UInt32, offset: Int8) -> UInt32:
+def pwrite(fd: Int32, buf: c_ptr[UInt8], count: UInt32, offset: Int8) -> UInt32:
     """Libc POSIX `pwrite` function.
 
     Reference:
@@ -577,12 +577,12 @@ def pwrite(fd: Int32, buf: c_ptr[Int8], count: UInt32, offset: Int8) -> UInt32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["pwrite", UInt32, Int32, c_ptr[Int8], UInt32, Int8](
+    return external_call["pwrite", UInt32, Int32, c_ptr[UInt8], UInt32, Int8](
         fd, buf, count, offset
     )
 
 
-def read(fd: Int32, buf: c_ptr[Int8], count: UInt32) -> UInt32:
+def read(fd: Int32, buf: c_ptr[UInt8], count: UInt32) -> UInt32:
     """Libc POSIX `read` function.
 
     Reference:
@@ -600,12 +600,12 @@ def read(fd: Int32, buf: c_ptr[Int8], count: UInt32) -> UInt32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["read", UInt32, Int32, c_ptr[Int8], UInt32](
+    return external_call["read", UInt32, Int32, c_ptr[UInt8], UInt32](
         fd, buf, count
     )
 
 
-def readlink(path: c_ptr[Int8], buf: c_ptr[Int8], size: Int32) -> Int32:
+def readlink(path: c_ptr[UInt8], buf: c_ptr[UInt8], size: Int32) -> Int32:
     """Libc POSIX `readlink` function.
 
     Reference:
@@ -623,13 +623,13 @@ def readlink(path: c_ptr[Int8], buf: c_ptr[Int8], size: Int32) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["readlink", Int32, c_ptr[Int8], c_ptr[Int8], Int32](
+    return external_call["readlink", Int32, c_ptr[UInt8], c_ptr[UInt8], Int32](
         path, buf, size
     )
 
 
 def readlinkat(
-    dirfd: Int32, path: c_ptr[Int8], buf: c_ptr[Int8], size: Int32
+    dirfd: Int32, path: c_ptr[UInt8], buf: c_ptr[UInt8], size: Int32
 ) -> Int32:
     """Libc POSIX `readlinkat` function.
 
@@ -650,11 +650,11 @@ def readlinkat(
         0 on success, -1 on error.
     """
     return external_call[
-        "readlinkat", Int32, Int32, c_ptr[Int8], c_ptr[Int8], Int32
+        "readlinkat", Int32, Int32, c_ptr[UInt8], c_ptr[UInt8], Int32
     ](dirfd, path, buf, size)
 
 
-def rmdir(path: c_ptr[Int8]) -> Int32:
+def rmdir(path: c_ptr[UInt8]) -> Int32:
     """Libc POSIX `rmdir` function.
 
     Reference:
@@ -669,10 +669,10 @@ def rmdir(path: c_ptr[Int8]) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["rmdir", Int32, c_ptr[Int8]](path)
+    return external_call["rmdir", Int32, c_ptr[UInt8]](path)
 
 
-def swab(a: c_ptr[Int8], b: c_ptr[Int8], size: Int32) -> Int8:
+def swab(a: c_ptr[UInt8], b: c_ptr[UInt8], size: Int32) -> Int8:
     """Libc POSIX `swab` function.
 
     Reference:
@@ -689,12 +689,12 @@ def swab(a: c_ptr[Int8], b: c_ptr[Int8], size: Int32) -> Int8:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["swab", Int8, c_ptr[Int8], c_ptr[Int8], Int32](
+    return external_call["swab", Int8, c_ptr[UInt8], c_ptr[UInt8], Int32](
         a, b, size
     )
 
 
-def symlink(oldpath: c_ptr[Int8], newpath: c_ptr[Int8]) -> Int32:
+def symlink(oldpath: c_ptr[UInt8], newpath: c_ptr[UInt8]) -> Int32:
     """Libc POSIX `symlink` function.
 
     Reference:
@@ -710,13 +710,13 @@ def symlink(oldpath: c_ptr[Int8], newpath: c_ptr[Int8]) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["symlink", Int32, c_ptr[Int8], c_ptr[Int8]](
+    return external_call["symlink", Int32, c_ptr[UInt8], c_ptr[UInt8]](
         oldpath, newpath
     )
 
 
 def symlinkat(
-    oldpath: c_ptr[Int8], newdirfd: Int32, newpath: c_ptr[Int8]
+    oldpath: c_ptr[UInt8], newdirfd: Int32, newpath: c_ptr[UInt8]
 ) -> Int32:
     """Libc POSIX `symlinkat` function.
 
@@ -734,7 +734,7 @@ def symlinkat(
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["symlinkat", Int32, c_ptr[Int8], Int32, c_ptr[Int8]](
+    return external_call["symlinkat", Int32, c_ptr[UInt8], Int32, c_ptr[UInt8]](
         oldpath, newdirfd, newpath
     )
 
@@ -758,7 +758,7 @@ def syscall(number: Int32) -> Int32:
     return external_call["syscall", Int32, Int32](number)
 
 
-def unlink(path: c_ptr[Int8]) -> Int32:
+def unlink(path: c_ptr[UInt8]) -> Int32:
     """Libc POSIX `unlink` function.
 
     Reference:
@@ -773,10 +773,10 @@ def unlink(path: c_ptr[Int8]) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["unlink", Int32, c_ptr[Int8]](path)
+    return external_call["unlink", Int32, c_ptr[UInt8]](path)
 
 
-def unlinkat(dirfd: Int32, path: c_ptr[Int8], flags: Int32) -> Int32:
+def unlinkat(dirfd: Int32, path: c_ptr[UInt8], flags: Int32) -> Int32:
     """Libc POSIX `unlinkat` function.
 
     Reference:
@@ -793,12 +793,12 @@ def unlinkat(dirfd: Int32, path: c_ptr[Int8], flags: Int32) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["unlinkat", Int32, Int32, c_ptr[Int8], Int32](
+    return external_call["unlinkat", Int32, Int32, c_ptr[UInt8], Int32](
         dirfd, path, flags
     )
 
 
-def truncate(path: c_ptr[Int8], length: Int64) -> Int32:
+def truncate(path: c_ptr[UInt8], length: Int64) -> Int32:
     """Libc POSIX `truncate` function.
 
     Reference:
@@ -814,10 +814,10 @@ def truncate(path: c_ptr[Int8], length: Int64) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["truncate", Int32, c_ptr[Int8], Int64](path, length)
+    return external_call["truncate", Int32, c_ptr[UInt8], Int64](path, length)
 
 
-def truncateat(dirfd: Int32, path: c_ptr[Int8], length: Int64) -> Int32:
+def truncateat(dirfd: Int32, path: c_ptr[UInt8], length: Int64) -> Int32:
     """Libc POSIX `truncateat` function.
 
     Reference:
@@ -834,12 +834,12 @@ def truncateat(dirfd: Int32, path: c_ptr[Int8], length: Int64) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["truncateat", Int32, Int32, c_ptr[Int8], Int64](
+    return external_call["truncateat", Int32, Int32, c_ptr[UInt8], Int64](
         dirfd, path, length
     )
 
 
-def write(fd: Int32, buf: c_ptr[Int8], count: UInt32) -> UInt32:
+def write(fd: Int32, buf: c_ptr[UInt8], count: UInt32) -> UInt32:
     """Libc POSIX `write` function.
 
     Reference:
@@ -857,12 +857,12 @@ def write(fd: Int32, buf: c_ptr[Int8], count: UInt32) -> UInt32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["write", UInt32, Int32, c_ptr[Int8], UInt32](
+    return external_call["write", UInt32, Int32, c_ptr[UInt8], UInt32](
         fd, buf, count
     )
 
 
-def writev(fd: Int32, iov: c_ptr[Int8], iovcnt: UInt32) -> UInt32:
+def writev(fd: Int32, iov: c_ptr[UInt8], iovcnt: UInt32) -> UInt32:
     """Libc POSIX `writev` function.
 
     Reference:
@@ -880,6 +880,6 @@ def writev(fd: Int32, iov: c_ptr[Int8], iovcnt: UInt32) -> UInt32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["writev", UInt32, Int32, c_ptr[Int8], UInt32](
+    return external_call["writev", UInt32, Int32, c_ptr[UInt8], UInt32](
         fd, iov, iovcnt
     )
