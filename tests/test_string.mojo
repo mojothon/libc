@@ -2,8 +2,14 @@ from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
 from libc.string import (
+    ffs,
+    ffsl,
+    ffsll,
     memchr,
     memcmp,
+    memmem,
+    memrchr,
+    stpcpy,
     strcasecmp,
     strchr,
     strcmp,
@@ -14,9 +20,11 @@ from libc.string import (
     strlen,
     strncasecmp,
     strncmp,
+    strncat,
     strnlen,
     strpbrk,
     strrchr,
+    strsep,
     strsignal,
     strspn,
     strstr,
@@ -185,6 +193,85 @@ def test_messages() raises:
     assert_true(strlen(strsignal(9)) > 0, "SIGKILL has a description")
 
 
+def test_strncat_and_stpcpy() raises:
+    var src = string_to_char_ptr("cdef")
+    var dst = unsafe_alloc[UInt8](16)
+    dst.unsafe_offset(0)[] = 97  # a
+    dst.unsafe_offset(1)[] = 98  # b
+    dst.unsafe_offset(2)[] = 0
+
+    _ = strncat(dst, src, 2)
+    assert_equal(char_ptr_to_string(dst), "abcd", "only two bytes of `src`")
+
+    # `stpcpy` hands back the end of what it wrote rather than the start.
+    var xy = string_to_char_ptr("xy")
+    var end = stpcpy(dst, xy)
+    assert_equal(Int(end) - Int(dst), 2, "the pointer is to the null byte")
+    assert_equal(char_ptr_to_string(dst), "xy")
+
+    dst.unsafe_free()
+    src.unsafe_free()
+    xy.unsafe_free()
+
+
+def test_memmem_and_memrchr() raises:
+    var haystack = string_to_char_ptr("hello, world")
+    var needle = string_to_char_ptr("world")
+    var absent = string_to_char_ptr("nowhere")
+
+    var found = memmem(
+        haystack.unsafe_bitcast[NoneType](),
+        12,
+        needle.unsafe_bitcast[NoneType](),
+        5,
+    )
+    assert_equal(Int(found) - Int(haystack), 7, "world starts at byte 7")
+
+    var nothing = memmem(
+        haystack.unsafe_bitcast[NoneType](),
+        12,
+        absent.unsafe_bitcast[NoneType](),
+        7,
+    )
+    assert_equal(Int(nothing), 0, "and `nowhere` is not in it")
+
+    # The last of the two `a`s, not the first, which is what `memchr` gives.
+    var ab = string_to_char_ptr("abcabc")
+    var last = memrchr(ab.unsafe_bitcast[NoneType](), 97, 6)
+    assert_equal(Int(last) - Int(ab), 3)
+
+    haystack.unsafe_free()
+    needle.unsafe_free()
+    absent.unsafe_free()
+    ab.unsafe_free()
+
+
+def test_strsep() raises:
+    var line = string_to_char_ptr("a,b,c")
+    var delim = string_to_char_ptr(",")
+    # `strsep` moves the caller's pointer along, so it needs somewhere for
+    # that pointer to live.
+    var walker = unsafe_alloc[c_ptr[UInt8]](1)
+    walker.unsafe_offset(0)[] = line
+
+    assert_equal(char_ptr_to_string(strsep(walker, delim)), "a")
+    assert_equal(char_ptr_to_string(strsep(walker, delim)), "b")
+    assert_equal(char_ptr_to_string(strsep(walker, delim)), "c")
+    assert_equal(Int(strsep(walker, delim)), 0, "and then it is finished")
+
+    walker.unsafe_free()
+    delim.unsafe_free()
+    line.unsafe_free()
+
+
+def test_ffs() raises:
+    assert_equal(ffs(0), 0, "no bits set is 0")
+    assert_equal(ffs(1), 1, "the first bit is at 1")
+    assert_equal(ffs(8), 4, "and 8 is the fourth")
+    assert_equal(ffsl(1 << 40), 41, "which `ffs` cannot see past 32 of")
+    assert_equal(ffsll(1 << 62), 63)
+
+
 def main() raises:
     test_strlen()
     test_strcpy()
@@ -195,4 +282,8 @@ def main() raises:
     test_strtok_r()
     test_strtok()
     test_messages()
+    test_strncat_and_stpcpy()
+    test_memmem_and_memrchr()
+    test_strsep()
+    test_ffs()
     print("test_string: ok")
