@@ -34,7 +34,7 @@ the bottom.
 | `libc.logging` | `<syslog.h>` | 4 |
 | `libc.fcntl` | `<fcntl.h>` | 4 |
 | `libc.dlfcn` | `<dlfcn.h>` | 4 |
-| `libc.wchar` | `<wchar.h>` | 2 |
+| `libc.wchar` | `<wchar.h>` | 27 |
 | `libc.sys.statvfs` | `<sys/statvfs.h>` | 2 |
 | `libc.sys.select` | `<sys/select.h>` | 2 |
 | `libc.setjmp` | `<setjmp.h>` | 2 |

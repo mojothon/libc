@@ -18,6 +18,7 @@ from test_stdlib import main as run_stdlib
 from test_string import main as run_string
 from test_time import main as run_time
 from test_utils import main as run_utils
+from test_wchar import main as run_wchar
 from test_version import main as run_version
 
 
@@ -34,5 +35,6 @@ def main() raises:
     run_string()
     run_time()
     run_utils()
+    run_wchar()
     run_version()
     print("all tests passed")

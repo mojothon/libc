@@ -7,6 +7,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- `libc.wchar` grows from `btowc` and `wctob` into the wide string functions
+  (`wcslen`, `wcscmp`, `wcsncmp`, `wcscpy`, `wcsncpy`, `wcscat`, `wcschr`,
+  `wcsrchr`, `wcsstr`, `wcsspn`, `wcscspn`), the conversions between wide and
+  multibyte (`mbstowcs`, `wcstombs`, `mbrtowc`, `wcrtomb`, `mbrlen`, over an
+  opaque `mbstate_t`), the classification predicates (`iswalpha`, `iswalnum`,
+  `iswdigit`, `iswspace`, `iswupper`, `iswlower`) and `towupper`/`towlower`.
 - `libc.string` grows the `<string.h>` functions it was missing: `strcmp`,
   `strncmp`, `strcasecmp`, `strncasecmp`, `strcoll`, `strxfrm`, `strchr`,
   `strrchr`, `strstr`, `strspn`, `strcspn`, `strpbrk`, `strtok`, `strtok_r`,
