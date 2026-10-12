@@ -11,8 +11,10 @@ from test_constant import main as run_constant
 from test_ctype import main as run_ctype
 from test_dirent import main as run_dirent
 from test_float import main as run_float
+from test_inttypes import main as run_inttypes
 from test_math import main as run_math
 from test_network import main as run_network
+from test_search import main as run_search
 from test_stdio import main as run_stdio
 from test_stdlib import main as run_stdlib
 from test_string import main as run_string
@@ -28,8 +30,10 @@ def main() raises:
     run_ctype()
     run_dirent()
     run_float()
+    run_inttypes()
     run_math()
     run_network()
+    run_search()
     run_stdio()
     run_stdlib()
     run_string()

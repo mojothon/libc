@@ -28,7 +28,7 @@ the bottom.
 | `libc.search` | `<search.h>` | 8 |
 | `libc.dirent` | `<dirent.h>` | 6 |
 | `libc.sys.wait` | `<sys/wait.h>` | 5 |
-| `libc.inttypes` | `<inttypes.h>` | 5 |
+| `libc.inttypes` | `<inttypes.h>` | 7 |
 | `libc.sys.resource` | `<sys/resource.h>` | 4 |
 | `libc.network` | `<arpa/inet.h>` byte order helpers | 4 |
 | `libc.logging` | `<syslog.h>` | 4 |
