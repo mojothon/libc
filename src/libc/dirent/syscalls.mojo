@@ -149,6 +149,10 @@ def rewinddir(dirp: c_ptr[DIR]):
         There is no result: C declares this one `void`. Unlike seeking back
         to a position from `telldir`, this also forgets about entries added
         to the directory since, so a later `readdir` can show them.
+
+        POSIX promises the stream is at the beginning again and says
+        nothing about the number `telldir` then gives, and the two do not
+        agree: on Darwin it is not the number it gave before the rewind.
     """
     external_call["rewinddir", NoneType, c_ptr[DIR]](dirp)
 
