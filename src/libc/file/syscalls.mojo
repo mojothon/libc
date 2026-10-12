@@ -557,7 +557,7 @@ def rewind(stream: c_ptr[FILE]) -> c_void:
         stream: A pointer to a stream.
 
     Returns:
-        A void.
+        Nothing: C declares this one `void`.
 
     Notes:
         [Reference](https://man7.org/linux/man-pages/man3/rewind.3p.html).
@@ -637,7 +637,10 @@ def pread(
             fildes: A File Descriptor to open the file with.
             buf: A pointer to a buffer to store the read string.
             nbyte: The maximum number of characters to read.
-            offset: An offset to seek to.
+            Where in the file to read from, counted in bytes from the
+            start. Where the stream was is left alone: this one does not
+            move it, which is what makes it different from reading after
+            `lseek`.
 
         Returns:
     How many bytes it read, which is fewer than were asked for at the
@@ -682,7 +685,10 @@ def pwrite(
         fildes: A File Descriptor to open the file with.
         buf: A pointer to a buffer to store the read string.
         nbyte: The maximum number of characters to read.
-        offset: An offset to seek to.
+        Where in the file to write, counted in bytes from the
+        start. Where the stream was is left alone: this one does not
+        move it, which is what makes it different from writing after
+        `lseek`.
 
     Returns:
         Amount of bytes written.
@@ -780,7 +786,7 @@ def clearerr(stream: c_ptr[FILE]) -> c_void:
         stream: A pointer to a stream.
 
     Returns:
-        A void.
+        Nothing: C declares this one `void`.
 
     Notes:
         [Reference](https://man7.org/linux/man-pages/man3/clearerr.3p.html).
@@ -827,7 +833,10 @@ def ioctl(fildes: c_int, request: c_ulong) -> c_int:
 
         Args:
             fildes: A File Descriptor to open the file with.
-            request: An offset to seek to.
+            What to ask for. Each thing that answers to `ioctl` has
+            its own set of these, and they are numbers written down in
+            `<sys/ioctl.h>`: there is no saying what one means without
+            knowing what it is being asked of.
 
         Returns:
     0, or -1 with `errno` set, for the requests that answer with
