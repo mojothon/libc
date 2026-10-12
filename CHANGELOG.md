@@ -3,7 +3,7 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.3.0] - 2026-10-12
+## [0.4.0] - 2026-10-12
 
 ### Added
 
@@ -13,6 +13,11 @@ All notable changes to this project are documented here. The format follows
   multibyte (`mbstowcs`, `wcstombs`, `mbrtowc`, `wcrtomb`, `mbrlen`, over an
   opaque `mbstate_t`), the classification predicates (`iswalpha`, `iswalnum`,
   `iswdigit`, `iswspace`, `iswupper`, `iswlower`) and `towupper`/`towlower`.
+
+## [0.3.0] - 2026-10-12
+
+### Added
+
 - `libc.string` grows the `<string.h>` functions it was missing: `strcmp`,
   `strncmp`, `strcasecmp`, `strncasecmp`, `strcoll`, `strxfrm`, `strchr`,
   `strrchr`, `strstr`, `strspn`, `strcspn`, `strpbrk`, `strtok`, `strtok_r`,
