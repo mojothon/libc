@@ -11,7 +11,8 @@ mojo = ">=1.1.0,<2"
 
 [tasks]
 test = "mojo run -I src -I tests tests/test_main.mojo"
-package = "mojo precompile src/libc -o dist/libc.mojoc"
+# `mojo precompile` will not create the output directory.
+package = "mkdir -p dist && mojo precompile src/libc -o dist/libc.mojoc"
 run = "mojo run -I src src/main.mojo"
 format = "mojo format src tests"
 # `mojo format` has no --check flag, so format a copy and diff it.
