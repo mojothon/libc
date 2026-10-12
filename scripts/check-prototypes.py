@@ -72,6 +72,10 @@ ALIASES: dict[str, str] = {
     # the caller must do, not as the name of the thing being called.
     "strcopy": "strcpy",
     "strncopy": "strncpy",
+    # C's name for this one is `mempcpy`, which reads as a spelling mistake
+    # next to the rest of the `mem*` family, so the binding spells it with
+    # the "co" of "copy" that the others do not have.
+    "mempcopy": "mempcpy",
     # errno is a macro that expands to a call to whichever of these this
     # libc has, and the setter is the same call written through. `__error` is
     # Darwin's spelling of `__errno_location` and is checked on the macOS run.
@@ -94,6 +98,18 @@ NOT_DECLARED_HERE = {
     # glibc declares `sched_getcpucount` only under `_GNU_SOURCE`, and an
     # older or non-glibc toolchain has nothing to say about it at all.
     "sched_getcpucount",
+    # `mempcpy` is declared as a macro over `__mempcpy` here, but the symbol
+    # is exported and links.
+    "mempcpy",
+}
+
+# A binding may say the result is something other than what C says, but only
+# when the difference is the point of it.
+RETURN_EXCEPTIONS = {
+    # `signal` returns the handler that was there before, which is a pointer
+    # to a function. Mojo has no type for one, so the binding returns its
+    # address instead.
+    "signal",
 }
 
 
@@ -112,8 +128,8 @@ def available_headers() -> list[str]:
     return found
 
 
-def read_prototypes() -> dict[str, tuple[int, bool, bool]]:
-    """{symbol: (fixed argument count, is variadic, uses long double)}."""
+def read_prototypes() -> dict[str, tuple[int, bool, bool, str]]:
+    """{symbol: (fixed argument count, variadic, uses long double, returns)}."""
     headers = available_headers()
     # Without these the extensions stay hidden: `getauxval`, `secure_getenv`,
     # `dup3`, `gettid` and the three `fe*except` are all glibc-only and none
@@ -140,19 +156,19 @@ def read_prototypes() -> dict[str, tuple[int, bool, bool]]:
             return {}
         listing = info.read_text(errors="replace")
 
-    table: dict[str, tuple[int, bool, bool]] = {}
+    table: dict[str, tuple[int, bool, bool, str]] = {}
     for line in listing.splitlines():
         m = re.search(r"extern\s+(.*?)\b(\w+)\s*\(([^;]*)\)\s*;", line)
         if not m:
             continue
-        return_type, name, params = m.group(1), m.group(2), m.group(3)
+        return_type, name, params = m.group(1).strip(), m.group(2), m.group(3)
         parts = [p.strip() for p in params.split(",") if p.strip()]
         variadic = any("..." in p for p in parts)
         fixed = 0 if parts == ["void"] else len([p for p in parts if "..." not in p])
         # `long double` is the 80-bit x87 type on x86-64 and Mojo has nothing
         # to pass for it, so a call to one of these cannot work.
         uses_long_double = "long double" in f"{return_type} {params}"
-        table[name] = (fixed, variadic, uses_long_double)
+        table[name] = (fixed, variadic, uses_long_double, return_type)
     return table
 
 
@@ -185,20 +201,63 @@ def split_args(text: str) -> list[str]:
     return [a for a in out if a]
 
 
-def bindings() -> list[tuple[str, str, str, int]]:
-    """(file, mojo name, c symbol, arguments passed) for every call."""
-    found: list[tuple[str, str, str, int]] = []
+def bindings() -> list[tuple[str, str, str, int, str]]:
+    """(file, mojo name, c symbol, arguments passed, mojo return type)."""
+    found: list[tuple[str, str, str, int, str]] = []
     for path in sorted(SRC.rglob("*.mojo")):
         src = path.read_text()
-        for m in re.finditer(r"^def (\w+)\((.*?)\)", src, re.M):
-            name, body = m.group(1), src[m.end():]
+        for m in re.finditer(r"^def (\w+)\(", src, re.M):
+            name = m.group(1)
+            # A signature can run over several lines, so count brackets to
+            # find the one that closes the argument list.
+            end, depth = m.end() - 1, 0
+            while end < len(src):
+                if src[end] == "(":
+                    depth += 1
+                elif src[end] == ")":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                end += 1
+
+            after = src[end + 1 :]
+            returns = re.match(r"\s*->\s*([^:]+?)\s*:", after)
+            if returns:
+                mojo_return, body_start = (
+                    returns.group(1),
+                    end + 1 + returns.end(),
+                )
+            else:
+                mojo_return, body_start = "None", end + 1 + after.index(":") + 1
+
+            body = src[body_start:]
             nxt = re.search(r"^def ", body, re.M)
             if nxt:
                 body = body[: nxt.start()]
-            for call in re.finditer(r'external_call\[\s*"(\w+)"', body):
-                symbol = call.group(1)
+            for call in re.finditer(r"external_call\[", body):
+                # The type list runs to the bracket that closes the one that
+                # opened it: `"symbol", return type, argument types...`.
+                j, depth = call.end() - 1, 0
+                while j < len(body):
+                    if body[j] == "[":
+                        depth += 1
+                    elif body[j] == "]":
+                        depth -= 1
+                        if depth == 0:
+                            break
+                    j += 1
+                types = split_args(body[call.end() : j])
+                if not types or not types[0].startswith('"'):
+                    continue
+                symbol = types[0].strip().strip('"')
+                # What the binding tells `external_call` the result is, which
+                # is what decides the value handed back, whatever the `def`
+                # says. `get_errno` says `Int32` here and dereferences what
+                # comes back, so the pointer is the thing to compare.
+                mojo_return = types[1].strip() if len(types) > 1 else "None"
+
                 # Walk to the matching close paren of the call itself.
-                i, depth = body.find("(", call.end()), 0
+                i, depth = body.find("(", j), 0
                 start = i + 1
                 while i < len(body):
                     if body[i] == "(":
@@ -209,8 +268,53 @@ def bindings() -> list[tuple[str, str, str, int]]:
                             break
                     i += 1
                 args = split_args(body[start:i])
-                found.append((str(path.relative_to(ROOT)), name, symbol, len(args)))
+                found.append(
+                    (
+                        str(path.relative_to(ROOT)),
+                        name,
+                        symbol,
+                        len(args),
+                        mojo_return,
+                    )
+                )
     return found
+
+
+# What a type is for, in the only terms the two languages can be compared
+# in. Anything that is none of these is a struct, and a struct returned by
+# value is not something this can have an opinion about.
+POINTERISH = ("c_ptr", "Pointer", "UnsafePointer", "c_string", "c_immutable")
+FLOATISH = ("Float32", "Float64", "c_float", "c_double", "Float16", "BFloat16")
+INTISH = (
+    "Int", "UInt", "Bool", "c_int", "c_uint", "c_long", "c_short", "c_char",
+    "c_uchar", "c_schar", "c_size_t", "c_ssize_t", "size_t", "ssize_t",
+)
+
+
+def c_kind(c_type: str) -> str:
+    if "*" in c_type:
+        return "pointer"
+    if c_type == "void":
+        return "nothing"
+    # A complex is two floats returned as one value, which is what the Mojo
+    # side models with a struct.
+    if "struct" in c_type or "union" in c_type or "complex" in c_type:
+        return "struct"
+    if "double" in c_type or "float" in c_type:
+        return "float"
+    return "integer"
+
+
+def mojo_kind(mojo_type: str) -> str:
+    if any(mojo_type.startswith(kind) for kind in POINTERISH):
+        return "pointer"
+    if mojo_type in ("None", ""):
+        return "nothing"
+    if mojo_type in FLOATISH:
+        return "float"
+    if any(mojo_type.startswith(kind) for kind in INTISH):
+        return "integer"
+    return "struct"
 
 
 def main() -> int:
@@ -220,7 +324,7 @@ def main() -> int:
 
     problems: list[str] = []
 
-    for path, name, symbol, passed in bindings():
+    for path, name, symbol, passed, mojo_return in bindings():
         where = f"{path}: {name}() calls {symbol}()"
 
         if symbol not in prototypes:
@@ -228,7 +332,7 @@ def main() -> int:
                 problems.append(f"{where}, which no header declares")
             continue
 
-        fixed, variadic, long_double = prototypes[symbol]
+        fixed, variadic, long_double, c_return = prototypes[symbol]
         if variadic:
             if passed < fixed:
                 problems.append(
@@ -242,6 +346,20 @@ def main() -> int:
         if long_double:
             problems.append(
                 f"{where}, whose prototype uses `long double`, which Mojo cannot pass"
+            )
+
+        # `external_call` hands back whatever it is told the result is, so a
+        # binding that says `Int32` over a C function returning `char *` will
+        # hand out a truncated address and never say a word about it.
+        want, got = c_kind(c_return), mojo_kind(mojo_return)
+        if (
+            want != got
+            and "struct" not in (want, got)
+            and symbol not in RETURN_EXCEPTIONS
+        ):
+            problems.append(
+                f"{where}, which returns {c_return}, so it cannot return"
+                f" {mojo_return} ({want}, not {got})"
             )
 
         # A function that calls something C spells differently is usually a
