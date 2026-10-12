@@ -115,36 +115,20 @@ def test_statvfs() raises:
     assert_equal(statvfs(path, buf), 0, "statvfs succeeded")
     path.unsafe_free()
 
-    var raw = buf.unsafe_bitcast[UInt64]()
-    for i in range(14):
-        print("probe word", i, raw.unsafe_load(i))
-    print(
-        "probe bsize",
-        buf[].f_bsize,
-        "frsize",
-        buf[].f_frsize,
-        "blocks",
-        buf[].f_blocks,
-        "bfree",
-        buf[].f_bfree,
-        "files",
-        buf[].f_files,
-        "flag",
-        buf[].f_flag,
-        "namemax",
-        buf[].f_namemax,
-    )
-    assert_true(buf[].f_bsize > 0, "the file system has a block size")
-    assert_true(buf[].f_blocks > 0, "the file system has blocks")
-    assert_true(buf[].f_frsize > 0, "the file system has a fragment size")
-    # A block size bigger than a megabyte would mean these bytes are not where
-    # the struct says they are.
+    assert_true(buf[].f_bsize() > 0, "the file system has a block size")
+    assert_true(buf[].f_frsize() > 0, "the file system has a fragment size")
+    assert_true(buf[].f_blocks() > 0, "the file system has blocks")
     assert_true(
-        buf[].f_bsize <= 1 << 20, "the block size is a sane number of bytes"
+        buf[].f_bavail() <= buf[].f_blocks(),
+        "available blocks are not more than blocks",
     )
-    # Left alone on purpose: APFS reports 0 for `f_namemax`, and shares space
-    # between volumes, so `f_bfree` can exceed `f_blocks`. Neither is something
-    # both platforms promise.
+    assert_true(buf[].f_namemax() > 0, "the file system allows names")
+    # A fragment size is a power of two and nowhere near a megabyte; a number
+    # that is not would mean these bytes are not where the struct says.
+    assert_true(
+        buf[].f_frsize() <= 1 << 20,
+        "the fragment size is a sane number of bytes",
+    )
 
     buf.unsafe_free()
 

@@ -14,7 +14,8 @@ All notable changes to this project are documented here. The format follows
   plus `pselect`. The sets used to be opaque pointers, so there was no way to
   put a descriptor in one.
 - `libc.sys.statvfs`: a `Statvfs` struct for `statvfs` and `fstatvfs` to fill,
-  which used to take a byte pointer.
+  which used to take a byte pointer. Its block and inode counts are 64-bit on
+  Linux and 32-bit on Darwin, so they are read at the width that fits.
 - `libc.errno.set_errno` and `libc.sys.resource.getrusage`.
 
 ### Fixed
@@ -24,7 +25,7 @@ All notable changes to this project are documented here. The format follows
   144 real), `struct rusage` and `epoll_event` (both empty), `struct rlimit`
   (8 modelled, 16 real), `pthread_attr_t` (32 modelled, 56 on glibc).
 - `timespec` and `timeval` held a 32-bit `tv_sec`, so every second count read
-  wrong.
+  wrong. Same mistake in `st_blksize`: 32-bit on Darwin, read as 64.
 - `wait4` ignored its `rusage` argument and called `waitpid` instead.
 - `pthread_attr_init`, `pthread_attr_destroy` and `pthread_attr_getdetachstate`
   took the attribute object by value; C takes it by address.

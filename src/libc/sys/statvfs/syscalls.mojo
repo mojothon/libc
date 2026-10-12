@@ -4,58 +4,97 @@
 # github: github.com/llango
 # ----------------------------------
 from std.ffi import external_call
+from std.sys import CompilationTarget
 
 from libc.constant import c_ptr
 
 
 struct Statvfs:
-    """A C `struct statvfs`: what the file system says about itself.
+    """A C `struct statvfs`: what a file system says about itself.
 
-    The eleven members sit at the same offsets on Linux and Darwin. The sizes
-    do not match — Linux's is 112 bytes because it ends in six spare ints,
-    Darwin's stops at 88 — so this declares the members and pads to the
-    larger, which means libc cannot overrun it on either platform.
+    The members come in the same order on both platforms, but not in the same
+    width: Linux's block and inode counts are 64-bit and its struct is 112
+    bytes, while Darwin's are 32-bit and its struct is 64 bytes. So the bytes
+    are held in slots and each member is read at the offset and width that fit
+    the platform, the way `struct stat` does it.
     """
 
-    var f_bsize: UInt64
-    """The preferred block size for I/O on this file system."""
-    var f_frsize: UInt64
-    """The fundamental block size, the unit the counts below are in."""
-    var f_blocks: UInt64
-    """How many blocks the file system has, in `f_frsize` units."""
-    var f_bfree: UInt64
-    """How many blocks are free."""
-    var f_bavail: UInt64
-    """How many blocks are free to a process that is not root."""
-    var f_files: UInt64
-    """How many inodes the file system has."""
-    var f_ffree: UInt64
-    """How many inodes are free."""
-    var f_favail: UInt64
-    """How many inodes are free to a process that is not root."""
-    var f_fsid: UInt64
-    """An identifier for the file system."""
-    var f_flag: UInt64
-    """The mount flags, `ST_RDONLY` and `ST_NOSUID` among them."""
-    var f_namemax: UInt64
-    """The longest file name the file system allows."""
-    var _spare: Array[UInt8, 24]
-    """The room glibc's six spare ints need; Darwin leaves it alone."""
+    var _slots: Array[UInt64, 14]
 
     def __init__(out self):
-        """Zeroes every member and the spare room."""
-        self.f_bsize = 0
-        self.f_frsize = 0
-        self.f_blocks = 0
-        self.f_bfree = 0
-        self.f_bavail = 0
-        self.f_files = 0
-        self.f_ffree = 0
-        self.f_favail = 0
-        self.f_fsid = 0
-        self.f_flag = 0
-        self.f_namemax = 0
-        self._spare = Array[UInt8, 24](fill=0)
+        """Zeroes every member, which is what `memset` would leave behind."""
+        self._slots = Array[UInt64, 14](fill=0)
+
+    def f_bsize(self) -> UInt64:
+        """The preferred block size for I/O on this file system."""
+        return self._slots[0]
+
+    def f_frsize(self) -> UInt64:
+        """The fundamental block size, the unit the counts below are in."""
+        return self._slots[1]
+
+    def f_blocks(self) -> UInt64:
+        """How many blocks the file system has, in `f_frsize` units."""
+        comptime if CompilationTarget.is_macos():
+            return self._slots[2] & 0xFFFFFFFF
+        else:
+            return self._slots[2]
+
+    def f_bfree(self) -> UInt64:
+        """How many blocks are free."""
+        comptime if CompilationTarget.is_macos():
+            return self._slots[2] >> 32
+        else:
+            return self._slots[3]
+
+    def f_bavail(self) -> UInt64:
+        """How many blocks are free to a process that is not root."""
+        comptime if CompilationTarget.is_macos():
+            return self._slots[3] & 0xFFFFFFFF
+        else:
+            return self._slots[4]
+
+    def f_files(self) -> UInt64:
+        """How many inodes the file system has."""
+        comptime if CompilationTarget.is_macos():
+            return self._slots[3] >> 32
+        else:
+            return self._slots[5]
+
+    def f_ffree(self) -> UInt64:
+        """How many inodes are free."""
+        comptime if CompilationTarget.is_macos():
+            return self._slots[4] & 0xFFFFFFFF
+        else:
+            return self._slots[6]
+
+    def f_favail(self) -> UInt64:
+        """How many inodes are free to a process that is not root."""
+        comptime if CompilationTarget.is_macos():
+            return self._slots[4] >> 32
+        else:
+            return self._slots[7]
+
+    def f_fsid(self) -> UInt64:
+        """An identifier for the file system."""
+        comptime if CompilationTarget.is_macos():
+            return self._slots[5]
+        else:
+            return self._slots[8]
+
+    def f_flag(self) -> UInt64:
+        """The mount flags, `ST_RDONLY` and `ST_NOSUID` among them."""
+        comptime if CompilationTarget.is_macos():
+            return self._slots[6]
+        else:
+            return self._slots[9]
+
+    def f_namemax(self) -> UInt64:
+        """The longest file name the file system allows."""
+        comptime if CompilationTarget.is_macos():
+            return self._slots[7]
+        else:
+            return self._slots[10]
 
 
 def statvfs(path: c_ptr[UInt8], buf: c_ptr[Statvfs]) -> Int32:

@@ -64,6 +64,12 @@ def test_stat_reads_a_real_file() raises:
     assert_true(buf[].rdev() != 0, "/dev/null has a device number")
     assert_true(buf[].mode() != 0, "/dev/null has a mode")
     assert_true(buf[].mtime() > 0, "/dev/null has a timestamp")
+    # 32-bit on Darwin and 64-bit on Linux, so a blksize in the millions means
+    # the slot was read at the wrong width.
+    assert_true(
+        buf[].blksize() > 0 and buf[].blksize() <= 1 << 20,
+        "/dev/null has a plausible block size",
+    )
 
     buf.unsafe_free()
 

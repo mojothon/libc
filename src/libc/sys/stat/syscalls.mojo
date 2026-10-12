@@ -205,7 +205,8 @@ struct Stat:
     def blksize(self) -> Int64:
         """The preferred block size for I/O on this file."""
         comptime if CompilationTarget.is_macos():
-            return self._slots[12]
+            # A 32-bit `blksize_t`, followed by `st_flags`.
+            return Int64(self._slots[12] & 0xFFFFFFFF)
         else:
             return self._slots[7]
 
