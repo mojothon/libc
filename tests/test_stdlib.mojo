@@ -1,6 +1,7 @@
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
+from libc.constant import c_ptr
 from libc.file import close
 from libc.stdio import remove
 from libc.stdlib import (
@@ -10,18 +11,23 @@ from libc.stdlib import (
     calloc,
     free,
     getenv,
+    getsubopt,
+    initstate,
     malloc,
     mkstemp,
     rand,
+    random,
     realpath,
     realloc,
     setenv,
+    setstate,
     srand,
+    srandom,
     strtol,
     strtod,
     unsetenv,
 )
-from libc.utils import char_ptr_to_string, string_to_char_ptr
+from libc.utils import char_ptr_to_string, null_ptr, string_to_char_ptr
 
 
 def test_malloc() raises:
@@ -117,6 +123,53 @@ def test_paths() raises:
     tpl.unsafe_free()
 
 
+def test_random() raises:
+    """`random`, and the state it draws from."""
+    srandom(42)
+    var first = random()
+    assert_true(first != random(), "the numbers move on")
+
+    srandom(42)
+    assert_equal(random(), first, "the same seed gives the same run again")
+
+    var state = unsafe_alloc[UInt8](256)
+    srandom(42)
+    var with_default = random()
+
+    var previous = initstate(42, state, 256)
+    assert_true(Int(UInt(previous)) != 0, "it hands back the state before it")
+
+    # Going back to that state brings back the run the default generator
+    # was in the middle of, which is the whole point of the pair.
+    _ = setstate(previous)
+    srandom(42)
+    assert_equal(random(), with_default, "and setting it back restores it")
+    state.unsafe_free()
+
+
+def test_getsubopt() raises:
+    var ro = string_to_char_ptr("ro")
+    var rw = string_to_char_ptr("rw")
+    var tokens = unsafe_alloc[c_ptr[UInt8]](3)
+    tokens.unsafe_offset(0)[] = ro
+    tokens.unsafe_offset(1)[] = rw
+    tokens.unsafe_offset(2)[] = null_ptr[UInt8]()
+
+    var optionp = unsafe_alloc[c_ptr[UInt8]](1)
+    optionp.unsafe_offset(0)[] = string_to_char_ptr("rw,ro")
+    var valuep = unsafe_alloc[c_ptr[UInt8]](1)
+
+    assert_equal(getsubopt(optionp, tokens, valuep), 1, "rw is the second")
+    assert_equal(getsubopt(optionp, tokens, valuep), 0, "and ro the first")
+    assert_equal(getsubopt(optionp, tokens, valuep), -1, "then it is done")
+
+    ro.unsafe_free()
+    rw.unsafe_free()
+    tokens.unsafe_free()
+    optionp.unsafe_free()
+    valuep.unsafe_free()
+
+
 def main() raises:
     test_malloc()
     test_calloc()
@@ -124,5 +177,7 @@ def main() raises:
     test_conversions()
     test_environment()
     test_rand()
+    test_random()
+    test_getsubopt()
     test_paths()
     print("test_stdlib: ok")

@@ -10,6 +10,7 @@ from test_complex import main as run_complex
 from test_constant import main as run_constant
 from test_ctype import main as run_ctype
 from test_dirent import main as run_dirent
+from test_fcntl import main as run_fcntl
 from test_fenv import main as run_fenv
 from test_float import main as run_float
 from test_inttypes import main as run_inttypes
@@ -34,6 +35,7 @@ def main() raises:
     run_constant()
     run_ctype()
     run_dirent()
+    run_fcntl()
     run_fenv()
     run_float()
     run_inttypes()
