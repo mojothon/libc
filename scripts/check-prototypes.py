@@ -248,6 +248,42 @@ def split_args(text: str) -> list[str]:
     return [a for a in out if a]
 
 
+def module_counts() -> dict[str, int]:
+    """{package: functions, structs and public constants it defines}.
+
+    What the number in `docs/modules.md` counts. `libc.float` defines no
+    function at all and is listed as 30, which is the number of `FLT_*` and
+    `DBL_*` limits C puts in the header, so a count of functions alone would
+    call it zero.
+    """
+    counts: dict[str, int] = {}
+    for path in sorted(SRC.rglob("*.mojo")):
+        if path.name == "__init__.mojo" or path.parent == SRC:
+            continue
+        text = path.read_text()
+        package = "libc." + str(path.parent.relative_to(SRC)).replace("/", ".")
+        defined = re.findall(r"^(?:def|struct|comptime) (\w+)", text, re.M)
+        # A leading underscore is private and a `c_` prefix is a type, and
+        # neither is a thing the package hands out.
+        public = [
+            name
+            for name in defined
+            if not name.startswith("_") and not name.startswith("c_")
+        ]
+        counts[package] = counts.get(package, 0) + len(public)
+    return counts
+
+
+def documented_counts() -> dict[str, int]:
+    """What `docs/modules.md` says each package has."""
+    counts: dict[str, int] = {}
+    for line in (ROOT / "docs" / "modules.md").read_text().splitlines():
+        m = re.match(r"^\|\s*`(libc(?:\.\w+)+)`\s*\|.*\|\s*(\d+)\s*\|\s*$", line)
+        if m:
+            counts[m.group(1)] = int(m.group(2))
+    return counts
+
+
 def bindings() -> list[tuple[str, str, str, int, str, tuple[str, ...]]]:
     """(file, mojo name, symbol, arguments passed, return, argument types)."""
     found: list[tuple[str, str, str, int, str, tuple[str, ...]]] = []
@@ -453,6 +489,17 @@ def main() -> int:
             problems.append(
                 f"{where}, and is not named after it"
                 + (f" (allowed: {ALIASES[name]})" if name in ALIASES else "")
+            )
+
+    # `docs/modules.md` puts a number next to every package, and a number
+    # nobody checks is a number that stops being true the moment a function
+    # is added.
+    for package, documented in sorted(documented_counts().items()):
+        actual = module_counts().get(package, 0)
+        if actual != documented:
+            problems.append(
+                f"docs/modules.md: {package} is listed as {documented} and"
+                f" defines {actual}"
             )
 
     if problems:
