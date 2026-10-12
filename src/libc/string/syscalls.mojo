@@ -81,7 +81,7 @@ def memcpy(
 def mempcopy(
     dest: c_ptr[NoneType], src: c_ptr[NoneType], n: UInt64
 ) -> c_ptr[NoneType]:
-    return external_call["mempcopy", c_ptr[NoneType]](dest, src, n)
+    return external_call["mempcpy", c_ptr[NoneType]](dest, src, n)
 
 
 @inline(.nodebug)
