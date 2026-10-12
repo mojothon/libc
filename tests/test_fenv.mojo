@@ -126,143 +126,70 @@ def test_environment_round_trip() raises:
 
 
 def probe() raises:
-    # Temporary: ask Darwin what its macros are instead of guessing.
-    # Unrolled on purpose, and every call takes a different argument:
-    # in a loop the compiler hoists these calls out and folds the
-    # second `rint` into the first, which is what made the last two
-    # attempts print the same number eight times.
+    # Temporary: which numbers does Darwin accept as a rounding mode?
+    # `feclearexcept` is called alongside as a control: it returns 0 for
+    # every value, so if `fesetround` echoes its argument back it is
+    # rejecting it, not being folded by the compiler.
     print("probe initial round", fegetround())
-    var rc0 = fesetround(Int32(0))
     print(
-        "probe v 0 rc",
-        rc0,
-        "rint",
-        rint(strtod(string_to_char_ptr("0.5"))),
-        rint(strtod(string_to_char_ptr("1.5"))),
-        rint(strtod(string_to_char_ptr("-0.5"))),
+        "probe v 0 fesetround",
+        fesetround(Int32(0)),
+        "feclearexcept",
+        feclearexcept(Int32(0)),
     )
-    var rc1 = fesetround(Int32(1))
     print(
-        "probe v 1 rc",
-        rc1,
-        "rint",
-        rint(strtod(string_to_char_ptr("0.50"))),
-        rint(strtod(string_to_char_ptr("1.50"))),
-        rint(strtod(string_to_char_ptr("-0.50"))),
+        "probe v 1 fesetround",
+        fesetround(Int32(1)),
+        "feclearexcept",
+        feclearexcept(Int32(1)),
     )
-    var rc2 = fesetround(Int32(2))
     print(
-        "probe v 2 rc",
-        rc2,
-        "rint",
-        rint(strtod(string_to_char_ptr("0.500"))),
-        rint(strtod(string_to_char_ptr("1.500"))),
-        rint(strtod(string_to_char_ptr("-0.500"))),
+        "probe v 2 fesetround",
+        fesetround(Int32(2)),
+        "feclearexcept",
+        feclearexcept(Int32(2)),
     )
-    var rc3 = fesetround(Int32(3))
     print(
-        "probe v 3 rc",
-        rc3,
-        "rint",
-        rint(strtod(string_to_char_ptr("0.5000"))),
-        rint(strtod(string_to_char_ptr("1.5000"))),
-        rint(strtod(string_to_char_ptr("-0.5000"))),
+        "probe v 3 fesetround",
+        fesetround(Int32(3)),
+        "feclearexcept",
+        feclearexcept(Int32(3)),
     )
-    var rc4 = fesetround(Int32(4))
     print(
-        "probe v 4 rc",
-        rc4,
-        "rint",
-        rint(strtod(string_to_char_ptr("0.50000"))),
-        rint(strtod(string_to_char_ptr("1.50000"))),
-        rint(strtod(string_to_char_ptr("-0.50000"))),
+        "probe v 0x400 fesetround",
+        fesetround(Int32(0x400)),
+        "feclearexcept",
+        feclearexcept(Int32(0x400)),
     )
-    var rc5 = fesetround(Int32(5))
     print(
-        "probe v 5 rc",
-        rc5,
-        "rint",
-        rint(strtod(string_to_char_ptr("0.500000"))),
-        rint(strtod(string_to_char_ptr("1.500000"))),
-        rint(strtod(string_to_char_ptr("-0.500000"))),
+        "probe v 0x800 fesetround",
+        fesetround(Int32(0x800)),
+        "feclearexcept",
+        feclearexcept(Int32(0x800)),
     )
-    var rc6 = fesetround(Int32(6))
     print(
-        "probe v 6 rc",
-        rc6,
-        "rint",
-        rint(strtod(string_to_char_ptr("0.5000000"))),
-        rint(strtod(string_to_char_ptr("1.5000000"))),
-        rint(strtod(string_to_char_ptr("-0.5000000"))),
+        "probe v 0xC00 fesetround",
+        fesetround(Int32(0xC00)),
+        "feclearexcept",
+        feclearexcept(Int32(0xC00)),
     )
-    var rc7 = fesetround(Int32(7))
     print(
-        "probe v 7 rc",
-        rc7,
-        "rint",
-        rint(strtod(string_to_char_ptr("0.50000000"))),
-        rint(strtod(string_to_char_ptr("1.50000000"))),
-        rint(strtod(string_to_char_ptr("-0.50000000"))),
+        "probe v 0x400000 fesetround",
+        fesetround(Int32(0x400000)),
+        "feclearexcept",
+        feclearexcept(Int32(0x400000)),
     )
-    var c0 = feclearexcept(Int32(0x1F))
-    var r0 = feraiseexcept(Int32(1 << 0))
     print(
-        "probe bit 0 clear",
-        c0,
-        "raise",
-        r0,
-        "seen",
-        fetestexcept(Int32(0x1F) | Int32(1 << 5)),
+        "probe v 0x800000 fesetround",
+        fesetround(Int32(0x800000)),
+        "feclearexcept",
+        feclearexcept(Int32(0x800000)),
     )
-    var c1 = feclearexcept(Int32(0x1F))
-    var r1 = feraiseexcept(Int32(1 << 1))
     print(
-        "probe bit 1 clear",
-        c1,
-        "raise",
-        r1,
-        "seen",
-        fetestexcept(Int32(0x1F) | Int32(1 << 6)),
-    )
-    var c2 = feclearexcept(Int32(0x1F))
-    var r2 = feraiseexcept(Int32(1 << 2))
-    print(
-        "probe bit 2 clear",
-        c2,
-        "raise",
-        r2,
-        "seen",
-        fetestexcept(Int32(0x1F) | Int32(1 << 7)),
-    )
-    var c3 = feclearexcept(Int32(0x1F))
-    var r3 = feraiseexcept(Int32(1 << 3))
-    print(
-        "probe bit 3 clear",
-        c3,
-        "raise",
-        r3,
-        "seen",
-        fetestexcept(Int32(0x1F) | Int32(1 << 8)),
-    )
-    var c4 = feclearexcept(Int32(0x1F))
-    var r4 = feraiseexcept(Int32(1 << 4))
-    print(
-        "probe bit 4 clear",
-        c4,
-        "raise",
-        r4,
-        "seen",
-        fetestexcept(Int32(0x1F) | Int32(1 << 9)),
-    )
-    var c5 = feclearexcept(Int32(0x1F))
-    var r5 = feraiseexcept(Int32(1 << 5))
-    print(
-        "probe bit 5 clear",
-        c5,
-        "raise",
-        r5,
-        "seen",
-        fetestexcept(Int32(0x1F) | Int32(1 << 10)),
+        "probe v 0xC00000 fesetround",
+        fesetround(Int32(0xC00000)),
+        "feclearexcept",
+        feclearexcept(Int32(0xC00000)),
     )
     _ = feclearexcept(Int32(0x1F))
     _ = fesetround(Int32(0))
