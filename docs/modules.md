@@ -27,24 +27,23 @@ the bottom.
 | `libc.sys.epoll` | `<sys/epoll.h>` | 8 |
 | `libc.search` | `<search.h>` | 8 |
 | `libc.dirent` | `<dirent.h>` | 6 |
-| `libc.sys.wait` | `<sys/wait.h>` | 5 |
+| `libc.sys.wait` | `<sys/wait.h>` | 4 |
 | `libc.inttypes` | `<inttypes.h>` | 7 |
-| `libc.sys.resource` | `<sys/resource.h>` | 4 |
+| `libc.sys.resource` | `<sys/resource.h>` | 5 |
 | `libc.network` | `<arpa/inet.h>` byte order helpers | 4 |
 | `libc.logging` | `<syslog.h>` | 4 |
 | `libc.fcntl` | `<fcntl.h>` | 4 |
 | `libc.dlfcn` | `<dlfcn.h>` | 4 |
 | `libc.wchar` | `<wchar.h>` | 27 |
-| `libc.sys.statvfs` | `<sys/statvfs.h>` | 2 |
-| `libc.sys.select` | `<sys/select.h>` | 2 |
+| `libc.sys.statvfs` | `<sys/statvfs.h>` | 3 |
+| `libc.sys.select` | `<sys/select.h>` | 9 |
 | `libc.setjmp` | `<setjmp.h>` | 2 |
-| `libc.sys.utsname` | `<sys/utsname.h>` | 1 |
+| `libc.sys.utsname` | `<sys/utsname.h>` | 2 |
 | `libc.sys.sendfile` | `<sys/sendfile.h>` | 1 |
 | `libc.sys.random` | `<sys/random.h>` | 1 |
 | `libc.sys.prctl` | `<sys/prctl.h>` | 1 |
 | `libc.sys.auxv` | `<sys/auxv.h>` | 1 |
-| `libc.gpu` | GPU/CUDA driver entry points | 1 |
-| `libc.errno` | `<errno.h>` | 1 |
+| `libc.errno` | `<errno.h>` | 2 |
 | `libc.constant` | C type aliases and constants | — |
 | `libc.utils` | String/pointer helpers | — |
 
@@ -52,6 +51,10 @@ the bottom.
 
 `libc.threads` (`<threads.h>`) exports nothing: Apple never shipped C11
 threads, so a binding would only ever work on Linux.
+
+`libc.sys.epoll`, `libc.sys.prctl`, `libc.sys.sendfile`, `libc.sys.auxv` and
+`libc.sys.random` wrap Linux-only calls; importing them on Darwin will not
+link.
 
 `libc.stdio` covers the `<stdio.h>` entry points that `libc.file` does not
 already own; see the note at the top of `src/libc/stdio/syscalls.mojo`.

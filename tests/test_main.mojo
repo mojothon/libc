@@ -17,6 +17,7 @@ from test_math import main as run_math
 from test_network import main as run_network
 from test_search import main as run_search
 from test_stdio import main as run_stdio
+from test_sys import main as run_sys
 from test_stdlib import main as run_stdlib
 from test_string import main as run_string
 from test_time import main as run_time
@@ -37,6 +38,7 @@ def main() raises:
     run_network()
     run_search()
     run_stdio()
+    run_sys()
     run_stdlib()
     run_string()
     run_time()

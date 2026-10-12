@@ -3,6 +3,51 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.0] - 2026-10-12
+
+### Added
+
+- `libc.sys.utsname`: `uname` over a `Utsname`. It used to be declared as
+  taking no argument and returning a pointer, which is not what
+  `int uname(struct utsname *)` does.
+- `libc.sys.select`: `fd_set` with `FD_ZERO`, `FD_SET`, `FD_CLR`, `FD_ISSET`,
+  plus `pselect`. The sets used to be opaque pointers, so there was no way to
+  put a descriptor in one.
+- `libc.sys.statvfs`: a `Statvfs` struct for `statvfs` and `fstatvfs` to fill,
+  which used to take a byte pointer.
+- `libc.errno.set_errno` and `libc.sys.resource.getrusage`.
+
+### Fixed
+
+- Five structs were smaller than their C counterpart, and every one is an out
+  parameter, so libc wrote past the end of them: `struct stat` (44 modelled,
+  144 real), `struct rusage` and `epoll_event` (both empty), `struct rlimit`
+  (8 modelled, 16 real), `pthread_attr_t` (32 modelled, 56 on glibc).
+- `timespec` and `timeval` held a 32-bit `tv_sec`, so every second count read
+  wrong.
+- `wait4` ignored its `rusage` argument and called `waitpid` instead.
+- `pthread_attr_init`, `pthread_attr_destroy` and `pthread_attr_getdetachstate`
+  took the attribute object by value; C takes it by address.
+- `longjmp` declared a return value that C's does not have.
+- `read` and `write` in `libc.unistd` and `libc.file` declared `read` and
+  `write` with different signatures than the ones std declares, and two
+  external calls for one C symbol do not lower together: any program that
+  printed while calling them failed to compile.
+- 191 declarations spelled `char *` as `c_ptr[Int8]` while `libc.utils` spells
+  it `c_ptr[UInt8]`, so the two halves of the package did not fit together.
+
+### Changed
+
+- **Breaking.** `Stat`'s fields are now methods (`size()`, `mode()`, `mtime()`,
+  ...) because glibc and Darwin order `struct stat` differently. The opaque
+  `pthread_attr_t`, `pthread_condattr_t` and `epoll_event` likewise hand their
+  contents back through methods.
+
+### Removed
+
+- `libc.gpu`: one function whose body was `pass`.
+- `wait4Impl`, which called `wait4` and nothing else.
+
 ## [0.5.0] - 2026-10-12
 
 ### Added
