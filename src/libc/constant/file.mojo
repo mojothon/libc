@@ -3,6 +3,9 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
+from libc.constant.ctype import c_int
+from std.sys import CompilationTarget
+
 comptime off_t = Int64
 comptime mode_t = UInt32
 
@@ -65,7 +68,9 @@ comptime F_UNLCK = -1
 comptime F_WRLCK = -1
 
 comptime AT_EACCESS = 512
-comptime AT_FDCWD = -100
+# Which number says "the current directory" is up to the platform:
+# -100 on Linux, -2 on Darwin.
+comptime AT_FDCWD: c_int = -2 if CompilationTarget.is_macos() else -100
 comptime AT_SYMLINK_NOFOLLOW = 256
 comptime AT_REMOVEDIR = 512
 comptime AT_SYMLINK_FOLLOW = 1024
