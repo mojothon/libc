@@ -633,8 +633,8 @@
 
 <h1 id="modules">Modules<a class="headerlink" href="#modules" title="Permanent link">&para;</a></h1>
 <p><code>Symbols</code> counts the public declarations in each sub-package. Treat a low count
-as "only the essentials are wired up"; the stub packages export nothing yet and
-are listed at the bottom.</p>
+as "only the essentials are wired up"; the one remaining stub is described at
+the bottom.</p>
 <table>
 <thead>
 <tr>
@@ -713,6 +713,11 @@ are listed at the bottom.</p>
 <td><code>libc.stdio</code></td>
 <td><code>&lt;stdio.h&gt;</code> output, buffering, pipes</td>
 <td>21</td>
+</tr>
+<tr>
+<td><code>libc.complex</code></td>
+<td><code>&lt;complex.h&gt;</code></td>
+<td>46</td>
 </tr>
 <tr>
 <td><code>libc.sched</code></td>
@@ -847,27 +852,13 @@ are listed at the bottom.</p>
 </tbody>
 </table>
 <h2 id="not-started-yet">Not started yet<a class="headerlink" href="#not-started-yet" title="Permanent link">&para;</a></h2>
-<p>These sub-packages exist but export nothing:</p>
-<table>
-<thead>
-<tr>
-<th>Module</th>
-<th>C header</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>libc.complex</code></td>
-<td><code>&lt;complex.h&gt;</code></td>
-</tr>
-<tr>
-<td><code>libc.threads</code></td>
-<td><code>&lt;threads.h&gt;</code></td>
-</tr>
-</tbody>
-</table>
+<p><code>libc.threads</code> (<code>&lt;threads.h&gt;</code>) exports nothing: Apple never shipped C11
+threads, so a binding would only ever work on Linux.</p>
 <p><code>libc.stdio</code> covers the <code>&lt;stdio.h&gt;</code> entry points that <code>libc.file</code> does not
-already own; see the note at the top of <code>src/libc/stdio/syscalls.mojo</code>.</p>
+already own; see the note at the top of <code>src/libc/stdio/syscalls.mojo</code>.
+<code>libc.complex</code> models <code>double complex</code> and <code>float complex</code> as the two-field
+structs the ABI actually passes; <code>long double complex</code> is left out because
+Mojo has no 80-bit type.</p>
 <h2 id="api-reference">API reference<a class="headerlink" href="#api-reference" title="Permanent link">&para;</a></h2>
 <p>Generate the docstring reference for any module with the Mojo toolchain:</p>
 <div class="highlight"><pre><span></span><code>mojo<span class="w"> </span>doc<span class="w"> </span>src/libc/unistd/syscalls.mojo
