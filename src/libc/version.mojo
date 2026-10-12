@@ -3,4 +3,4 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-alias __version__ = "0.1.0"
+comptime __version__ = "0.2.0"

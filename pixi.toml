@@ -1,0 +1,38 @@
+[workspace]
+name = "libc"
+version = "0.2.0"
+description = "A standard C library binding for the Mojo programming language."
+authors = ["llango <rontomai@gmail.com>"]
+channels = ["https://conda.modular.com/max", "conda-forge"]
+platforms = ["linux-64", "osx-arm64"]
+
+[dependencies]
+mojo = ">=1.1.0,<2"
+
+[tasks]
+test = "mojo run -I src -I tests tests/test_main.mojo"
+package = "mojo precompile src/libc -o dist/libc.mojoc"
+run = "mojo run -I src src/main.mojo"
+format = "mojo format src tests"
+# `mojo format` has no --check flag, so format a copy and diff it.
+format-check = "bash scripts/format-check.sh"
+
+[feature.build.dependencies]
+rattler-build = ">=0.40,<0.41"
+
+[feature.build.tasks]
+build-conda = "rattler-build build --recipe recipe -c https://conda.modular.com/max -c conda-forge --skip-existing=all"
+publish = { cmd = "bash scripts/publish.sh", env = { PREFIX_API_KEY = "$PREFIX_API_KEY" } }
+
+[feature.docs.dependencies]
+python = ">=3.11,<3.14"
+mkdocs = ">=1.6,<2"
+mkdocs-material = ">=9.5,<10"
+
+[feature.docs.tasks]
+doc = "mkdocs serve"
+doc-build = "mkdocs build --strict"
+
+[environments]
+build = ["build"]
+docs = ["docs"]

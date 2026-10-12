@@ -159,8 +159,11 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-# magic environments
-.magic
+# pixi environments
+.pixi
+
+# CodeBuddy working memory
+.codebuddy
 
 # Rattler
 output
@@ -170,5 +173,7 @@ output
 
 # Mojo
 *.mojopkg
+*.mojoc
+.mojo_cache
 
 

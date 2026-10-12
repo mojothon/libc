@@ -1,17 +1,47 @@
-.PHONY: build
+.PHONY: help install test package run format format-check build publish doc doc-build clean
+
+help:
+	@echo "install       install the pixi environments"
+	@echo "test          run the test suite"
+	@echo "package       precompile dist/libc.mojoc"
+	@echo "run           run src/main.mojo"
+	@echo "format        apply mojo format"
+	@echo "format-check  fail when the tree is not formatted"
+	@echo "build         build the conda package"
+	@echo "publish       upload the conda package to prefix.dev"
+	@echo "doc           serve the docs"
+	@echo "doc-build     build the docs"
+	@echo "clean         remove build artifacts"
+
+install:
+	pixi install --all
 
 test:
-	magic run test 
+	pixi run test
 
 package:
-	magic run mojo package  src/libc/ -o libc.mojopkg
-	magic run mojo package  src/libc/ -o tests/libc.mojopkg
+	pixi run package
 
-upload:
-	export PREFIX_API_KEY={$PREFIX_API_KEY} & bash scripts/publish.sh
+run:
+	pixi run run
+
+format:
+	pixi run format
+
+format-check:
+	pixi run format-check
 
 build:
-	rattler-build build -r src -c https://repo.prefix.dev/mojo-force -c https://conda.modular.com/max -c conda-forge --skip-existing=all
+	pixi run -e build build-conda
+
+publish:
+	pixi run -e build publish
 
 doc:
-	mkdocs serve
+	pixi run -e docs doc
+
+doc-build:
+	pixi run -e docs doc-build
+
+clean:
+	rm -rf dist output site
