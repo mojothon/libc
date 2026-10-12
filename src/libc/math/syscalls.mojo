@@ -287,13 +287,16 @@ def remainder(x: Float64, y: Float64) -> Float64:
     return external_call["remainder", Float64, Float64, Float64](x, y)
 
 
-def remquof(x: Float32, y: Float32, quo: Int32) -> Float32:
-    # 有问题后续补充
-    return external_call["remquof", Float32, Float32, Float32, Int32](x, y, quo)
+def remquof(x: Float32, y: Float32, quo: c_ptr[Int32]) -> Float32:
+    return external_call["remquof", Float32, Float32, Float32, c_ptr[Int32]](
+        x, y, quo
+    )
 
 
-def remquo(x: Float64, y: Float64, quo: Int32) -> Float64:
-    return external_call["remquo", Float64, Float64, Float64, Int32](x, y, quo)
+def remquo(x: Float64, y: Float64, quo: c_ptr[Int32]) -> Float64:
+    return external_call["remquo", Float64, Float64, Float64, c_ptr[Int32]](
+        x, y, quo
+    )
 
 
 def fmaf(x: Float32, y: Float32, z: Float32) -> Float32:
@@ -347,12 +350,12 @@ def fdim(x: Float64, y: Float64) -> Float64:
     return external_call["fdim", Float64, Float64, Float64](x, y)
 
 
-def nanf(arg: UInt8) -> Float32:
-    return external_call["nanf", Float32, UInt8](arg)
+def nanf(tag: c_ptr[UInt8]) -> Float32:
+    return external_call["nanf", Float32, c_ptr[UInt8]](tag)
 
 
-def nan(arg: UInt8) -> Float64:
-    return external_call["nan", Float64, UInt8](arg)
+def nan(tag: c_ptr[UInt8]) -> Float64:
+    return external_call["nan", Float64, c_ptr[UInt8]](tag)
 
 
 def exp(x: Float64) -> Float64:
