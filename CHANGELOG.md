@@ -3,6 +3,14 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.1] - 2026-10-12
+
+### Fixed
+
+- `tests/test_wchar.mojo` read past the bytes `wcrtomb` wrote, which writes
+  no terminator. Linux handed back zeroed memory and hid it; the macOS runner
+  did not, so the suite failed there.
+
 ## [0.4.0] - 2026-10-12
 
 ### Added
