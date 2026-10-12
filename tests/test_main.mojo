@@ -16,6 +16,7 @@ from test_network import main as run_network
 from test_stdio import main as run_stdio
 from test_stdlib import main as run_stdlib
 from test_string import main as run_string
+from test_time import main as run_time
 from test_utils import main as run_utils
 from test_version import main as run_version
 
@@ -31,6 +32,7 @@ def main() raises:
     run_stdio()
     run_stdlib()
     run_string()
+    run_time()
     run_utils()
     run_version()
     print("all tests passed")
