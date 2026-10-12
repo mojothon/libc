@@ -62,6 +62,21 @@ def char_ptr_to_string(c: c_ptr[UInt8]) -> String:
     return String(unsafe_from_utf8=Span[UInt8](unsafe_ptr=c, length=length))
 
 
+def null_ptr[T: AnyType]() -> c_ptr[T]:
+    """
+    Build a null `T *` to hand to C.
+
+    Mojo pointers are non-nullable, which leaves no spelling for the NULL
+    plenty of libc entry points expect: `strtok`'s continuation call,
+    `time`'s destination, `nanosleep`'s remainder. Building one from the
+    address 0 at runtime is the way out.
+
+    Use it only as an argument. Never read through it.
+    """
+    var address: Int = 0
+    return c_ptr[T](unsafe_from_address=address)
+
+
 struct CString(TrivialRegisterPassable, Writable):
     """A borrowed view over a NUL terminated C string."""
 

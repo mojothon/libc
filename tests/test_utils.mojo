@@ -4,6 +4,7 @@ from libc.utils import (
     CString,
     char_ptr_to_string,
     is_x86_64,
+    null_ptr,
     string_to_char_ptr,
     strlen,
 )
@@ -23,6 +24,11 @@ def test_cstring() raises:
     ptr.unsafe_free()
 
 
+def test_null_ptr() raises:
+    # The only spelling of NULL Mojo's non-nullable pointers allow.
+    assert_equal(Int(null_ptr[UInt8]()), 0)
+
+
 def test_platform() raises:
     # Only meaningful on the platforms this package publishes for.
     assert_true(is_x86_64() or not is_x86_64())
@@ -31,5 +37,6 @@ def test_platform() raises:
 def main() raises:
     test_round_trip()
     test_cstring()
+    test_null_ptr()
     test_platform()
     print("test_utils: ok")
