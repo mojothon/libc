@@ -8,20 +8,39 @@ from std.ffi import external_call
 from libc.constant import c_ptr
 
 
-struct pthread_attr_t(TrivialRegisterPassable):
-    var detachstate: Int32
-    var stack: c_ptr[Int8]
-    var stacksize: Int
-    var guardsize: Int
+struct pthread_attr_t:
+    """An opaque `pthread_attr_t` from `<pthread.h>`.
+
+    glibc's is 56 bytes and Darwin's is 64, so this holds the larger: every
+    call takes it by pointer, which means libc only ever writes into it. The
+    members are unavailable on purpose — a binding cannot tell you the
+    detachstate without knowing which layout it is looking at.
+    """
+
+    var _opaque: Array[UInt8, 64]
+
+    def __init__(out self):
+        """Zeroes the object. `pthread_attr_init` is what makes it usable."""
+        self._opaque = Array[UInt8, 64](fill=0)
 
 
-struct pthread_condattr_t(TrivialRegisterPassable):
-    var clockid: Int32
-    var pshared: Int32
+struct pthread_condattr_t:
+    """An opaque `pthread_condattr_t` from `<pthread.h>`.
+
+    glibc's is 4 bytes and Darwin's is 16, so this holds the larger; see
+    `pthread_attr_t` for why the members are not exposed.
+    """
+
+    var _opaque: Array[UInt8, 16]
+
+    def __init__(out self):
+        """Zeroes the object. `pthread_condattr_init` is what makes it usable.
+        """
+        self._opaque = Array[UInt8, 16](fill=0)
 
 
 def pthread_atfork(
-    prepare: c_ptr[Int8], parent: c_ptr[Int8], child: c_ptr[Int8]
+    prepare: c_ptr[UInt8], parent: c_ptr[UInt8], child: c_ptr[UInt8]
 ) -> Int32:
     """C library <pthread.h> function `pthread_atfork`.
 
@@ -33,15 +52,19 @@ def pthread_atfork(
         parent: The function to be called in the parent process.
         child: The function to be called in the child process.
 
+    Notes:
+        All three are C function pointers. Mojo cannot make one, so the only
+        thing a Mojo caller can honestly pass is a null pointer for each.
+
     Returns:
         0 on success, or -1 on error.
     """
     return external_call[
-        "pthread_atfork", Int32, c_ptr[Int8], c_ptr[Int8], c_ptr[Int8]
+        "pthread_atfork", Int32, c_ptr[UInt8], c_ptr[UInt8], c_ptr[UInt8]
     ](prepare, parent, child)
 
 
-def pthread_attr_destroy(attr: pthread_attr_t) -> Int32:
+def pthread_attr_destroy(attr: c_ptr[pthread_attr_t]) -> Int32:
     """C library <pthread.h> function `pthread_attr_destroy`.
 
     Reference:
@@ -54,10 +77,12 @@ def pthread_attr_destroy(attr: pthread_attr_t) -> Int32:
         On success, these functions return 0; on error, they return a
        nonzero error number.
     """
-    return external_call["pthread_attr_destroy", Int32, pthread_attr_t](attr)
+    return external_call["pthread_attr_destroy", Int32, c_ptr[pthread_attr_t]](
+        attr
+    )
 
 
-def pthread_attr_init(attr: pthread_attr_t) -> Int32:
+def pthread_attr_init(attr: c_ptr[pthread_attr_t]) -> Int32:
     """C library <pthread.h> function `pthread_attr_init`.
 
     Reference:
@@ -70,11 +95,13 @@ def pthread_attr_init(attr: pthread_attr_t) -> Int32:
         On success, these functions return 0; on error, they return a
        nonzero error number.
     """
-    return external_call["pthread_attr_init", Int32, pthread_attr_t](attr)
+    return external_call["pthread_attr_init", Int32, c_ptr[pthread_attr_t]](
+        attr
+    )
 
 
 def pthread_attr_getdetachstate(
-    attr: pthread_attr_t, detachstate: Int32
+    attr: c_ptr[pthread_attr_t], detachstate: c_ptr[Int32]
 ) -> Int32:
     """C library <pthread.h> function `pthread_attr_getdetachstate`.
 
@@ -90,7 +117,10 @@ def pthread_attr_getdetachstate(
        nonzero error number.
     """
     return external_call[
-        "pthread_attr_getdetachstate", Int32, pthread_attr_t, Int32
+        "pthread_attr_getdetachstate",
+        Int32,
+        c_ptr[pthread_attr_t],
+        c_ptr[Int32],
     ](attr, detachstate)
 
 
@@ -159,7 +189,7 @@ def pthread_attr_setguardsize(
 
 def pthread_attr_getstack(
     attr: c_ptr[pthread_attr_t],
-    stackaddr: c_ptr[c_ptr[Int8]],
+    stackaddr: c_ptr[c_ptr[UInt8]],
     stacksize: c_ptr[Int],
 ) -> Int32:
     """C library <pthread.h> function `pthread_attr_getstack`.
@@ -180,13 +210,13 @@ def pthread_attr_getstack(
         "pthread_attr_getstack",
         Int32,
         c_ptr[pthread_attr_t],
-        c_ptr[c_ptr[Int8]],
+        c_ptr[c_ptr[UInt8]],
         c_ptr[Int],
     ](attr, stackaddr, stacksize)
 
 
 def pthread_attr_setstack(
-    attr: c_ptr[pthread_attr_t], stackaddr: c_ptr[Int8], stacksize: Int
+    attr: c_ptr[pthread_attr_t], stackaddr: c_ptr[UInt8], stacksize: Int
 ) -> Int32:
     """C library <pthread.h> function `pthread_attr_setstack`.
 
@@ -203,7 +233,7 @@ def pthread_attr_setstack(
        nonzero error number.
     """
     return external_call[
-        "pthread_attr_setstack", Int32, c_ptr[pthread_attr_t], c_ptr[Int8], Int
+        "pthread_attr_setstack", Int32, c_ptr[pthread_attr_t], c_ptr[UInt8], Int
     ](attr, stackaddr, stacksize)
 
 
@@ -249,7 +279,7 @@ def pthread_attr_getstacksize(
     ](attr, stacksize)
 
 
-def pthread_condattr_destroy(attr: pthread_condattr_t) -> Int32:
+def pthread_condattr_destroy(attr: c_ptr[pthread_condattr_t]) -> Int32:
     """C library <pthread.h> function `pthread_condattr_destroy`.
 
     Reference:
@@ -262,9 +292,9 @@ def pthread_condattr_destroy(attr: pthread_condattr_t) -> Int32:
         On success, these functions return 0; on error, they return a
        nonzero error number.
     """
-    return external_call["pthread_condattr_destroy", Int32, pthread_condattr_t](
-        attr
-    )
+    return external_call[
+        "pthread_condattr_destroy", Int32, c_ptr[pthread_condattr_t]
+    ](attr)
 
 
 # ....

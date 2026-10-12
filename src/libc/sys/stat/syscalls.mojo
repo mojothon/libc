@@ -5,10 +5,11 @@
 # ----------------------------------
 from std.ffi import external_call
 from std.memory import Pointer
+from std.sys import CompilationTarget
 from libc.constant import c_ptr
 
 
-def chmod(path: c_ptr[Int8], mode: Int32) -> Int32:
+def chmod(path: c_ptr[UInt8], mode: Int32) -> Int32:
     """Libc POSIX `chmod` function.
 
     Args:
@@ -18,7 +19,7 @@ def chmod(path: c_ptr[Int8], mode: Int32) -> Int32:
     Returns: A pointer to a socket.
     """
     return external_call[
-        "chmod", Int32, c_ptr[Int8], Int32  # FnName, RetType  # Args
+        "chmod", Int32, c_ptr[UInt8], Int32  # FnName, RetType  # Args
     ](
         path, mode
     )  # Args
@@ -36,7 +37,7 @@ def fchmod(fd: Int32, mode: Int32) -> Int32:
     return external_call["fchmod", Int32, Int32, Int32](fd, mode)
 
 
-def fchmodat(fd: Int32, path: c_ptr[Int8], mode: Int32) -> Int32:
+def fchmodat(fd: Int32, path: c_ptr[UInt8], mode: Int32) -> Int32:
     """Libc POSIX `fchmodat` function.
 
     Args:
@@ -46,7 +47,7 @@ def fchmodat(fd: Int32, path: c_ptr[Int8], mode: Int32) -> Int32:
 
     Returns: A pointer to a socket.
     """
-    return external_call["fchmodat", Int32, Int32, c_ptr[Int8], Int32](
+    return external_call["fchmodat", Int32, Int32, c_ptr[UInt8], Int32](
         fd, path, mode
     )
 
@@ -63,7 +64,7 @@ def fstat(fd: Int32, stat: c_ptr[Stat]) -> Int32:
     return external_call["fstat", Int32, Int32, c_ptr[Stat]](fd, stat)
 
 
-def lstat(path: c_ptr[Int8], stat: c_ptr[Stat]) -> Int32:
+def lstat(path: c_ptr[UInt8], stat: c_ptr[Stat]) -> Int32:
     """Libc POSIX `lstat` function.
 
     Args:
@@ -72,10 +73,10 @@ def lstat(path: c_ptr[Int8], stat: c_ptr[Stat]) -> Int32:
 
     Returns: A pointer to a socket.
     """
-    return external_call["lstat", Int32, c_ptr[Int8], c_ptr[Stat]](path, stat)
+    return external_call["lstat", Int32, c_ptr[UInt8], c_ptr[Stat]](path, stat)
 
 
-def mkdir(path: c_ptr[Int8], mode: Int32) -> Int32:
+def mkdir(path: c_ptr[UInt8], mode: Int32) -> Int32:
     """Libc POSIX `mkdir` function.
 
     Args:
@@ -84,10 +85,10 @@ def mkdir(path: c_ptr[Int8], mode: Int32) -> Int32:
 
     Returns: A pointer to a socket.
     """
-    return external_call["mkdir", Int32, c_ptr[Int8], Int32](path, mode)
+    return external_call["mkdir", Int32, c_ptr[UInt8], Int32](path, mode)
 
 
-def mkdirat(fd: Int32, path: c_ptr[Int8], mode: Int32) -> Int32:
+def mkdirat(fd: Int32, path: c_ptr[UInt8], mode: Int32) -> Int32:
     """Libc POSIX `mkdirat` function.
 
     Args:
@@ -97,12 +98,12 @@ def mkdirat(fd: Int32, path: c_ptr[Int8], mode: Int32) -> Int32:
 
     Returns: A pointer to a socket.
     """
-    return external_call["mkdirat", Int32, Int32, c_ptr[Int8], Int32](
+    return external_call["mkdirat", Int32, Int32, c_ptr[UInt8], Int32](
         fd, path, mode
     )
 
 
-def mknod(path: c_ptr[Int8], mode: Int32, dev: Int32) -> Int32:
+def mknod(path: c_ptr[UInt8], mode: Int32, dev: Int32) -> Int32:
     """Libc POSIX `mknod` function.
 
     Args:
@@ -112,12 +113,12 @@ def mknod(path: c_ptr[Int8], mode: Int32, dev: Int32) -> Int32:
 
     Returns: A pointer to a socket.
     """
-    return external_call["mknod", Int32, c_ptr[Int8], Int32, Int32](
+    return external_call["mknod", Int32, c_ptr[UInt8], Int32, Int32](
         path, mode, dev
     )
 
 
-def mknodat(fd: Int32, path: c_ptr[Int8], mode: Int32, dev: Int32) -> Int32:
+def mknodat(fd: Int32, path: c_ptr[UInt8], mode: Int32, dev: Int32) -> Int32:
     """Libc POSIX `mknodat` function.
 
     Args:
@@ -128,26 +129,116 @@ def mknodat(fd: Int32, path: c_ptr[Int8], mode: Int32, dev: Int32) -> Int32:
 
     Returns: A pointer to a socket.
     """
-    return external_call["mknodat", Int32, Int32, c_ptr[Int8], Int32, Int32](
+    return external_call["mknodat", Int32, Int32, c_ptr[UInt8], Int32, Int32](
         fd, path, mode, dev
     )
 
 
-struct Stat(TrivialRegisterPassable):
-    var st_dev: Int32
-    var st_ino: Int32
-    var st_mode: Int32
-    var st_nlink: Int32
-    var st_uid: Int32
-    var st_gid: Int32
-    var st_rdev: Int32
-    var st_size: Int32
-    var st_atime: Int32
-    var st_mtime: Int32
-    var st_ctime: Int32
+struct Stat:
+    """A C `struct stat`, which `stat`, `fstat` and friends fill in.
+
+    Both platforms make it 144 bytes but order it differently: glibc leads with
+    `st_dev`, `st_ino`, `st_nlink`, Darwin with `st_dev`, `st_mode`,
+    `st_nlink`, `st_ino`. So the bytes are held as slots and every member is
+    read at the offset that fits the platform, the way `struct dirent` does it.
+    """
+
+    var _slots: Array[Int64, 18]
+
+    def __init__(out self):
+        """Zeroes all 144 bytes, which is what `memset` would leave behind."""
+        self._slots = Array[Int64, 18](fill=0)
+
+    def dev(self) -> Int64:
+        """The ID of the device holding the file."""
+        comptime if CompilationTarget.is_macos():
+            return (self._slots[0] << 32) >> 32
+        else:
+            return self._slots[0]
+
+    def ino(self) -> Int64:
+        """The file serial number, its inode."""
+        return self._slots[1]
+
+    def nlink(self) -> Int64:
+        """How many hard links point at the file."""
+        comptime if CompilationTarget.is_macos():
+            return (self._slots[0] >> 32) & 0xFFFF
+        else:
+            return self._slots[2]
+
+    def mode(self) -> Int:
+        """The file type and permission bits."""
+        comptime if CompilationTarget.is_macos():
+            return Int((self._slots[0] >> 16) & 0xFFFF)
+        else:
+            return Int(self._slots[3] & 0xFFFFFFFF)
+
+    def uid(self) -> Int:
+        """The user ID of the owner."""
+        comptime if CompilationTarget.is_macos():
+            return Int(self._slots[2] & 0xFFFFFFFF)
+        else:
+            return Int(self._slots[3] >> 32)
+
+    def gid(self) -> Int:
+        """The group ID of the owner."""
+        comptime if CompilationTarget.is_macos():
+            return Int(self._slots[2] >> 32)
+        else:
+            return Int(self._slots[4] & 0xFFFFFFFF)
+
+    def rdev(self) -> Int64:
+        """The device ID, for files that are devices."""
+        comptime if CompilationTarget.is_macos():
+            return (self._slots[3] << 32) >> 32
+        else:
+            return self._slots[5]
+
+    def size(self) -> Int64:
+        """The file size in bytes."""
+        comptime if CompilationTarget.is_macos():
+            return self._slots[10]
+        else:
+            return self._slots[6]
+
+    def blksize(self) -> Int64:
+        """The preferred block size for I/O on this file."""
+        comptime if CompilationTarget.is_macos():
+            return self._slots[12]
+        else:
+            return self._slots[7]
+
+    def blocks(self) -> Int64:
+        """How many 512-byte blocks the file occupies."""
+        comptime if CompilationTarget.is_macos():
+            return self._slots[11]
+        else:
+            return self._slots[8]
+
+    def atime(self) -> Int64:
+        """The seconds of the last access time."""
+        comptime if CompilationTarget.is_macos():
+            return self._slots[4]
+        else:
+            return self._slots[9]
+
+    def mtime(self) -> Int64:
+        """The seconds of the last modification time."""
+        comptime if CompilationTarget.is_macos():
+            return self._slots[6]
+        else:
+            return self._slots[11]
+
+    def ctime(self) -> Int64:
+        """The seconds of the last status change."""
+        comptime if CompilationTarget.is_macos():
+            return self._slots[8]
+        else:
+            return self._slots[13]
 
 
-def stat(pathname: c_ptr[Int8], statbuf: c_ptr[Stat]) -> Int32:
+def stat(pathname: c_ptr[UInt8], statbuf: c_ptr[Stat]) -> Int32:
     """Libc POSIX `stat` function.
 
     Args:
@@ -156,7 +247,7 @@ def stat(pathname: c_ptr[Int8], statbuf: c_ptr[Stat]) -> Int32:
 
     Returns: A pointer to a socket.
     """
-    return external_call["stat", Int32, c_ptr[Int8], c_ptr[Stat]](
+    return external_call["stat", Int32, c_ptr[UInt8], c_ptr[Stat]](
         pathname, statbuf
     )
 
@@ -172,7 +263,7 @@ def umask(mask: Int32) -> Int32:
     return external_call["umask", Int32, Int32](mask)
 
 
-def utime(path: c_ptr[Int8], times: c_ptr[timeval]) -> Int32:
+def utime(path: c_ptr[UInt8], times: c_ptr[timeval]) -> Int32:
     """Libc POSIX `utime` function.
 
     Args:
@@ -181,23 +272,30 @@ def utime(path: c_ptr[Int8], times: c_ptr[timeval]) -> Int32:
 
     Returns: A pointer to a socket.
     """
-    return external_call["utime", Int32, c_ptr[Int8], c_ptr[timeval]](
+    return external_call["utime", Int32, c_ptr[UInt8], c_ptr[timeval]](
         path, times
     )
 
 
 struct timespec(TrivialRegisterPassable):
-    var tv_sec: Int32
+    var tv_sec: Int64
     var tv_nsec: Int64
 
 
 struct timeval(TrivialRegisterPassable):
-    var tv_sec: Int32
-    var tv_usec: Int32
+    """A C `struct timeval`: seconds plus microseconds.
+
+    `tv_usec` is a 32-bit `suseconds_t` on Darwin and a 64-bit `long` on Linux,
+    so it is stored in a full slot; zero the struct and it reads correctly on
+    either platform.
+    """
+
+    var tv_sec: Int64
+    var tv_usec: Int64
 
 
 def utimensat(
-    fd: Int32, path: c_ptr[Int8], times: c_ptr[timespec], flag: Int32
+    fd: Int32, path: c_ptr[UInt8], times: c_ptr[timespec], flag: Int32
 ) -> Int32:
     """Libc POSIX `utimensat` function.
 
@@ -210,7 +308,7 @@ def utimensat(
     Returns: A pointer to a socket.
     """
     return external_call[
-        "utimensat", Int32, Int32, c_ptr[Int8], c_ptr[timespec], Int32
+        "utimensat", Int32, Int32, c_ptr[UInt8], c_ptr[timespec], Int32
     ](fd, path, times, flag)
 
 

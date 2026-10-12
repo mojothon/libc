@@ -3,6 +3,8 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
+# Linux only: Darwin has kqueue instead, so importing this package there will
+# not link.
 from std.ffi import external_call
 from std.memory import Pointer
 from libc.constant import c_ptr
@@ -43,16 +45,54 @@ def epoll_create1(flags: Int32) -> Int32:
     return external_call["epoll_create1", Int32, Int32](flags)
 
 
-# @register_passable("trivial")
-# struct event_data:
-#     ptr: c_ptr[Int8]
-#     fd: Int32
-#     u32: UInt32
-#     u64: UInt64
+struct epoll_event:
+    """A C `struct epoll_event`: the events to watch and the tag to report.
 
+    glibc declares the struct packed, so `data` sits 4 bytes in rather than 8,
+    which is why it is kept as raw bytes instead of a `UInt64`: Mojo aligns an
+    8-byte member to 8 and would hand C a 16-byte struct.
 
-struct epoll_event(TrivialRegisterPassable):
-    pass
+    The tag is a union — a pointer, a file descriptor, or two integers — so it
+    is read back with `data_u64` or `data_fd`, whichever you put in. The bytes
+    are assembled little-endian, which is what x86-64 and arm64 both are.
+    """
+
+    var events: UInt32
+    var data: Array[UInt8, 8]
+
+    def __init__(out self, events: UInt32, data: UInt64):
+        """Builds an event tagged with the given 64-bit value.
+
+        Args:
+            events: The `EPOLLIN`, `EPOLLOUT`, ... bits to watch for.
+            data: The tag to hand back when the event fires.
+        """
+        self.events = events
+        self.data = Array[UInt8, 8](fill=0)
+        var value = data
+        for i in range(8):
+            self.data[i] = UInt8(value & 0xFF)
+            value >>= 8
+
+    def __init__(out self, events: UInt32, fd: Int32):
+        """Builds an event tagged with a file descriptor.
+
+        Args:
+            events: The `EPOLLIN`, `EPOLLOUT`, ... bits to watch for.
+            fd: The descriptor to hand back when the event fires.
+        """
+        self = Self(events, UInt64(Int(fd) & 0xFFFFFFFF))
+
+    def data_u64(self) -> UInt64:
+        """The tag, read as a 64-bit value."""
+        var value: UInt64 = 0
+        for i in range(8):
+            value |= UInt64(self.data[i]) << UInt64(8 * (7 - i))
+        return value
+
+    def data_fd(self) -> Int32:
+        """The tag, read as the file descriptor it was built with."""
+        return Int32(Int(self.data_u64() & 0xFFFFFFFF))
 
 
 def epoll_ctl(
@@ -85,7 +125,7 @@ def epoll_pwait(
     events: c_ptr[epoll_event],
     maxevents: Int32,
     timeout: Int32,
-    sigmask: c_ptr[epoll_event],
+    sigmask: c_ptr[NoneType],
 ) -> Int32:
     """C library <sys/epoll.h> function `epoll_pwait`.
 
@@ -112,12 +152,12 @@ def epoll_pwait(
         c_ptr[epoll_event],
         Int32,
         Int32,
-        c_ptr[epoll_event],
+        c_ptr[NoneType],
     ](epfd, events, maxevents, timeout, sigmask)
 
 
 struct timespec(TrivialRegisterPassable):
-    var tv_sec: Int32
+    var tv_sec: Int64
     var tv_nsec: Int64
 
 
@@ -126,7 +166,7 @@ def epoll_pwait2(
     events: c_ptr[epoll_event],
     maxevents: Int32,
     timeout: c_ptr[timespec],
-    sigmask: c_ptr[epoll_event],
+    sigmask: c_ptr[NoneType],
 ) -> Int32:
     """C library <sys/epoll.h> function `epoll_pwait2`.
 
@@ -153,7 +193,7 @@ def epoll_pwait2(
         c_ptr[epoll_event],
         Int32,
         c_ptr[timespec],
-        c_ptr[epoll_event],
+        c_ptr[NoneType],
     ](epfd, events, maxevents, timeout, sigmask)
 
 
