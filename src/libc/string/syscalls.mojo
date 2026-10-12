@@ -5,7 +5,7 @@
 # ----------------------------------
 from std.ffi import external_call
 from std.memory import Pointer
-from libc.constant import c_int, c_ptr, c_size_t
+from libc.constant import c_int, c_long, c_longlong, c_ptr, c_size_t
 
 
 @inline(.nodebug)
@@ -507,3 +507,215 @@ def strsignal(sig: c_int) -> c_ptr[UInt8]:
         Fn signature: `char *strsignal(int sig)`.
     """
     return external_call["strsignal", c_ptr[UInt8], c_int](sig)
+
+
+@inline(.nodebug)
+def strncat(s1: c_ptr[UInt8], s2: c_ptr[UInt8], n: c_size_t) -> c_ptr[UInt8]:
+    """Libc C89 `strncat` function.
+
+    Args:
+        s1: The string to append to, which has to have room for the result.
+        s2: The string to take from.
+        n: How many bytes of `s2` to append at most.
+
+    Returns:
+        `s1`.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/strncat.3.html).
+        Fn signature: `char *strncat(char *s1, const char *s2, size_t n)`.
+
+        It ends the result with a null byte of its own, so the room `s1`
+        needs is what it already holds plus `n` plus one.
+    """
+    return external_call[
+        "strncat", c_ptr[UInt8], c_ptr[UInt8], c_ptr[UInt8], c_size_t
+    ](s1, s2, n)
+
+
+@inline(.nodebug)
+def stpcpy(dst: c_ptr[UInt8], src: c_ptr[UInt8]) -> c_ptr[UInt8]:
+    """Libc POSIX `stpcpy` function.
+
+    Args:
+        dst: The buffer to copy into, which has to have room for `src`.
+        src: The string to copy.
+
+    Returns:
+        A pointer to the null byte that ends `dst`, which is what makes
+        building a string out of several of these cheap: the next one takes
+        up from where this one left off instead of starting over.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/stpcpy.3.html).
+        Fn signature: `char *stpcpy(char *dst, const char *src)`.
+    """
+    return external_call["stpcpy", c_ptr[UInt8], c_ptr[UInt8], c_ptr[UInt8]](
+        dst, src
+    )
+
+
+@inline(.nodebug)
+def stpncpy(dst: c_ptr[UInt8], src: c_ptr[UInt8], n: c_size_t) -> c_ptr[UInt8]:
+    """Libc POSIX `stpncpy` function.
+
+    Args:
+        dst: The buffer to copy into, which has to be `n` bytes wide at least.
+        src: The string to copy.
+        n: How many bytes to write at most.
+
+    Returns:
+        A pointer to the null byte that ends `dst`, or to `dst[n]` when
+        `src` was `n` bytes or longer and so left no null byte behind —
+        which is the thing that makes this one awkward, and why the result
+        says where the string stopped rather than where it started.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/stpncpy.3.html).
+        Fn signature: `char *stpncpy(char *dst, const char *src, size_t n)`.
+    """
+    return external_call[
+        "stpncpy", c_ptr[UInt8], c_ptr[UInt8], c_ptr[UInt8], c_size_t
+    ](dst, src, n)
+
+
+@inline(.nodebug)
+def strsep(stringp: c_ptr[c_ptr[UInt8]], delim: c_ptr[UInt8]) -> c_ptr[UInt8]:
+    """Libc `strsep` function.
+
+    Args:
+        stringp: A pointer to the pointer walking the string. It is moved
+            past the token handed back, and set to null once there is
+            nothing left.
+        delim: The bytes that separate tokens.
+
+    Returns:
+        A pointer to the token, with the separator that ended it overwritten
+        by a null byte, or null when the string is finished.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/strsep.3.html).
+        Fn signature: `char *strsep(char **stringp, const char *delim)`.
+
+        What `strtok` would be if it kept no state between calls: two
+        separators in a row give back an empty token rather than being
+        treated as one, and nothing is kept behind the caller's back.
+    """
+    return external_call[
+        "strsep", c_ptr[UInt8], c_ptr[c_ptr[UInt8]], c_ptr[UInt8]
+    ](stringp, delim)
+
+
+@inline(.nodebug)
+def memmem(
+    haystack: c_ptr[NoneType],
+    haystacklen: c_size_t,
+    needle: c_ptr[NoneType],
+    needlelen: c_size_t,
+) -> c_ptr[NoneType]:
+    """Libc `memmem` function.
+
+    Args:
+        haystack: The block to search.
+        haystacklen: How many bytes of it to search.
+        needle: The bytes to look for.
+        needlelen: How many bytes they are.
+
+    Returns:
+        A pointer to where `needle` starts, or null if those bytes are not
+        there. An empty `needle` gives `haystack` back.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/memmem.3.html).
+        Fn signature: `void *memmem(const void *haystack, size_t haystacklen, const void *needle, size_t needlelen)`.
+
+        Neither C nor POSIX has this one, but glibc and the BSDs do, and
+        Darwin is a BSD here.
+    """
+    return external_call[
+        "memmem",
+        c_ptr[NoneType],
+        c_ptr[NoneType],
+        c_size_t,
+        c_ptr[NoneType],
+        c_size_t,
+    ](haystack, haystacklen, needle, needlelen)
+
+
+@inline(.nodebug)
+def memrchr(s: c_ptr[NoneType], c: c_int, n: c_size_t) -> c_ptr[NoneType]:
+    """Libc `memrchr` function.
+
+    Args:
+        s: The block to scan.
+        c: The byte to look for, narrowed to an `unsigned char`.
+        n: How many bytes to scan.
+
+    Returns:
+        A pointer to the last match, or a null pointer if `s` holds no such
+        byte in its first `n` bytes.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/memrchr.3.html).
+        Fn signature: `void *memrchr(const void *s, int c, size_t n)`.
+
+        `memchr` from the other end. Not in C either, but both glibc and
+        Darwin have it.
+    """
+    return external_call[
+        "memrchr", c_ptr[NoneType], c_ptr[NoneType], c_int, c_size_t
+    ](s, c, n)
+
+
+@inline(.nodebug)
+def ffs(i: c_int) -> c_int:
+    """Libc POSIX `ffs` function.
+
+    Args:
+        i: The word to look at.
+
+    Returns:
+        The position of the lowest bit that is set, counting from 1, or 0
+        when no bit is set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/ffs.3.html).
+        Fn signature: `int ffs(int i)`.
+    """
+    return external_call["ffs", c_int, c_int](i)
+
+
+@inline(.nodebug)
+def ffsl(i: c_long) -> c_int:
+    """Libc POSIX `ffsl` function.
+
+    Args:
+        i: The word to look at.
+
+    Returns:
+        The position of the lowest bit that is set, counting from 1, or 0
+        when no bit is set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/ffs.3.html).
+        Fn signature: `int ffsl(long i)`.
+    """
+    return external_call["ffsl", c_int, c_long](i)
+
+
+@inline(.nodebug)
+def ffsll(i: c_longlong) -> c_int:
+    """Libc POSIX `ffsll` function.
+
+    Args:
+        i: The word to look at.
+
+    Returns:
+        The position of the lowest bit that is set, counting from 1, or 0
+        when no bit is set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/ffs.3.html).
+        Fn signature: `int ffsll(long long i)`.
+    """
+    return external_call["ffsll", c_int, c_longlong](i)
