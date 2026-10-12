@@ -3,25 +3,34 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-from sys import external_call
-from memory import UnsafePointer
+from std.ffi import external_call
+from std.memory import Pointer
+from libc.constant import c_ptr
 
 
-fn waitpid(pid: Int32, status: UnsafePointer[Int32], options: Int32) -> Int32:
-    return external_call[
-        "waitpid", Int32, Int32, UnsafePointer[Int32], Int32
-    ](pid, status, options)
+struct rusage(TrivialRegisterPassable):
+    """Opaque `struct rusage` from <sys/resource.h>."""
+
+    pass
 
 
+def waitpid(pid: Int32, status: c_ptr[Int32], options: Int32) -> Int32:
+    return external_call["waitpid", Int32, Int32, c_ptr[Int32], Int32](
+        pid, status, options
+    )
 
-fn wait(status: UnsafePointer[Int32]) -> Int32:
+
+def wait(status: c_ptr[Int32]) -> Int32:
     return waitpid(-1, status, 0)
 
 
-fn wait4(pid: Int32, status: UnsafePointer[Int32], options: Int32, rusage: UnsafePointer) -> Int32:
+def wait4(
+    pid: Int32, status: c_ptr[Int32], options: Int32, rusage: c_ptr[rusage]
+) -> Int32:
     return waitpid(pid, status, options)
 
 
-
-fn wait4Impl(pid: Int32, status: UnsafePointer[Int32], options: Int32, rusage: UnsafePointer) -> Int32:
+def wait4Impl(
+    pid: Int32, status: c_ptr[Int32], options: Int32, rusage: c_ptr[rusage]
+) -> Int32:
     return wait4(pid, status, options, rusage)
