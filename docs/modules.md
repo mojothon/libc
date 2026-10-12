@@ -10,7 +10,7 @@ the bottom.
 | `libc.stdlib` | `<stdlib.h>` | 37 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.unistd` | `<unistd.h>` | 56 |
-| `libc.file` | `<stdio.h>` file operations | 39 |
+| `libc.file` | `<stdio.h>` file operations | 40 |
 | `libc.ctype` | `<ctype.h>` | 29 |
 | `libc.sys.socket` | `<sys/socket.h>` | 19 |
 | `libc.sys.stat` | `<sys/stat.h>` | 17 |
@@ -19,7 +19,7 @@ the bottom.
 | `libc.sys.mman` | `<sys/mman.h>` | 15 |
 | `libc.pthread` | `<pthread.h>` | 14 |
 | `libc.string` | `<string.h>` | 39 |
-| `libc.stdio` | `<stdio.h>` output, buffering, pipes | 21 |
+| `libc.stdio` | `<stdio.h>` output, buffering, pipes | 27 |
 | `libc.complex` | `<complex.h>` | 46 |
 | `libc.sched` | `<sched.h>` | 13 |
 | `libc.signal` | `<signal.h>` | 9 |
