@@ -24,6 +24,13 @@ comptime DIRENT_NAME_OFFSET = 2 if CompilationTarget.is_macos() else 0
 
 
 struct DIR(TrivialRegisterPassable):
+    """An opaque C `DIR`, the directory stream `opendir` hands back.
+
+    Empty on purpose: libc owns these and gives out a pointer to one, and
+    nothing here allocates a `DIR` or looks inside it. `opendir` returns
+    `c_ptr[DIR]` and every other call here takes one.
+    """
+
     pass
 
 

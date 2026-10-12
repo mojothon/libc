@@ -8,6 +8,13 @@ from std.ffi import external_call
 
 
 struct FILE(TrivialRegisterPassable):
+    """An opaque C `FILE`, the stream `fopen` and friends hand back.
+
+    Empty on purpose: libc owns these and gives out a pointer to one, and
+    nothing here allocates a `FILE` or looks inside it. Every call in this
+    package takes `c_ptr[FILE]`.
+    """
+
     pass
 
 
