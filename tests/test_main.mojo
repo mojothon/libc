@@ -10,9 +10,11 @@ from test_complex import main as run_complex
 from test_constant import main as run_constant
 from test_ctype import main as run_ctype
 from test_dirent import main as run_dirent
+from test_fenv import main as run_fenv
 from test_float import main as run_float
 from test_inttypes import main as run_inttypes
 from test_layout import main as run_layout
+from test_locale import main as run_locale
 from test_math import main as run_math
 from test_network import main as run_network
 from test_search import main as run_search
@@ -31,9 +33,11 @@ def main() raises:
     run_constant()
     run_ctype()
     run_dirent()
+    run_fenv()
     run_float()
     run_inttypes()
     run_layout()
+    run_locale()
     run_math()
     run_network()
     run_search()
