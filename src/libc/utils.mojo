@@ -32,7 +32,10 @@ def exit(status: c_int):
 
     Args:
         status: The exit status.
-    Returns: void.
+    Returns:
+        Nothing: this one does not come back. What is buffered is
+        written out and the process is over by the time it would
+        have.
     """
     _ = external_call["exit", c_void, c_int](status)
 
