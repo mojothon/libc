@@ -127,3 +127,35 @@ def openat(fd: Int32, path: c_ptr[UInt8], oflag: Int32, mode: Int32) -> Int32:
     return external_call["openat", Int32, Int32, c_ptr[UInt8], Int32, Int32](
         fd, path, oflag, mode
     )
+
+
+def lockf(fd: Int32, cmd: Int32, len: Int64) -> Int32:
+    """Libc POSIX `lockf` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/lockf.3.html
+
+    Description:
+        lockf() takes a lock on part of an open file, gives one up, or asks
+        whether one is free.
+
+    Args:
+        fd: A descriptor for the file, which has to be open for writing to
+            take a lock on it.
+        cmd: `F_LOCK` to take one and wait, `F_TLOCK` to take one and fail
+            instead of waiting, `F_ULOCK` to give it up, or `F_TEST` to ask
+            whether it is free.
+        len: How many bytes from the current position, which can be
+            negative to reach backwards, or 0 for the rest of the file.
+
+    Returns:
+        0 on success, -1 on error with `errno` set. `F_TEST` answers 0 when
+        the range is free and -1 when somebody has it.
+
+    Notes:
+        This is `fcntl` over the same locks, with `F_LOCK` meaning wait and
+        `F_TLOCK` meaning do not. The lock belongs to the file and not to
+        the descriptor, so closing any descriptor for the file lets go of
+        every lock this process holds on it.
+    """
+    return external_call["lockf", Int32, Int32, Int32, Int64](fd, cmd, len)
