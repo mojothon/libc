@@ -1,43 +1,57 @@
 site_name: libc
 site_author: llango
-site_description: a standard C library for Mojo programming language. 
-site_favicon: favicon.ico
-
+site_description: A standard C library binding for the Mojo programming language.
+site_url: https://mojothon.github.io/libc/
 repo_url: https://github.com/mojothon/libc
-edit_uri: edit/master/docs/docs
-copyright: Copyright &copy; <a target=_blanks href="https://www.github.com/llango">llango</a>
+repo_name: mojothon/libc
+edit_uri: edit/main/docs/
+copyright: Copyright &copy; <a target="_blank" href="https://github.com/llango">llango</a>
 
 theme:
-  name: shadocs
-  logo: '/images/logo.png'
+  name: material
+  logo: images/logo.png
+  favicon: favicon.ico
   icon:
     repo: fontawesome/brands/github
   features:
     - navigation.instant
     - navigation.tabs
-  language: cn
-  highlightjs: true
-  hljs_languages:
-    - python 
-    - javascript
-    - shell
-    - django
-  
+    - navigation.tracking
+    - content.code.copy
+    - search.highlight
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
 
-# Footer
 extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/mojothon
-      name: llango 
+      name: llango
 
 markdown_extensions:
   - admonition
   - toc:
-      toc_depth: 2
-      permalink: True
+      toc_depth: 3
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      default_lang: text
 
-# Page tree
 nav:
-  - index: index.md
-  - version: version.md
+  - Home: index.md
+  - Install: install.md
+  - Usage: usage.md
+  - Modules: modules.md
+  - Version: version.md

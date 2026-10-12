@@ -1,71 +1,40 @@
 # libc
 
-a standard C library for Mojo programming language.
+`libc` is a binding layer that exposes the C standard library, POSIX and Linux
+system calls to [Mojo](https://mojolang.org) through `external_call`.
 
+Every header gets its own sub-package, so you import only what you need:
 
-## package build
-
-```bash
-magic run mojo package  src/libc/ -o libc.mojopkg
-```
-or 
-
-```bash
-make package
+```text
+libc.math      libc.string     libc.stdio      libc.stdlib
+libc.unistd    libc.dirent     libc.time       libc.signal
+libc.pthread   libc.network    libc.sys.*      ...
 ```
 
-## test
+## Status
 
-```bash
-magic run test 
-```
+The package is developed against **Mojo 1.1.0** and is published to the
+`mojo-force` channel on [prefix.dev](https://prefix.dev). It is exercised on
+Linux (x86-64) and macOS (Apple silicon).
 
-or 
-
-```bash
-make test
-```
-
-## version
-
-version 0.1.0
-
-
-
-## external_call
+## Quick start
 
 ```mojo
-external_call[callee: StringLiteral, type: AnyTrivialRegType, *types: AnyType](*arguments: *types) -> $1
+from libc.math import sqrt
+from libc.string import strlen
+from libc.utils import string_to_char_ptr
 
+
+def main() raises:
+    print(sqrt(2.0))
+
+    var ptr = string_to_char_ptr("hello")
+    print(strlen(ptr))
+    ptr.unsafe_free()
 ```
 
-调用外部函数。
+See [Install](install.md) and [Usage](usage.md) for the details.
 
-Parameters:
+## License
 
-- callee: 外部函数的名称。
-
-- type: 返回类型。
-
-- *types: 参数类型。
-
-
-
-Args:
-
-- arguments(*types): 传递给外部函数的参数。
-
-Returns：
-
-    外部调用结果。
-
-
-## `AnyType` 和 `AnyTrivialRegType`的比较
-
-属于元类型，即类型的类型。
-
-`AnyType`代表任何Mojo类型。 Mojo将`AnyType`类型视为一种特殊的trait。
-
-
-`AnyTrivialRegType`是一种元类型，表示任何标记为可注册的 Mojo 类型。
-
+MIT. See [LICENSE](https://github.com/mojothon/libc/blob/main/LICENSE).
