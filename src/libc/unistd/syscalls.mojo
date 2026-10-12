@@ -283,7 +283,7 @@ def fsync(fd: Int32) -> Int32:
     return external_call["fsync", Int32, Int32](fd)
 
 
-def getcwd(buf: c_ptr[UInt8], size: Int32) -> c_ptr[UInt8]:
+def getcwd(buf: c_ptr[UInt8], size: UInt64) -> c_ptr[UInt8]:
     """Libc POSIX `getcwd` function.
 
     Reference:
@@ -303,7 +303,9 @@ def getcwd(buf: c_ptr[UInt8], size: Int32) -> c_ptr[UInt8]:
         the path is longer than `size`, `EACCES` if a parent directory
         cannot be read. It is not the 0 or -1 that most of these give back.
     """
-    return external_call["getcwd", c_ptr[UInt8], c_ptr[UInt8], Int32](buf, size)
+    return external_call["getcwd", c_ptr[UInt8], c_ptr[UInt8], UInt64](
+        buf, size
+    )
 
 
 def geteuid() -> Int32:
@@ -515,7 +517,7 @@ def pipe(fds: c_ptr[Int32]) -> Int32:
     return external_call["pipe", Int32, c_ptr[Int32]](fds)
 
 
-def pread(fd: Int32, buf: c_ptr[UInt8], count: UInt32, offset: Int8) -> UInt32:
+def pread(fd: Int32, buf: c_ptr[UInt8], count: UInt64, offset: Int64) -> Int:
     """Libc POSIX `pread` function.
 
     Reference:
@@ -535,12 +537,12 @@ def pread(fd: Int32, buf: c_ptr[UInt8], count: UInt32, offset: Int8) -> UInt32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["pread", UInt32, Int32, c_ptr[UInt8], UInt32, Int8](
+    return external_call["pread", Int, Int32, c_ptr[UInt8], UInt64, Int64](
         fd, buf, count, offset
     )
 
 
-def pwrite(fd: Int32, buf: c_ptr[UInt8], count: UInt32, offset: Int8) -> UInt32:
+def pwrite(fd: Int32, buf: c_ptr[UInt8], count: UInt64, offset: Int64) -> Int:
     """Libc POSIX `pwrite` function.
 
     Reference:
@@ -560,7 +562,7 @@ def pwrite(fd: Int32, buf: c_ptr[UInt8], count: UInt32, offset: Int8) -> UInt32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["pwrite", UInt32, Int32, c_ptr[UInt8], UInt32, Int8](
+    return external_call["pwrite", Int, Int32, c_ptr[UInt8], UInt64, Int64](
         fd, buf, count, offset
     )
 
@@ -588,7 +590,7 @@ def read(fd: Int32, buf: c_ptr[UInt8], count: UInt32) -> Int:
     )
 
 
-def readlink(path: c_ptr[UInt8], buf: c_ptr[UInt8], size: Int32) -> Int32:
+def readlink(path: c_ptr[UInt8], buf: c_ptr[UInt8], size: UInt64) -> Int:
     """Libc POSIX `readlink` function.
 
     Reference:
@@ -606,14 +608,14 @@ def readlink(path: c_ptr[UInt8], buf: c_ptr[UInt8], size: Int32) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["readlink", Int32, c_ptr[UInt8], c_ptr[UInt8], Int32](
+    return external_call["readlink", Int, c_ptr[UInt8], c_ptr[UInt8], UInt64](
         path, buf, size
     )
 
 
 def readlinkat(
-    dirfd: Int32, path: c_ptr[UInt8], buf: c_ptr[UInt8], size: Int32
-) -> Int32:
+    dirfd: Int32, path: c_ptr[UInt8], buf: c_ptr[UInt8], size: UInt64
+) -> Int:
     """Libc POSIX `readlinkat` function.
 
     Reference:
@@ -633,7 +635,7 @@ def readlinkat(
         0 on success, -1 on error.
     """
     return external_call[
-        "readlinkat", Int32, Int32, c_ptr[UInt8], c_ptr[UInt8], Int32
+        "readlinkat", Int, Int32, c_ptr[UInt8], c_ptr[UInt8], UInt64
     ](dirfd, path, buf, size)
 
 
@@ -655,7 +657,7 @@ def rmdir(path: c_ptr[UInt8]) -> Int32:
     return external_call["rmdir", Int32, c_ptr[UInt8]](path)
 
 
-def swab(a: c_ptr[UInt8], b: c_ptr[UInt8], size: Int32):
+def swab(a: c_ptr[UInt8], b: c_ptr[UInt8], size: Int64):
     """Libc POSIX `swab` function.
 
     Reference:
@@ -675,7 +677,7 @@ def swab(a: c_ptr[UInt8], b: c_ptr[UInt8], size: Int32):
         There is no result to report: C declares this one `void`, and it is
         not one of the calls that reports failure in `errno` either.
     """
-    external_call["swab", NoneType, c_ptr[UInt8], c_ptr[UInt8], Int32](
+    external_call["swab", NoneType, c_ptr[UInt8], c_ptr[UInt8], Int64](
         a, b, size
     )
 
@@ -726,7 +728,7 @@ def symlinkat(
 
 
 # remember update
-def syscall(number: Int32) -> Int32:
+def syscall(number: Int64) -> Int64:
     """Libc POSIX `syscall` function.
 
     Reference:
@@ -741,7 +743,7 @@ def syscall(number: Int32) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["syscall", Int32, Int32](number)
+    return external_call["syscall", Int64, Int64](number)
 
 
 def unlink(path: c_ptr[UInt8]) -> Int32:
@@ -826,7 +828,7 @@ def write(fd: Int32, buf: c_ptr[UInt8], count: UInt32) -> Int:
     )
 
 
-def writev(fd: Int32, iov: c_ptr[UInt8], iovcnt: UInt32) -> UInt32:
+def writev(fd: Int32, iov: c_ptr[UInt8], iovcnt: Int32) -> Int:
     """Libc POSIX `writev` function.
 
     Reference:
@@ -844,7 +846,7 @@ def writev(fd: Int32, iov: c_ptr[UInt8], iovcnt: UInt32) -> UInt32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["writev", UInt32, Int32, c_ptr[UInt8], UInt32](
+    return external_call["writev", Int, Int32, c_ptr[UInt8], Int32](
         fd, iov, iovcnt
     )
 
