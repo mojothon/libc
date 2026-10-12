@@ -10,6 +10,17 @@ from libc.constant import c_ptr
 
 
 struct socketaddr(TrivialRegisterPassable):
+    """A socket address, as C's `struct sockaddr` has it: a family and
+    fourteen bytes whose meaning is up to the family.
+
+    Every call here takes a pointer to one of these whatever the family
+    really is, because that is what C asks for and how it tells them
+    apart. For `AF_INET` the first two bytes of `sa_data` are the port in
+    network order and the four after that are the address, with the rest
+    zero; for `AF_UNIX` it is a path. Nothing here packs or unpacks any
+    of that for you.
+    """
+
     var sa_family: UInt16
     var sa_data: StaticTuple[UInt8, 14]
 
@@ -21,6 +32,15 @@ def bind(
 
     Reference: https://man7.org/linux/man-pages/man3/bind.3p.html
     Fn signature: int bind(int socket, const struct socketaddr *address, UInt32 address_len)
+
+    Args:
+        socket: Which socket, by its descriptor.
+        address: The address to give it, which is what it is known by from
+            then on.
+        address_len: How big the address is.
+
+    Returns:
+        0, or -1 with `errno` set.
     """
     return external_call["bind", Int32, Int32, c_ptr[socketaddr], UInt32](
         socket, address, address_len
@@ -39,6 +59,21 @@ def recvfrom(
 
     Reference: https://man7.org/linux/man-pages/man3/recvfrom.3p.html
     Fn signature: ssize_t recvfrom(int socket, void *restrict buffer, size_t length, int flags, struct sockaddr *restrict address, UInt32 *restrict address_len)
+
+    Args:
+        socket: Which socket to read from.
+        buffer: Where to put what comes in.
+        length: How much room there is in the buffer.
+        flags: `MSG_*` flags for this one call, or 0 for none.
+        address: Where to put the address it came from, or a null pointer
+            if that does not matter.
+        address_len: In: how much room there is for the address. Out: how
+            much of it was used.
+
+    Returns:
+        How many bytes came in, or -1 with `errno` set. 0 means the other
+        end is finished, which is only the same as no bytes at all for a
+        socket that works in datagrams.
     """
     return external_call[
         "recvfrom",
@@ -59,6 +94,17 @@ def recv(
 
     Reference: https://man7.org/linux/man-pages/man3/recv.3p.html
     Fn signature: ssize_t recv(int socket, void *buffer, size_t length, int flags)
+
+    Args:
+        socket: Which socket to read from.
+        buffer: Where to put what comes in.
+        length: How much room there is in the buffer.
+        flags: `MSG_*` flags for this one call, or 0 for none.
+
+    Returns:
+        How many bytes came in, or -1 with `errno` set. 0 means the other
+        end is finished, which is only the same as no bytes at all for a
+        socket that works in datagrams.
     """
     return external_call[
         "recv",
@@ -79,11 +125,14 @@ def send(
     Fn signature: ssize_t send(int socket, const void *buffer, size_t length, int flags)
 
     Args:
-        socket: A pointer to a socket.
-        buffer: A pointer to a buffer to store the address of the accepted socket.
-        length: A pointer to a buffer to store the length of the address of the accepted socket.
-        flags: A pointer to a buffer to store the length of the address of the accepted socket.
-    Returns: A pointer to a socket.
+        socket: Which socket to write to.
+        buffer: Where the bytes to send are.
+        length: How many bytes to send.
+        flags: `MSG_*` flags for this one call, or 0 for none.
+
+    Returns:
+        How many bytes it took, which on a socket that works as a stream
+        can be fewer than were handed over, or -1 with `errno` set.
     """
     return external_call[
         "send",
@@ -109,13 +158,17 @@ def sendto(
     Fn signature: ssize_t sendto(int socket, const void *message, size_t length, int flags, const struct sockaddr *dest_addr, UInt32 dest_len)
 
     Args:
-        socket: A pointer to a socket.
-        message: A pointer to a buffer to store the address of the accepted socket.
-        length: A pointer to a buffer to store the length of the address of the accepted socket.
-        flags: A pointer to a buffer to store the length of the address of the accepted socket.
-        dest_addr: A pointer to a buffer to store the length of the address of the accepted socket.
-        dest_len: A pointer to a buffer to store the length of the address of the accepted socket.
-    Returns: A pointer to a socket.
+        socket: Which socket to write to.
+        message: Where the bytes to send are.
+        length: How many bytes to send.
+        flags: `MSG_*` flags for this one call, or 0 for none.
+        dest_addr: Where to send it, which a socket with no connection of
+            its own needs and a connected one may leave out.
+        dest_len: How big the address is.
+
+    Returns:
+        How many bytes it took, which can be fewer than were handed over,
+        or -1 with `errno` set.
     """
     return external_call[
         "sendto",
@@ -130,11 +183,19 @@ def sendto(
 
 
 struct iovec(TrivialRegisterPassable):
+    """One piece of a scattered read or write: where it starts and how
+    long it is.
+    """
+
     var iov_base: c_ptr[UInt8]
     var iov_len: UInt64
 
 
 struct msghdr(TrivialRegisterPassable):
+    """One message for `sendmsg`, holding the address it goes to and the
+    pieces it is made of, which are not all in one place.
+    """
+
     var msg_name: c_ptr[UInt8]
     var msg_namelen: UInt16
     var msg_iov: c_ptr[iovec]
@@ -151,12 +212,13 @@ def sendmsg(sockfd: Int32, msg: c_ptr[msghdr], flags: Int32) -> Int64:
     Fn signature: ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags)
 
     Args:
-        sockfd: A pointer to a socket.
-        msg: A pointer to a buffer to store the address of the accepted socket.
-        flags: A pointer to a buffer to store the length of the address of the accepted socket.
+        sockfd: Which socket to write to.
+        msg: The message: where it goes, and where the pieces of it are
+            when they are not all in one place.
+        flags: `MSG_*` flags for this one call, or 0 for none.
 
     Returns:
-        A pointer to a socket.
+        How many bytes it took, or -1 with `errno` set.
     """
     return external_call["sendmsg", Int64, Int32, c_ptr[msghdr], Int32](
         sockfd, msg, flags
@@ -170,10 +232,15 @@ def socket(domain: Int32, type: Int32, protocol: Int32) -> Int32:
     Fn signature: int socket(int domain, int type, int protocol)
 
     Args:
-        domain: Address Family see AF_ alises.
-        type: Socket Type see SOCK_ alises.
-        protocol: Protocol see IPPROTO_ alises.
-    Returns: A pointer to a socket.
+        domain: Which address family, as one of the `AF_*`.
+        type: What kind of socket, as one of the `SOCK_*`.
+        protocol: Which protocol to speak, which is 0 for the one that
+            goes without saying given the other two; otherwise one of the
+            `IPPROTO_*`.
+
+    Returns:
+        A descriptor for the new socket, or -1 with `errno` set. It is
+        closed with `close` here when it is no longer wanted.
     """
     return external_call[
         "socket", Int32, Int32, Int32, Int32  # FnName, RetType  # Args
@@ -189,11 +256,16 @@ def socketpair(
     Fn signature: int socketpair(int domain, int type, int protocol, int sv[2])
 
     Args:
-        domain: Address Family see AF_ alises.
-        type: Socket Type see SOCK_ alises.
-        protocol: Protocol see IPPROTO_ alises.
-        sv: A pointer to a socket.
-    Returns: A pointer to a socket.
+        domain: Which address family, as one of the `AF_*`.
+        type: What kind of socket, as one of the `SOCK_*`.
+        protocol: Which protocol to speak, which is 0 for the one that
+            goes without saying given the other two.
+        sv: Room for two descriptors, which this fills in.
+
+    Returns:
+        0, or -1 with `errno` set. What is written into one end of the
+        pair comes out of the other, and both have to be closed when they
+        are no longer wanted.
     """
     return external_call[
         "socketpair",
@@ -214,10 +286,15 @@ def connect(
     Fn signature: int connect(int socket, const struct socketaddr *address, UInt32 address_len)
 
     Args:
-        socket: A pointer to a socket.
-        address: A pointer to a buffer to store the address of the accepted socket.
-        address_len: A pointer to a buffer to store the length of the address of the accepted socket.
-    Returns: A pointer to a socket.
+        socket: Which socket, by its descriptor.
+        address: Where to connect to.
+        address_len: How big the address is.
+
+    Returns:
+        0, or -1 with `errno` set. For a socket that works as a stream
+        this is when the connection is made; for one that works in
+        datagrams it only says where to send by default, and nothing is
+        sent yet.
     """
     return external_call[
         "connect",
@@ -235,9 +312,14 @@ def listen(socket: Int32, backlog: Int32) -> Int32:
     Fn signature: int listen(int socket, int backlog)
 
     Args:
-        socket: A pointer to a socket.
-        backlog: A pointer to a buffer to store the length of the address of the accepted socket.
-    Returns: A pointer to a socket.
+        socket: Which socket, by its descriptor, which has to have been
+            bound to an address already.
+        backlog: How many connections may be waiting to be accepted at
+            once. What happens to the ones after that is up to the
+            system: some turn them away and some leave them hanging.
+
+    Returns:
+        0, or -1 with `errno` set.
     """
     return external_call["listen", Int32, Int32, Int32](socket, backlog)
 
@@ -251,10 +333,17 @@ def accept(
     Fn signature: int accept(int socket, struct socketaddr *restrict address, UInt32 *restrict address_len)
 
     Args:
-        socket: A pointer to a socket.
-        address: A pointer to a buffer to store the address of the accepted socket.
-        address_len: A pointer to a buffer to store the length of the address of the accepted socket.
-    Returns: A pointer to a socket.
+        socket: Which socket to take a connection from, which has to be
+            listening already.
+        address: Where to put the address of what connected, or a null
+            pointer if that does not matter.
+        address_len: In: how much room there is for the address. Out: how
+            much of it was used.
+
+    Returns:
+        A descriptor for the connection, which is a socket of its own and
+        has to be closed when it is done with, or -1 with `errno` set.
+        The one being listened to stays open and keeps listening.
     """
     return external_call[
         "accept",
@@ -274,10 +363,13 @@ def getsockname(
     Fn signature: int getsockname(int socket, struct socketaddr *restrict address, UInt32 *restrict address_len)
 
     Args:
-        socket: A pointer to a socket.
-        address: A pointer to a buffer to store the address of the accepted socket.
-        address_len: A pointer to a buffer to store the length of the address of the accepted socket.
-    Returns: A pointer to a socket.
+        socket: Which socket, by its descriptor.
+        address: Where to put the address this end is bound to.
+        address_len: In: how much room there is for the address. Out: how
+            much of it was used.
+
+    Returns:
+        0, or -1 with `errno` set.
     """
     return external_call[
         "getsockname",
@@ -297,10 +389,14 @@ def getpeername(
     Fn signature: int getpeername(int socket, struct socketaddr *restrict address, UInt32 *restrict address_len)
 
     Args:
-        socket: A pointer to a socket.
-        address: A pointer to a buffer to store the address of the accepted socket.
-        address_len: A pointer to a buffer to store the length of the address of the accepted socket.
-    Returns: A pointer to a socket.
+        socket: Which socket, by its descriptor.
+        address: Where to put the address of the other end.
+        address_len: In: how much room there is for the address. Out: how
+            much of it was used.
+
+    Returns:
+        0, or -1 with `errno` set. A socket with no other end has none to
+        give, and says so with `ENOTCONN`.
     """
     return external_call[
         "getpeername",
@@ -318,9 +414,14 @@ def shutdown(socket: Int32, how: Int32) -> Int32:
     Fn signature: int shutdown(int socket, int how)
 
     Args:
-        socket: A pointer to a socket.
-        how: A pointer to a buffer to store the length of the address of the accepted socket.
-    Returns: A pointer to a socket.
+        socket: Which socket, by its descriptor.
+        how: `SHUT_RD` to stop reading, `SHUT_WR` to stop writing, or
+            `SHUT_RDWR` for both.
+
+    Returns:
+        0, or -1 with `errno` set. This is not `close`: the socket is
+        still there and still has to be closed, and stopping the writing
+        end is what sends the end of it to the other side.
     """
     return external_call[
         "shutdown", Int32, Int32, Int32  # FnName, RetType  # Args
@@ -334,8 +435,12 @@ def close(socket: Int32) -> Int32:
     Fn signature: int close(int socket)
 
     Args:
-        socket: A pointer to a socket.
-    Returns: A pointer to a socket.
+        socket: Which socket, by its descriptor.
+
+    Returns:
+        0, or -1 with `errno` set. The descriptor is gone either way once
+        this comes back, so what it says is whether the last of it was
+        done and not whether to keep using it.
     """
     return external_call["close", Int32, Int32](  # FnName, RetType  # Args
         socket
@@ -354,15 +459,22 @@ def accept4(
     Fn signature: int accept4(int socket, struct socketaddr *restrict address, UInt32 *restrict address_len, int flags)
 
     Args:
-        socket: A pointer to a socket.
-        address: A pointer to a buffer to store the address of the accepted socket.
-        address_len: A pointer to a buffer to store the length of the address of the accepted socket.
+        socket: Which socket to take a connection from, which has to be
+            listening already.
+        address: Where to put the address of what connected, or a null
+            pointer if that does not matter.
+        address_len: In: how much room there is for the address. Out: how
+            much of it was used.
         flags: `SOCK_NONBLOCK` to put the new socket in non-blocking mode
-            and `SOCK_CLOEXEC` to close it on `exec`, or both together. Both
-            are Linux-only and their values are not the same as the
-            `O_NONBLOCK` and `O_CLOEXEC` used everywhere else, so take them
-            from `<sys/socket.h>` rather than writing the numbers down.
-    Returns: A pointer to a socket.
+            and `SOCK_CLOEXEC` to close it on `exec`, or both together.
+            Both are Linux-only and their values are not the same as the
+            `O_NONBLOCK` and `O_CLOEXEC` used everywhere else, so take
+            them from `<sys/socket.h>` rather than writing the numbers
+            down.
+
+    Returns:
+        A descriptor for the connection, which is a socket of its own and
+        has to be closed when it is done with, or -1 with `errno` set.
     """
     return external_call[
         "accept4",
