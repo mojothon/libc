@@ -54,6 +54,35 @@ def read_first(p: c_ptr[UInt8]) -> UInt8:
 Point at a Mojo value with `Pointer(to=value)` when a C API needs an out
 parameter.
 
+### NULL
+
+Mojo pointers are not nullable, so there is no spelling of NULL and nothing to
+compare one against. `libc.utils` covers both directions:
+
+- `null_ptr[T]()` builds one to hand in, where C says a null pointer will do —
+  `strtok` carrying on from where it was, `time` when only its answer is
+  wanted, `nanosleep` when the remainder does not matter.
+- `is_null()` asks whether one that came back is NULL, which is how `fopen`,
+  `opendir`, `dlopen` and most of the rest say they failed.
+
+```mojo
+from libc.dirent import closedir, opendir
+from libc.utils import is_null, null_ptr, string_to_char_ptr
+
+
+def main() raises:
+    var path = string_to_char_ptr("/does/not/exist")
+    var dirp = opendir(path)
+    if is_null(dirp):
+        print("no such directory")
+    else:
+        _ = closedir(dirp)
+    path.unsafe_free()
+```
+
+Never read through a null pointer. Handing one in is only ever for C to
+notice and take the other branch.
+
 ## Structs
 
 Structures are declared with the field layout of the corresponding C struct.
