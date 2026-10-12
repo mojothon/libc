@@ -20,7 +20,7 @@ All notable changes to this project are documented here. The format follows
   in place of a complex number).
 - Rewritten test suite under `tests/`, driven by `tests/test_main.mojo` and
   `std.testing` assertions: `complex`, `constant`, `ctype`, `dirent`, `float`,
-  `math`, `network`, `stdio`, `stdlib`, `string`, `utils`, `version`.
+  `math`, `network`, `stdio`, `stdlib`, `string`, `time`, `utils`, `version`.
 - `CHANGELOG.md`, expanded mkdocs site (`install`, `usage`, `modules`,
   `version`) rebuilt on `mkdocs-material`.
 
@@ -36,6 +36,12 @@ All notable changes to this project are documented here. The format follows
   type, since the `d_type` field only lines up on glibc.
 - `pixi run package` failed in a clean checkout because `mojo precompile` does
   not create `dist/`.
+- `<time.h>` was declared wrong: `asctime`, `asctime_r`, `ctime` and `ctime_r`
+  took a `char *` where C takes a `struct tm *`, `gmtime` and `mktime` passed
+  broken-down times around as bare integers, and `strftime`'s `size_t` was an
+  `Int32`. All of them now take the new `struct tm`, and `strptime`,
+  `localtime`, `localtime_r`, `clock_getres`, `clock_settime`, `timespec_get`
+  and the `struct timespec` they share are covered too.
 - `libc.file.fclose()` could not be called at all: `std.io` emits its own
   `fclose` declaration, and a second `external_call` for the same symbol that
   takes a `Pointer` fails to lower with "existing function with conflicting
