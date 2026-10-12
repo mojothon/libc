@@ -583,7 +583,7 @@ def pread(
     )
 
 
-def read(fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint) -> c_uint:
+def read(fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint) -> Int:
     """Libc POSIX `read` function.
 
     Args:
@@ -598,8 +598,8 @@ def read(fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint) -> c_uint:
         [Reference](https://man7.org/linux/man-pages/man3/read.3p.html).
         Fn signature: `sssize_t read(int fildes, void *buf, size_t nbyte)`.
     """
-    return external_call["read", c_uint, c_int, c_ptr[c_void], c_uint](
-        fildes, buf, nbyte
+    return external_call["read", Int, Int, c_ptr[NoneType], Int](
+        Int(fildes), buf.unsafe_bitcast[NoneType](), Int(nbyte)
     )
 
 
@@ -627,7 +627,7 @@ def pwrite(
     )
 
 
-def write(fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint) -> c_uint:
+def write(fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint) -> Int:
     """Libc POSIX `write` function.
 
     Args:
@@ -643,8 +643,8 @@ def write(fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint) -> c_uint:
         Fn signature: `ssize_t write(int fildes, const void *buf,
             size_t nbyte)`.
     """
-    return external_call["write", c_uint, c_int, c_ptr[c_void], c_uint](
-        fildes, buf, nbyte
+    return external_call["write", Int, Int, c_ptr[NoneType], Int](
+        Int(fildes), buf.unsafe_bitcast[NoneType](), Int(nbyte)
     )
 
 

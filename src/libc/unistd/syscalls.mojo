@@ -582,7 +582,7 @@ def pwrite(fd: Int32, buf: c_ptr[UInt8], count: UInt32, offset: Int8) -> UInt32:
     )
 
 
-def read(fd: Int32, buf: c_ptr[UInt8], count: UInt32) -> UInt32:
+def read(fd: Int32, buf: c_ptr[UInt8], count: UInt32) -> Int:
     """Libc POSIX `read` function.
 
     Reference:
@@ -600,8 +600,8 @@ def read(fd: Int32, buf: c_ptr[UInt8], count: UInt32) -> UInt32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["read", UInt32, Int32, c_ptr[UInt8], UInt32](
-        fd, buf, count
+    return external_call["read", Int, Int, c_ptr[NoneType], Int](
+        Int(fd), buf.unsafe_bitcast[NoneType](), Int(count)
     )
 
 
@@ -839,7 +839,7 @@ def truncateat(dirfd: Int32, path: c_ptr[UInt8], length: Int64) -> Int32:
     )
 
 
-def write(fd: Int32, buf: c_ptr[UInt8], count: UInt32) -> UInt32:
+def write(fd: Int32, buf: c_ptr[UInt8], count: UInt32) -> Int:
     """Libc POSIX `write` function.
 
     Reference:
@@ -857,8 +857,8 @@ def write(fd: Int32, buf: c_ptr[UInt8], count: UInt32) -> UInt32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["write", UInt32, Int32, c_ptr[UInt8], UInt32](
-        fd, buf, count
+    return external_call["write", Int, Int, c_ptr[NoneType], Int](
+        Int(fd), buf.unsafe_bitcast[NoneType](), Int(count)
     )
 
 
