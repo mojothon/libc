@@ -17,6 +17,10 @@ run = "mojo run -I src src/main.mojo"
 format = "mojo format src tests"
 # `mojo format` has no --check flag, so format a copy and diff it.
 format-check = "bash scripts/format-check.sh"
+# `external_call` takes whatever types it is given, so a wrong argument
+# count or a misspelled symbol still compiles. This checks them against
+# the real prototypes read out of the headers with `gcc -aux-info`.
+check-prototypes = "python3 scripts/check-prototypes.py"
 
 [feature.build.dependencies]
 rattler-build = ">=0.40,<0.41"

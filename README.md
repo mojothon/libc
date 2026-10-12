@@ -36,6 +36,7 @@ pixi run test             # run the test suite
 pixi run package          # build dist/libc.mojoc
 pixi run format           # apply mojo format
 pixi run format-check     # fail if the tree is not formatted
+pixi run check-prototypes # fail if a call does not match the C prototype
 pixi run doc              # serve the docs locally
 ```
 
