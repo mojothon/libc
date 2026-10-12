@@ -4,7 +4,7 @@
 # github: github.com/llango
 # ----------------------------------
 from std.ffi import external_call
-from libc.constant import c_ptr
+from libc.constant import c_int, c_ptr, c_wchar
 
 
 struct imaxdiv_t(TrivialRegisterPassable):
@@ -13,7 +13,7 @@ struct imaxdiv_t(TrivialRegisterPassable):
 
 
 def imaxabs(j: Int64) -> Int64:
-    """C library <math.h> function `imaxabs`.
+    """Libc <inttypes.h> function `imaxabs`.
 
     Link:
         https://man7.org/linux/man-pages/man3/imaxabs.3.html
@@ -34,7 +34,7 @@ def imaxabs(j: Int64) -> Int64:
 
 
 def imaxdiv(numer: Int64, denom: Int64) -> imaxdiv_t:
-    """C library <math.h> function `imaxdiv`.
+    """Libc <inttypes.h> function `imaxdiv`.
 
     Link:
         https://man7.org/linux/man-pages/man3/ldiv.3.html
@@ -56,9 +56,9 @@ def imaxdiv(numer: Int64, denom: Int64) -> imaxdiv_t:
 
 
 def strtoimax(
-    nptr: c_ptr[Int8], endptr: c_ptr[c_ptr[Int8]], base: Int32
+    nptr: c_ptr[UInt8], endptr: c_ptr[c_ptr[UInt8]], base: Int32
 ) -> Int64:
-    """C library <math.h> function `strtoimax`.
+    """Libc <inttypes.h> function `strtoimax`.
 
     Link:
         https://man7.org/linux/man-pages/man3/strtoimax.3.html
@@ -77,20 +77,20 @@ def strtoimax(
         On success, the converted value is returned. On error, -1 is returned.
     """
     return external_call[
-        "strtoimax", Int64, c_ptr[Int8], c_ptr[c_ptr[Int8]], Int32
+        "strtoimax", Int64, c_ptr[UInt8], c_ptr[c_ptr[UInt8]], Int32
     ](nptr, endptr, base)
 
 
 def strtoumax(
-    nptr: c_ptr[Int8], endptr: c_ptr[c_ptr[Int8]], base: Int32
+    nptr: c_ptr[UInt8], endptr: c_ptr[c_ptr[UInt8]], base: Int32
 ) -> UInt64:
-    """C library <math.h> function `strtoumax`.
+    """Libc <inttypes.h> function `strtoumax`.
 
     Link:
         https://man7.org/linux/man-pages/man3/strtoumax.3.html
 
     Prototype:
-        uintmax_t strtoimax(const char *nptr, char **endptr, int base)
+        uintmax_t strtoumax(const char *nptr, char **endptr, int base)
 
     Description:
         Converts the initial part of the string pointed to by nptr to a signed integer value using the given base, which must be between 2 and 36 inclusive.
@@ -103,5 +103,53 @@ def strtoumax(
         On success, the converted value is returned. On error, -1 is returned.
     """
     return external_call[
-        "strtoimax", UInt64, c_ptr[Int8], c_ptr[c_ptr[Int8]], Int32
+        "strtoumax", UInt64, c_ptr[UInt8], c_ptr[c_ptr[UInt8]], Int32
+    ](nptr, endptr, base)
+
+
+def wcstoimax(
+    nptr: c_ptr[c_wchar], endptr: c_ptr[c_ptr[c_wchar]], base: c_int
+) -> Int64:
+    """Libc <inttypes.h> function `wcstoimax`.
+
+    Args:
+        nptr: The wide string to convert.
+        endptr: Where to store the address of the first wide character that
+            did not convert, or a null pointer if you do not care.
+        base: The base to convert in, 2 to 36, or 0 to take it from the
+            prefix.
+
+    Returns:
+        The converted value, clamped on overflow, with `errno` set to `ERANGE`.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcstoimax.3.html).
+        Fn signature: `intmax_t wcstoimax(const wchar_t *nptr, wchar_t **endptr, int base)`.
+    """
+    return external_call[
+        "wcstoimax", Int64, c_ptr[c_wchar], c_ptr[c_ptr[c_wchar]], c_int
+    ](nptr, endptr, base)
+
+
+def wcstoumax(
+    nptr: c_ptr[c_wchar], endptr: c_ptr[c_ptr[c_wchar]], base: c_int
+) -> UInt64:
+    """Libc <inttypes.h> function `wcstoumax`.
+
+    Args:
+        nptr: The wide string to convert.
+        endptr: Where to store the address of the first wide character that
+            did not convert, or a null pointer if you do not care.
+        base: The base to convert in, 2 to 36, or 0 to take it from the
+            prefix.
+
+    Returns:
+        The converted value, clamped on overflow, with `errno` set to `ERANGE`.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcstoimax.3.html).
+        Fn signature: `uintmax_t wcstoumax(const wchar_t *nptr, wchar_t **endptr, int base)`.
+    """
+    return external_call[
+        "wcstoumax", UInt64, c_ptr[c_wchar], c_ptr[c_ptr[c_wchar]], c_int
     ](nptr, endptr, base)
