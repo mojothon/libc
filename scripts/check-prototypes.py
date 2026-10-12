@@ -621,16 +621,26 @@ def size_problem(
     mojo_type: str,
     measures: dict[str, tuple[int, bool]],
     aliases: dict[str, str],
+    carrying_back: bool = False,
 ) -> tuple[str, str] | None:
     """How the two disagree, and how much it matters, or None.
 
     Handing C fewer bytes than it asks for is the one that breaks: it
     reads the rest of the register, which is whatever was there. Handing
     it more is harmless, because it takes the low end and ignores the
-    rest, and so is a sign that differs while the width does not — a
-    `size_t` read into an `Int` is the same eight bits until the value
-    is past what a signed one can hold, which it never is. Those two are
-    counted and printed, and do not fail the run.
+    rest, and so is handing it a sign that differs on the way in — what
+    goes in is the same bits either way, and a size nobody means as
+    negative is the same number read as either. Those are counted and
+    printed, and do not fail the run.
+
+    A sign that differs on the way out is another matter, and the one
+    way round that breaks is C saying signed and the binding saying
+    unsigned: what C means as -1 comes back as the largest number the
+    unsigned type holds, which is how `getline` and `getrandom` both
+    lost the end of the file and the failure they were reporting. So
+    that one fails the run when `carrying_back` is set, and the other
+    way round — a `size_t` read into an `Int` — does not, being the same
+    eight bits for every value either can honestly hold.
     """
     base = strip_qualifiers(c_type)
     c_size = measures.get(base)
@@ -653,7 +663,7 @@ def size_problem(
             "signed in C and unsigned in Mojo"
             if c_signed
             else "unsigned in C and signed in Mojo",
-            "sign",
+            "narrow" if c_signed and carrying_back else "sign",
         )
     return None
 
@@ -716,7 +726,9 @@ def main() -> int:
             # Same kind, so it compiles and runs. That is not the same as
             # agreeing about how much the answer is.
             inner_c, inner_mojo = peel(c_return, mojo_return)
-            off = size_problem(inner_c, inner_mojo, measures, aliases)
+            off = size_problem(
+                inner_c, inner_mojo, measures, aliases, carrying_back=True
+            )
             if off and symbol not in SIZE_EXCEPTIONS:
                 record(
                     off,
