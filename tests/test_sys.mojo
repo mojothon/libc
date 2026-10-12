@@ -115,6 +115,22 @@ def test_statvfs() raises:
     assert_equal(statvfs(path, buf), 0, "statvfs succeeded")
     path.unsafe_free()
 
+    print(
+        "probe bsize",
+        buf[].f_bsize,
+        "frsize",
+        buf[].f_frsize,
+        "blocks",
+        buf[].f_blocks,
+        "bfree",
+        buf[].f_bfree,
+        "files",
+        buf[].f_files,
+        "flag",
+        buf[].f_flag,
+        "namemax",
+        buf[].f_namemax,
+    )
     assert_true(buf[].f_bsize > 0, "the file system has a block size")
     assert_true(buf[].f_blocks > 0, "the file system has blocks")
     assert_true(buf[].f_frsize > 0, "the file system has a fragment size")
