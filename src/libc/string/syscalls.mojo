@@ -643,31 +643,6 @@ def memmem(
 
 
 @inline(.nodebug)
-def memrchr(s: c_ptr[NoneType], c: c_int, n: c_size_t) -> c_ptr[NoneType]:
-    """Libc `memrchr` function.
-
-    Args:
-        s: The block to scan.
-        c: The byte to look for, narrowed to an `unsigned char`.
-        n: How many bytes to scan.
-
-    Returns:
-        A pointer to the last match, or a null pointer if `s` holds no such
-        byte in its first `n` bytes.
-
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/memrchr.3.html).
-        Fn signature: `void *memrchr(const void *s, int c, size_t n)`.
-
-        `memchr` from the other end. Not in C either, but both glibc and
-        Darwin have it.
-    """
-    return external_call[
-        "memrchr", c_ptr[NoneType], c_ptr[NoneType], c_int, c_size_t
-    ](s, c, n)
-
-
-@inline(.nodebug)
 def ffs(i: c_int) -> c_int:
     """Libc POSIX `ffs` function.
 

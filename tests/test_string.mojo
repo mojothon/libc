@@ -8,7 +8,6 @@ from libc.string import (
     memchr,
     memcmp,
     memmem,
-    memrchr,
     stpcpy,
     strcasecmp,
     strchr,
@@ -214,7 +213,7 @@ def test_strncat_and_stpcpy() raises:
     xy.unsafe_free()
 
 
-def test_memmem_and_memrchr() raises:
+def test_memmem() raises:
     var haystack = string_to_char_ptr("hello, world")
     var needle = string_to_char_ptr("world")
     var absent = string_to_char_ptr("nowhere")
@@ -235,15 +234,9 @@ def test_memmem_and_memrchr() raises:
     )
     assert_equal(Int(nothing), 0, "and `nowhere` is not in it")
 
-    # The last of the two `a`s, not the first, which is what `memchr` gives.
-    var ab = string_to_char_ptr("abcabc")
-    var last = memrchr(ab.unsafe_bitcast[NoneType](), 97, 6)
-    assert_equal(Int(last) - Int(ab), 3)
-
     haystack.unsafe_free()
     needle.unsafe_free()
     absent.unsafe_free()
-    ab.unsafe_free()
 
 
 def test_strsep() raises:
@@ -283,7 +276,7 @@ def main() raises:
     test_strtok()
     test_messages()
     test_strncat_and_stpcpy()
-    test_memmem_and_memrchr()
+    test_memmem()
     test_strsep()
     test_ffs()
     print("test_string: ok")
