@@ -6,8 +6,10 @@ from libc.constant import c_ptr
 from libc.pthread import pthread_attr_t, pthread_condattr_t
 from libc.sys.resource import Rlimit, getrlimit, getrusage
 from libc.sys.socket import socketaddr
-from libc.sys.stat import Stat, stat, timespec, timeval
+from libc.fcntl import open
+from libc.sys.stat import Stat, fstat, stat, timespec, timeval
 from libc.sys.wait import rusage
+from libc.unistd import close, unlink, write
 from libc.time import tm
 from libc.utils import string_to_char_ptr
 from libc.wchar import mbstate_t
@@ -64,14 +66,36 @@ def test_stat_reads_a_real_file() raises:
     assert_true(buf[].rdev() != 0, "/dev/null has a device number")
     assert_true(buf[].mode() != 0, "/dev/null has a mode")
     assert_true(buf[].mtime() > 0, "/dev/null has a timestamp")
-    # 32-bit on Darwin and 64-bit on Linux, so a blksize in the millions means
-    # the slot was read at the wrong width.
+
+    buf.unsafe_free()
+
+
+def test_stat_on_a_regular_file() raises:
+    # The members whose offsets differ between the platforms: `st_mode` and
+    # `st_nlink` are 4 and 6 bytes in on Darwin but 24 and 16 on Linux, and
+    # `st_blksize` is 32 bits there and 64 here.
+    var path = string_to_char_ptr("/tmp/libc-layout-test")
+    var fd = open(path, 65)  # O_WRONLY | O_CREAT
+    assert_true(fd >= 0, "the file was created")
+    _ = write(fd, string_to_char_ptr("x"), 1)
+
+    var buf = unsafe_alloc[Stat](1)
+    buf[] = Stat()
+    assert_equal(fstat(fd, buf), 0, "fstat succeeded")
+
+    assert_true(buf[].mode() != 0, "the file has a mode")
+    assert_equal(buf[].nlink(), 1, "a new file has one link")
+    assert_true(buf[].uid() > 0, "the file has an owner")
+    assert_equal(buf[].size(), 1, "the file holds the byte written")
     assert_true(
         buf[].blksize() > 0 and buf[].blksize() <= 1 << 20,
-        "/dev/null has a plausible block size",
+        "the file has a plausible block size",
     )
 
     buf.unsafe_free()
+    _ = close(fd)
+    _ = unlink(path)
+    path.unsafe_free()
 
 
 def test_rusage_and_rlimit() raises:
@@ -95,5 +119,6 @@ def test_rusage_and_rlimit() raises:
 def main() raises:
     test_sizes()
     test_stat_reads_a_real_file()
+    test_stat_on_a_regular_file()
     test_rusage_and_rlimit()
     print("test_layout: ok")

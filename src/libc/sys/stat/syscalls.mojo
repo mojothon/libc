@@ -137,10 +137,11 @@ def mknodat(fd: Int32, path: c_ptr[UInt8], mode: Int32, dev: Int32) -> Int32:
 struct Stat:
     """A C `struct stat`, which `stat`, `fstat` and friends fill in.
 
-    Both platforms make it 144 bytes but order it differently: glibc leads with
-    `st_dev`, `st_ino`, `st_nlink`, Darwin with `st_dev`, `st_mode`,
-    `st_nlink`, `st_ino`. So the bytes are held as slots and every member is
-    read at the offset that fits the platform, the way `struct dirent` does it.
+    Linux's is 144 bytes and Darwin's 128, and the order differs: glibc leads
+    with `st_dev`, `st_ino`, `st_nlink`, Darwin packs `st_dev`, `st_mode`,
+    `st_nlink` into the first eight bytes and puts `st_ino` after them. So the
+    bytes are held as slots and every member is read at the offset that fits
+    the platform, the way `struct dirent` does it.
     """
 
     var _slots: Array[Int64, 18]
@@ -163,14 +164,14 @@ struct Stat:
     def nlink(self) -> Int64:
         """How many hard links point at the file."""
         comptime if CompilationTarget.is_macos():
-            return (self._slots[0] >> 32) & 0xFFFF
+            return (self._slots[0] >> 48) & 0xFFFF
         else:
             return self._slots[2]
 
     def mode(self) -> Int:
         """The file type and permission bits."""
         comptime if CompilationTarget.is_macos():
-            return Int((self._slots[0] >> 16) & 0xFFFF)
+            return Int((self._slots[0] >> 32) & 0xFFFF)
         else:
             return Int(self._slots[3] & 0xFFFFFFFF)
 
@@ -205,7 +206,7 @@ struct Stat:
     def blksize(self) -> Int64:
         """The preferred block size for I/O on this file."""
         comptime if CompilationTarget.is_macos():
-            # A 32-bit `blksize_t`, followed by `st_flags`.
+            # A 32-bit `blksize_t`, with `st_flags` in the half above it.
             return Int64(self._slots[12] & 0xFFFFFFFF)
         else:
             return self._slots[7]
