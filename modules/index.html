@@ -752,7 +752,7 @@ the bottom.</p>
 <tr>
 <td><code>libc.sys.wait</code></td>
 <td><code>&lt;sys/wait.h&gt;</code></td>
-<td>5</td>
+<td>4</td>
 </tr>
 <tr>
 <td><code>libc.inttypes</code></td>
@@ -762,7 +762,7 @@ the bottom.</p>
 <tr>
 <td><code>libc.sys.resource</code></td>
 <td><code>&lt;sys/resource.h&gt;</code></td>
-<td>4</td>
+<td>5</td>
 </tr>
 <tr>
 <td><code>libc.network</code></td>
@@ -792,12 +792,12 @@ the bottom.</p>
 <tr>
 <td><code>libc.sys.statvfs</code></td>
 <td><code>&lt;sys/statvfs.h&gt;</code></td>
-<td>2</td>
+<td>3</td>
 </tr>
 <tr>
 <td><code>libc.sys.select</code></td>
 <td><code>&lt;sys/select.h&gt;</code></td>
-<td>2</td>
+<td>9</td>
 </tr>
 <tr>
 <td><code>libc.setjmp</code></td>
@@ -807,7 +807,7 @@ the bottom.</p>
 <tr>
 <td><code>libc.sys.utsname</code></td>
 <td><code>&lt;sys/utsname.h&gt;</code></td>
-<td>1</td>
+<td>2</td>
 </tr>
 <tr>
 <td><code>libc.sys.sendfile</code></td>
@@ -830,14 +830,9 @@ the bottom.</p>
 <td>1</td>
 </tr>
 <tr>
-<td><code>libc.gpu</code></td>
-<td>GPU/CUDA driver entry points</td>
-<td>1</td>
-</tr>
-<tr>
 <td><code>libc.errno</code></td>
 <td><code>&lt;errno.h&gt;</code></td>
-<td>1</td>
+<td>2</td>
 </tr>
 <tr>
 <td><code>libc.constant</code></td>
@@ -854,6 +849,9 @@ the bottom.</p>
 <h2 id="not-started-yet">Not started yet<a class="headerlink" href="#not-started-yet" title="Permanent link">&para;</a></h2>
 <p><code>libc.threads</code> (<code>&lt;threads.h&gt;</code>) exports nothing: Apple never shipped C11
 threads, so a binding would only ever work on Linux.</p>
+<p><code>libc.sys.epoll</code>, <code>libc.sys.prctl</code>, <code>libc.sys.sendfile</code>, <code>libc.sys.auxv</code> and
+<code>libc.sys.random</code> wrap Linux-only calls; importing them on Darwin will not
+link.</p>
 <p><code>libc.stdio</code> covers the <code>&lt;stdio.h&gt;</code> entry points that <code>libc.file</code> does not
 already own; see the note at the top of <code>src/libc/stdio/syscalls.mojo</code>.
 <code>libc.complex</code> models <code>double complex</code> and <code>float complex</code> as the two-field
