@@ -12,13 +12,15 @@ All notable changes to this project are documented here. The format follows
 - GitHub Actions workflows: CI (format, test on Linux and macOS, conda build,
   docs) and release (prefix.dev upload, GitHub Pages docs, release artifact).
 - `recipe/recipe.yaml` moved out of `src/` and rebuilt for `rattler-build`.
-- Three sub-packages that were empty stubs: `libc.stdlib` (allocation,
+- Four sub-packages that were empty stubs: `libc.stdlib` (allocation,
   environment, number conversion, temporary files), `libc.float` (the
-  `<float.h>` limits) and `libc.stdio` (the `<stdio.h>` entry points that
-  `libc.file` does not already own).
+  `<float.h>` limits), `libc.stdio` (the `<stdio.h>` entry points that
+  `libc.file` does not already own) and `libc.complex` (the `<complex.h>`
+  functions over `cdouble` and `cfloat`, the two-field structs the ABI passes
+  in place of a complex number).
 - Rewritten test suite under `tests/`, driven by `tests/test_main.mojo` and
-  `std.testing` assertions: `constant`, `ctype`, `dirent`, `float`, `math`,
-  `network`, `stdio`, `stdlib`, `string`, `utils`, `version`.
+  `std.testing` assertions: `complex`, `constant`, `ctype`, `dirent`, `float`,
+  `math`, `network`, `stdio`, `stdlib`, `string`, `utils`, `version`.
 - `CHANGELOG.md`, expanded mkdocs site (`install`, `usage`, `modules`,
   `version`) rebuilt on `mkdocs-material`.
 

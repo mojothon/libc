@@ -1,8 +1,8 @@
 # Modules
 
 `Symbols` counts the public declarations in each sub-package. Treat a low count
-as "only the essentials are wired up"; the stub packages export nothing yet and
-are listed at the bottom.
+as "only the essentials are wired up"; the one remaining stub is described at
+the bottom.
 
 | Module | C header | Symbols |
 | --- | --- | --- |
@@ -20,6 +20,7 @@ are listed at the bottom.
 | `libc.pthread` | `<pthread.h>` | 14 |
 | `libc.string` | `<string.h>` | 13 |
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 21 |
+| `libc.complex` | `<complex.h>` | 46 |
 | `libc.sched` | `<sched.h>` | 13 |
 | `libc.signal` | `<signal.h>` | 10 |
 | `libc.locale` | `<locale.h>` | 10 |
@@ -49,15 +50,14 @@ are listed at the bottom.
 
 ## Not started yet
 
-These sub-packages exist but export nothing:
-
-| Module | C header |
-| --- | --- |
-| `libc.complex` | `<complex.h>` |
-| `libc.threads` | `<threads.h>` |
+`libc.threads` (`<threads.h>`) exports nothing: Apple never shipped C11
+threads, so a binding would only ever work on Linux.
 
 `libc.stdio` covers the `<stdio.h>` entry points that `libc.file` does not
 already own; see the note at the top of `src/libc/stdio/syscalls.mojo`.
+`libc.complex` models `double complex` and `float complex` as the two-field
+structs the ABI actually passes; `long double complex` is left out because
+Mojo has no 80-bit type.
 
 ## API reference
 
