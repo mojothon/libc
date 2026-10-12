@@ -12,12 +12,20 @@ found them:
     is*_l  took one argument instead of two
     environ               -> a global variable, so calling it runs data
 
-Four things are checked:
+Five things are checked:
 
     the symbol is one the headers declare
     the argument count matches, allowing for `...`
     the function is named after the symbol it calls
     nothing in the prototype is `long double`, which Mojo cannot pass
+    what is passed and handed back is as wide as C says, and signed
+    where C says it is
+
+The last one is the only defence against a binding that names a type of
+the right kind and the wrong size, which `external_call` accepts without
+a word: `getline` used to say `c_uint` for a `ssize_t`, and so answered
+4294967295 where it meant -1, the end of the file, and a caller asking
+whether the file was done went on reading forever.
 
 `gcc -aux-info` is how the prototypes are read, so this runs on Linux
 only and reports nothing elsewhere rather than failing.
@@ -122,6 +130,11 @@ ARGUMENT_EXCEPTIONS = {
     # on every ABI this package targets.
     ("fclose", 1),
 }
+
+
+# A binding may pass or hand back a type of a different size than C
+# says, but only where there is a reason, and the reason goes here.
+SIZE_EXCEPTIONS: set[str] = set()
 
 
 def available_headers() -> list[str]:
@@ -419,12 +432,248 @@ def mojo_kind(mojo_type: str) -> str:
     return "struct"
 
 
+
+# How wide a type is, and whether it holds negatives, measured by the
+# compiler rather than written down: `gcc` is already the one being asked
+# for the prototypes, and a table of widths guessed here would be wrong
+# somewhere.
+CHARISH_C = {"char", "signed char", "unsigned char"}
+CHARISH_MOJO = {"c_char", "c_uchar", "c_schar", "Int8", "UInt8"}
+
+# What Mojo calls its fixed-width types, which is where every `c_*` name
+# in `libc.constant` comes to rest. A `None` sign is a float, which has
+# no opinion about negatives.
+MOJO_SIZES: dict[str, tuple[int, bool | None]] = {
+    "Int8": (1, True),
+    "UInt8": (1, False),
+    "Int16": (2, True),
+    "UInt16": (2, False),
+    "Int32": (4, True),
+    "UInt32": (4, False),
+    "Int64": (8, True),
+    "UInt64": (8, False),
+    "Int": (8, True),
+    "UInt": (8, False),
+    "Float16": (2, None),
+    "Float32": (4, None),
+    "Float64": (8, None),
+    "BFloat16": (2, None),
+}
+
+
+def strip_qualifiers(c_type: str) -> str:
+    """`const char *__restrict` as `char`, which is what is being sized."""
+    return " ".join(
+        word
+        for word in re.findall(r"\w+", c_type)
+        if word not in ("const", "__const", "volatile", "restrict", "__restrict")
+    )
+
+
+def c_base_types(
+    prototypes: dict[str, tuple[int, bool, bool, str, tuple[str, ...]]]
+) -> set[str]:
+    """Every plain type the prototypes mention, without its decorations."""
+    found: set[str] = set()
+    for _, _, _, returns, params in prototypes.values():
+        for c_type in (returns, *params):
+            base = strip_qualifiers(c_type)
+            if base and c_kind(base) in ("integer", "float"):
+                found.add(base)
+    return found
+
+
+def compile_and_run(prelude: str, lines: list[str]) -> str:
+    """Build and run the program made of these lines, less what will not build.
+
+    `-aux-info` hands back the odd type that C will not take as one —
+    `int char int` was in the listing — so rather than guess which, the
+    lines the compiler objects to are dropped and the rest is asked
+    again. Only a handful of lines survive that, and they are not types
+    anybody is calling with.
+    """
+    kept = list(lines)
+    for _ in range(5):
+        source = prelude + "\nint main(void) {\n" + "\n".join(kept)
+        source += "\n    return 0;\n}\n"
+        with tempfile.TemporaryDirectory() as work:
+            c = Path(work) / "sizes.c"
+            c.write_text(source)
+            exe = Path(work) / "sizes"
+            built = subprocess.run(
+                ["gcc", str(c), "-o", str(exe)], capture_output=True, text=True
+            )
+            if built.returncode == 0:
+                ran = subprocess.run([str(exe)], capture_output=True, text=True)
+                return ran.stdout
+            # The first line of the body sits three lines past the last
+            # newline of the prelude: the newline that ends its final
+            # line, the `int main` line, and the newline ending that.
+            offset = prelude.count("\n") + 3
+            dropped = {
+                int(m.group(1)) - offset
+                for m in re.finditer(r":(\d+):\d+: error", built.stderr)
+            }
+            if not dropped:
+                print("skipped: the sizes program did not compile")
+                return ""
+            kept = [line for i, line in enumerate(kept) if i not in dropped]
+    return ""
+
+
+def measure_c_types(types: set[str]) -> dict[str, tuple[int, bool]]:
+    """What `gcc` says each of these is: how wide, and whether signed.
+
+    Two programs rather than one, because a name ending in `_t` is a
+    promise about how a type is meant to be read and not a promise that
+    it is a number: `__sigset_t` and `cpu_set_t` are structs, and asking
+    one of those whether it is less than zero does not compile. So the
+    first pass asks what each type is made of, and only the ones made of
+    a number are asked about their sign in the second.
+    """
+    if not types:
+        return {}
+    headers = available_headers()
+    prelude = "#define _GNU_SOURCE\n#define _DEFAULT_SOURCE\n#include <stdio.h>\n"
+    prelude += "\n".join(f"#include <{h}>" for h in headers)
+
+    # `__builtin_classify_type` says what a type is without asking the
+    # type any question it cannot answer: 1 is an integer, 8 is a float,
+    # and 12, 13 and 14 are a struct, a union and an array.
+    names = sorted(types)
+    kinds = compile_and_run(
+        prelude,
+        [
+            '    { %s v; printf("%%s %%zu %%d\\n", "%s", sizeof(v),'
+            " __builtin_classify_type(v)); }" % (name, name)
+            for name in names
+        ],
+    )
+    classified: dict[str, tuple[int, int]] = {}
+    for line in kinds.splitlines():
+        name, width, kind = line.rsplit(" ", 2)
+        classified[name] = (int(width), int(kind))
+
+    numbers = [n for n in names if classified.get(n, (0, 0))[1] in (1, 2, 3, 4)]
+    signs = {}
+    for line in compile_and_run(
+        prelude,
+        [
+            '    printf("%%s %%d\\n", "%s", (int)((%s)-1 < (%s)0));' % (n, n, n)
+            for n in numbers
+        ],
+    ).splitlines():
+        name, value = line.rsplit(" ", 1)
+        signs[name] = value == "1"
+
+    # Only a number can be signed, so only a number is worth comparing.
+    return {
+        name: (width, signs.get(name, True))
+        for name, (width, kind) in classified.items()
+        if kind in (1, 2, 3, 4)
+    }
+
+
+def mojo_aliases() -> dict[str, str]:
+    """The `c_*` and `*_t` names `libc.constant` gives to Mojo types."""
+    aliases: dict[str, str] = {}
+    for path in sorted((SRC / "constant").rglob("*.mojo")):
+        text = path.read_text()
+        for m in re.finditer(
+            r"^comptime (\w+)\s*(?::[^=]+)?=\s*([A-Za-z_]\w*)$", text, re.M
+        ):
+            aliases[m.group(1)] = m.group(2)
+    return aliases
+
+
+def mojo_measure(
+    mojo_type: str, aliases: dict[str, str]
+) -> tuple[int, bool | None] | None:
+    """Follow `c_int` to `Int32` to four bytes and signed."""
+    seen: set[str] = set()
+    name = mojo_type.strip()
+    while name in aliases and name not in seen:
+        seen.add(name)
+        name = aliases[name]
+    return MOJO_SIZES.get(name)
+
+
+def peel(c_type: str, mojo_type: str) -> tuple[str, str]:
+    """Follow `T *` and `c_ptr[T]` down together to what they point at.
+
+    `size_t *` against `c_ptr[c_uint]` is the same mistake as `size_t`
+    against `c_uint`, one step down: libc writes eight bytes where the
+    caller was told to keep four.
+    """
+    while True:
+        inner = re.fullmatch(
+            r"(?:c_ptr|Pointer|UnsafePointer)\[(.+)\]", mojo_type.strip()
+        )
+        if c_type.count("*") and inner:
+            c_type = c_type.replace("*", "", 1).strip()
+            mojo_type = inner.group(1).strip()
+            continue
+        return c_type, mojo_type
+
+
+def size_problem(
+    c_type: str,
+    mojo_type: str,
+    measures: dict[str, tuple[int, bool]],
+    aliases: dict[str, str],
+) -> tuple[str, str] | None:
+    """How the two disagree, and how much it matters, or None.
+
+    Handing C fewer bytes than it asks for is the one that breaks: it
+    reads the rest of the register, which is whatever was there. Handing
+    it more is harmless, because it takes the low end and ignores the
+    rest, and so is a sign that differs while the width does not — a
+    `size_t` read into an `Int` is the same eight bits until the value
+    is past what a signed one can hold, which it never is. Those two are
+    counted and printed, and do not fail the run.
+    """
+    base = strip_qualifiers(c_type)
+    c_size = measures.get(base)
+    m_size = mojo_measure(mojo_type, aliases)
+    if c_size is None or m_size is None:
+        return None
+    c_width, c_signed = c_size
+    m_width, m_signed = m_size
+    if c_width != m_width:
+        return (
+            f"{c_width} byte(s) in C and {m_width} in Mojo",
+            "narrow" if m_width < c_width else "wide",
+        )
+    # Whether a `char` is signed is the machine's to say, and a byte is a
+    # byte either way, so a char on either side is not a disagreement.
+    if m_signed is None or base in CHARISH_C or mojo_type.strip() in CHARISH_MOJO:
+        return None
+    if c_signed != m_signed:
+        return (
+            "signed in C and unsigned in Mojo"
+            if c_signed
+            else "unsigned in C and signed in Mojo",
+            "sign",
+        )
+    return None
+
 def main() -> int:
     prototypes = read_prototypes()
     if not prototypes:
         return 0
 
     problems: list[str] = []
+    notes: dict[str, list[str]] = {"wide": [], "sign": []}
+
+    # Asked of `gcc` once, for every plain type the prototypes mention.
+    measures = measure_c_types(c_base_types(prototypes))
+    aliases = mojo_aliases()
+
+    def record(off: tuple[str, str], line: str) -> None:
+        if off[1] == "narrow":
+            problems.append(line)
+        else:
+            notes[off[1]].append(line)
 
     for path, name, symbol, passed, mojo_return, mojo_params in bindings():
         where = f"{path}: {name}() calls {symbol}()"
@@ -463,6 +712,17 @@ def main() -> int:
                 f"{where}, which returns {c_return}, so it cannot return"
                 f" {mojo_return} ({want}, not {got})"
             )
+        elif symbol not in RETURN_EXCEPTIONS:
+            # Same kind, so it compiles and runs. That is not the same as
+            # agreeing about how much the answer is.
+            inner_c, inner_mojo = peel(c_return, mojo_return)
+            off = size_problem(inner_c, inner_mojo, measures, aliases)
+            if off and symbol not in SIZE_EXCEPTIONS:
+                record(
+                    off,
+                    f"{where}, which returns {c_return} and is told it"
+                    f" returns {mojo_return}, which is {off[0]}",
+                )
 
         # The same for each argument. A `double` passed as an `Int32` is
         # accepted and then read as whatever those bits mean, and an address
@@ -472,16 +732,24 @@ def main() -> int:
         ):
             want, got = c_kind(c_param), mojo_kind(mojo_param)
             if (
-                want == got
-                or "opaque" in want
-                or "struct" in (want, got)
-                or (symbol, place) in ARGUMENT_EXCEPTIONS
+                want != got
+                and "opaque" not in want
+                and "struct" not in (want, got)
+                and (symbol, place) not in ARGUMENT_EXCEPTIONS
             ):
+                problems.append(
+                    f"{where} with {mojo_param} as argument {place}, where C"
+                    f" takes {c_param} ({want}, not {got})"
+                )
                 continue
-            problems.append(
-                f"{where} with {mojo_param} as argument {place}, where C"
-                f" takes {c_param} ({want}, not {got})"
-            )
+            inner_c, inner_mojo = peel(c_param, mojo_param)
+            off = size_problem(inner_c, inner_mojo, measures, aliases)
+            if off and (symbol, place) not in ARGUMENT_EXCEPTIONS:
+                record(
+                    off,
+                    f"{where} with {mojo_param} as argument {place}, where C"
+                    f" takes {c_param}, which is {off[0]}",
+                )
 
         # A function that calls something C spells differently is usually a
         # typo, and every one that is not is listed above with its reason.
@@ -501,6 +769,23 @@ def main() -> int:
                 f"docs/modules.md: {package} is listed as {documented} and"
                 f" defines {actual}"
             )
+
+    for kind, lines in notes.items():
+        if not lines:
+            continue
+        if kind == "wide":
+            print(
+                f"{len(lines)} place(s) hand C more bytes than it asks for,"
+                " which it takes the low end of and ignores the rest"
+            )
+        else:
+            print(
+                f"{len(lines)} place(s) hand C a type of the same width and"
+                " the other sign, which reads the same until the value is"
+                " past what the signed one can hold"
+            )
+    if notes:
+        print()
 
     if problems:
         print(f"{len(problems)} binding(s) do not match the C prototypes:\n")
