@@ -16,8 +16,9 @@ comptime ENTER: c_int = 1
 struct ENTRY(TrivialRegisterPassable):
     """A C `struct entry`: one row of an `hsearch` table.
 
-    The table owns neither member. `hsearch` compares rows by `key`, so the
-    bytes it points at have to outlive every call that uses them.
+    `hsearch` compares rows by `key` with `strcmp`, so the bytes it points at
+    have to outlive every call that uses them — and if `hdestroy` will run,
+    they have to come from `malloc`, because BSD frees them.
     """
 
     var key: c_ptr[UInt8]
@@ -60,8 +61,10 @@ def hdestroy() -> None:
         [Reference](https://man7.org/linux/man-pages/man3/hcreate.3.html).
         Fn signature: `void hdestroy(void)`.
 
-        Frees the table `hcreate` made. It does not free the keys or the data
-        the rows point at; that is the caller's job.
+        Frees the table `hcreate` made. It never frees the data, but the keys
+        are another matter: BSD, Darwin included, calls `free` on every key in
+        the table, while glibc leaves them alone. So keys have to come from
+        `malloc`, and portable code cannot free them itself either way.
     """
     external_call["hdestroy", NoneType]()
 
