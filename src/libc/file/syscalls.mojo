@@ -660,8 +660,15 @@ def fclose(stream: c_ptr[FILE]) -> c_int:
     Notes:
         [Reference](https://man7.org/linux/man-pages/man3/fclose.3p.html).
         Fn signature: `int fclose(FILE *stream)`.
+
+        `std.io` emits its own `fclose` declaration, and a second
+        `external_call` for the same symbol that takes a `Pointer` fails
+        to lower with "existing function with conflicting signature".
+        Passing the address as an `Int` keeps one declaration; an address
+        and an `Int` are both 8 bytes in an integer register on every ABI
+        this package targets, so the call is still ABI-compatible.
     """
-    return external_call["fclose", c_int, c_ptr[FILE]](stream)
+    return external_call["fclose", c_int, Int](Int(stream))
 
 
 def ftell(stream: c_ptr[FILE]) -> c_long:
