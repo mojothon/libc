@@ -80,6 +80,27 @@ def null_ptr[T: AnyType]() -> c_ptr[T]:
     return c_ptr[T](unsafe_from_address=address)
 
 
+def is_null[T: AnyType](p: c_ptr[T]) -> Bool:
+    """Say whether a pointer libc handed back is NULL.
+
+    A great many entry points here answer with a null pointer when they
+    fail: `fopen` on a file that is not there, `dlopen` on a library
+    that will not load, `getcwd` when the buffer is too small, `strstr`
+    when the needle is not in the haystack. There is no comparing one of
+    those against NULL on this side of the call, because Mojo pointers
+    are not nullable and there is no null to compare them with, so
+    asking what address it holds is the only way to find out.
+
+    Args:
+        p: What came back from C.
+
+    Returns:
+        True when it is NULL, which is how most of these say they
+        failed. Reading through it either way is on you.
+    """
+    return Int(p) == 0
+
+
 struct CString(TrivialRegisterPassable, Writable):
     """A borrowed view over a NUL terminated C string."""
 
