@@ -343,17 +343,25 @@ def close(socket: Int32) -> Int32:
 
 
 def accept4(
-    socket: Int32, address: c_ptr[socketaddr], address_len: c_ptr[UInt32]
+    socket: Int32,
+    address: c_ptr[socketaddr],
+    address_len: c_ptr[UInt32],
+    flags: Int32,
 ) -> Int32:
     """Libc POSIX `accept4` function.
 
-    Reference: https://man7.org/linux/man-pages/man3/accept4.3p.html
+    Reference: https://man7.org/linux/man-pages/man2/accept4.2.html
     Fn signature: int accept4(int socket, struct socketaddr *restrict address, UInt32 *restrict address_len, int flags)
 
     Args:
         socket: A pointer to a socket.
         address: A pointer to a buffer to store the address of the accepted socket.
         address_len: A pointer to a buffer to store the length of the address of the accepted socket.
+        flags: `SOCK_NONBLOCK` to put the new socket in non-blocking mode
+            and `SOCK_CLOEXEC` to close it on `exec`, or both together. Both
+            are Linux-only and their values are not the same as the
+            `O_NONBLOCK` and `O_CLOEXEC` used everywhere else, so take them
+            from `<sys/socket.h>` rather than writing the numbers down.
     Returns: A pointer to a socket.
     """
     return external_call[
@@ -361,5 +369,6 @@ def accept4(
         Int32,
         Int32,
         c_ptr[socketaddr],
-        c_ptr[UInt32],  # FnName, RetType  # Args
-    ](socket, address, address_len)
+        c_ptr[UInt32],
+        Int32,  # FnName, RetType  # Args
+    ](socket, address, address_len, flags)
