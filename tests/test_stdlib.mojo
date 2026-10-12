@@ -101,9 +101,13 @@ def test_paths() raises:
     # and already canonical, so resolving it again is a no-op.
     assert_true(resolved.byte_length() > 0)
     assert_true(resolved.startswith("/"))
-    assert_equal(char_ptr_to_string(realpath(out, out)), resolved)
+    # A second buffer: `realpath` reads its input while filling the output,
+    # so passing one buffer as both is undefined.
+    var out2 = unsafe_alloc[UInt8](4096)
+    assert_equal(char_ptr_to_string(realpath(out, out2)), resolved)
     tmp.unsafe_free()
     out.unsafe_free()
+    out2.unsafe_free()
 
     var tpl = string_to_char_ptr("/tmp/libc_stdlib_XXXXXX")
     var fd = mkstemp(tpl)
