@@ -117,7 +117,9 @@ def test_statvfs() raises:
 
     assert_true(buf[].f_bsize > 0, "the file system has a block size")
     assert_true(buf[].f_blocks > 0, "the file system has blocks")
-    assert_true(buf[].f_namemax > 0, "the file system allows names")
+    assert_true(buf[].f_frsize > 0, "the file system has a fragment size")
+    # Left alone on purpose: APFS reports 0 for `f_namemax`, so a name limit is
+    # not something both platforms promise.
     assert_true(
         buf[].f_bfree <= buf[].f_blocks, "free blocks are not more than blocks"
     )
