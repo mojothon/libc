@@ -167,7 +167,7 @@ def freopen(
 
 
 def fmemopen(
-    buf: c_ptr[c_void], size: c_uint, mode: c_ptr[c_char]
+    buf: c_ptr[c_void], size: c_size_t, mode: c_ptr[c_char]
 ) -> c_ptr[FILE]:
     """Libc POSIX `fmemopen` function.
 
@@ -188,7 +188,7 @@ def fmemopen(
         "fmemopen",
         c_ptr[FILE],
         c_ptr[c_void],
-        c_uint,
+        c_size_t,
         c_ptr[c_char],
     ](buf, size, mode)
 
@@ -385,7 +385,7 @@ def printf[*T: AnyType](format: c_ptr[c_char], *args: *T) -> c_int:
 
 def snprintf(
     s: c_ptr[c_char],
-    n: c_uint,
+    n: c_size_t,
     format: c_ptr[c_char],
 ) -> c_int:
     """Libc POSIX `snprintf` function.
@@ -407,7 +407,7 @@ def snprintf(
         "snprintf",
         c_int,
         c_ptr[c_char],
-        c_uint,
+        c_size_t,
         c_ptr[c_char],
     ](s, n, format)
 
@@ -490,10 +490,10 @@ def sscanf(s: c_ptr[c_char], format: c_ptr[c_char]) -> c_int:
 
 def fread(
     ptr: c_ptr[c_void],
-    size: c_uint,
-    nitems: c_uint,
+    size: c_size_t,
+    nitems: c_size_t,
     stream: c_ptr[FILE],
-) -> c_uint:
+) -> c_size_t:
     """Libc POSIX `fread` function.
 
     Args:
@@ -512,10 +512,10 @@ def fread(
     """
     return external_call[
         "fread",
-        c_uint,
+        c_size_t,
         c_ptr[c_void],
-        c_uint,
-        c_uint,
+        c_size_t,
+        c_size_t,
         c_ptr[FILE],
     ](ptr, size, nitems, stream)
 
@@ -599,8 +599,8 @@ def getdelim(
 
 
 def pread(
-    fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint, offset: off_t
-) -> c_uint:
+    fildes: c_int, buf: c_ptr[c_void], nbyte: c_size_t, offset: off_t
+) -> c_ssize_t:
     """Libc POSIX `pread` function.
 
     Args:
@@ -617,9 +617,9 @@ def pread(
         Fn signature: `ssize_t pread(int fildes, void *buf, size_t nbyte,
             off_t offset)`.
     """
-    return external_call["pread", c_uint, c_int, c_ptr[c_void], c_uint, off_t](
-        fildes, buf, nbyte, offset
-    )
+    return external_call[
+        "pread", c_ssize_t, c_int, c_ptr[c_void], c_size_t, off_t
+    ](fildes, buf, nbyte, offset)
 
 
 def read(fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint) -> Int:
@@ -643,8 +643,8 @@ def read(fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint) -> Int:
 
 
 def pwrite(
-    fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint, offset: off_t
-) -> c_uint:
+    fildes: c_int, buf: c_ptr[c_void], nbyte: c_size_t, offset: off_t
+) -> c_ssize_t:
     """Libc POSIX `pwrite` function.
 
     Args:
@@ -661,9 +661,9 @@ def pwrite(
         Fn signature: `ssize_t pwrite(int fildes, const void *buf, size_t nbyte,
             off_t offset)`.
     """
-    return external_call["pwrite", c_uint, c_int, c_ptr[c_void], c_uint, off_t](
-        fildes, buf, nbyte, offset
-    )
+    return external_call[
+        "pwrite", c_ssize_t, c_int, c_ptr[c_void], c_size_t, off_t
+    ](fildes, buf, nbyte, offset)
 
 
 def write(fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint) -> Int:
@@ -791,7 +791,7 @@ def ferror(stream: c_ptr[FILE]) -> c_int:
     return external_call["ferror", c_int, c_ptr[FILE]](stream)
 
 
-def ioctl(fildes: c_int, request: c_int) -> c_int:
+def ioctl(fildes: c_int, request: c_ulong) -> c_int:
     """Libc POSIX `ioctl` function.
 
     Args:
@@ -805,4 +805,4 @@ def ioctl(fildes: c_int, request: c_int) -> c_int:
         [Reference](https://man7.org/linux/man-pages/man3/ioctl.3p.html).
         Fn signature: `int ioctl(int fildes, int request, ... /* arg */)`.
     """
-    return external_call["ioctl", c_int, c_int, c_int](fildes, request)
+    return external_call["ioctl", c_int, c_int, c_ulong](fildes, request)
