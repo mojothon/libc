@@ -77,7 +77,11 @@ def open(path: c_ptr[UInt8], oflag: Int32, mode: Int32) -> Int32:
         `open` is variadic, and C reads the mode only when a creating flag is
         set — but it still reads it, so the two-argument form above is unusable
         with `O_CREAT`: what C picks up as the mode is whatever happens to be
-        in the argument register, which is why a create can fail with `EACCES`.
+        in the argument register.
+
+        arm64 Darwin passes variadic arguments on the stack rather than in
+        registers, which an external call cannot express, so creating a file
+        this way does not work there. Open a path that exists instead.
     """
     return external_call["open", Int32, c_ptr[UInt8], Int32, Int32](
         path, oflag, mode
