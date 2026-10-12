@@ -459,3 +459,188 @@ def perror(s: c_ptr[c_char]) -> c_void:
     """
 
     return external_call["perror", c_void, c_ptr[c_char]](s)
+
+
+def flockfile(stream: c_ptr[FILE]) -> c_void:
+    """C library <stdio.h> function `flockfile`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/flockfile.3.html
+
+    Prototype:
+        void flockfile(FILE *stream)
+
+    Description:
+        Takes the lock on a stream, waiting for it.
+
+    Args:
+        stream: The stream to lock.
+
+    Notes:
+        There is no result: C declares this one `void`. Every call that
+        reads or writes a stream takes this lock for itself, so what it is
+        for is holding it across several of them to keep them together,
+        and `funlockfile` gives it up.
+
+        The lock is on the stream and not on the file, and it is one you
+        can take twice, so taking it twice means giving it up twice.
+    """
+    return external_call["flockfile", c_void, c_ptr[FILE]](stream)
+
+
+def ftrylockfile(stream: c_ptr[FILE]) -> c_int:
+    """C library <stdio.h> function `ftrylockfile`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/flockfile.3.html
+
+    Prototype:
+        int ftrylockfile(FILE *stream)
+
+    Description:
+        Takes the lock on a stream if it is free, without waiting.
+
+    Args:
+        stream: The stream to lock.
+
+    Returns:
+        0 with the lock held, or something else when somebody else has it.
+
+    Notes:
+        `flockfile` is this one waiting. What this is for is a stream that
+        is looked at from time to time rather than one that has to be
+        locked: nothing is lost by not getting the lock, so nothing waits
+        for it.
+    """
+    return external_call["ftrylockfile", c_int, c_ptr[FILE]](stream)
+
+
+def funlockfile(stream: c_ptr[FILE]) -> c_void:
+    """C library <stdio.h> function `funlockfile`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/flockfile.3.html
+
+    Prototype:
+        void funlockfile(FILE *stream)
+
+    Description:
+        Gives up the lock on a stream that `flockfile` or `ftrylockfile`
+        took.
+
+    Args:
+        stream: The stream to unlock.
+
+    Notes:
+        There is no result: C declares this one `void`. It has to be given
+        up from the thread that took it, and once for each time it was
+        taken.
+    """
+    return external_call["funlockfile", c_void, c_ptr[FILE]](stream)
+
+
+def getw(stream: c_ptr[FILE]) -> c_int:
+    """C library <stdio.h> function `getw`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/getw.3.html
+
+    Prototype:
+        int getw(FILE *stream)
+
+    Description:
+        Reads one `int` from a stream.
+
+    Args:
+        stream: The stream to read from.
+
+    Returns:
+        The value, or `EOF` at the end or on failure.
+
+    Notes:
+        What is read is the bytes of an `int` laid out the way this machine
+        lays them out, so a file written this way is only good for the
+        machine that wrote it. `fread` reads the same bytes without
+        guessing at the width or the order, which is why it is the one to
+        reach for in new code.
+
+        `EOF` is a value an `int` can hold, so a file of `int`s that could
+        hold -1 cannot be told apart from the end of it.
+    """
+    return external_call["getw", c_int, c_ptr[FILE]](stream)
+
+
+def putw(w: c_int, stream: c_ptr[FILE]) -> c_int:
+    """C library <stdio.h> function `putw`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/putw.3.html
+
+    Prototype:
+        int putw(int w, FILE *stream)
+
+    Description:
+        Writes one `int` to a stream.
+
+    Args:
+        w: The value to write.
+        stream: The stream to write to.
+
+    Returns:
+        0 on success, or `EOF` on failure.
+
+    Notes:
+        What is written is the bytes of an `int` laid out the way this
+        machine lays them out, so the file is only good for the machine
+        that wrote it. See `getw`, which is the other half of this and
+        carries the same warning.
+    """
+    return external_call["putw", c_int, c_int, c_ptr[FILE]](w, stream)
+
+
+def renameat(
+    olddirfd: c_int,
+    oldpath: c_ptr[c_char],
+    newdirfd: c_int,
+    newpath: c_ptr[c_char],
+) -> c_int:
+    """C library <stdio.h> function `renameat`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/renameat.2.html
+
+    Prototype:
+        int renameat(int olddirfd, const char *oldpath, int newdirfd,
+            const char *newpath)
+
+    Description:
+        Renames a file, taking each path as relative to a directory rather
+        than to the current one.
+
+    Args:
+        olddirfd: A descriptor for the directory `oldpath` is relative to,
+            which can be a directory opened with `open`, or `AT_FDCWD` for
+            the current one.
+        oldpath: The existing path.
+        newdirfd: The same for `newpath`.
+        newpath: The new path; an existing file there is replaced.
+
+    Returns:
+        0 on success, -1 on failure with `errno` set.
+
+    Notes:
+        `rename` is this with `AT_FDCWD` for both directories. What this one
+        is for is a directory that has been opened and checked first: the
+        name cannot be swapped for another between the check and the rename,
+        because it is the descriptor and not the name that says where.
+
+        Take `AT_FDCWD` from `libc.constant` and not from a number written
+        out: it is -100 on Linux and -2 on Darwin, so the number means
+        different things on the two.
+
+        A directory cannot be renamed over a directory that has anything in
+        it, and nothing can be renamed onto itself.
+    """
+    return external_call[
+        "renameat", c_int, c_int, c_ptr[c_char], c_int, c_ptr[c_char]
+    ](olddirfd, oldpath, newdirfd, newpath)
