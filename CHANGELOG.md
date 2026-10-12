@@ -27,6 +27,13 @@ All notable changes to this project are documented here. The format follows
 - `libc.math`, `libc.errno`, `libc.file`, `libc.dlfcn` and `libc.logging` had an
   empty `__init__.mojo`, so `from libc.math import sqrt` did not resolve. All
   five now re-export their `syscalls` module.
+- `struct dirent` used the glibc layout on every platform. Darwin puts an
+  extra `d_namlen` before `d_type` and sizes `d_name` at `MAXPATHLEN`, so
+  entry names came back empty on macOS. The struct now has the right size and
+  reads the name at the right offset on both; use `dirent.type()` for the file
+  type, since the `d_type` field only lines up on glibc.
+- `pixi run package` failed in a clean checkout because `mojo precompile` does
+  not create `dist/`.
 - `libc.file.fclose()` could not be called at all: `std.io` emits its own
   `fclose` declaration, and a second `external_call` for the same symbol that
   takes a `Pointer` fails to lower with "existing function with conflicting
