@@ -19,7 +19,22 @@ struct FILE(TrivialRegisterPassable):
 
 
 def fflush(arg: c_ptr[FILE]) -> Int32:
-    """ """
+    """Libc POSIX `fflush` function.
+
+    Args:
+        arg: A pointer to a stream.
+
+    Returns:
+        0, or `EOF` on failure with `errno` set.
+
+    Notes:
+        What has been buffered is written out. A null pointer in place of a
+        stream asks for every stream that is open for writing, which is the
+        one case where the argument is not a stream.
+
+        [Reference](https://man7.org/linux/man-pages/man3/fflush.3p.html).
+        Fn signature: `int fflush(FILE *stream);`.
+    """
     return external_call["fflush", Int32, c_ptr[FILE]](arg)
 
 
@@ -98,17 +113,17 @@ def openat(fd: c_int, path: c_ptr[c_char], oflag: c_int) -> c_int:
 def fopen(pathname: c_ptr[c_char], mode: c_ptr[c_char]) -> c_ptr[FILE]:
     """Libc POSIX `fopen` function.
 
-    Args:
-        pathname: A path to a file.
-        mode: A mode to open the file with.
+        Args:
+            pathname: A path to a file.
+            mode: A mode to open the file with.
 
-    Returns:
-        A File Descriptor or -1 in case of failure.
+        Returns:
+    The stream, or a null pointer on failure with `errno` set.
 
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/fopen.3p.html).
-        Fn signature: `FILE *fopen(const char *restrict pathname,
-            const char *restrict mode)`.
+        Notes:
+            [Reference](https://man7.org/linux/man-pages/man3/fopen.3p.html).
+            Fn signature: `FILE *fopen(const char *restrict pathname,
+                const char *restrict mode)`.
     """
     return external_call[
         "fopen",
@@ -121,16 +136,16 @@ def fopen(pathname: c_ptr[c_char], mode: c_ptr[c_char]) -> c_ptr[FILE]:
 def fdopen(fildes: c_int, mode: c_ptr[c_char]) -> c_ptr[FILE]:
     """Libc POSIX `fdopen` function.
 
-    Args:
-        fildes: A File Descriptor to open the file with.
-        mode: A mode to open the file with.
+        Args:
+            fildes: A File Descriptor to open the file with.
+            mode: A mode to open the file with.
 
-    Returns:
-        A File Descriptor or -1 in case of failure.
+        Returns:
+    The stream, or a null pointer on failure with `errno` set.
 
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/fdopen.3p.html).
-        Fn signature: `FILE *fdopen(int fildes, const char *mode)`.
+        Notes:
+            [Reference](https://man7.org/linux/man-pages/man3/fdopen.3p.html).
+            Fn signature: `FILE *fdopen(int fildes, const char *mode)`.
     """
     return external_call["fdopen", c_ptr[FILE], c_int, c_ptr[c_char]](
         fildes, mode
@@ -144,18 +159,18 @@ def freopen(
 ) -> c_ptr[FILE]:
     """Libc POSIX `freopen` function.
 
-    Args:
-        pathname: A path to a file.
-        mode: A mode to open the file with.
-        stream: A pointer to a stream.
+        Args:
+            pathname: A path to a file.
+            mode: A mode to open the file with.
+            stream: A pointer to a stream.
 
-    Returns:
-        A File Descriptor or -1 in case of failure.
+        Returns:
+    The stream, or a null pointer on failure with `errno` set.
 
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/freopen.3p.html).
-        Fn signature: `FILE *freopen(const char *restrict pathname,
-            const char *restrict mode, FILE *restrict stream)`.
+        Notes:
+            [Reference](https://man7.org/linux/man-pages/man3/freopen.3p.html).
+            Fn signature: `FILE *freopen(const char *restrict pathname,
+                const char *restrict mode, FILE *restrict stream)`.
     """
     return external_call[
         "freopen",
@@ -171,18 +186,18 @@ def fmemopen(
 ) -> c_ptr[FILE]:
     """Libc POSIX `fmemopen` function.
 
-    Args:
-        buf: A pointer to a buffer.
-        size: The size of the buffer.
-        mode: A mode to open the file with.
+        Args:
+            buf: A pointer to a buffer.
+            size: The size of the buffer.
+            mode: A mode to open the file with.
 
-    Returns:
-        A File Descriptor or -1 in case of failure.
+        Returns:
+    The stream, or a null pointer on failure with `errno` set.
 
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/fmemopen.3p.html).
-        Fn signature: `FILE *fmemopen(void *restrict buf, size_t size,
-            const char *restrict mode)`.
+        Notes:
+            [Reference](https://man7.org/linux/man-pages/man3/fmemopen.3p.html).
+            Fn signature: `FILE *fmemopen(void *restrict buf, size_t size,
+                const char *restrict mode)`.
     """
     return external_call[
         "fmemopen",
@@ -213,18 +228,18 @@ def creat(path: c_ptr[c_char], mode: mode_t) -> c_int:
 def fseek(stream: c_ptr[FILE], offset: c_long, whence: c_int) -> c_int:
     """Libc POSIX `fseek` function.
 
-    Args:
-        stream: A pointer to a stream.
-        offset: An offset to seek to.
-        whence: A pointer to a buffer to store the length of the address of the
-            accepted socket.
+        Args:
+            stream: A pointer to a stream.
+            offset: An offset to seek to.
+            whence: A pointer to a buffer to store the length of the address of the
+                accepted socket.
 
-    Returns:
-        A File Descriptor or -1 in case of failure
+        Returns:
+    0 on success, or -1 with `errno` set.
 
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/fseek.3p.html).
-        Fn signature: `int fseek(FILE *stream, long offset, int whence)`.
+        Notes:
+            [Reference](https://man7.org/linux/man-pages/man3/fseek.3p.html).
+            Fn signature: `int fseek(FILE *stream, long offset, int whence)`.
     """
     return external_call["fseek", c_int, c_ptr[FILE], c_long, c_int](
         stream, offset, whence
@@ -234,18 +249,18 @@ def fseek(stream: c_ptr[FILE], offset: c_long, whence: c_int) -> c_int:
 def fseeko(stream: c_ptr[FILE], offset: off_t, whence: c_int) -> c_int:
     """Libc POSIX `fseeko` function.
 
-    Args:
-        stream: A pointer to a stream.
-        offset: An offset to seek to.
-        whence: A pointer to a buffer to store the length of the address of the
-            accepted socket.
+        Args:
+            stream: A pointer to a stream.
+            offset: An offset to seek to.
+            whence: A pointer to a buffer to store the length of the address of the
+                accepted socket.
 
-    Returns:
-        A File Descriptor or -1 in case of failure.
+        Returns:
+    0 on success, or -1 with `errno` set.
 
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/fseek.3p.html).
-        Fn signature: `int fseeko(FILE *stream, off_t offset, int whence)`.
+        Notes:
+            [Reference](https://man7.org/linux/man-pages/man3/fseek.3p.html).
+            Fn signature: `int fseeko(FILE *stream, off_t offset, int whence)`.
     """
     return external_call["fseeko", c_int, c_ptr[FILE], off_t, c_int](
         stream, offset, whence
@@ -255,18 +270,19 @@ def fseeko(stream: c_ptr[FILE], offset: off_t, whence: c_int) -> c_int:
 def lseek(fildes: c_int, offset: off_t, whence: c_int) -> off_t:
     """Libc POSIX `lseek` function.
 
-    Args:
-        fildes: A File Descriptor to open the file with.
-        offset: An offset to seek to.
-        whence: A pointer to a buffer to store the length of the address of the
-            accepted socket.
+        Args:
+            fildes: A File Descriptor to open the file with.
+            offset: An offset to seek to.
+            whence: A pointer to a buffer to store the length of the address of the
+                accepted socket.
 
-    Returns:
-        A File Descriptor or -1 in case of failure.
+        Returns:
+    Where it got to, counted in bytes from the start of the file,
+            or -1 with `errno` set.
 
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/lseek.3p.html).
-        Fn signature: `off_t lseek(int fildes, off_t offset, int whence)`.
+        Notes:
+            [Reference](https://man7.org/linux/man-pages/man3/lseek.3p.html).
+            Fn signature: `off_t lseek(int fildes, off_t offset, int whence)`.
     """
     return external_call["lseek", off_t, c_int, off_t, c_int](
         fildes, offset, whence
@@ -276,16 +292,16 @@ def lseek(fildes: c_int, offset: off_t, whence: c_int) -> off_t:
 def fputc(c: c_int, stream: c_ptr[FILE]) -> c_int:
     """Libc POSIX `fputc` function.
 
-    Args:
-        c: A character to write.
-        stream: A pointer to a stream.
+        Args:
+            c: A character to write.
+            stream: A pointer to a stream.
 
-    Returns:
-        A File Descriptor or -1 in case of failure.
+        Returns:
+    The character it wrote, as an `int`, or `EOF` on failure.
 
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/fputc_3p.html).
-        Fn signature: `int fputc(int c, FILE *stream)`.
+        Notes:
+            [Reference](https://man7.org/linux/man-pages/man3/fputc_3p.html).
+            Fn signature: `int fputc(int c, FILE *stream)`.
     """
     return external_call["fputc", c_int, c_int, c_ptr[FILE]](c, stream)
 
@@ -299,7 +315,9 @@ def fputs(s: c_ptr[c_char], stream: c_ptr[FILE]) -> c_int:
     Args:
         s: A string to write.
         stream: A pointer to a stream.
-    Returns: A File Descriptor or -1 in case of failure
+
+    Returns:
+        A number that is not negative, or `EOF` on failure.
     """
     return external_call[
         "fputs",
@@ -312,15 +330,16 @@ def fputs(s: c_ptr[c_char], stream: c_ptr[FILE]) -> c_int:
 def fgetc(stream: c_ptr[FILE]) -> c_int:
     """Libc POSIX `fgetc` function.
 
-    Args:
-        stream: A pointer to a stream.
+        Args:
+            stream: A pointer to a stream.
 
-    Returns:
-        A File Descriptor or -1 in case of failure.
+        Returns:
+    The character it read as an `int`, or `EOF` at the end of the
+            file or on failure.
 
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/fgetc_3p.html).
-        Fn signature: `int fgetc(FILE *stream)`.
+        Notes:
+            [Reference](https://man7.org/linux/man-pages/man3/fgetc_3p.html).
+            Fn signature: `int fgetc(FILE *stream)`.
     """
     return external_call["fgetc", c_int, c_ptr[FILE]](stream)
 
@@ -328,18 +347,18 @@ def fgetc(stream: c_ptr[FILE]) -> c_int:
 def fgets(s: c_ptr[c_char], n: c_int, stream: c_ptr[FILE]) -> c_ptr[c_char]:
     """Libc POSIX `fgets` function.
 
-    Args:
-        s: A pointer to a buffer to store the read string.
-        n: The maximum number of characters to read.
-        stream: A pointer to a stream.
+        Args:
+            s: A pointer to a buffer to store the read string.
+            n: The maximum number of characters to read.
+            stream: A pointer to a stream.
 
-    Returns:
-        A File Descriptor or -1 in case of failure.
+        Returns:
+    `s`, or a null pointer at the end of the file or on failure.
 
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/fgets.3p.html).
-        Fn signature: `char *fgets(char *restrict s, int n,
-            FILE *restrict stream)`.
+        Notes:
+            [Reference](https://man7.org/linux/man-pages/man3/fgets.3p.html).
+            Fn signature: `char *fgets(char *restrict s, int n,
+                FILE *restrict stream)`.
     """
     return external_call[
         "fgets",
@@ -353,17 +372,17 @@ def fgets(s: c_ptr[c_char], n: c_int, stream: c_ptr[FILE]) -> c_ptr[c_char]:
 def dprintf(fildes: c_int, format: c_ptr[c_char]) -> c_int:
     """Libc POSIX `dprintf` function.
 
-    Args:
-        fildes: A File Descriptor to open the file with.
-        format: A format string.
+        Args:
+            fildes: A File Descriptor to open the file with.
+            format: A format string.
 
-    Returns:
-        A File Descriptor or -1 in case of failure.
+        Returns:
+    How many bytes it wrote, or a negative number on failure.
 
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/fprintf.3p.html).
-        Fn signature: `int dprintf(int fildes,
-            const char *restrict format, ...)`.
+        Notes:
+            [Reference](https://man7.org/linux/man-pages/man3/fprintf.3p.html).
+            Fn signature: `int dprintf(int fildes,
+                const char *restrict format, ...)`.
     """
     return external_call["dprintf", c_int, c_int, c_ptr[c_char]](fildes, format)
 
@@ -390,18 +409,20 @@ def snprintf(
 ) -> c_int:
     """Libc POSIX `snprintf` function.
 
-    Args:
-        s: A pointer to a buffer to store the read string.
-        n: The maximum number of characters to read.
-        format: A format string.
+        Args:
+            s: A pointer to a buffer to store the read string.
+            n: The maximum number of characters to read.
+            format: A format string.
 
-    Returns:
-        A File Descriptor or -1 in case of failure
+        Returns:
+    How many bytes it would have written had `n` been big enough,
+            not counting the one that ends the string, or a negative number
+            on failure.
 
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/fprintf.3p.html).
-        Fn signature: ``int snprintf(char *restrict s, size_t n,`.
-            const char *restrict format, ...)`.
+        Notes:
+            [Reference](https://man7.org/linux/man-pages/man3/fprintf.3p.html).
+            Fn signature: ``int snprintf(char *restrict s, size_t n,`.
+                const char *restrict format, ...)`.
     """
     return external_call[
         "snprintf",
@@ -415,17 +436,18 @@ def snprintf(
 def sprintf(s: c_ptr[c_char], format: c_ptr[c_char]) -> c_int:
     """Libc POSIX `sprintf` function.
 
-    Args:
-        s: A pointer to a buffer to store the read string.
-        format: A format string.
+        Args:
+            s: A pointer to a buffer to store the read string.
+            format: A format string.
 
-    Returns:
-        A File Descriptor or -1 in case of failure.
+        Returns:
+    How many bytes it wrote, not counting the one that ends the
+            string, or a negative number on failure.
 
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/fprintf.3p.html).
-        Fn signature: ``int sprintf(char *restrict s,`.
-            const char *restrict format, ...)`.
+        Notes:
+            [Reference](https://man7.org/linux/man-pages/man3/fprintf.3p.html).
+            Fn signature: ``int sprintf(char *restrict s,`.
+                const char *restrict format, ...)`.
     """
     return external_call["sprintf", c_int, c_ptr[c_char], c_ptr[c_char]](
         s, format
@@ -435,17 +457,19 @@ def sprintf(s: c_ptr[c_char], format: c_ptr[c_char]) -> c_int:
 def fscanf(stream: c_ptr[FILE], format: c_ptr[c_char]) -> c_int:
     """Libc POSIX `fscanf` function.
 
-    Args:
-        stream: A pointer to a stream.
-        format: A format string.
+        Args:
+            stream: A pointer to a stream.
+            format: A format string.
 
-    Returns:
-        A File Descriptor or -1 in case of failure.
+        Returns:
+    How many fields it filled in, which is fewer than were asked for
+            when the input ran out, or `EOF` when it ran out before the first
+            one.
 
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/fscanf.3p.html).
-        Fn signature: ``int fscanf(FILE *restrict stream,`.
-            const char *restrict format, ...)`.
+        Notes:
+            [Reference](https://man7.org/linux/man-pages/man3/fscanf.3p.html).
+            Fn signature: ``int fscanf(FILE *restrict stream,`.
+                const char *restrict format, ...)`.
     """
     return external_call["fscanf", c_int, c_ptr[FILE], c_ptr[c_char]](
         stream, format
@@ -455,15 +479,17 @@ def fscanf(stream: c_ptr[FILE], format: c_ptr[c_char]) -> c_int:
 def scanf(format: c_ptr[c_char]) -> c_int:
     """Libc POSIX `scanf` function.
 
-    Args:
-        format: A format string.
+        Args:
+            format: A format string.
 
-    Returns:
-        A File Descriptor or -1 in case of failure.
+        Returns:
+    How many fields it filled in, which is fewer than were asked for
+            when the input ran out, or `EOF` when it ran out before the first
+            one.
 
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/fscanf.3p.html).
-        Fn signature: ``int scanf(const char *restrict format, ...)`.`.
+        Notes:
+            [Reference](https://man7.org/linux/man-pages/man3/fscanf.3p.html).
+            Fn signature: ``int scanf(const char *restrict format, ...)`.`.
     """
     return external_call["scanf", c_int, c_ptr[c_char]](format)
 
@@ -471,17 +497,19 @@ def scanf(format: c_ptr[c_char]) -> c_int:
 def sscanf(s: c_ptr[c_char], format: c_ptr[c_char]) -> c_int:
     """Libc POSIX `sscanf` function.
 
-    Args:
-        s: A pointer to a buffer to store the read string.
-        format: A format string.
+        Args:
+            s: A pointer to a buffer to store the read string.
+            format: A format string.
 
-    Returns:
-        A File Descriptor or -1 in case of failure.
+        Returns:
+    How many fields it filled in, which is fewer than were asked for
+            when the input ran out, or `EOF` when it ran out before the first
+            one.
 
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/fscanf.3p.html).
-        Fn signature: ``int sscanf(const char *restrict s,`.
-            const char *restrict format, ...)`.
+        Notes:
+            [Reference](https://man7.org/linux/man-pages/man3/fscanf.3p.html).
+            Fn signature: ``int sscanf(const char *restrict s,`.
+                const char *restrict format, ...)`.
     """
     return external_call["sscanf", c_int, c_ptr[c_char], c_ptr[c_char]](
         s, format
@@ -496,19 +524,21 @@ def fread(
 ) -> c_size_t:
     """Libc POSIX `fread` function.
 
-    Args:
-        ptr: A pointer to a buffer to store the read string.
-        size: The size of the buffer.
-        nitems: The number of items to read.
-        stream: A pointer to a stream.
+        Args:
+            ptr: A pointer to a buffer to store the read string.
+            size: The size of the buffer.
+            nitems: The number of items to read.
+            stream: A pointer to a stream.
 
-    Returns:
-        A File Descriptor or -1 in case of failure.
+        Returns:
+    How many whole items it read, which is fewer than were asked for
+            at the end of the file or on failure. It counts items and not
+            bytes, so it is not a number of bytes unless the size is 1.
 
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/fread.3p.html).
-        Fn signature: `size_t fread(void *restrict ptr, size_t size,
-            size_t nitems, FILE *restrict stream)`.
+        Notes:
+            [Reference](https://man7.org/linux/man-pages/man3/fread.3p.html).
+            Fn signature: `size_t fread(void *restrict ptr, size_t size,
+                size_t nitems, FILE *restrict stream)`.
     """
     return external_call[
         "fread",
@@ -603,19 +633,20 @@ def pread(
 ) -> c_ssize_t:
     """Libc POSIX `pread` function.
 
-    Args:
-        fildes: A File Descriptor to open the file with.
-        buf: A pointer to a buffer to store the read string.
-        nbyte: The maximum number of characters to read.
-        offset: An offset to seek to.
+        Args:
+            fildes: A File Descriptor to open the file with.
+            buf: A pointer to a buffer to store the read string.
+            nbyte: The maximum number of characters to read.
+            offset: An offset to seek to.
 
-    Returns:
-        A File Descriptor or -1 in case of failure.
+        Returns:
+    How many bytes it read, which is fewer than were asked for at the
+            end of the file, or -1 on failure with `errno` set.
 
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/read.3p.html).
-        Fn signature: `ssize_t pread(int fildes, void *buf, size_t nbyte,
-            off_t offset)`.
+        Notes:
+            [Reference](https://man7.org/linux/man-pages/man3/read.3p.html).
+            Fn signature: `ssize_t pread(int fildes, void *buf, size_t nbyte,
+                off_t offset)`.
     """
     return external_call[
         "pread", c_ssize_t, c_int, c_ptr[c_void], c_size_t, off_t
@@ -690,22 +721,22 @@ def write(fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint) -> Int:
 def fclose(stream: c_ptr[FILE]) -> c_int:
     """Libc POSIX `fclose` function.
 
-    Args:
-        stream: A pointer to a stream.
+        Args:
+            stream: A pointer to a stream.
 
-    Returns:
-        A File Descriptor or -1 in case of failure.
+        Returns:
+    0, or `EOF` on failure with `errno` set.
 
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/fclose.3p.html).
-        Fn signature: `int fclose(FILE *stream)`.
+        Notes:
+            [Reference](https://man7.org/linux/man-pages/man3/fclose.3p.html).
+            Fn signature: `int fclose(FILE *stream)`.
 
-        `std.io` emits its own `fclose` declaration, and a second
-        `external_call` for the same symbol that takes a `Pointer` fails
-        to lower with "existing function with conflicting signature".
-        Passing the address as an `Int` keeps one declaration; an address
-        and an `Int` are both 8 bytes in an integer register on every ABI
-        this package targets, so the call is still ABI-compatible.
+            `std.io` emits its own `fclose` declaration, and a second
+            `external_call` for the same symbol that takes a `Pointer` fails
+            to lower with "existing function with conflicting signature".
+            Passing the address as an `Int` keeps one declaration; an address
+            and an `Int` are both 8 bytes in an integer register on every ABI
+            this package targets, so the call is still ABI-compatible.
     """
     return external_call["fclose", c_int, Int](Int(stream))
 
@@ -794,15 +825,17 @@ def ferror(stream: c_ptr[FILE]) -> c_int:
 def ioctl(fildes: c_int, request: c_ulong) -> c_int:
     """Libc POSIX `ioctl` function.
 
-    Args:
-        fildes: A File Descriptor to open the file with.
-        request: An offset to seek to.
+        Args:
+            fildes: A File Descriptor to open the file with.
+            request: An offset to seek to.
 
-    Returns:
-        A File Descriptor or -1 in case of failure
+        Returns:
+    0, or -1 with `errno` set, for the requests that answer with
+            whether they worked. What comes back is up to the request, and
+            some hand back a value of their own.
 
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/ioctl.3p.html).
-        Fn signature: `int ioctl(int fildes, int request, ... /* arg */)`.
+        Notes:
+            [Reference](https://man7.org/linux/man-pages/man3/ioctl.3p.html).
+            Fn signature: `int ioctl(int fildes, int request, ... /* arg */)`.
     """
     return external_call["ioctl", c_int, c_int, c_ulong](fildes, request)
