@@ -1153,6 +1153,11 @@ def nice(inc: Int32) -> Int32:
     Returns:
         The new niceness, which is -1 both when that is the answer and when
         the call failed — check `errno` to tell them apart.
+
+    Notes:
+        Darwin answers 0 for success and -1 for failure and does not say
+        what the niceness came to, so the two platforms do not mean the
+        same thing by this result. Asking for 0 is the portable use.
     """
     return external_call["nice", Int32, Int32](inc)
 
