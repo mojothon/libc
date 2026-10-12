@@ -831,3 +831,152 @@ def realpath(
     return external_call[
         "realpath", c_ptr[c_char], c_ptr[c_char], c_ptr[c_char]
     ](path, resolved_path)
+
+
+def srandom(seed: UInt32):
+    """C library <stdlib.h> function `srandom`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/srandom.3.html
+
+    Prototype:
+        void srandom(unsigned int seed)
+
+    Description:
+        Sets the seed that `random` draws from, so that the same seed gives
+        the same run of numbers again.
+
+    Args:
+        seed: The seed to start from.
+
+    Notes:
+        There is no result: C declares this one `void`. This is the seed
+        for `random` and not for `rand`, which `srand` sets.
+    """
+    external_call["srandom", NoneType, UInt32](seed)
+
+
+def random() -> Int64:
+    """C library <stdlib.h> function `random`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/random.3.html
+
+    Prototype:
+        long random(void)
+
+    Description:
+        Returns the next number from a generator with a long period.
+
+    Returns:
+        A number from 0 to `RAND_MAX`, which is 2**31 - 1 on both glibc and
+        Darwin.
+
+    Notes:
+        Not the same generator as `rand`, and a better one: `srandom` is
+        what sets its seed, not `srand`. Which numbers a seed gives is up
+        to the C library, so the same seed does not give the same run on
+        both platforms — only the same run twice on one of them.
+    """
+    return external_call["random", Int64]()
+
+
+def initstate(seed: UInt32, state: c_ptr[c_char], n: UInt64) -> c_ptr[c_char]:
+    """C library <stdlib.h> function `initstate`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/initstate.3.html
+
+    Prototype:
+        char *initstate(unsigned int seed, char *state, size_t n)
+
+    Description:
+        Starts a generator of its own in a buffer of your choosing.
+
+    Args:
+        seed: The seed to start from.
+        state: A buffer for the generator to keep its state in, which has
+            to stay alive for as long as the generator is in use.
+        n: How many bytes the buffer is. 8, 32, 64, 128 or 256, where a
+            bigger one draws from a better generator.
+
+    Returns:
+        The state that was in use before, or null on failure with `errno`
+        set.
+
+    Notes:
+        Handing what this gives back to `setstate` goes back to the
+        generator that was in use before, which is how two of them take
+        turns from the same process.
+    """
+    return external_call[
+        "initstate", c_ptr[c_char], UInt32, c_ptr[c_char], UInt64
+    ](seed, state, n)
+
+
+def setstate(state: c_ptr[c_char]) -> c_ptr[c_char]:
+    """C library <stdlib.h> function `setstate`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/setstate.3.html
+
+    Prototype:
+        char *setstate(char *state)
+
+    Description:
+        Goes back to a generator that `initstate` started.
+
+    Args:
+        state: A state that `initstate` gave back.
+
+    Returns:
+        The state that was in use before, or null on failure with `errno`
+        set.
+
+    Notes:
+        Handing the result back to `setstate` again switches to whichever
+        generator was in use before that one.
+    """
+    return external_call["setstate", c_ptr[c_char], c_ptr[c_char]](state)
+
+
+def getsubopt(
+    optionp: c_ptr[c_ptr[c_char]],
+    tokens: c_ptr[c_ptr[c_char]],
+    valuep: c_ptr[c_ptr[c_char]],
+) -> Int32:
+    """C library <stdlib.h> function `getsubopt`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/getsubopt.3.html
+
+    Prototype:
+        int getsubopt(char **optionp, char *const *tokens, char **valuep)
+
+    Description:
+        Takes a comma-separated option string apart and says which of
+        `tokens` each piece is.
+
+    Args:
+        optionp: A pointer to the rest of the string, which is moved past
+            each piece as it is taken.
+        tokens: A null-terminated list of the sub-options to look for.
+        valuep: Set to point at the value after an `=`, if the piece has
+            one, or to null if it does not.
+
+    Returns:
+        Which of `tokens` it was, by position, or -1 when the string is
+        finished. A piece that is not in the list also gives -1, with
+        `optionp` left pointing at it so you can say which it was.
+
+    Notes:
+        The commas in the string are overwritten with null bytes, so the
+        string is changed and cannot be taken apart twice.
+    """
+    return external_call[
+        "getsubopt",
+        Int32,
+        c_ptr[c_ptr[c_char]],
+        c_ptr[c_ptr[c_char]],
+        c_ptr[c_ptr[c_char]],
+    ](optionp, tokens, valuep)
