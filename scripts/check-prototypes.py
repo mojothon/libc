@@ -112,6 +112,17 @@ RETURN_EXCEPTIONS = {
     "signal",
 }
 
+# (symbol, argument position) pairs that pass something other than what C
+# says, but only where that is the only way to make the call at all.
+ARGUMENT_EXCEPTIONS = {
+    # `std.io` declares `fclose` itself, and a second `external_call` for
+    # the same symbol that takes a `Pointer` fails to lower with "existing
+    # function with conflicting signature". The address goes as an `Int`
+    # instead, which is the same eight bytes in the same integer register
+    # on every ABI this package targets.
+    ("fclose", 1),
+}
+
 
 def available_headers() -> list[str]:
     """The headers above that this libc actually has."""
@@ -128,8 +139,8 @@ def available_headers() -> list[str]:
     return found
 
 
-def read_prototypes() -> dict[str, tuple[int, bool, bool, str]]:
-    """{symbol: (fixed argument count, variadic, uses long double, returns)}."""
+def read_prototypes() -> dict[str, tuple[int, bool, bool, str, tuple[str, ...]]]:
+    """{symbol: (fixed count, variadic, long double, returns, parameter types)}."""
     headers = available_headers()
     # Without these the extensions stay hidden: `getauxval`, `secure_getenv`,
     # `dup3`, `gettid` and the three `fe*except` are all glibc-only and none
@@ -156,20 +167,56 @@ def read_prototypes() -> dict[str, tuple[int, bool, bool, str]]:
             return {}
         listing = info.read_text(errors="replace")
 
-    table: dict[str, tuple[int, bool, bool, str]] = {}
+    table: dict[str, tuple[int, bool, bool, str, tuple[str, ...]]] = {}
     for line in listing.splitlines():
         m = re.search(r"extern\s+(.*?)\b(\w+)\s*\(([^;]*)\)\s*;", line)
         if not m:
             continue
         return_type, name, params = m.group(1).strip(), m.group(2), m.group(3)
-        parts = [p.strip() for p in params.split(",") if p.strip()]
+        # A parameter carries a comma of its own when it is a pointer to a
+        # function, as in the `void (*)(void)` that `atexit` takes.
+        parts = [p.strip() for p in split_args(params) if p.strip()]
         variadic = any("..." in p for p in parts)
-        fixed = 0 if parts == ["void"] else len([p for p in parts if "..." not in p])
+        fixed_parts = [p for p in parts if "..." not in p]
+        fixed = 0 if fixed_parts == ["void"] else len(fixed_parts)
         # `long double` is the 80-bit x87 type on x86-64 and Mojo has nothing
         # to pass for it, so a call to one of these cannot work.
         uses_long_double = "long double" in f"{return_type} {params}"
-        table[name] = (fixed, variadic, uses_long_double, return_type)
+        # Only the fixed parameters, and only their types: the name a header
+        # gave one is not part of the call.
+        parameter_types = tuple(
+            c_parameter_type(p) for p in ([] if fixed == 0 else fixed_parts)
+        )
+        table[name] = (
+            fixed,
+            variadic,
+            uses_long_double,
+            return_type,
+            parameter_types,
+        )
     return table
+
+
+# The words a type can be made of that are not the name of the parameter.
+C_TYPE_WORDS = {
+    "void", "char", "short", "int", "long", "float", "double", "signed",
+    "unsigned", "_Bool", "const", "__const", "volatile", "restrict",
+    "__restrict", "struct", "union", "enum", "complex", "_Complex",
+}
+
+
+def c_parameter_type(param: str) -> str:
+    """The type in `const char *__restrict __s`, which is `const char *`."""
+    stripped = param.strip()
+    m = re.match(r"^(?P<type>.*?)\s*(?P<name>\w+)$", stripped)
+    if not m:
+        return stripped
+    type_, name = m.group("type").strip(), m.group("name")
+    # With no parameter name to drop, the last word belongs to the type, as
+    # in `unsigned int`.
+    if not type_ or name in C_TYPE_WORDS or name.endswith("_t"):
+        return stripped
+    return type_
 
 
 def split_args(text: str) -> list[str]:
@@ -201,9 +248,9 @@ def split_args(text: str) -> list[str]:
     return [a for a in out if a]
 
 
-def bindings() -> list[tuple[str, str, str, int, str]]:
-    """(file, mojo name, c symbol, arguments passed, mojo return type)."""
-    found: list[tuple[str, str, str, int, str]] = []
+def bindings() -> list[tuple[str, str, str, int, str, tuple[str, ...]]]:
+    """(file, mojo name, symbol, arguments passed, return, argument types)."""
+    found: list[tuple[str, str, str, int, str, tuple[str, ...]]] = []
     for path in sorted(SRC.rglob("*.mojo")):
         src = path.read_text()
         for m in re.finditer(r"^def (\w+)\(", src, re.M):
@@ -275,6 +322,7 @@ def bindings() -> list[tuple[str, str, str, int, str]]:
                         symbol,
                         len(args),
                         mojo_return,
+                        tuple(t.strip() for t in types[2:]),
                     )
                 )
     return found
@@ -291,18 +339,36 @@ INTISH = (
 )
 
 
+# Typedefs this cannot see through. A pointer to a function is one of these
+# and is an address like any other, so passing a pointer for one is right.
+OPAQUE_C = {
+    "__compar_fn_t", "__compar_d_fn_t", "__sighandler_t", "va_list",
+    "__va_list_tag", "mbstate_t", "fenv_t", "fexcept_t", "FILE",
+}
+INT_WORDS = {"char", "short", "int", "long", "signed", "unsigned", "_Bool"}
+
+
 def c_kind(c_type: str) -> str:
     if "*" in c_type:
         return "pointer"
     if c_type == "void":
         return "nothing"
-    # A complex is two floats returned as one value, which is what the Mojo
+    # A complex is two floats carried as one value, which is what the Mojo
     # side models with a struct.
     if "struct" in c_type or "union" in c_type or "complex" in c_type:
         return "struct"
-    if "double" in c_type or "float" in c_type:
+    words = [
+        word
+        for word in re.findall(r"\w+", c_type)
+        if word not in ("const", "volatile", "restrict", "__restrict")
+    ]
+    if not words or any(word in OPAQUE_C for word in words):
+        return "opaque"
+    if "double" in words or "float" in words:
         return "float"
-    return "integer"
+    if all(word in INT_WORDS or word.endswith("_t") for word in words):
+        return "integer"
+    return "opaque"
 
 
 def mojo_kind(mojo_type: str) -> str:
@@ -324,7 +390,7 @@ def main() -> int:
 
     problems: list[str] = []
 
-    for path, name, symbol, passed, mojo_return in bindings():
+    for path, name, symbol, passed, mojo_return, mojo_params in bindings():
         where = f"{path}: {name}() calls {symbol}()"
 
         if symbol not in prototypes:
@@ -332,7 +398,7 @@ def main() -> int:
                 problems.append(f"{where}, which no header declares")
             continue
 
-        fixed, variadic, long_double, c_return = prototypes[symbol]
+        fixed, variadic, long_double, c_return, c_params = prototypes[symbol]
         if variadic:
             if passed < fixed:
                 problems.append(
@@ -360,6 +426,25 @@ def main() -> int:
             problems.append(
                 f"{where}, which returns {c_return}, so it cannot return"
                 f" {mojo_return} ({want}, not {got})"
+            )
+
+        # The same for each argument. A `double` passed as an `Int32` is
+        # accepted and then read as whatever those bits mean, and an address
+        # passed as an `Int32` is an address that stops being one.
+        for place, (c_param, mojo_param) in enumerate(
+            zip(c_params[:fixed], mojo_params[:fixed]), start=1
+        ):
+            want, got = c_kind(c_param), mojo_kind(mojo_param)
+            if (
+                want == got
+                or "opaque" in want
+                or "struct" in (want, got)
+                or (symbol, place) in ARGUMENT_EXCEPTIONS
+            ):
+                continue
+            problems.append(
+                f"{where} with {mojo_param} as argument {place}, where C"
+                f" takes {c_param} ({want}, not {got})"
             )
 
         # A function that calls something C spells differently is usually a
