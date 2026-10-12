@@ -75,7 +75,7 @@ def test_stat_on_a_regular_file() raises:
     # `st_nlink` are 4 and 6 bytes in on Darwin but 24 and 16 on Linux, and
     # `st_blksize` is 32 bits there and 64 here.
     var path = string_to_char_ptr("/tmp/libc-layout-test")
-    var fd = open(path, 65)  # O_WRONLY | O_CREAT
+    var fd = open(path, 65, 384)  # O_WRONLY | O_CREAT, then 0600
     assert_true(fd >= 0, "the file was created")
     _ = write(fd, string_to_char_ptr("x"), 1)
 
