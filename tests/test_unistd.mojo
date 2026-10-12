@@ -19,9 +19,14 @@ from libc.unistd import (
     setegid,
     seteuid,
     sleep,
+    pread,
+    pwrite,
     swab,
 )
-from libc.utils import string_to_char_ptr
+from libc.constant import O_RDWR, c_char, c_ptr
+from libc.file import close, fclose, fopen, open
+from libc.stdio import fwrite, remove
+from libc.utils import char_ptr_to_string, string_to_char_ptr
 
 
 def test_getcwd() raises:
@@ -102,6 +107,53 @@ def test_chown_on_what_is_not_there() raises:
     nowhere.unsafe_free()
 
 
+def test_pread_and_pwrite_at_an_offset() raises:
+    """`pread` and `pwrite` carry an offset that does not fit in a byte.
+
+    The offset used to go to C as one byte, so anything past 255 landed
+    somewhere else in the file and came back as whatever was there. This
+    reads 300 bytes in, which is past what a byte can say.
+    """
+    var path = string_to_char_ptr("/tmp/libc-test-at-offset.bin")
+    var write = string_to_char_ptr("w+")
+
+    var stream = fopen(path, write)
+    assert_true(Int(UInt(stream)) != 0)
+
+    # 300 of one letter and then 300 of another, so where the read lands
+    # says which offset it read from.
+    var block = unsafe_alloc[c_char](600)
+    for i in range(300):
+        block.unsafe_offset(i)[] = 97
+    for i in range(300):
+        block.unsafe_offset(300 + i)[] = 98
+    assert_equal(fwrite(block, 1, 600, stream), 600)
+    assert_equal(fclose(stream), 0)
+
+    var fd = open(path, O_RDWR)
+    assert_true(fd >= 0)
+
+    var got = unsafe_alloc[c_char](9)
+    got.unsafe_offset(8)[] = 0
+    assert_equal(pread(fd, got, 8, 300), 8, "eight bytes from 300 in")
+    assert_equal(char_ptr_to_string(got), "bbbbbbbb")
+
+    var hello = string_to_char_ptr("hello")
+    assert_equal(pwrite(fd, hello, 5, 400), 5, "five bytes written at 400")
+    assert_equal(pread(fd, got, 5, 400), 5)
+    got.unsafe_offset(5)[] = 0
+    assert_equal(char_ptr_to_string(got), "hello")
+
+    assert_equal(close(fd), 0)
+    assert_equal(remove(path), 0)
+
+    block.unsafe_free()
+    got.unsafe_free()
+    path.unsafe_free()
+    write.unsafe_free()
+    hello.unsafe_free()
+
+
 def main() raises:
     test_getcwd()
     test_swab()
@@ -110,4 +162,5 @@ def main() raises:
     test_alarm_and_sleep()
     test_nice_and_pagesize()
     test_chown_on_what_is_not_there()
+    test_pread_and_pwrite_at_an_offset()
     print("test_unistd: ok")
