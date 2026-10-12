@@ -4,45 +4,43 @@
 # github: github.com/llango
 # ----------------------------------
 from std.ffi import external_call
-from std.memory import Pointer
+
 from libc.constant import c_ptr
 
 
-def setjmp(env: c_ptr[Int32]) -> Int32:
-    """C library <setjmp.h> function `setjmp`.
+def setjmp(env: c_ptr[UInt8]) -> Int32:
+    """Libc `setjmp`, which records where execution is.
 
-    Reference:
-        https://man7.org/linux/man-pages/man3/setjmp.3.html
+    Args:
+        env: Where to store the saved registers. C's `jmp_buf` is 200 bytes on
+            x86-64 glibc and a different size elsewhere, so give this at least
+            `sizeof(jmp_buf)` bytes for the platform you are on.
 
-    Prototype:
-        int setjmp(jmp_buf env)
+    Returns:
+        0 when it recorded the position, or the value `longjmp` was called
+        with when it is returning to one.
 
-    Description:
-        The setjmp() function saves the current values of the registers in the jmp_buf structure pointed to by env.
-        The return value is the value that setjmp() will return to if it encounters an exception.
-        The setjmp() function returns 0 if it succeeds; it returns a non-zero value if it encounters an exception.
-        The setjmp() function can be called from any function, including functions that are not marked with the __attribute__((__noreturn__)) attribute.
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/setjmp.3.html).
+        Fn signature: `int setjmp(jmp_buf env)`.
     """
-    return external_call["setjmp", Int32, c_ptr[Int32]](env)
+    return external_call["setjmp", Int32, c_ptr[UInt8]](env)
 
 
-def longjmp(env: c_ptr[Int32], val: Int32) -> Int32:
-    """C library <setjmp.h> function `longjmp`.
+def longjmp(env: c_ptr[UInt8], val: Int32) raises:
+    """Libc `longjmp`, which jumps back to where `setjmp` recorded.
 
-    Reference:
-        https://man7.org/linux/man-pages/man3/longjmp.3.html
+    Args:
+        env: The position `setjmp` recorded.
+        val: The value `setjmp` should appear to return, or 1 if you pass 0.
 
-    Prototype:
-        void longjmp(jmp_buf env, int val)
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/longjmp.3.html).
+        Fn signature: `void longjmp(jmp_buf env, int val)`.
 
-    Description:
-        The longjmp() function restores the values of the registers saved in the jmp_buf structure pointed to by env,
-        and then returns the value val to the caller of setjmp().
-        The longjmp() function can only be called from within the function that called setjmp().
-        If the value val is 0, longjmp() returns to the point where setjmp() was called.
-        If the value val is non-zero, longjmp() returns to the point where setjmp() was called,
-        but with the value val as the return value of setjmp().
-        If longjmp() is called outside the scope of the function that called setjmp(),
-        the behavior is undefined.
+        Undefined from Mojo. This jumps over Mojo frames without running the
+        destructors they would run, so anything holding memory at the jump
+        target leaks, and Mojo's own error handling has no idea it happened.
+        It is bound because it exists, not because it works.
     """
-    return external_call["longjmp", Int32, c_ptr[Int32], Int32](env, val)
+    external_call["longjmp", NoneType, c_ptr[UInt8], Int32](env, val)
