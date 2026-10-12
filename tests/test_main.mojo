@@ -12,6 +12,7 @@ from test_ctype import main as run_ctype
 from test_dirent import main as run_dirent
 from test_float import main as run_float
 from test_inttypes import main as run_inttypes
+from test_layout import main as run_layout
 from test_math import main as run_math
 from test_network import main as run_network
 from test_search import main as run_search
@@ -31,6 +32,7 @@ def main() raises:
     run_dirent()
     run_float()
     run_inttypes()
+    run_layout()
     run_math()
     run_network()
     run_search()
