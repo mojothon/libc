@@ -324,7 +324,26 @@ def fdimf(x: Float32, y: Float32) -> Float32:
     return external_call["fdimf", Float32, Float32, Float32](x, y)
 
 
-def fdimf(x: Float64, y: Float64) -> Float64:
+def fdim(x: Float64, y: Float64) -> Float64:
+    """C library <math.h> function `fdim`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/fdim.3.html
+
+    Prototype:
+        double fdim(double x, double y)
+
+    Description:
+        Returns the positive difference of x and y: x - y when that is
+        positive, and 0 when it is not.
+
+    Arguments:
+        x: The minuend.
+        y: The subtrahend.
+
+    Return Value:
+        The positive difference.
+    """
     return external_call["fdim", Float64, Float64, Float64](x, y)
 
 
