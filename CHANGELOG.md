@@ -21,6 +21,13 @@ All notable changes to this project are documented here. The format follows
 - Rewritten test suite under `tests/`, driven by `tests/test_main.mojo` and
   `std.testing` assertions: `complex`, `constant`, `ctype`, `dirent`, `float`,
   `math`, `network`, `stdio`, `stdlib`, `string`, `time`, `utils`, `version`.
+- `libc.string` grows the `<string.h>` functions it was missing: `strcmp`,
+  `strncmp`, `strcasecmp`, `strncasecmp`, `strcoll`, `strxfrm`, `strchr`,
+  `strrchr`, `strstr`, `strspn`, `strcspn`, `strpbrk`, `strtok`, `strtok_r`,
+  `memcmp`, `memchr`, `strerror` and `strsignal`.
+- `libc.utils.null_ptr[T]()`, the one way to hand C a NULL: Mojo pointers are
+  non-nullable, and `strtok`'s continuation call is one of many entry points
+  that need one.
 - `CHANGELOG.md`, expanded mkdocs site (`install`, `usage`, `modules`,
   `version`) rebuilt on `mkdocs-material`.
 
