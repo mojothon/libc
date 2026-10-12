@@ -33,6 +33,10 @@ comptime c_ssize_t = Int
 comptime intmax_t = Int64
 comptime uintmax_t = UInt64
 
+# `wchar_t` is a 4 byte int on both Linux and Darwin, and `wint_t` follows it.
+comptime c_wchar = Int32
+comptime c_wint = Int32
+
 comptime size_t = Int
 comptime ptrdiff_t = Int64
 comptime intptr_t = Int64
