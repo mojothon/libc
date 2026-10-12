@@ -537,20 +537,18 @@ def rewind(stream: c_ptr[FILE]) -> c_void:
 
 
 def getline(
-    lineptr: c_ptr[c_ptr[FILE]],
-    n: c_ptr[c_uint],
-    stream: c_ptr[FILE],
-) -> c_uint:
+    lineptr: c_ptr[c_ptr[c_char]], n: c_ptr[c_size_t], stream: c_ptr[FILE]
+) -> c_ssize_t:
     """Libc POSIX `getline` function.
 
     Args:
-        lineptr: A pointer to a pointer to a buffer to store the read string.
-        n: A pointer to a buffer to store the length of the address of the
-            accepted socket.
+        lineptr: A pointer to a pointer to a buffer to store the read
+            string, which is grown as needed and has to be given to `free`.
+        n: A pointer to how big that buffer is, which is kept up to date.
         stream: A pointer to a stream.
 
     Returns:
-        Size of the lines read.
+        How many bytes were read, or -1 at the end or on failure.
 
     Notes:
         [Reference](https://man7.org/linux/man-pages/man3/getline.3p.html).
@@ -558,11 +556,7 @@ def getline(
             size_t *restrict n, FILE *restrict stream);`.
     """
     return external_call[
-        "getline",
-        c_uint,
-        c_ptr[c_ptr[FILE]],
-        c_ptr[c_uint],
-        c_ptr[FILE],
+        "getline", c_ssize_t, c_ptr[c_ptr[c_char]], c_ptr[c_size_t], c_ptr[FILE]
     ](lineptr, n, stream)
 
 
