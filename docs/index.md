@@ -33,6 +33,23 @@ def main() raises:
     ptr.unsafe_free()
 ```
 
+Memory and environment come from `libc.stdlib`:
+
+```mojo
+from libc.stdlib import atoi, free, malloc
+from libc.utils import string_to_char_ptr
+
+
+def main():
+    var block = malloc(8)
+    block.unsafe_store(0, 65)
+    _ = free(block)
+
+    var digits = string_to_char_ptr("512")
+    print(atoi(digits))
+    digits.unsafe_free()
+```
+
 See [Install](install.md) and [Usage](usage.md) for the details.
 
 ## License

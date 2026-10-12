@@ -7,6 +7,8 @@ are listed at the bottom.
 | Module | C header | Symbols |
 | --- | --- | --- |
 | `libc.math` | `<math.h>` | 126 |
+| `libc.stdlib` | `<stdlib.h>` | 33 |
+| `libc.float` | `<float.h>` | 30 |
 | `libc.unistd` | `<unistd.h>` | 43 |
 | `libc.file` | `<stdio.h>` file operations | 39 |
 | `libc.ctype` | `<ctype.h>` | 29 |
@@ -17,6 +19,7 @@ are listed at the bottom.
 | `libc.sys.mman` | `<sys/mman.h>` | 15 |
 | `libc.pthread` | `<pthread.h>` | 14 |
 | `libc.string` | `<string.h>` | 13 |
+| `libc.stdio` | `<stdio.h>` output, buffering, pipes | 21 |
 | `libc.sched` | `<sched.h>` | 13 |
 | `libc.signal` | `<signal.h>` | 10 |
 | `libc.locale` | `<locale.h>` | 10 |
@@ -50,11 +53,11 @@ These sub-packages exist but export nothing:
 
 | Module | C header |
 | --- | --- |
-| `libc.stdio` | `<stdio.h>` |
-| `libc.stdlib` | `<stdlib.h>` |
 | `libc.complex` | `<complex.h>` |
-| `libc.float` | `<float.h>` |
 | `libc.threads` | `<threads.h>` |
+
+`libc.stdio` covers the `<stdio.h>` entry points that `libc.file` does not
+already own; see the note at the top of `src/libc/stdio/syscalls.mojo`.
 
 ## API reference
 

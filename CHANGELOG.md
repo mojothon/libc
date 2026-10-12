@@ -12,9 +12,13 @@ All notable changes to this project are documented here. The format follows
 - GitHub Actions workflows: CI (format, test on Linux and macOS, conda build,
   docs) and release (prefix.dev upload, GitHub Pages docs, release artifact).
 - `recipe/recipe.yaml` moved out of `src/` and rebuilt for `rattler-build`.
+- Three sub-packages that were empty stubs: `libc.stdlib` (allocation,
+  environment, number conversion, temporary files), `libc.float` (the
+  `<float.h>` limits) and `libc.stdio` (the `<stdio.h>` entry points that
+  `libc.file` does not already own).
 - Rewritten test suite under `tests/`, driven by `tests/test_main.mojo` and
-  `std.testing` assertions: `constant`, `ctype`, `dirent`, `math`, `network`,
-  `string`, `utils`, `version`.
+  `std.testing` assertions: `constant`, `ctype`, `dirent`, `float`, `math`,
+  `network`, `stdio`, `stdlib`, `string`, `utils`, `version`.
 - `CHANGELOG.md`, expanded mkdocs site (`install`, `usage`, `modules`,
   `version`) rebuilt on `mkdocs-material`.
 
@@ -23,6 +27,11 @@ All notable changes to this project are documented here. The format follows
 - `libc.math`, `libc.errno`, `libc.file`, `libc.dlfcn` and `libc.logging` had an
   empty `__init__.mojo`, so `from libc.math import sqrt` did not resolve. All
   five now re-export their `syscalls` module.
+- `libc.file.fclose()` could not be called at all: `std.io` emits its own
+  `fclose` declaration, and a second `external_call` for the same symbol that
+  takes a `Pointer` fails to lower with "existing function with conflicting
+  signature". The binding now passes the stream address as an `Int`, which is
+  ABI-identical on every supported target.
 
 ### Changed
 
