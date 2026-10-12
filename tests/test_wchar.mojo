@@ -144,6 +144,9 @@ def test_multibyte() raises:
     assert_equal(Int(one.unsafe_load()), 104)
 
     var byte = unsafe_alloc[UInt8](8)
+    # wcrtomb writes no terminator, so the slot after it has to start at 0.
+    byte.unsafe_store(0, 0)
+    byte.unsafe_store(1, 0)
     assert_equal(Int(wcrtomb(byte, 104, null_ptr[mbstate_t]())), 1)
     assert_equal(char_ptr_to_string(byte), "h")
 
