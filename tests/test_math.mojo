@@ -1,3 +1,4 @@
+from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
 from libc.math import (
@@ -9,7 +10,9 @@ from libc.math import (
     fdimf,
     floor,
     fmod,
+    nan,
     powf,
+    remquo,
     sqrt,
 )
 
@@ -44,9 +47,36 @@ def test_the_right_symbol_is_called() raises:
     )
 
 
+def test_remquo() raises:
+    """`remquo` takes a pointer to write the quotient into."""
+    var quo = unsafe_alloc[Int32](1)
+    quo.unsafe_offset(0)[] = 0
+
+    var remainder = remquo(3.0, 2.0, quo)
+
+    # 3 / 2 is 2 to the nearest, with -1 left over. What matters here is
+    # that the quotient comes back through the pointer, which it cannot do
+    # while the binding declares it as an `Int32`.
+    assert_equal(quo.unsafe_offset(0)[], 2, "the quotient is written out")
+    assert_true(
+        remainder == 1.0 or remainder == -1.0, "the remainder is 3 - 2 * 2"
+    )
+
+
+def test_nan() raises:
+    """`nan` takes its tag as a string, not as a byte."""
+    var tag = unsafe_alloc[UInt8](1)
+    tag.unsafe_offset(0)[] = 0
+
+    var value = nan(tag)
+    assert_true(value != value, "a NaN is not equal to itself")
+
+
 def main() raises:
     test_abs()
     test_sqrt_and_rounding()
     test_pow()
     test_the_right_symbol_is_called()
+    test_remquo()
+    test_nan()
     print("test_math: ok")
