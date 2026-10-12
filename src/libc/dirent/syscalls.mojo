@@ -106,3 +106,93 @@ def dirfd(arg: c_ptr[DIR]) -> Int32:
         Fn signature: `  int dirfd(DIR *dirp)`.
     """
     return external_call["dirfd", Int32, c_ptr[DIR]](arg)
+
+
+def fdopendir(fd: Int32) -> c_ptr[DIR]:
+    """Libc POSIX `fdopendir` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/fdopendir.3.html
+
+    Description:
+        fdopendir() opens a directory stream for a directory that is
+        already open, and takes the descriptor over.
+
+    Args:
+        fd: A descriptor for the directory, opened for reading.
+
+    Returns:
+        A directory stream, or null with `errno` set if the descriptor is
+        not for a directory.
+
+    Notes:
+        The stream owns the descriptor once this succeeds, and `closedir`
+        closes it. If this fails the descriptor is still yours.
+    """
+    return external_call["fdopendir", c_ptr[DIR], Int32](fd)
+
+
+def rewinddir(dirp: c_ptr[DIR]):
+    """Libc POSIX `rewinddir` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/rewinddir.3.html
+
+    Description:
+        rewinddir() puts a directory stream back to where it was when it
+        was opened.
+
+    Args:
+        dirp: The stream to rewind.
+
+    Notes:
+        There is no result: C declares this one `void`. Unlike seeking back
+        to a position from `telldir`, this also forgets about entries added
+        to the directory since, so a later `readdir` can show them.
+    """
+    external_call["rewinddir", NoneType, c_ptr[DIR]](dirp)
+
+
+def seekdir(dirp: c_ptr[DIR], loc: Int64):
+    """Libc POSIX `seekdir` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/seekdir.3.html
+
+    Description:
+        seekdir() sets where in the directory the next `readdir` reads from.
+
+    Args:
+        dirp: The stream to move.
+        loc: A position that `telldir` gave for this same stream.
+
+    Notes:
+        There is no result: C declares this one `void`. The position is
+        only good for the stream it came from, and only until something is
+        added to or taken out of the directory.
+    """
+    external_call["seekdir", NoneType, c_ptr[DIR], Int64](dirp, loc)
+
+
+def telldir(dirp: c_ptr[DIR]) -> Int64:
+    """Libc POSIX `telldir` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/telldir.3.html
+
+    Description:
+        telldir() returns where in the directory the stream has got to.
+
+    Args:
+        dirp: The stream to ask.
+
+    Returns:
+        The position, which `seekdir` can come back to, or -1 on failure
+        with `errno` set.
+
+    Notes:
+        This is a position within the directory and not a number of bytes,
+        so it means nothing to `lseek`, and it is only good for the stream
+        it came from.
+    """
+    return external_call["telldir", Int64, c_ptr[DIR]](dirp)
