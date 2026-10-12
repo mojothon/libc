@@ -738,10 +738,21 @@ def syscall(number: Int64) -> Int64:
         syscall() executes a system call.
 
     Args:
-        number: System call number.
+        number: Which system call, by the number `<sys/syscall.h>` gives
+            it.
 
     Returns:
-        0 on success, -1 on error.
+        What that call gives back, which is whatever it means by it and
+        not 0 or -1: the number for `getpid` comes back with the process
+        id. -1 is what most of them give when they fail, and `errno`
+        says which.
+
+    Notes:
+        C's is `long syscall(long number, ...)` and this one takes no
+        more than the number, there being no way through
+        `external_call` to hand over what comes after it. Of the calls
+        it can reach, then, only those wanting no arguments of their
+        own; the rest need a binding of their own.
     """
     return external_call["syscall", Int64, Int64](number)
 
