@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.8
+        with:
+          cache: true
+      - name: mojo format
+        run: pixi run format-check
+
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.8
+        with:
+          cache: true
+      - name: Run the test suite
+        run: pixi run test
+      - name: Precompile the package
+        run: pixi run package
+
+  conda-build:
+    name: Conda package
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.8
+        with:
+          cache: true
+          environments: build
+      - name: Build the conda package
+        run: pixi run -e build build-conda
+      - uses: actions/upload-artifact@v4
+        with:
+          name: conda-package
+          path: output/**/*.conda
+
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.8
+        with:
+          cache: true
+          environments: docs
+      - name: Build the site
+        run: pixi run -e docs doc-build
