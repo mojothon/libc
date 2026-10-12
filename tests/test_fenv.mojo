@@ -127,31 +127,43 @@ def test_environment_round_trip() raises:
 
 def probe() raises:
     # Temporary: ask Darwin what its macros are instead of guessing again.
-    var initial = fegetround()
-    print("probe initial round", initial)
-    for v in range(-1, 9):
+    # Every call here takes a different argument, because the compiler will
+    # otherwise fold the second call to `rint` into the first one — which is
+    # what made the last attempt print the same number eight times.
+    print("probe initial round", fegetround())
+    for v in range(8):
         var rc = fesetround(Int32(v))
-        var half = string_to_char_ptr("0.5")
+        var half = rint(strtod(string_to_char_ptr("0.5")))
+        var one_and_a_half = rint(strtod(string_to_char_ptr("1.5")))
+        var minus_half = rint(strtod(string_to_char_ptr("-0.5")))
         print(
-            "probe set",
+            "probe v",
             v,
             "rc",
             rc,
-            "get",
-            fegetround(),
             "rint(0.5)",
-            rint(strtod(half)),
+            half,
+            "rint(1.5)",
+            one_and_a_half,
+            "rint(-0.5)",
+            minus_half,
         )
-        half.unsafe_free()
     for bit in range(6):
         var mask = Int32(1 << bit)
-        _ = feclearexcept(Int32(0x3F))
-        _ = feraiseexcept(mask)
+        var cleared = feclearexcept(Int32(0x1F))
+        var raised = feraiseexcept(mask)
         print(
-            "probe raise bit", bit, "-> testexcept", fetestexcept(Int32(0x3F))
+            "probe bit",
+            bit,
+            "clear",
+            cleared,
+            "raise",
+            raised,
+            "seen",
+            fetestexcept(Int32(0x1F) + Int32(bit)),
         )
-    _ = feclearexcept(Int32(0x3F))
-    _ = fesetround(initial)
+    _ = feclearexcept(Int32(0x1F))
+    _ = fesetround(Int32(0))
 
 
 def main() raises:
