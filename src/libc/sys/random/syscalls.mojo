@@ -8,7 +8,7 @@ from std.memory import Pointer
 from libc.constant import c_ptr
 
 
-def getrandom(buf: c_ptr[UInt8], buflen: UInt64, flags: UInt32) -> UInt64:
+def getrandom(buf: c_ptr[UInt8], buflen: UInt64, flags: UInt32) -> Int:
     """C library <sys/random.h> function `getrandom`.
 
     Reference:
@@ -20,8 +20,19 @@ def getrandom(buf: c_ptr[UInt8], buflen: UInt64, flags: UInt32) -> UInt64:
         flags: The flags to use for getrandom.
 
     Returns:
-        The number of bytes written to the buffer.
+        How many bytes were written, which can be fewer than were asked
+        for, or -1 on failure with `errno` set.
+
+    Notes:
+        What comes back is a signed count, because -1 is how a failure is
+        reported; read through an unsigned type it would come out as the
+        largest number that type can hold, and a caller asking whether
+        anything went wrong would never see it.
+
+        Asking for more than 256 bytes at a time with `GRND_INSECURE`, or
+        at all from a device that has nothing to give, is what makes it
+        come back short.
     """
-    return external_call["getrandom", UInt64, c_ptr[UInt8], UInt64, UInt32](
+    return external_call["getrandom", Int, c_ptr[UInt8], UInt64, UInt32](
         buf, buflen, flags
     )
