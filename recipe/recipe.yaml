@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+
+context:
+  version: "0.2.0"
+
+package:
+  name: libc
+  version: ${{ version }}
+
+source:
+  - path: ../src
+  - path: ../tests
+    target_directory: tests
+  - path: ../LICENSE
+  - path: ../pixi.toml
+  - path: ../pixi.lock
+
+build:
+  script:
+    - mkdir -p ${PREFIX}/lib/mojo
+    # `mojo precompile` emits the 1.x package format (.mojoc); .mojopkg was
+    # removed in Mojo 1.1.
+    - mojo precompile libc -o ${PREFIX}/lib/mojo/libc.mojoc
+
+requirements:
+  build:
+    - mojo >=1.1.0,<2
+  run:
+    - mojo >=1.1.0,<2
+
+tests:
+  - script:
+      - mojo run -I ${PREFIX}/lib/mojo -I tests tests/test_main.mojo
+    files:
+      source:
+        - tests
+
+about:
+  homepage: https://github.com/mojothon/libc
+  repository: https://github.com/mojothon/libc
+  documentation: https://mojothon.github.io/libc/
+  license: MIT
+  license_file: LICENSE
+  summary: A standard C library binding for the Mojo programming language.
