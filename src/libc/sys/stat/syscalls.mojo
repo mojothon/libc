@@ -41,11 +41,13 @@ def fchmodat(fd: Int32, path: c_ptr[UInt8], mode: Int32, flags: Int32) -> Int32:
     """Libc POSIX `fchmodat` function.
 
     Args:
-        fd: A file descriptor.
+        fd: A directory descriptor the path is relative to, or `AT_FDCWD`.
         path: A path to a file.
-        mode: A mode to open the file with.
+        mode: The permission bits to set.
+        flags: 0, or `AT_SYMLINK_NOFOLLOW` to act on the link itself.
 
-    Returns: A pointer to a socket.
+    Returns:
+        0 on success, -1 on error.
     """
     return external_call["fchmodat", Int32, Int32, c_ptr[UInt8], Int32, Int32](
         fd, path, mode, flags

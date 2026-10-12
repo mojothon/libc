@@ -3,6 +3,48 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.7.0] - 2026-10-12
+
+### Added
+
+- `libc.fenv` binds all eleven functions C99 puts in `<fenv.h>`, plus
+  `feenableexcept`, `fedisableexcept` and `fegetexcept`, plus the `FE_*`
+  macros. Twelve of them were declared as taking no arguments and had no
+  body; two of those were not functions C has.
+- `libc.locale` binds `struct lconv`, so `localeconv` now returns something
+  you can read.
+
+### Fixed
+
+- A function's name and the symbol it calls were checked against every
+  prototype in the headers. `fabs` called `fabsl`, `fmod` called `fmodl`,
+  `erf` called `erff` — which made `erf(1.0)` return 1.0 instead of 0.8427 —
+  `fdimf` called `fdim`, `fmaxl` called `fmal`, `fgetc` called `fgets`, five
+  `is*_l` calls dropped the `_l`, and `Kill` was a second copy of `kill`.
+- Every `is*_l` and `to*_l` needs the locale as a second argument and was
+  passing only the character; `atan2` and `atan2f` need two arguments;
+  `fchmodat` needs a flags; `listen` declared no argument types at all.
+- `localeconv` was declared as taking a locale object, and C's takes nothing.
+  `freelocale` is `void` and was declared as returning a byte.
+- `locale_t` was a struct holding a pointer to six zero-byte objects that
+  `Locale.__init__` allocated for an object libc owns and hands out itself.
+
+### Removed
+
+- `truncateat`, which C does not have (`truncate` was already there).
+- `environ`, a global variable rather than a function: calling it runs data.
+- The `long double` variants in `libc.math`, which Mojo cannot pass an
+  argument to on x86-64.
+
+### Changed
+
+- **Breaking.** `locale_t` is `c_ptr[Locale]` now, which is what C means by
+  it, and makes `null_ptr[Locale]()` usable for `newlocale` and `uselocale`.
+- **Breaking.** `LC_*` and the `FE_*` rounding modes are set per platform,
+  because glibc numbers the categories from `LC_CTYPE` and Darwin from
+  `LC_ALL`, and arm64 keeps the rounding mode in FPCR bits where x86 keeps it
+  in the x87 control word.
+
 ## [0.6.0] - 2026-10-12
 
 ### Added

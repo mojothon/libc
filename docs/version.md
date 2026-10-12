@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| `libc.__version__` | `0.6.0` |
+| `libc.__version__` | `0.7.0` |
 | Mojo | `>=1.1.0,<2` |
 | Platforms | `linux-64`, `osx-arm64` |
 

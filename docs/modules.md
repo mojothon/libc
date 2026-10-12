@@ -6,24 +6,24 @@ the bottom.
 
 | Module | C header | Symbols |
 | --- | --- | --- |
-| `libc.math` | `<math.h>` | 126 |
+| `libc.math` | `<math.h>` | 115 |
 | `libc.stdlib` | `<stdlib.h>` | 33 |
 | `libc.float` | `<float.h>` | 30 |
-| `libc.unistd` | `<unistd.h>` | 43 |
+| `libc.unistd` | `<unistd.h>` | 41 |
 | `libc.file` | `<stdio.h>` file operations | 39 |
 | `libc.ctype` | `<ctype.h>` | 29 |
 | `libc.sys.socket` | `<sys/socket.h>` | 19 |
 | `libc.sys.stat` | `<sys/stat.h>` | 17 |
 | `libc.time` | `<time.h>` | 29 |
-| `libc.fenv` | `<fenv.h>` | 16 |
+| `libc.fenv` | `<fenv.h>` | 26 |
 | `libc.sys.mman` | `<sys/mman.h>` | 15 |
 | `libc.pthread` | `<pthread.h>` | 14 |
 | `libc.string` | `<string.h>` | 31 |
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 21 |
 | `libc.complex` | `<complex.h>` | 46 |
 | `libc.sched` | `<sched.h>` | 13 |
-| `libc.signal` | `<signal.h>` | 10 |
-| `libc.locale` | `<locale.h>` | 10 |
+| `libc.signal` | `<signal.h>` | 9 |
+| `libc.locale` | `<locale.h>` | 16 |
 | `libc.sys.epoll` | `<sys/epoll.h>` | 8 |
 | `libc.search` | `<search.h>` | 8 |
 | `libc.dirent` | `<dirent.h>` | 6 |
@@ -51,6 +51,10 @@ the bottom.
 
 `libc.threads` (`<threads.h>`) exports nothing: Apple never shipped C11
 threads, so a binding would only ever work on Linux.
+
+`libc.math` has no `long double` variants — no `fabsl`, no `nexttoward` —
+because Mojo has no type to pass: on x86-64 the C type is the 80-bit x87
+format. `libc.locale` has no `FE_DFL_ENV`, see `fenv_t`.
 
 `libc.sys.epoll`, `libc.sys.prctl`, `libc.sys.sendfile`, `libc.sys.auxv` and
 `libc.sys.random` wrap Linux-only calls; importing them on Darwin will not
