@@ -261,7 +261,10 @@ def shm_open(name: String, oflag: Int32, mode: Int32) -> Int32:
         shm_open() opens a shared memory object.
 
     Returns:
-        0 on success, -1 on error.
+        A descriptor for the shared memory object, like the other opens
+        give: a small number that is not a success code, or -1 on failure
+        with `errno` set. Zero is a descriptor too, so this is asked about
+        with -1 and nothing else.
     """
     return external_call["shm_open", Int32, String, Int32, Int32](
         name, oflag, mode
