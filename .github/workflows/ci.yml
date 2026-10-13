@@ -45,6 +45,10 @@ jobs:
       # the branch it is not standing on.
       - name: Check constants against the headers
         run: pixi run check-constants
+      # Same reason again, and not for the same numbers: a struct that is
+      # the wrong size here is wrong differently on each platform.
+      - name: Check struct sizes against the headers
+        run: pixi run check-layouts
 
   conda-build:
     name: Conda package

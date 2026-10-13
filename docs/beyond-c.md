@@ -93,11 +93,34 @@ received 512 where 64 was intended and created something other than was
 asked for, quietly, in the way these things do. A number read off `gcc
 -dM` by eye is right exactly once, and that was a long time ago.
 
-What neither script checks is struct layout. `tests/test_layout.mojo`
-asserts thirty-two things about `stat`, `socketaddr`, `msghdr`, `rusage`
-and a few others, which is real coverage of the handful somebody thought
-to test and nothing at all about the rest. Rust's `libc` generates that
-too. This is the remaining piece on trust.
+And `scripts/check-layouts.py` asks C how big each struct is and where it
+has to start, which `tests/test_layout.mojo` had been doing for thirty-two
+things about eight structs and nothing for the rest. Its first run found
+six wrong. Five were opaque blocks held as `Array[UInt8, N]` — `fenv_t`,
+`fexcept_t`, `pthread_attr_t`, `pthread_condattr_t`, `mbstate_t` — and a
+row of single bytes asks to be aligned on no boundary at all, so every
+call taking one was handed a pointer C asks for four or eight and never
+agreed to be given one byte off. Those now sit in words.
+
+The sixth was `qelem`, which is not opaque: it names the two links and
+nothing else, which made it sixteen bytes to C's twenty-four, because C's
+declares a third member, `char q_data[1]`, trailing after them. Nothing
+here ever looked at those eight bytes, so `insque` and `remque` work
+either way — until you put one next to anything else and it writes into
+the gap. A struct used for its size and never read has to be the right
+size for the reason that it is used for its size.
+
+Being larger than C needs is not a mistake and half of them are: an opaque
+block sized for whichever of the two platforms wanted most costs bytes and
+breaks nothing, since every call takes it by pointer and libc writes less
+than it was given. The script says which is which rather than treating any
+difference as failure.
+
+Field offsets are still on trust. `size_of` and `align_of` reach Mojo
+without constructing anything; the offset of a member does not, because
+asking a pointer where a member lives asks for a member pointer, and Mojo
+has none. That leaves 116 fields whose positions are whatever they were
+written down as.
 
 glibc, for its part, does not come with anything that checks glibc.
 

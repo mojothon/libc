@@ -28,6 +28,12 @@ check-prototypes = "python3 scripts/check-prototypes.py"
 # by C and compared now, and because the platform decides which side of a
 # conditional is on trial, this has to run on both for either to count.
 check-constants = "python3 scripts/check-constants.py"
+# Size and alignment of every struct, asked of C rather than remembered.
+# A struct smaller than C's is a hole punched in whatever follows it; one
+# less aligned than C asks for is a pointer handed to libc that libc never
+# agreed to accept. Bigger than C needs is fine, and half of them are, on
+# purpose: they hold whichever of the two platforms wanted most.
+check-layouts = "python3 scripts/check-layouts.py"
 
 [feature.build.dependencies]
 rattler-build = ">=0.40,<0.41"
