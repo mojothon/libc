@@ -34,10 +34,10 @@ comptime O_CLOEXEC = 524288
 # from fcntl.h
 comptime O_EXEC = -1
 comptime O_SEARCH = -1
-comptime O_DIRECTORY = -1 if CompilationTarget.is_macos() else 65536
-comptime O_DSYNC = -1 if CompilationTarget.is_macos() else 4096
-comptime O_NOCTTY = -1 if CompilationTarget.is_macos() else 256
-comptime O_NOFOLLOW = -1 if CompilationTarget.is_macos() else 131072
+comptime O_DIRECTORY = 1048576 if CompilationTarget.is_macos() else 65536
+comptime O_DSYNC = -1 if CompilationTarget.is_macos() else 4096  # Darwin has no such flag; it has O_SYNC
+comptime O_NOCTTY = 131072 if CompilationTarget.is_macos() else 256
+comptime O_NOFOLLOW = 256 if CompilationTarget.is_macos() else 131072
 comptime O_RSYNC = -1
 comptime O_TTY_INIT = -1
 
@@ -62,10 +62,10 @@ comptime F_RSETLKW = 13
 comptime F_DUPFD_CLOEXEC = 14 if CompilationTarget.is_macos() else 1030
 
 # TODO(cristian)
-comptime FD_CLOEXEC = -1 if CompilationTarget.is_macos() else 1
-comptime F_RDLCK = -1 if CompilationTarget.is_macos() else 0
-comptime F_UNLCK = -1 if CompilationTarget.is_macos() else 2
-comptime F_WRLCK = -1 if CompilationTarget.is_macos() else 1
+comptime FD_CLOEXEC = 1
+comptime F_RDLCK = 1 if CompilationTarget.is_macos() else 0
+comptime F_UNLCK = 2
+comptime F_WRLCK = 3 if CompilationTarget.is_macos() else 1
 
 comptime AT_EACCESS = 512
 # Which number says "the current directory" is up to the platform:
