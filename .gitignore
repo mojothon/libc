@@ -177,3 +177,6 @@ output
 .mojo_cache
 
 
+
+# Scratch space for the C programs the checks compile
+.build-check/

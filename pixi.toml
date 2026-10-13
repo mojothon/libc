@@ -21,6 +21,13 @@ format-check = "bash scripts/format-check.sh"
 # count or a misspelled symbol still compiles. This checks them against
 # the real prototypes read out of the headers with `gcc -aux-info`.
 check-prototypes = "python3 scripts/check-prototypes.py"
+# Every numeric constant here was read out of `gcc -dM` by eye, once, and
+# a number nobody rechecks is a number nothing stops from being wrong: 55
+# of them were Darwin's values with no platform branch at all, which is
+# to say they were wrong on Linux and looked correct. Each one is printed
+# by C and compared now, and because the platform decides which side of a
+# conditional is on trial, this has to run on both for either to count.
+check-constants = "python3 scripts/check-constants.py"
 
 [feature.build.dependencies]
 rattler-build = ">=0.40,<0.41"

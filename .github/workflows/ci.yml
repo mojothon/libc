@@ -40,6 +40,11 @@ jobs:
         run: pixi run test
       - name: Precompile the package
         run: pixi run package
+      # Two platforms, because half the work this does is deciding which
+      # side of an `if is_macos()` is the true one: neither job can check
+      # the branch it is not standing on.
+      - name: Check constants against the headers
+        run: pixi run check-constants
 
   conda-build:
     name: Conda package
