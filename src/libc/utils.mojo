@@ -41,11 +41,20 @@ def exit(status: c_int):
 
 
 def string_to_char_ptr(s: String) -> c_ptr[UInt8]:
-    """
-    Convert a string(only ASCII-characters) to a char pointer.
+    """Copy a `String` out into a buffer C can be given.
 
-    The returned buffer is NUL terminated and owned by the caller: release
-    it with `ptr.unsafe_free()` when it is no longer needed.
+    The bytes go across one at a time, so what C sees is the UTF-8 the
+    `String` was already holding rather than a version of it: a character
+    outside ASCII arrives as its bytes, and is neither turned into one
+    byte nor turned into a `?`.
+
+    Args:
+        s: The text to copy out.
+
+    Returns:
+        A pointer to a fresh buffer of `s.byte_length() + 1` bytes, the
+        last of which is the NUL. It is the caller's, and
+        `ptr.unsafe_free()` is what takes it back.
     """
     var length = s.byte_length()
     var ptr = unsafe_alloc[UInt8](length + 1)
@@ -58,8 +67,20 @@ def string_to_char_ptr(s: String) -> c_ptr[UInt8]:
 
 
 def char_ptr_to_string(c: c_ptr[UInt8]) -> String:
-    """
-    Convert a char pointer to a string.
+    """Wrap a C string in a `String`.
+
+    It measures with `strlen`, so the buffer does want a NUL: one without
+    one sends it reading past the end. It copies nothing either, so what
+    comes back borrows the bytes and is only good while the buffer is.
+    And the bytes go in as they are, so a buffer that is not UTF-8 gives
+    a `String` that is not well-formed text, which is the thing
+    `unsafe_from_utf8` is called unsafe for.
+
+    Args:
+        c: A NUL terminated buffer to read.
+
+    Returns:
+        The bytes up to the NUL, as a `String` that borrows them.
     """
     var length = strlen(c)
     return String(unsafe_from_utf8=Span[UInt8](unsafe_ptr=c, length=length))
@@ -75,6 +96,10 @@ def null_ptr[T: AnyType]() -> c_ptr[T]:
     address 0 at runtime is the way out.
 
     Use it only as an argument. Never read through it.
+
+    Returns:
+        A `c_ptr[T]` holding the address 0, which is what C means
+        by NULL.
     """
     var address: Int = 0
     return c_ptr[T](unsafe_from_address=address)
@@ -125,7 +150,13 @@ struct CString(TrivialRegisterPassable, Writable):
 
 @inline(.nodebug)
 def is_x86_64() -> Bool:
-    """
-    Check if the current platform is x86_64.
+    """Check whether the platform this was compiled for is x86-64.
+
+    It asks `CompilationTarget`, so it is the target that answers and not
+    the machine the binary ends up running on: one built for x86-64 and
+    run translated still says True.
+
+    Returns:
+        True when the target is x86-64.
     """
     return CompilationTarget.is_x86() and is_64bit()
