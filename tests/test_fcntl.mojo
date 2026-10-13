@@ -1,7 +1,9 @@
+from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
 from libc.constant import EEXIST
 from libc.errno import errno_message, get_errno, set_errno
+from libc.sys.stat import Stat, fchmod, fstat
 from libc.fcntl import (
     O_APPEND,
     O_CLOEXEC,
