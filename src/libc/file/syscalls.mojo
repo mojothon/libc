@@ -91,7 +91,12 @@ def open(path: c_ptr[c_char], oflag: c_int) -> c_int:
 
 
 def openat(fd: c_int, path: c_ptr[c_char], oflag: c_int) -> c_int:
-    """Libc POSIX `open` function.
+    """Libc POSIX `openat` function.
+
+    Description:
+        Opens `path` relative to a directory rather than to where the
+        process stands, `fd` being that directory's descriptor. `open` is
+        the special case of this where nothing is given to be relative to.
 
     Args:
         fd: A File Descriptor to open the file with.
@@ -839,7 +844,7 @@ def ftello(stream: c_ptr[FILE]) -> off_t:
 
 
 def clearerr(stream: c_ptr[FILE]) -> c_void:
-    """Libc POSIX `feof` function.
+    """Libc POSIX `clearerr` function.
 
     Args:
         stream: A pointer to a stream.
