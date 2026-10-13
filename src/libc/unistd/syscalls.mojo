@@ -4,8 +4,15 @@
 # github: github.com/llango
 # ----------------------------------
 from std.ffi import external_call
+from std.sys import CompilationTarget
 from std.memory import Pointer
 from libc.constant import c_ptr
+
+
+# Which knob `sysconf` is asked about: 30 here and 29 on Darwin. C spells
+# it `_SC_PAGESIZE`, and a leading underscore makes a name private to a Mojo
+# module, so it is `SC_PAGESIZE` here.
+comptime SC_PAGESIZE: Int32 = 29 if CompilationTarget.is_macos() else 30
 
 
 def access(path: c_ptr[UInt8], mode: Int32) -> Int32:
@@ -1188,7 +1195,7 @@ def getpagesize() -> Int32:
         The size of a page.
 
     Notes:
-        Not in POSIX anymore, which says to ask `sysconf` for `_SC_PAGESIZE`
+        Not in POSIX anymore, which says to ask `sysconf` for `SC_PAGESIZE`
         instead, but it is in both glibc and Darwin and it is the number a
         call like `mmap` wants.
     """
