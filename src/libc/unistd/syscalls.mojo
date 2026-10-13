@@ -6,7 +6,7 @@
 from std.ffi import external_call
 from std.sys import CompilationTarget
 from std.memory import Pointer
-from libc.constant import c_ptr
+from libc.constant import c_int, c_long, c_ptr
 
 
 # Which knob `sysconf` is asked about: 30 here and 29 on Darwin. C spells
@@ -1200,3 +1200,117 @@ def getpagesize() -> Int32:
         call like `mmap` wants.
     """
     return external_call["getpagesize", Int32]()
+
+
+def sysconf(name: c_int) -> c_long:
+    """Libc POSIX `sysconf` function.
+
+    Args:
+        name: Which limit to ask about, as one of the `_SC_*`.
+
+    Returns:
+        The value, or -1 when `name` names nothing the system knows.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/sysconf.3.html).
+        Fn signature: `long sysconf(int name)`.
+
+        -1 is both an answer and a failure here, and `errno` is what tells
+        them apart: it is left alone when -1 is the value, and set when the
+        name was not one this system has. Ask `get_errno` before deciding
+        which it was.
+    """
+    return external_call["sysconf", c_long, c_int](name)
+
+
+def usleep(usec: UInt32) -> c_int:
+    """Libc POSIX `usleep` function.
+
+    Args:
+        usec: How long to sleep, in microseconds.
+
+    Returns:
+        0 on success. Otherwise -1 and `errno` is set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/usleep.3.html).
+        Fn signature: `int usleep(useconds_t usec)`.
+
+        POSIX dropped this in 2008 in favour of `nanosleep` and put it back
+        in 2024, and every platform that matters kept it throughout. The
+        argument is 32 bits, so the longest sleep it can name is a little
+        over 71 minutes.
+    """
+    return external_call["usleep", c_int, UInt32](usec)
+
+
+def getpgid(pid: c_int) -> c_int:
+    """Libc POSIX `getpgid` function.
+
+    Args:
+        pid: Which process to ask about, or 0 for this one.
+
+    Returns:
+        The process group id. Otherwise -1 and `errno` is set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man2/getpgid.2.html).
+        Fn signature: `pid_t getpgid(pid_t pid)`.
+    """
+    return external_call["getpgid", c_int, c_int](pid)
+
+
+def setpgid(pid: c_int, pgid: c_int) -> c_int:
+    """Libc POSIX `setpgid` function.
+
+    Args:
+        pid: Which process to move, or 0 for this one.
+        pgid: Which process group to move it into, or 0 to make a new one
+            with `pid` as its leader.
+
+    Returns:
+        0 on success. Otherwise -1 and `errno` is set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man2/setpgid.2.html).
+        Fn signature: `int setpgid(pid_t pid, pid_t pgid)`.
+
+        A process may set its own group and its children's, and nothing
+        else's: `EPERM` for a process that is not one of those, and
+        `EACCES` for a child that has gone on to `execve`.
+    """
+    return external_call["setpgid", c_int, c_int, c_int](pid, pgid)
+
+
+def getsid(pid: c_int) -> c_int:
+    """Libc POSIX `getsid` function.
+
+    Args:
+        pid: Which process to ask about, or 0 for this one.
+
+    Returns:
+        The session id. Otherwise -1 and `errno` is set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man2/getsid.2.html).
+        Fn signature: `pid_t getsid(pid_t pid)`.
+    """
+    return external_call["getsid", c_int, c_int](pid)
+
+
+def setsid() -> c_int:
+    """Libc POSIX `setsid` function.
+
+    Returns:
+        The new session id, which is this process's id. Otherwise -1 and
+        `errno` is set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man2/setsid.2.html).
+        Fn signature: `pid_t setsid(void)`.
+
+        `EPERM` when the caller already leads a process group, since a
+        session leader that kept its old group would have one foot in each
+        session. Fork first and call this from the child.
+    """
+    return external_call["setsid", c_int]()
