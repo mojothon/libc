@@ -54,7 +54,7 @@ def labs(j: Int64) -> Int64:
 
 
 def llabs(j: Int64) -> Int64:
-    """C library <math.h> function `labs`.
+    """C library <stdlib.h> function `llabs`.
 
     Link:
         https://man7.org/linux/man-pages/man3/abs.3.html
@@ -75,13 +75,13 @@ def llabs(j: Int64) -> Int64:
 
 
 def imaxabs(j: Int64) -> Int64:
-    """C library <math.h> function `labs`.
+    """C library <inttypes.h> function `imaxabs`.
 
     Link:
         https://man7.org/linux/man-pages/man3/abs.3.html
 
     Prototype:
-        intmax_t llabs(intmax_t j)
+        intmax_t imaxabs(intmax_t j)
 
     Description:
         Computes the absolute value of j.
@@ -169,7 +169,7 @@ def ldiv(numer: Int64, denom: Int64) -> ldiv_t:
         https://man7.org/linux/man-pages/man3/ldiv.3.html
 
     Prototype:
-        ldiv_t div(long x, long y)
+        ldiv_t ldiv(long numer, long denom)
 
     Description:
         Computes the quotient and remainder of  the division of the numerator numer by the denominator denom.
@@ -191,7 +191,7 @@ def lldiv(numer: Int64, denom: Int64) -> lldiv_t:
         https://man7.org/linux/man-pages/man3/ldiv.3.html
 
     Prototype:
-        ldiv_t div(long x, long y)
+        lldiv_t lldiv(long long numer, long long denom)
 
     Description:
         Computes the quotient and remainder of  the division of the numerator numer by the denominator denom.
@@ -213,7 +213,7 @@ def imaxdiv(numer: Int64, denom: Int64) -> imaxdiv_t:
         https://man7.org/linux/man-pages/man3/ldiv.3.html
 
     Prototype:
-        ldiv_t div(long x, long y)
+        imaxdiv_t imaxdiv(intmax_t numer, intmax_t denom)
 
     Description:
         Computes the quotient and remainder of  the division of the numerator numer by the denominator denom.
@@ -244,8 +244,8 @@ def fmodf(x: Float32, y: Float32) -> Float32:
         The functionality described on this reference page is aligned with the ISO C standard. Any conflict between the requirements described here and the ISO C standard is unintentional. This volume of POSIX.1‐2017 defers to the ISO C standard.
 
     Arguments:
-        x
-        y
+        x: The dividend, whose remainder is taken.
+        y: The divisor to take the remainder against.
 
     Return value:
         These functions shall return the value x-i*y, for some integer i
@@ -268,8 +268,8 @@ def fmod(x: Float64, y: Float64) -> Float64:
         The functionality described on this reference page is aligned with the ISO C standard. Any conflict between the requirements described here and the ISO C standard is unintentional. This volume of POSIX.1‐2017 defers to the ISO C standard.
 
     Arguments:
-        x
-        y
+        x: The dividend, whose remainder is taken.
+        y: The divisor to take the remainder against.
 
     Return value:
         These functions shall return the value x-i*y, for some integer i
@@ -1252,18 +1252,17 @@ def atan(x: Float64) -> Float64:
         https://man7.org/linux/man-pages/man3/atan.3.html
 
     Prototype:
-        double atan2(double y, double x)
+        double atan(double x)
 
     Description:
-        Computes the arc tangent of y/x, using the signs of both to pick the
-        quadrant.
+        Computes the arc tangent of x. The one that takes two and picks the
+        quadrant from their signs is `atan2`.
 
     Arguments:
-        y: The numerator.
-        x: The denominator.
+        x: The value whose arc tangent is taken.
 
     Return value:
-        The arctangent in the range (-π/2, π/2).
+        The arc tangent of x, in the range (-π/2, π/2).
     """
     return external_call["atan", Float64, Float64](x)
 
@@ -1278,15 +1277,14 @@ def atanf(x: Float32) -> Float32:
         float atanf(float x)
 
     Description:
-        Computes the arc tangent of y/x, using the signs of both to pick the
-        quadrant.
+        Computes the arc tangent of x. The one that takes two and picks the
+        quadrant from their signs is `atan2f`.
 
     Arguments:
-        y: The numerator.
-        x: The denominator.
+        x: The value whose arc tangent is taken.
 
     Return value:
-        The arctangent in the range (-π/2, π/2).
+        The arc tangent of x, in the range (-π/2, π/2).
     """
     return external_call["atanf", Float32, Float32](x)
 
@@ -1321,7 +1319,7 @@ def atan2f(y: Float32, x: Float32) -> Float32:
         https://man7.org/linux/man-pages/man3/atan.3.html
 
     Prototype:
-        float atanf(float x)
+        float atan2f(float y, float x)
 
     Description:
         Computes the arc tangent of y/x, using the signs of both to pick the
@@ -1736,7 +1734,7 @@ def erff(arg: Float32) -> Float32:
         Computes the error of arg.
 
     Arguments:
-        arg
+        arg: The point to evaluate the error function at.
 
     Return value:
         The error of x .
@@ -1758,7 +1756,7 @@ def erf(arg: Float64) -> Float64:
         Computes the error of arg.
 
     Arguments:
-        arg
+        arg: The point to evaluate the error function at.
 
     Return value:
         The error of x .
