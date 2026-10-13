@@ -27,7 +27,7 @@ the bottom.
 | `libc.sys.epoll` | `<sys/epoll.h>` | 8 |
 | `libc.search` | `<search.h>` | 9 |
 | `libc.dirent` | `<dirent.h>` | 12 |
-| `libc.sys.wait` | `<sys/wait.h>` | 7 |
+| `libc.sys.wait` | `<sys/wait.h>` | 14 |
 | `libc.inttypes` | `<inttypes.h>` | 7 |
 | `libc.sys.resource` | `<sys/resource.h>` | 7 |
 | `libc.network` | `<arpa/inet.h>` byte order helpers | 4 |
@@ -43,7 +43,7 @@ the bottom.
 | `libc.sys.random` | `<sys/random.h>` | 2 |
 | `libc.sys.prctl` | `<sys/prctl.h>` | 19 |
 | `libc.sys.auxv` | `<sys/auxv.h>` | 1 |
-| `libc.errno` | `<errno.h>` | 2 |
+| `libc.errno` | `<errno.h>` | 5 |
 | `libc.constant` | C type aliases and constants | — |
 | `libc.utils` | String/pointer helpers | — |
 
