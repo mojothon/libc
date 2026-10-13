@@ -51,7 +51,12 @@ def sched_get_priority_max(policy: Int32) -> Int32:
 
     Description:
         The sched_get_priority_max() function retrieves the maximum scheduling priority for the specified scheduling policy.
-        The policy argument specifies the scheduling policy whose maximum priority is to be retrieved. The valid values for the policy argument are SCHED_OTHER, SCHED_FIFO, and SCHED_RR.
+        The policy argument specifies the scheduling policy whose maximum priority is to be retrieved. The valid values for the policy argument are SCHED_OTHER, SCHED_FIFO, and SCHED_RR, of which this package binds
+        none: on Linux they are 0, 1 and 2, and asking about a policy the
+        platform has no such number for fails with `EINVAL`.
+
+    Arguments:
+        policy: The policy to ask about, as a number.
 
     Return Value:
         On success, the maximum scheduling priority for the specified scheduling policy is returned. On error, -1 is returned, and errno is set to indicate the error.
@@ -71,7 +76,12 @@ def sched_get_priority_min(policy: Int32) -> Int32:
 
     Description:
         The sched_get_priority_min() function retrieves the minimum scheduling priority for the specified scheduling policy.
-        The policy argument specifies the scheduling policy whose minimum priority is to be retrieved. The valid values for the policy argument are SCHED_OTHER, SCHED_FIFO, and SCHED_RR.
+        The policy argument specifies the scheduling policy whose minimum priority is to be retrieved. The valid values for the policy argument are SCHED_OTHER, SCHED_FIFO, and SCHED_RR, of which this package binds
+        none: on Linux they are 0, 1 and 2, and asking about a policy the
+        platform has no such number for fails with `EINVAL`.
+
+    Arguments:
+        policy: The policy to ask about, as a number.
 
     Return Value:
         On success, the minimum scheduling priority for the specified scheduling policy is returned. On error, -1 is returned, and errno is set to indicate the error.
@@ -93,7 +103,17 @@ def sched_getaffinity(
 
     Description:
         The sched_getaffinity() function retrieves the CPU affinity of the process specified by the pid argument.
-        The pid argument specifies the process ID of the process whose CPU affinity is to be retrieved. The pid argument can be 0, in which case the calling process is changed.
+        The pid argument specifies the process ID of the process whose CPU affinity is to be retrieved. The pid argument can be 0, in which case the calling process is asked about.
+
+    Arguments:
+        pid: Whose affinity to read, 0 being the caller.
+        cpusetsize: How many bytes are behind `cpuset`, which is the
+            thing that keeps libc from writing past it.
+        cpuset: Where the mask is written. It is `c_ptr[Int32]` rather
+            than a `cpu_set_t`, and there are no `CPU_*` macros here to
+            build one with, so the bits are the caller's to set: a CPU
+            is in the set when its bit is, CPU 0 being bit 0 of the
+            first word.
 
     Return Value:
         On success, sched_getaffinity() returns 0. On error, -1 is returned, and errno is set to indicate the error.
@@ -133,7 +153,12 @@ def sched_getparam(pid: Int32, param: c_ptr[sched_param]) -> Int32:
 
     Description:
         The sched_getparam() function retrieves the scheduling parameters for the specified process.
-        The pid argument specifies the process ID of the process whose scheduling parameters are to be retrieved. The pid argument can be 0, in which case the calling process is changed.
+        The pid argument specifies the process ID of the process whose scheduling parameters are to be retrieved. The pid argument can be 0, in which case the calling process is asked about.
+
+    Arguments:
+        pid: Whose parameters to read, 0 being the caller.
+        param: Where they are written, as `sched_param` above, which is
+            a struct of the one field C gives it.
 
     Return Value:
         On success, sched_getparam() returns 0. On error, -1 is returned, and errno is set to indicate the error.
@@ -155,11 +180,17 @@ def sched_getscheduler(pid: Int32) -> Int32:
 
     Description:
         The sched_getscheduler() function retrieves the scheduling policy and parameters for the specified process.
-        The pid argument specifies the process ID of the process whose scheduling policy and parameters are to be retrieved. The pid argument can be 0, in which case the calling process is changed.
-        The policy and parameters are returned in the structure sched_param in the param argument. The structure sched_param is defined in <sched.h> and contains two members: sched_priority, which specifies the priority of the process, and sched_slice, which specifies the time slice for a round-robin scheduling policy.
+        The pid argument can be 0, in which case the calling process is asked about.
+        What comes back is the policy itself, as a number, and this package binds no
+        `SCHED_*` constants to compare it against: on Linux `SCHED_OTHER` is 0,
+        `SCHED_FIFO` 1 and `SCHED_RR` 2.
+
+    Arguments:
+        pid: Whose policy to read, 0 being the caller.
 
     Return Value:
-        On success, the scheduling policy for the process is returned in the policy argument. Otherwise, -1 is returned, and errno is set to indicate the error.
+        On success, the policy is returned as a number. On error, -1 is
+        returned, and errno is set to indicate the error.
     """
     return external_call["sched_getscheduler", Int32, Int32](pid)
 
@@ -176,10 +207,15 @@ def sched_rr_get_interval(pid: Int32, interval: c_ptr[timespec]) -> Int32:
     Description:
         The sched_rr_get_interval() function retrieves the time slice for a round-robin scheduling policy for the specified process.
         The pid argument specifies the process ID of the process whose time slice is to be retrieved. The pid argument can be 0, in which case the calling process is changed.
-        The interval argument specifies the time slice for the process. The interval argument is a pointer to a struct timespec structure that is filled in with the time slice for the process.
+        The interval argument is where the slice is written, as `timespec` above.
+
+    Arguments:
+        pid: Whose slice to read, 0 being the caller.
+        interval: Where the slice is written.
 
     Return Value:
-        On success, the time slice for the process is returned in the interval argument. Otherwise, -1 is returned, and errno is set to indicate the error.
+        On success, 0 is returned and `interval` is filled in. On error, -1
+        is returned, and errno is set to indicate the error.
 
     """
     return external_call[
@@ -201,8 +237,15 @@ def sched_setaffinity(
     Description:
         The sched_setaffinity() function sets the CPU affinity of the process specified by the pid argument to the set of CPUs specified by the cpuset argument.
         The pid argument specifies the process ID of the process whose CPU affinity is to be set. The pid argument can be 0, in which case the calling process is changed.
-        The cpuset argument specifies the set of CPUs for which the process's CPU affinity is to be set. The cpuset argument can be NULL, in which case the process's current CPU affinity is cleared.
+        The cpuset argument specifies the set of CPUs for which the process's CPU affinity is to be set. The cpuset argument must not be NULL: Linux answers a null pointer with `EFAULT`., in which case the process's current CPU affinity is cleared.
         The cpusetsize argument specifies the size of the cpuset argument in bytes. The size of the cpuset argument must be at least sizeof(cpu_set_t).
+
+    Arguments:
+        pid: Whose affinity to set, 0 being the caller.
+        cpusetsize: How many bytes are behind `cpuset`.
+        cpuset: The mask to set, as `c_ptr[Int32]`, there being no
+            `CPU_*` macros here to build one with: a CPU is in the set
+            when its bit is.
 
     Return Value:
         On success, sched_setaffinity() returns 0. On error, -1 is returned, and errno is set to indicate the error.
@@ -226,6 +269,13 @@ def sched_setparam(pid: Int32, param: c_ptr[sched_param]) -> Int32:
         The sched_setparam() function sets the scheduling parameters for the specified process.
         The pid argument specifies the process ID of the process whose scheduling parameters are to be changed. The pid argument can be 0, in which case the calling process is changed.
 
+    Arguments:
+        pid: Whose parameters to change, 0 being the caller.
+        param: The parameters, of which there is the one, and it wants
+            to be within what `sched_get_priority_min` and
+            `sched_get_priority_max` answer for the policy already in
+            force, or the call fails with `EINVAL`.
+
     Return Value:
         On success, sched_setparam() returns 0. On error, -1 is returned, and errno is set to indicate the error.
 
@@ -248,10 +298,20 @@ def sched_setscheduler(
 
     Description:
         The sched_setscheduler() function sets the scheduling policy and parameters for the specified process.
-        The policy and parameters specified in the param argument are used for the process specified by the pid argument.
+        The policy and the priority in the param argument are what the process is given.
         The pid argument specifies the process ID of the process whose scheduling policy and parameters are to be changed. The pid argument can be 0, in which case the calling process is changed.
         The policy argument specifies the new scheduling policy for the process. The valid values for the policy argument are SCHED_OTHER, SCHED_FIFO, and SCHED_RR.
-        The param argument specifies the new scheduling parameters for the process. The structure sched_param is defined in <sched.h> and contains two members: sched_priority, which specifies the priority of the process, and sched_slice, which specifies the time slice for a round-robin scheduling policy.
+        The param argument specifies the new scheduling parameters, of which the
+        structure has the one field: there is no `sched_slice` in `sched_param`,
+        on Linux or anywhere else, and the round-robin slice is asked for with
+        `sched_rr_get_interval` and set by the kernel.
+
+    Arguments:
+        pid: Whose policy to change, 0 being the caller.
+        policy: The policy as a number, this package binding no
+            `SCHED_*` constants: on Linux they are 0, 1 and 2.
+        param: The parameters, and the priority in them wants to be
+            within the range for the policy being set.
 
     Return Value:
         On success, sched_setscheduler() returns 0. On error, -1 is returned, and errno is set to indicate the error.
