@@ -8,6 +8,10 @@ from std.memory import Pointer
 from libc.constant import c_ptr
 
 
+# Linux's own: Darwin's getentropy takes no flags.
+comptime GRND_INSECURE: UInt32 = 4
+
+
 def getrandom(buf: c_ptr[UInt8], buflen: UInt64, flags: UInt32) -> Int:
     """C library <sys/random.h> function `getrandom`.
 
