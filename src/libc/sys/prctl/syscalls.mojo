@@ -16,43 +16,33 @@ def prctl(
         https://man7.org/linux/man-pages/man2/prctl.2.html
 
     Args:
-        option: The operation to perform.
-        arg2: The argument 2.
-        arg3: The argument 3.
-        arg4: The argument 4.
-        arg5: The argument 5.
+        option: The operation, as a number.
+        arg2: The first thing the operation asks for, or nothing at all:
+            what it means is up to the one chosen.
+        arg3: The second, or nothing at all.
+        arg4: The third, or nothing at all.
+        arg5: The fourth, or nothing at all. All four are `UInt64` because
+            enough of the operations take a pointer, or a value that is
+            one, that a narrower type would not hold them.
 
     Description:
         prctl() performs a privileged operation on the calling process.
         It is used to get and set various options controlling the behavior of the kernel.
         The operation is specified in the `option` argument, and additional arguments may be required depending on the operation.
-        The `option` argument can be any of the following values:
-        - `PR_SET_PDEATHSIG`: Set the parent death signal of the calling process.
-        - `PR_GET_PDEATHSIG`: Get the parent death signal of the calling process.
-        - `PR_SET_NAME`: Set the name of the calling process.
-        - `PR_GET_NAME`: Get the name of the calling process.
-        - `PR_GET_DUMPABLE`: Get the dumpable flag of the calling process.
-        - `PR_SET_DUMPABLE`: Set the dumpable flag of the calling process.
-        - `PR_GET_UNALIGN`: Get the unaligned flag of the calling process.
-        - `PR_SET_UNALIGN`: Set the unaligned flag of the calling process.
-        - `PR_GET_TIMING`: Get the timing flag of the calling process.
-        - `PR_SET_TIMING`: Set the timing flag of the calling process.
-        - `PR_GET_SECCOMP`: Get the seccomp flag of the calling process.
-        - `PR_SET_SECCOMP`: Set the seccomp flag of the calling process.
-        - `PR_GET_SECCOMP`: Get the seccomp flag of the calling process.
-        - `PR_SET_TSC`: Set the TSC flag of the calling process.
-        - `PR_GET_TSC`: Get the TSC flag of the calling process.
-        - `PR_SET_TSC`: Set the TSC flag of the calling process.
-        - `PR_GET_TSC`: Get the TSC flag of the calling process.
-        - `PR_SET_TSC`: Set the TSC flag of the calling process.
-        - `PR_GET_TSC`: Get the TSC flag of the calling process.
-        - `PR_SET_SECUREBITS`: Set the securebits of the calling process.
-        - `PR_GET_SECUREBITS`: Get the securebits of the calling process.
-        - `PR_SET_TIMERSLACK`: Set the timerslack of the calling process.
-        - `PR_GET_TIMERSLACK`: Get the timerslack of the calling process.
-        ...
+        The `option` argument is a number, and no `PR_*` constant is bound
+        here. On Linux `PR_SET_PDEATHSIG` is 1, `PR_GET_PDEATHSIG` 2,
+        `PR_GET_DUMPABLE` 3, `PR_SET_DUMPABLE` 4, `PR_GET_UNALIGN` 5,
+        `PR_SET_UNALIGN` 6, `PR_GET_TIMING` 13, `PR_SET_TIMING` 14,
+        `PR_SET_NAME` 15, `PR_GET_NAME` 16, `PR_GET_SECCOMP` 21,
+        `PR_SET_SECCOMP` 22, `PR_GET_TSC` 25, `PR_SET_TSC` 26,
+        `PR_GET_SECUREBITS` 27, `PR_SET_SECUREBITS` 28, `PR_SET_TIMERSLACK`
+        29 and `PR_GET_TIMERSLACK` 30, and there are more besides, so the
+        header is the place to check.
 
-    return:
+        `prctl` is Linux's own: there is no `<sys/prctl.h>` on Darwin, and
+        a call there does not link.
+
+    Return Value:
         The return value of the function is 0 on success, or -1 on error.
     """
 
