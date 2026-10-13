@@ -2,10 +2,17 @@ from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
 from libc.constant import EAGAIN, ENOENT, EPERM
-from libc.errno import check, errno_message, errno_name, get_errno, set_errno
+from libc.errno import (
+    check,
+    check_ptr,
+    errno_message,
+    errno_name,
+    get_errno,
+    set_errno,
+)
 from libc.fcntl import F_SETFL, O_NONBLOCK, fcntl
 from libc.sys.stat import Stat, stat
-from libc.unistd import pipe, read
+from libc.unistd import getcwd, pipe, read
 from libc.utils import string_to_char_ptr
 
 
@@ -98,9 +105,36 @@ def test_check() raises:
     assert_true(raised, "a negative result raises")
 
 
+def test_check_ptr() raises:
+    """The other half of libc, which answers NULL rather than -1.
+
+    `getcwd` with a buffer that cannot hold the directory is what asks
+    for NULL here: POSIX says ERANGE for that, on both platforms, and it
+    is the errno `getcwd` itself set rather than one put there for it.
+    """
+    # Room for any path: PATH_MAX is 4096 here and 1024 on Darwin.
+    var room = unsafe_alloc[UInt8](4096)
+    var back = check_ptr(getcwd(room, 4096))
+    assert_true(Int(back) != 0, "a pointer that is real passes through")
+    room.unsafe_free()
+
+    var too_small = unsafe_alloc[UInt8](1)
+    var raised = False
+    try:
+        _ = check_ptr(getcwd(too_small, 1))
+    except e:
+        raised = True
+        assert_true(
+            "ERANGE" in String(e), "and the error says which errno it was"
+        )
+    assert_true(raised, "a NULL answer raises")
+    too_small.unsafe_free()
+
+
 def main() raises:
     test_errno()
     test_errno_name()
     test_errno_message()
     test_check()
+    test_check_ptr()
     print("test_errno: ok")
