@@ -197,6 +197,17 @@ struct iovec(TrivialRegisterPassable):
     var iov_base: c_ptr[UInt8]
     var iov_len: UInt64
 
+    def __init__(out self, iov_base: c_ptr[UInt8], iov_len: UInt64):
+        """One piece: `iov_len` bytes starting at `iov_base`.
+
+        Args:
+            iov_base: Where the piece starts.
+            iov_len: How many bytes long it is. C takes this as `size_t`,
+                which is 64 bits on both platforms this package targets.
+        """
+        self.iov_base = iov_base
+        self.iov_len = iov_len
+
 
 struct msghdr(TrivialRegisterPassable):
     """One message for `sendmsg`, holding the address it goes to and the

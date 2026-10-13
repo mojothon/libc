@@ -23,15 +23,19 @@ from libc.unistd import (
     setpgid,
     seteuid,
     sleep,
+    pipe,
     pread,
     pwrite,
+    readv,
     swab,
     sysconf,
     usleep,
+    writev,
 )
 from libc.constant import O_RDWR, c_char, c_ptr
 from libc.file import close, fclose, fopen, open
 from libc.stdio import fwrite, remove
+from libc.sys.socket import iovec
 from libc.utils import char_ptr_to_string, string_to_char_ptr
 
 
@@ -190,6 +194,62 @@ def test_process_groups() raises:
     )
 
 
+def test_readv_gathers_what_writev_scattered() raises:
+    """Two buffers written as a pair come back as the same pair.
+
+    `writev` was here on its own for a while, which left nothing able to
+    read what it writes: this is the round trip, and it is what says the
+    pieces of an `iovec` land where C reads them — a member out of place
+    shows up as the wrong text in the wrong half, or nothing read at all.
+    """
+    var ends = unsafe_alloc[Int32](2)
+    assert_equal(pipe(ends), 0, "a pipe is made")
+    var reader = ends.unsafe_load(0)
+    var writer = ends.unsafe_load(1)
+
+    var head = string_to_char_ptr("head")
+    var tail = string_to_char_ptr("body")
+    var scattered = unsafe_alloc[iovec](2)
+    var out0 = iovec(head, UInt64(4))
+    var out1 = iovec(tail, UInt64(4))
+    scattered.unsafe_offset(0)[] = out0
+    scattered.unsafe_offset(1)[] = out1
+    assert_equal(
+        writev(writer, scattered.unsafe_bitcast[UInt8](), 2),
+        8,
+        "both buffers went out",
+    )
+
+    # Eight bytes each for four-byte reads, zeroed so what is read ends
+    # where it should: neither piece gets a NUL of its own.
+    var first = unsafe_alloc[UInt8](8)
+    var second = unsafe_alloc[UInt8](8)
+    for i in range(8):
+        first.unsafe_store(i, 0)
+        second.unsafe_store(i, 0)
+
+    var gathered = unsafe_alloc[iovec](2)
+    var in0 = iovec(first, UInt64(4))
+    var in1 = iovec(second, UInt64(4))
+    gathered.unsafe_offset(0)[] = in0
+    gathered.unsafe_offset(1)[] = in1
+    assert_equal(
+        readv(reader, gathered.unsafe_bitcast[UInt8](), 2), 8, "and came back"
+    )
+    assert_equal(char_ptr_to_string(first), "head", "the first piece first")
+    assert_equal(char_ptr_to_string(second), "body", "the second piece second")
+
+    head.unsafe_free()
+    tail.unsafe_free()
+    scattered.unsafe_free()
+    gathered.unsafe_free()
+    first.unsafe_free()
+    second.unsafe_free()
+    ends.unsafe_free()
+    _ = close(reader)
+    _ = close(writer)
+
+
 def main() raises:
     test_getcwd()
     test_swab()
@@ -202,4 +262,5 @@ def main() raises:
     test_usleep()
     test_process_groups()
     test_pread_and_pwrite_at_an_offset()
+    test_readv_gathers_what_writev_scattered()
     print("test_unistd: ok")

@@ -898,6 +898,43 @@ def writev(fd: Int32, iov: c_ptr[UInt8], iovcnt: Int32) -> Int:
     )
 
 
+def readv(fd: Int32, iov: c_ptr[UInt8], iovcnt: Int32) -> Int:
+    """Libc POSIX `readv` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/readv.2.html
+
+    Description:
+        readv() reads into several buffers one after the other, filling the
+        first before starting on the next, which is gathered reading: a
+        header into one buffer and whatever follows it into another
+        without asking twice or piecing anything together afterwards. It is
+        `read` doing the same thing it does, spread over more than one
+        destination, and it is the half of the pair `writev` was alone in.
+
+        The buffers are described by an array of `iovec`, which is to say
+        by pairs of a pointer and a length, sixteen bytes to a pair. What
+        comes in here is the address of the first of them; `libc.sys.socket`
+        declares `iovec`, and an array of those is what to point at.
+
+    Args:
+        fd: File descriptor.
+        iov: Array of buffers to read into, in the order they are filled.
+        iovcnt: Number of buffers to read into.
+
+    Returns:
+        How many bytes were read in total across all of them, or -1 on
+        failure with `errno` set. As with `read`, getting fewer than were
+        asked for is an answer and not an error, and it is the buffers
+        taken together that get short rather than the last one in
+        particular: count what came back before trusting what any one of
+        them holds. Zero is the end of the file.
+    """
+    return external_call["readv", Int, Int32, c_ptr[UInt8], Int32](
+        fd, iov, iovcnt
+    )
+
+
 def chown(path: c_ptr[UInt8], owner: Int32, group: Int32) -> Int32:
     """Libc POSIX `chown` function.
 
