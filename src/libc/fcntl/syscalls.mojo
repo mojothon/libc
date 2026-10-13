@@ -8,6 +8,17 @@ from std.ffi import external_call
 from libc.constant import c_ptr
 
 
+# What `lockf` is asked for. The same numbers on both platforms.
+comptime F_ULOCK: Int32 = 0
+comptime F_LOCK: Int32 = 1
+comptime F_TLOCK: Int32 = 2
+comptime F_TEST: Int32 = 3
+
+# Linux's own, and glibc only says so under _GNU_SOURCE: Darwin's <fcntl.h>
+# has no O_TMPFILE.
+comptime O_TMPFILE: Int32 = 4259840
+
+
 def creat(path: c_ptr[UInt8], mode: UInt32) -> Int32:
     """Libc POSIX `creat` function.
 
