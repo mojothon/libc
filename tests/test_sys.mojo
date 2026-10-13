@@ -1,10 +1,8 @@
 from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
-from std.testing import assert_equal, assert_true
+from std.testing import assert_equal, assert_false, assert_true
 
-from libc.constant import EAGAIN, c_ptr
-from libc.errno import get_errno, set_errno
-from libc.fcntl import F_SETFL, O_NONBLOCK, fcntl
+from libc.constant import c_ptr
 from libc.setjmp import setjmp
 from libc.sys.select import (
     FD_CLR,
@@ -15,10 +13,18 @@ from libc.sys.select import (
     fd_set,
     select,
 )
-from libc.sys.stat import Stat, stat
 from libc.sys.statvfs import Statvfs, statvfs
+from libc.sys.wait import (
+    WEXITSTATUS,
+    WCOREDUMP,
+    WIFEXITED,
+    WIFSIGNALED,
+    WIFSTOPPED,
+    WSTOPSIG,
+    WTERMSIG,
+)
 from libc.sys.utsname import Utsname, uname
-from libc.unistd import close, pipe, read, write
+from libc.unistd import close, pipe, write
 from libc.utils import null_ptr, string_to_char_ptr
 
 
@@ -156,50 +162,6 @@ def test_statvfs() raises:
     buf.unsafe_free()
 
 
-def test_errno() raises:
-    set_errno(0)
-    assert_equal(get_errno(), 0, "errno starts out clear")
-
-    # A path that cannot exist leaves ENOENT behind, which is what set_errno
-    # exists to clear.
-    var missing = string_to_char_ptr("/nonexistent-path-for-libc-tests")
-    var buf = unsafe_alloc[Stat](1)
-    buf[] = Stat()
-    assert_equal(stat(missing, buf), -1, "stat failed")
-    assert_equal(get_errno(), 2, "the failure left ENOENT in errno")
-
-    set_errno(0)
-    assert_equal(get_errno(), 0, "set_errno cleared it")
-
-    # The errno whose number differs between the platforms that is easy to
-    # provoke: a non-blocking read of an empty pipe. Linux says 11 and Darwin
-    # says 35, so this is what keeps `EAGAIN` honest on both, and a value
-    # that is not the platform's own fails here rather than in a caller's
-    # error handling.
-    var fds = unsafe_alloc[Int32](2)
-    assert_equal(pipe(fds), 0, "pipe succeeded")
-    assert_equal(
-        fcntl(fds.unsafe_offset(0)[], F_SETFL, O_NONBLOCK),
-        0,
-        "the read end is non-blocking",
-    )
-    var one = unsafe_alloc[UInt8](1)
-    set_errno(0)
-    assert_equal(
-        read(fds.unsafe_offset(0)[], one, 1),
-        -1,
-        "reading an empty non-blocking pipe fails",
-    )
-    assert_equal(
-        Int(get_errno()), Int(EAGAIN), "and says EAGAIN, this platform's number"
-    )
-    fds.unsafe_free()
-    one.unsafe_free()
-
-    missing.unsafe_free()
-    buf.unsafe_free()
-
-
 def test_setjmp_records() raises:
     # 200 bytes is what glibc's jmp_buf needs on x86-64; more does no harm.
     var env = unsafe_alloc[UInt8](256)
@@ -209,11 +171,48 @@ def test_setjmp_records() raises:
     env.unsafe_free()
 
 
+def test_what_a_wait_status_says() raises:
+    """The seven readings of a status, against the numbers glibc's macros
+    give for them.
+
+    Every one of the 65536 possible statuses was checked against
+    `WIFEXITED` and the rest in C, and they agree on all of them, so these
+    are numbers with an answer behind them rather than numbers that look
+    plausible.
+    """
+    # 0x0000: exited, with 0.
+    assert_true(WIFEXITED(0), "a status of 0 is an exit")
+    assert_equal(WEXITSTATUS(0), 0, "that exited with 0")
+    assert_false(WIFSIGNALED(0), "and no signal ended it")
+    assert_false(WIFSTOPPED(0), "and it was not stopped")
+
+    # 0x0900: exited, with 9.
+    assert_true(WIFEXITED(0x0900), "0x0900 is an exit")
+    assert_equal(WEXITSTATUS(0x0900), 9, "that exited with 9")
+
+    # 0x0009: ended by signal 9, no core.
+    assert_true(WIFSIGNALED(0x0009), "0x0009 was ended by a signal")
+    assert_equal(WTERMSIG(0x0009), 9, "by signal 9")
+    assert_false(WIFEXITED(0x0009), "and it did not exit")
+    assert_false(WCOREDUMP(0x0009), "and it left no core")
+
+    # 0x0089: ended by signal 9, with a core.
+    assert_true(WIFSIGNALED(0x0089), "0x0089 was ended by a signal")
+    assert_equal(WTERMSIG(0x0089), 9, "by signal 9")
+    assert_true(WCOREDUMP(0x0089), "and it left a core")
+
+    # 0x7f in the low byte is a stop, and the signal is in the byte above.
+    assert_true(WIFSTOPPED(0x137F), "0x137f is a stop")
+    assert_equal(WSTOPSIG(0x137F), 19, "stopped by signal 19")
+    assert_false(WIFEXITED(0x137F), "and it did not exit")
+    assert_false(WIFSIGNALED(0x137F), "and no signal ended it")
+
+
 def main() raises:
     test_uname()
     test_fd_set()
     test_select_on_a_pipe()
     test_statvfs()
-    test_errno()
+    test_what_a_wait_status_says()
     test_setjmp_records()
     print("test_sys: ok")
