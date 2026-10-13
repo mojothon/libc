@@ -6,7 +6,7 @@
 from std.ffi import external_call
 from std.memory import Pointer
 from std.sys import CompilationTarget
-from libc.constant import c_ptr
+from libc.constant import c_int, c_ptr
 
 
 def chmod(path: c_ptr[UInt8], mode: Int32) -> Int32:
@@ -326,3 +326,24 @@ def futimens(fd: Int32, times: c_ptr[timespec]) -> Int32:
     Returns: 0 on success, or -1 with `errno` set.
     """
     return external_call["futimens", Int32, Int32, c_ptr[timespec]](fd, times)
+
+
+def mkfifo(path: c_ptr[UInt8], mode: c_int) -> c_int:
+    """Libc POSIX `mkfifo` function.
+
+    Args:
+        path: Where to make it.
+        mode: The permissions to give it, such as 0o644, before `umask`.
+
+    Returns:
+        0 on success. Otherwise -1 and `errno` is set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/mkfifo.3.html).
+        Fn signature: `int mkfifo(const char *path, mode_t mode)`.
+
+        The mode is the one argument `open` cannot be trusted with on macOS
+        — see `open` for why — but `mkfifo` is not variadic and takes it
+        like any other argument, so it arrives on both platforms.
+    """
+    return external_call["mkfifo", c_int, c_ptr[UInt8], c_int](path, mode)

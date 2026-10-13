@@ -7,7 +7,7 @@ from std.ffi import external_call
 from std.sys import CompilationTarget
 from std.memory import Pointer
 from std.utils.static_tuple import StaticTuple
-from libc.constant import c_ptr
+from libc.constant import c_int, c_ptr
 
 
 # What `accept4` is asked for, and both of them differ: SOCK_NONBLOCK is
@@ -496,3 +496,70 @@ def accept4(
         c_ptr[UInt32],
         Int32,  # FnName, RetType  # Args
     ](socket, address, address_len, flags)
+
+
+def getsockopt(
+    sockfd: c_int,
+    level: c_int,
+    optname: c_int,
+    optval: c_ptr[NoneType],
+    optlen: c_ptr[UInt32],
+) -> c_int:
+    """Libc POSIX `getsockopt` function.
+
+    Args:
+        sockfd: A socket.
+        level: Which layer owns the option, as one of the `SOL_*`.
+        optname: Which option, as one of the `SO_*`.
+        optval: Where to write the value, whose shape is the option's.
+        optlen: How much room `optval` has, and how much was written.
+
+    Returns:
+        0 on success. Otherwise -1 and `errno` is set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man2/getsockopt.2.html).
+        Fn signature: `int getsockopt(int sockfd, int level, int optname,
+        void *restrict optval, socklen_t *restrict optlen)`.
+
+        `optval` is `void *` because each option has a shape of its own:
+        `SO_REUSEADDR` is an int, `SO_RCVTIMEO` is a `timeval`. Passing an
+        `int` where a `timeval` belongs is accepted and wrong, and nothing
+        here can tell them apart — the option's own page says which.
+    """
+    return external_call[
+        "getsockopt", c_int, c_int, c_int, c_int, c_ptr[NoneType], c_ptr[UInt32]
+    ](sockfd, level, optname, optval, optlen)
+
+
+def setsockopt(
+    sockfd: c_int,
+    level: c_int,
+    optname: c_int,
+    optval: c_ptr[NoneType],
+    optlen: UInt32,
+) -> c_int:
+    """Libc POSIX `setsockopt` function.
+
+    Args:
+        sockfd: A socket.
+        level: Which layer owns the option, as one of the `SOL_*`.
+        optname: Which option, as one of the `SO_*`.
+        optval: The value, whose shape is the option's.
+        optlen: How big that value is.
+
+    Returns:
+        0 on success. Otherwise -1 and `errno` is set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man2/setsockopt.2.html).
+        Fn signature: `int setsockopt(int sockfd, int level, int optname,
+        const void *optval, socklen_t optlen)`.
+
+        The same shape caveat as `getsockopt`: `optlen` is what keeps an
+        `int` from being read as a `timeval`, and it is on the caller to
+        say it right.
+    """
+    return external_call[
+        "setsockopt", c_int, c_int, c_int, c_int, c_ptr[NoneType], UInt32
+    ](sockfd, level, optname, optval, optlen)
