@@ -3,8 +3,13 @@
 This is a binding, so what it can call is a subset of what C can call and
 will stay that way. The count says how much of a subset: `libc`, `libm`,
 `libdl` and `librt` publish 2778 functions between them, and this binds
-470 C symbols, 465 of which are among those — **16.7%**. C offers more, and
+567 C symbols, 562 of which are among those — **20.2%**. C offers more, and
 calling more of it is not what this is for.
+
+(567 took correcting. An earlier count here said 470, because the symbol
+was read off the same line as `external_call[` and a fifth of the calls
+in this package put the name on the next line instead. The honest number
+was higher, and nobody benefited from the lower one.)
 
 The rest of this page is about the other question, which is not "how much"
 but "how". There are things C cannot do for the caller, or does by
@@ -64,17 +69,34 @@ rather than in somebody's error handling.
 
 ## A check that runs against C itself
 
-This is the one with no counterpart. Three scripts compare the binding
-against C on this machine:
+This is the one with no counterpart. `scripts/check-prototypes.py`
+compares the binding against C on this machine: 
+every call is compared against the C prototype — 601 of them now, each
+compiled from the header on this machine — and a mismatch is reported
+rather than found later.
 
-- every call is compared against the C prototype — 592 of them, and a
-  mismatch is reported rather than found later;
-- structure layouts are compared against `offsetof`, because `struct stat`
-  is 144 bytes here and 128 on Darwin with the members in a different
-  order, and every member is read at the offset that fits;
-- constants are compared against what `gcc -dM` prints.
+What it does not check, yet: the `comptime` constants and the struct
+layouts. Those were checked by hand against `gcc -dM` and `offsetof` when
+they were written, and Rust's `libc` checks both, by generating a C file
+that reports what C thinks and comparing it to what the bindings say. A
+binding that cannot be checked is a binding that rots, and this one has
+two of its three parts on trust.
 
-glibc does not come with anything that checks glibc.
+glibc, for its part, does not come with anything that checks glibc.
+
+## Next to Rust's `libc`
+
+The nearest thing to this that is not this: [rust-lang/libc](
+https://github.com/rust-lang/libc). It binds the same C and implements
+none of it, which is what this does too. Four of its Linux files declare
+681 C functions; this binds 567; 293 are in both.
+
+The difference is not the count. Rust answers "what is `EAGAIN`" with a
+file per platform and a `cfg` that picks one, so the answer for the
+platform you are not on is somewhere else in the tree. This writes both
+numbers on one line and runs CI on both. Rust supports more platforms than
+two, and this supports two and proves both — which is the trade, stated
+as the trade rather than as a win.
 
 ## One thing that is awkward, and said out loud
 
