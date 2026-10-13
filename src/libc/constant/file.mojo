@@ -22,22 +22,22 @@ comptime SEEK_END = 2
 comptime O_RDONLY = 0
 comptime O_WRONLY = 1
 comptime O_RDWR = 2
-comptime O_APPEND = 8
-comptime O_CREAT = 512
-comptime O_TRUNC = 1024
-comptime O_EXCL = 2048
-comptime O_SYNC = 8192
-comptime O_NONBLOCK = 16384
+comptime O_APPEND = 8 if CompilationTarget.is_macos() else 1024
+comptime O_CREAT = 512 if CompilationTarget.is_macos() else 64
+comptime O_TRUNC = 1024 if CompilationTarget.is_macos() else 512
+comptime O_EXCL = 2048 if CompilationTarget.is_macos() else 128
+comptime O_SYNC = 8192 if CompilationTarget.is_macos() else 1052672
+comptime O_NONBLOCK = 16384 if CompilationTarget.is_macos() else 2048
 comptime O_ACCMODE = 3
 comptime O_CLOEXEC = 524288
 
 # from fcntl.h
 comptime O_EXEC = -1
 comptime O_SEARCH = -1
-comptime O_DIRECTORY = -1
-comptime O_DSYNC = -1
-comptime O_NOCTTY = -1
-comptime O_NOFOLLOW = -1
+comptime O_DIRECTORY = -1 if CompilationTarget.is_macos() else 65536
+comptime O_DSYNC = -1 if CompilationTarget.is_macos() else 4096
+comptime O_NOCTTY = -1 if CompilationTarget.is_macos() else 256
+comptime O_NOFOLLOW = -1 if CompilationTarget.is_macos() else 131072
 comptime O_RSYNC = -1
 comptime O_TTY_INIT = -1
 
@@ -50,22 +50,22 @@ comptime F_GETFD = 1
 comptime F_SETFD = 2
 comptime F_GETFL = 3
 comptime F_SETFL = 4
-comptime F_GETOWN = 5
-comptime F_SETOWN = 6
-comptime F_GETLK = 7
-comptime F_SETLK = 8
-comptime F_SETLKW = 9
+comptime F_GETOWN = 5 if CompilationTarget.is_macos() else 9
+comptime F_SETOWN = 6 if CompilationTarget.is_macos() else 8
+comptime F_GETLK = 7 if CompilationTarget.is_macos() else 5
+comptime F_SETLK = 8 if CompilationTarget.is_macos() else 6
+comptime F_SETLKW = 9 if CompilationTarget.is_macos() else 7
 comptime F_RGETLK = 10
 comptime F_RSETLK = 11
 comptime F_CNVT = 12
 comptime F_RSETLKW = 13
-comptime F_DUPFD_CLOEXEC = 14
+comptime F_DUPFD_CLOEXEC = 14 if CompilationTarget.is_macos() else 1030
 
 # TODO(cristian)
-comptime FD_CLOEXEC = -1
-comptime F_RDLCK = -1
-comptime F_UNLCK = -1
-comptime F_WRLCK = -1
+comptime FD_CLOEXEC = -1 if CompilationTarget.is_macos() else 1
+comptime F_RDLCK = -1 if CompilationTarget.is_macos() else 0
+comptime F_UNLCK = -1 if CompilationTarget.is_macos() else 2
+comptime F_WRLCK = -1 if CompilationTarget.is_macos() else 1
 
 comptime AT_EACCESS = 512
 # Which number says "the current directory" is up to the platform:

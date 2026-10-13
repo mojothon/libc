@@ -54,7 +54,9 @@ comptime AF_NFC = 39
 comptime AF_VSOCK = 40
 comptime AF_KCM = 41
 comptime AF_QIPCRTR = 42
-comptime AF_MAX = 43
+comptime AF_MAX = 43 if CompilationTarget.is_macos() else 46
+
+from std.sys import CompilationTarget
 
 comptime PF_UNSPEC = AF_UNSPEC
 comptime PF_UNIX = AF_UNIX

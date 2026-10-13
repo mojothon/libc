@@ -52,9 +52,9 @@ comptime F_SETOWN: Int32 = 6 if CompilationTarget.is_macos() else 8
 # What a descriptor's own flags can be, and what a lock is asked to be. Both
 # the same on the two platforms.
 comptime FD_CLOEXEC: Int32 = 1
-comptime F_RDLCK: Int32 = 1
+comptime F_RDLCK: Int32 = 1 if CompilationTarget.is_macos() else 0
 comptime F_UNLCK: Int32 = 2
-comptime F_WRLCK: Int32 = 3
+comptime F_WRLCK: Int32 = 3 if CompilationTarget.is_macos() else 1
 
 # What `flock` is given, also the same on both.
 comptime LOCK_SH: Int32 = 1
