@@ -4,8 +4,49 @@
 # github: github.com/llango
 # ----------------------------------
 from std.ffi import external_call
+from std.sys import CompilationTarget
 from std.memory import Pointer
 from libc.constant import c_ptr
+
+
+# The signal numbers, which is how `kill` and `craise` are told which one.
+# Linux and Darwin agree as far as SIGTRAP and part company after it: SIGBUS
+# is 7 here and 10 there, SIGUSR1 10 and 30, SIGCHLD 17 and 20, so they are
+# set per platform. The Linux values were read out of <signal.h> and the
+# Darwin ones are what Apple's has.
+comptime SIGHUP: Int32 = 1
+comptime SIGINT: Int32 = 2
+comptime SIGQUIT: Int32 = 3
+comptime SIGILL: Int32 = 4
+comptime SIGTRAP: Int32 = 5
+comptime SIGABRT: Int32 = 6
+comptime SIGBUS: Int32 = 10 if CompilationTarget.is_macos() else 7
+comptime SIGFPE: Int32 = 8
+comptime SIGKILL: Int32 = 9
+comptime SIGUSR1: Int32 = 30 if CompilationTarget.is_macos() else 10
+comptime SIGSEGV: Int32 = 11
+comptime SIGUSR2: Int32 = 31 if CompilationTarget.is_macos() else 12
+comptime SIGPIPE: Int32 = 13
+comptime SIGALRM: Int32 = 14
+comptime SIGTERM: Int32 = 15
+comptime SIGCHLD: Int32 = 20 if CompilationTarget.is_macos() else 17
+comptime SIGCONT: Int32 = 19 if CompilationTarget.is_macos() else 18
+comptime SIGSTOP: Int32 = 17 if CompilationTarget.is_macos() else 19
+comptime SIGTSTP: Int32 = 18 if CompilationTarget.is_macos() else 20
+
+# What a signal is answered with, and how a mask is asked for. In C these
+# three are function pointers and these three are plain numbers, and all six
+# are the same on both platforms.
+comptime SIG_DFL: Int32 = 0
+comptime SIG_IGN: Int32 = 1
+comptime SIG_ERR: Int32 = -1
+comptime SIG_BLOCK: Int32 = 0
+comptime SIG_UNBLOCK: Int32 = 1
+comptime SIG_SETMASK: Int32 = 2
+
+# The least an alternate signal stack wants, which is what `sigaltstack`
+# asks of its size: 131072 there and 8192 here.
+comptime SIGSTKSZ: Int32 = 131072 if CompilationTarget.is_macos() else 8192
 
 
 def kill(pid: Int32, sig: Int32) -> Int32:
