@@ -59,6 +59,40 @@ HEADING = re.compile(r"[A-Za-z][A-Za-z ]*:")
 # is the page the man pages give it.
 TYPE_SUFFIXES = frozenset({"", "f", "l", "q", "f16", "f32", "f64", "f128"})
 
+SRC = ROOT / "src" / "libc"
+
+MENTIONED = re.compile(r"\b([A-Z][A-Z0-9_]{3,})\b")
+CALLED = re.compile(r"`([a-z_][a-z0-9_]{2,})\(\)`")
+
+# English, and things belonging to the manual rather than to this package.
+# `setbuf` has to be able to write that `XXXXXX` belongs in a template, and
+# `mmap` has to be able to say what it returns instead of a pointer, even
+# though that one is a cast of -1 and there is nothing here to bind.
+PROSE = frozenset({
+    "IEEE754", "XXXXXX", "PATH", "TODO", "NOTE", "POSIX", "ASCII", "UTF",
+    "GNU", "BSD", "LINUX", "MACOS", "DARWIN", "ANSI", "MAP_FAILED",
+    "LC_GLOBAL_LOCALE", "LC_ALL_MASK", "FE_DFL_ENV", "TCP", "UDP", "IPV6",
+    "HTTP", "HTTPS", "NULL",
+})
+# `CPU_*` and its like are a whole family being pointed at, not one thing
+# promised, so they are read differently from `IPPROTO_TCP`.
+FAMILY = re.compile(r"^[A-Z][A-Z0-9]*_$")
+
+# Where a docstring talks about C instead of about what is bound here, and
+# so may name things belonging to the manual.
+EXTERNAL_HEADINGS = ("Link", "Reference", "Prototype", "Fn signature", "Notes")
+
+
+def defined_names() -> set[str]:
+    """Every name the package binds, by whatever means it binds one."""
+    names = set()
+    for path in sorted(SRC.rglob("*.mojo")):
+        text = path.read_text()
+        names |= set(
+            re.findall(r"^\s*(?:def|struct|comptime|alias|trait|fn)\s+(\w+)", text, re.M)
+        )
+    return names
+
 
 def sections(doc: str) -> dict[str, list[tuple[int, str]]]:
     """{heading: [(indent, text)]}, which is how these are written.
@@ -193,10 +227,13 @@ def same_function(said: str, name: str, symbol: str) -> bool:
     enough to answer to it: not `atan2` beside `atan`, which takes a
     different number of arguments and means a different thing by them.
     """
+    # The slice is empty for anything longer than this function's own name,
+    # and "" is what says two names are identical, so asking for the prefix
+    # too is what stops every other name in the package from qualifying.
     return (
         said in (symbol, name)
         or ALIASES.get(name) == said
-        or name[len(said) :] in TYPE_SUFFIXES
+        or (name.startswith(said) and name[len(said) :] in TYPE_SUFFIXES)
     )
 
 
@@ -207,6 +244,7 @@ def main() -> int:
 
     problems: list[str] = []
     checked = 0
+    defined = defined_names()
     counted: dict[tuple[str, str], int] = {}
 
     for path, name, symbol, passed, _return, _params in bindings():
