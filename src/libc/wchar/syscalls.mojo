@@ -18,11 +18,11 @@ struct mbstate_t:
     initial state, which is what `memset` gives you.
     """
 
-    var _opaque: Array[UInt8, 32]
+    var _opaque: Array[UInt64, 4]
 
     def __init__(out self):
         """Zeroes the state, which is the initial state."""
-        self._opaque = Array[UInt8, 32](fill=0)
+        self._opaque = Array[UInt64, 4](fill=0)
 
 
 def wcslen(s: c_ptr[c_wchar]) -> c_size_t:

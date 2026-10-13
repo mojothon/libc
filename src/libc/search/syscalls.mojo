@@ -131,14 +131,26 @@ def remque(elem: c_ptr[NoneType]) -> None:
 struct qelem(TrivialRegisterPassable):
     """A node for `insque` and `remque`: two links libc owns.
 
-    The C original is `struct qelem { struct qelem *q_forw, *q_back; }`, which
-    Mojo cannot spell because the struct refers to itself. The links are
-    pointers to the next and previous node, whatever type those nodes are, so
-    they are untyped here; compare them against node addresses.
+    The C original is `struct qelem { struct qelem *q_forw, *q_back; char
+    q_data[1]; }`, which Mojo cannot spell because the struct refers to
+    itself. The links are pointers to the next and previous node, whatever
+    type those nodes are, so they are untyped here; compare them against
+    node addresses.
+
+    `q_data` is the payload slot C leaves hanging off the end, one byte
+    asked for and eight given by alignment. It was left out here once, which
+    made this sixteen bytes against C's twenty-four: walkable node by node,
+    since whatever follows one of these in memory is where the next eight
+    bytes go, and `insque` has no way of knowing they belong to somebody.
+
+    It is a word and not an array because this travels by value in places,
+    which an `Array` field would rule out; the eight bytes are opaque here
+    either way.
     """
 
     var q_forw: c_ptr[UInt8]
     var q_back: c_ptr[UInt8]
+    var q_data: UInt64
 
     def __init__(out self, q_forw: c_ptr[UInt8], q_back: c_ptr[UInt8]):
         """Builds a node with the given links.
@@ -149,3 +161,4 @@ struct qelem(TrivialRegisterPassable):
         """
         self.q_forw = q_forw
         self.q_back = q_back
+        self.q_data = 0

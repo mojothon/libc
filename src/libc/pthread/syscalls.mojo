@@ -17,11 +17,13 @@ struct pthread_attr_t:
     detachstate without knowing which layout it is looking at.
     """
 
-    var _opaque: Array[UInt8, 64]
+    # Words rather than bytes: C asks for eight-byte alignment, and `memset`
+    # aside nothing here promises an unaligned one is acceptable.
+    var _opaque: Array[UInt64, 8]
 
     def __init__(out self):
         """Zeroes the object. `pthread_attr_init` is what makes it usable."""
-        self._opaque = Array[UInt8, 64](fill=0)
+        self._opaque = Array[UInt64, 8](fill=0)
 
 
 struct pthread_condattr_t:
@@ -31,12 +33,12 @@ struct pthread_condattr_t:
     `pthread_attr_t` for why the members are not exposed.
     """
 
-    var _opaque: Array[UInt8, 16]
+    var _opaque: Array[UInt64, 2]
 
     def __init__(out self):
         """Zeroes the object. `pthread_condattr_init` is what makes it usable.
         """
-        self._opaque = Array[UInt8, 16](fill=0)
+        self._opaque = Array[UInt64, 2](fill=0)
 
 
 def pthread_atfork(

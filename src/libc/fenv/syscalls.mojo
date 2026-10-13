@@ -64,11 +64,15 @@ struct fenv_t:
     that to `fesetenv` when you want the default back.
     """
 
-    var _opaque: Array[UInt8, 32]
+    # Held in 64-bit words rather than bytes so that this lands where C
+    # wants it. C asks for four-byte alignment here, and a block of single
+    # bytes asks for none at all: `fegetenv` is then handed a pointer it
+    # never agreed to be given.
+    var _opaque: Array[UInt64, 4]
 
     def __init__(out self):
         """Zeroes the object, which is what `memset` would leave behind."""
-        self._opaque = Array[UInt8, 32](fill=0)
+        self._opaque = Array[UInt64, 4](fill=0)
 
 
 struct fexcept_t:
@@ -79,11 +83,11 @@ struct fexcept_t:
     bytes; `fegetexceptflag` fills it and `fesetexceptflag` hands it back.
     """
 
-    var _opaque: Array[UInt8, 8]
+    var _opaque: Array[UInt64, 1]
 
     def __init__(out self):
         """Zeroes the object."""
-        self._opaque = Array[UInt8, 8](fill=0)
+        self._opaque = Array[UInt64, 1](fill=0)
 
 
 def feclearexcept(excepts: Int32) -> Int32:
