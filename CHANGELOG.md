@@ -3,6 +3,52 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.10.0] - 2026-10-13
+
+### Added
+
+- Seventy-three constants the docstrings were already using while the
+  package had no way to name them:
+  - `libc.signal`: the seventeen signal numbers, `SIG_DFL`, `SIG_IGN`,
+    `SIG_ERR`, `SIG_BLOCK`, `SIG_UNBLOCK`, `SIG_SETMASK` and `SIGSTKSZ`.
+    Linux and Darwin agree as far as SIGTRAP and part company after it,
+    so the ones that differ are set per platform: `SIGBUS` is 7 here and
+    10 there, `SIGUSR1` 10 and 30, `SIGCHLD` 17 and 20, and `SIGSTOP`
+    and `SIGCONT` trade places.
+  - `libc.sys.prctl`: the eighteen `PR_*` options, all Linux's own —
+    there is no `<sys/prctl.h>` on Darwin, so nothing there needs them.
+  - `libc.stdlib`: `RAND_MAX`, `LONG_MAX`, `LONG_MIN`, `ULONG_MAX`,
+    `ULLONG_MAX`, `HUGE_VAL`, `HUGE_VALF` and `PATH_MAX`. The two
+    `HUGE_*` are infinity, written as a literal past what a float can
+    hold, which is the nearest Mojo has to a spelling for one.
+  - `libc.fcntl`: `F_ULOCK`, `F_LOCK`, `F_TLOCK` and `F_TEST`, with
+    `O_TMPFILE` — Linux's own, and glibc only says so under
+    `_GNU_SOURCE`.
+  - `libc.dlfcn`: `RTLD_LAZY`, `RTLD_NOW` and `RTLD_GLOBAL`, the last of
+    which is 256 here and 8 there.
+  - `libc.sys.wait`: `WNOHANG`, `WUNTRACED` and `WCONTINUED`, the last
+    of which is 8 here and 16 there.
+  - `libc.sys.resource`: `RUSAGE_SELF` and `RUSAGE_CHILDREN`.
+  - `libc.sys.socket`: `SOCK_NONBLOCK` and `SOCK_CLOEXEC`, which differ
+    on both platforms.
+  - `libc.sched`: `SCHED_OTHER`, `SCHED_FIFO` and `SCHED_RR`, which are
+    the same number on both.
+  - `libc.time`: `CLOCKS_PER_SEC`.
+  - `libc.unistd`: `SC_PAGESIZE`, which is C's `_SC_PAGESIZE` without the
+    leading underscore, an underscore making a name private to a Mojo
+    module. 30 here and 29 there.
+  - `libc.sys.random`: `GRND_INSECURE`, Linux's own.
+
+  The Linux values were read out of the headers with a C program rather
+  than remembered, which is how two of them came to be right: `PR_GET_TSC`
+  is 25 and `PR_GET_SECUREBITS` 27, and neither was where the old list
+  had them.
+
+### Fixed
+
+- `libc.unistd`: `getpagesize`'s description said to ask `sysconf` for
+  `_SC_PAGESIZE`, which is advice about a number that was not here.
+
 ## [0.9.0] - 2026-10-13
 
 ### Changed
