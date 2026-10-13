@@ -166,35 +166,35 @@ struct Stat:
     def nlink(self) -> Int64:
         """How many hard links point at the file."""
         comptime if CompilationTarget.is_macos():
-            return (self._slots[0] >> 48) & 0xFFFF
+            return (self._slots[2] >> 16) & 0xFFFF
         else:
             return self._slots[2]
 
     def mode(self) -> Int:
         """The file type and permission bits."""
         comptime if CompilationTarget.is_macos():
-            return Int((self._slots[0] >> 32) & 0xFFFF)
+            return Int(self._slots[2] & 0xFFFF)
         else:
             return Int(self._slots[3] & 0xFFFFFFFF)
 
     def uid(self) -> Int:
         """The user ID of the owner."""
         comptime if CompilationTarget.is_macos():
-            return Int(self._slots[2] & 0xFFFFFFFF)
+            return Int(self._slots[2] >> 32)
         else:
             return Int(self._slots[3] >> 32)
 
     def gid(self) -> Int:
         """The group ID of the owner."""
         comptime if CompilationTarget.is_macos():
-            return Int(self._slots[2] >> 32)
+            return Int(self._slots[3] & 0xFFFFFFFF)
         else:
             return Int(self._slots[4] & 0xFFFFFFFF)
 
     def rdev(self) -> Int64:
         """The device ID, for files that are devices."""
         comptime if CompilationTarget.is_macos():
-            return (self._slots[3] << 32) >> 32
+            return self._slots[3] >> 32
         else:
             return self._slots[5]
 
