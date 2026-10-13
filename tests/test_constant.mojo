@@ -4,7 +4,7 @@ from std.testing import assert_equal, assert_true
 from libc.constant import *
 from libc.dlfcn import RTLD_GLOBAL, RTLD_LAZY, RTLD_NOW
 from libc.fcntl import F_LOCK, F_TLOCK, F_TEST, F_ULOCK, O_TMPFILE
-from libc.logging import LOG_UPTO
+from libc.logging import LOG_MASK, LOG_UPTO
 from libc.sched import SCHED_FIFO, SCHED_OTHER, SCHED_RR
 from libc.signal import (
     SIGSTKSZ,
@@ -138,6 +138,9 @@ def test_the_rest() raises:
     assert_equal(BUFSIZ, 8192)
     assert_equal(LOG_UPTO(4), 31)
     assert_equal(LOG_UPTO(7), 255)
+    assert_equal(LOG_MASK(0), 1)
+    assert_equal(LOG_MASK(3), 8)
+    assert_equal(LOG_MASK(7), 128)
 
 
 def main() raises:

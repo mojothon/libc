@@ -119,3 +119,22 @@ def LOG_UPTO(pri: c_int) -> c_int:
     """
     return c_int((1 << (pri + 1)) - 1)
 
+
+def LOG_MASK(pri: c_int) -> c_int:
+    """Libc POSIX `LOG_MASK` function.
+
+    The mask holding this one priority and no other, for `setlogmask`.
+
+    It was written here as a constant until now, with the argument it
+    takes noted beside it in a comment, which is a number nobody could
+    do anything with and no way to say which priority it was for. C
+    gives these as macros, and a function is what a macro becomes here,
+    the same as `LOG_UPTO` alongside it.
+
+    Args:
+        pri: The priority to hold a bit for.
+
+    Returns:
+        The mask, with that one bit set.
+    """
+    return c_int(1 << pri)

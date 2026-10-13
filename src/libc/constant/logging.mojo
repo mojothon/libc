@@ -27,7 +27,6 @@ comptime LOG_LOCAL4 = -1 if CompilationTarget.is_macos() else 160
 comptime LOG_LOCAL5 = -1 if CompilationTarget.is_macos() else 168
 comptime LOG_LOCAL6 = -1 if CompilationTarget.is_macos() else 176
 comptime LOG_LOCAL7 = -1 if CompilationTarget.is_macos() else 184
-comptime LOG_MASK = -1  # (pri)
 comptime LOG_EMERG = -1 if CompilationTarget.is_macos() else 0
 comptime LOG_ALERT = -1 if CompilationTarget.is_macos() else 1
 comptime LOG_CRIT = -1 if CompilationTarget.is_macos() else 2
