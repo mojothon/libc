@@ -380,6 +380,13 @@ def dprintf(fildes: c_int, format: c_ptr[c_char]) -> c_int:
     How many bytes it wrote, or a negative number on failure.
 
     Notes:
+        C's takes `...` after this one and this takes none of it: there
+            is no way through `external_call` to hand over what comes
+            after the format. A conversion, `%d` and the rest, is
+            therefore not something it can write, and nor is a bare `%`,
+            which C reads as the start of one. What goes through is the
+            format exactly as it stands.
+
         [Reference](https://man7.org/linux/man-pages/man3/fprintf.3p.html).
         Fn signature: `int dprintf(int fildes,
         const char *restrict format, ...)`.
@@ -387,19 +394,32 @@ def dprintf(fildes: c_int, format: c_ptr[c_char]) -> c_int:
     return external_call["dprintf", c_int, c_int, c_ptr[c_char]](fildes, format)
 
 
-def printf[*T: AnyType](format: c_ptr[c_char], *args: *T) -> c_int:
-    """Libc POSIX `printf` function
-    Reference: https://man7.org/linux/man-pages/man3/fprintf.3p.html
-    Fn signature: int printf(const char *restrict format, ...).
+def printf(format: c_ptr[c_char]) -> c_int:
+    """Libc POSIX `printf` function.
 
-    Args: format: A pointer to a C string containing the format.
-        args: The optional arguments.
-    Returns: The number of bytes written or -1 in case of failure.
+    Args:
+        format: What to write, which goes to `printf` exactly as it
+            stands.
+
+    Returns:
+        How many bytes it wrote, or a negative number on failure.
+
+    Notes:
+        C's is `int printf(const char *restrict format, ...)` and this
+        one takes no more than the format: there is no way through
+        `external_call` to hand over what comes after it. That rules
+        out every conversion — `%d` and the rest — and a bare `%` as
+        well, which C reads as the start of one. For text with numbers
+        in it, build it in Mojo and write it out, or take `snprintf`,
+        which is limited the same way.
+
+        What it was before, a binding taking `*args` and passing them
+        along, did not compile: `external_call` wants the types of the
+        arguments written out, and a pack of them has none to give.
+
+        [Reference](https://man7.org/linux/man-pages/man3/fprintf.3p.html).
     """
-    return external_call[
-        "printf",
-        c_int,  # FnName, RetType
-    ](format, args)
+    return external_call["printf", c_int, c_ptr[c_char]](format)
 
 
 def snprintf(
@@ -420,6 +440,13 @@ def snprintf(
         on failure.
 
     Notes:
+        C's takes `...` after this one and this takes none of it: there
+            is no way through `external_call` to hand over what comes
+            after the format. A conversion, `%d` and the rest, is
+            therefore not something it can write, and nor is a bare `%`,
+            which C reads as the start of one. What goes through is the
+            format exactly as it stands.
+
         [Reference](https://man7.org/linux/man-pages/man3/fprintf.3p.html).
         Fn signature: ``int snprintf(char *restrict s, size_t n,`.
         const char *restrict format, ...)`.
@@ -445,6 +472,13 @@ def sprintf(s: c_ptr[c_char], format: c_ptr[c_char]) -> c_int:
         string, or a negative number on failure.
 
     Notes:
+        C's takes `...` after this one and this takes none of it: there
+            is no way through `external_call` to hand over what comes
+            after the format. A conversion, `%d` and the rest, is
+            therefore not something it can write, and nor is a bare `%`,
+            which C reads as the start of one. What goes through is the
+            format exactly as it stands.
+
         [Reference](https://man7.org/linux/man-pages/man3/fprintf.3p.html).
         Fn signature: ``int sprintf(char *restrict s,`.
         const char *restrict format, ...)`.
@@ -462,11 +496,19 @@ def fscanf(stream: c_ptr[FILE], format: c_ptr[c_char]) -> c_int:
         format: A format string.
 
     Returns:
-    How many fields it filled in, which is fewer than were asked for
-        when the input ran out, or `EOF` when it ran out before the first
-        one.
+        How many fields it filled in, which is none: there is nowhere
+            for a conversion to put what it reads, so 0 is all this one
+            can answer, or `EOF` when the input was at its end before
+            the first one.
 
     Notes:
+        C's takes `...` after this one and this takes none of it: there
+            is no way through `external_call` to hand over what comes
+            after the format. Every conversion, `%d` and the rest, needs
+            somewhere to put what it reads, and there is nowhere to give
+            it. What is left is a format with no conversions in it,
+            which reads nothing at all.
+
         [Reference](https://man7.org/linux/man-pages/man3/fscanf.3p.html).
         Fn signature: ``int fscanf(FILE *restrict stream,`.
         const char *restrict format, ...)`.
@@ -483,11 +525,19 @@ def scanf(format: c_ptr[c_char]) -> c_int:
         format: A format string.
 
     Returns:
-    How many fields it filled in, which is fewer than were asked for
-        when the input ran out, or `EOF` when it ran out before the first
-        one.
+        How many fields it filled in, which is none: there is nowhere
+            for a conversion to put what it reads, so 0 is all this one
+            can answer, or `EOF` when the input was at its end before
+            the first one.
 
     Notes:
+        C's takes `...` after this one and this takes none of it: there
+            is no way through `external_call` to hand over what comes
+            after the format. Every conversion, `%d` and the rest, needs
+            somewhere to put what it reads, and there is nowhere to give
+            it. What is left is a format with no conversions in it,
+            which reads nothing at all.
+
         [Reference](https://man7.org/linux/man-pages/man3/fscanf.3p.html).
         Fn signature: ``int scanf(const char *restrict format, ...)`.`.
     """
@@ -502,11 +552,19 @@ def sscanf(s: c_ptr[c_char], format: c_ptr[c_char]) -> c_int:
         format: A format string.
 
     Returns:
-    How many fields it filled in, which is fewer than were asked for
-        when the input ran out, or `EOF` when it ran out before the first
-        one.
+        How many fields it filled in, which is none: there is nowhere
+            for a conversion to put what it reads, so 0 is all this one
+            can answer, or `EOF` when the input was at its end before
+            the first one.
 
     Notes:
+        C's takes `...` after this one and this takes none of it: there
+            is no way through `external_call` to hand over what comes
+            after the format. Every conversion, `%d` and the rest, needs
+            somewhere to put what it reads, and there is nowhere to give
+            it. What is left is a format with no conversions in it,
+            which reads nothing at all.
+
         [Reference](https://man7.org/linux/man-pages/man3/fscanf.3p.html).
         Fn signature: ``int sscanf(const char *restrict s,`.
         const char *restrict format, ...)`.
