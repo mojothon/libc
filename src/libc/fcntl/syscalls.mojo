@@ -6,8 +6,61 @@
 from std.memory import Pointer
 from std.ffi import external_call
 from std.sys import CompilationTarget
-from libc.constant import c_ptr
+from libc.constant import AT_FDCWD, c_ptr
 
+
+# What `open` is given. The three access modes are the same everywhere and
+# almost nothing else is: both number the flags from bit 0 and assign them
+# differently, so O_CREAT is 64 here and 512 there, and O_APPEND is 1024 here
+# and 8 there. The Linux values were read out of <fcntl.h> and the Darwin ones
+# out of XNU's bsd/sys/fcntl.h. Three are Linux's own and have no number on
+# Darwin at all.
+comptime O_RDONLY: Int32 = 0
+comptime O_WRONLY: Int32 = 1
+comptime O_RDWR: Int32 = 2
+comptime O_ACCMODE: Int32 = 3
+comptime O_CREAT: Int32 = 512 if CompilationTarget.is_macos() else 64
+comptime O_EXCL: Int32 = 2048 if CompilationTarget.is_macos() else 128
+comptime O_NOCTTY: Int32 = 131072 if CompilationTarget.is_macos() else 256
+comptime O_TRUNC: Int32 = 1024 if CompilationTarget.is_macos() else 512
+comptime O_APPEND: Int32 = 8 if CompilationTarget.is_macos() else 1024
+comptime O_NONBLOCK: Int32 = 4 if CompilationTarget.is_macos() else 2048
+comptime O_DSYNC: Int32 = 4194304 if CompilationTarget.is_macos() else 4096
+comptime O_DIRECTORY: Int32 = 1048576 if CompilationTarget.is_macos() else 65536
+comptime O_NOFOLLOW: Int32 = 256 if CompilationTarget.is_macos() else 131072
+comptime O_CLOEXEC: Int32 = 16777216 if CompilationTarget.is_macos() else 524288
+comptime O_SYNC: Int32 = 128 if CompilationTarget.is_macos() else 1052672
+# Linux's own: Darwin's <fcntl.h> has no number for these.
+comptime O_DIRECT: Int32 = 16384
+comptime O_NOATIME: Int32 = 262144
+comptime O_PATH: Int32 = 2097152
+
+# The `fcntl` commands. The first five are the same on both platforms, and the
+# rest are not: Linux numbers the lock commands 5, 6 and 7 and the ownership
+# ones 8 and 9, where Darwin does it the other way round.
+comptime F_DUPFD: Int32 = 0
+comptime F_GETFD: Int32 = 1
+comptime F_SETFD: Int32 = 2
+comptime F_GETFL: Int32 = 3
+comptime F_SETFL: Int32 = 4
+comptime F_GETLK: Int32 = 7 if CompilationTarget.is_macos() else 5
+comptime F_SETLK: Int32 = 8 if CompilationTarget.is_macos() else 6
+comptime F_SETLKW: Int32 = 9 if CompilationTarget.is_macos() else 7
+comptime F_GETOWN: Int32 = 5 if CompilationTarget.is_macos() else 9
+comptime F_SETOWN: Int32 = 6 if CompilationTarget.is_macos() else 8
+
+# What a descriptor's own flags can be, and what a lock is asked to be. Both
+# the same on the two platforms.
+comptime FD_CLOEXEC: Int32 = 1
+comptime F_RDLCK: Int32 = 1
+comptime F_UNLCK: Int32 = 2
+comptime F_WRLCK: Int32 = 3
+
+# What `flock` is given, also the same on both.
+comptime LOCK_SH: Int32 = 1
+comptime LOCK_EX: Int32 = 2
+comptime LOCK_NB: Int32 = 4
+comptime LOCK_UN: Int32 = 8
 
 # What `lockf` is asked for. The same numbers on both platforms.
 comptime F_ULOCK: Int32 = 0
@@ -18,13 +71,6 @@ comptime F_TEST: Int32 = 3
 # Linux's own, and glibc only says so under _GNU_SOURCE: Darwin's <fcntl.h>
 # has no O_TMPFILE.
 comptime O_TMPFILE: Int32 = 4259840
-
-# What `fcntl` is asked for when the flags are the thing being set, and the
-# flag `open` and `fcntl` both take. `F_SETFL` is 4 on both platforms;
-# `O_NONBLOCK` is 2048 here and 4 there, which is the one of the two that
-# differs.
-comptime F_SETFL: Int32 = 4
-comptime O_NONBLOCK: Int32 = 4 if CompilationTarget.is_macos() else 2048
 
 
 def creat(path: c_ptr[UInt8], mode: UInt32) -> Int32:
@@ -99,7 +145,9 @@ def open(path: c_ptr[UInt8], oflag: Int32) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/open.3p.html).
         Fn signature: `int open(const char *path, int oflag, ...)`.
     """
-    return external_call["open", Int32, c_ptr[UInt8], Int32](path, oflag)
+    return external_call["openat", Int32, Int32, c_ptr[UInt8], Int32, Int32](
+        AT_FDCWD, path, oflag, 0
+    )
 
 
 def open(path: c_ptr[UInt8], oflag: Int32, mode: Int32) -> Int32:
@@ -117,17 +165,17 @@ def open(path: c_ptr[UInt8], oflag: Int32, mode: Int32) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/open.3p.html).
         Fn signature: `int open(const char *path, int oflag, ...)`.
 
-        `open` is variadic, and C reads the mode only when a creating flag is
-        set — but it still reads it, so the two-argument form above is unusable
-        with `O_CREAT`: what C picks up as the mode is whatever happens to be
-        in the argument register.
-
-        arm64 Darwin passes variadic arguments on the stack rather than in
-        registers, which an external call cannot express, so creating a file
-        this way does not work there. Open a path that exists instead.
+        C's `open` is variadic, and it reads the mode whether a creating flag
+        is set or not, so the two-argument form is unusable with `O_CREAT`.
+        Two things follow, and both are why these call `openat` instead: two
+        `external_call`s under the one name do not agree on a signature, and
+        arm64 Darwin passes variadic arguments on the stack, which an external
+        call cannot express at all. `openat` takes the same arguments with the
+        directory descriptor in front, so `open(path, oflag, mode)` is
+        `openat(AT_FDCWD, path, oflag, mode)`, and that works everywhere.
     """
-    return external_call["open", Int32, c_ptr[UInt8], Int32, Int32](
-        path, oflag, mode
+    return external_call["openat", Int32, Int32, c_ptr[UInt8], Int32, Int32](
+        AT_FDCWD, path, oflag, mode
     )
 
 
@@ -146,8 +194,8 @@ def openat(fd: Int32, path: c_ptr[UInt8], oflag: Int32) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/open.3p.html).
         Fn signature: `int openat(int fd, const char *path, int oflag, ...)`.
     """
-    return external_call["openat", Int32, Int32, c_ptr[UInt8], Int32](
-        fd, path, oflag
+    return external_call["openat", Int32, Int32, c_ptr[UInt8], Int32, Int32](
+        fd, path, oflag, 0
     )
 
 
