@@ -510,6 +510,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Pointers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#null" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NULL
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -664,6 +681,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Pointers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#null" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NULL
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -760,6 +794,31 @@ matching C function instead.</p>
 </code></pre></div>
 <p>Point at a Mojo value with <code>Pointer(to=value)</code> when a C API needs an out
 parameter.</p>
+<h3 id="null">NULL<a class="headerlink" href="#null" title="Permanent link">&para;</a></h3>
+<p>Mojo pointers are not nullable, so there is no spelling of NULL and nothing to
+compare one against. <code>libc.utils</code> covers both directions:</p>
+<ul>
+<li><code>null_ptr[T]()</code> builds one to hand in, where C says a null pointer will do —
+  <code>strtok</code> carrying on from where it was, <code>time</code> when only its answer is
+  wanted, <code>nanosleep</code> when the remainder does not matter.</li>
+<li><code>is_null()</code> asks whether one that came back is NULL, which is how <code>fopen</code>,
+  <code>opendir</code>, <code>dlopen</code> and most of the rest say they failed.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">libc.dirent</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">closedir</span><span class="p">,</span><span class="w"> </span><span class="n">opendir</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.utils</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">is_null</span><span class="p">,</span><span class="w"> </span><span class="n">null_ptr</span><span class="p">,</span><span class="w"> </span><span class="n">string_to_char_ptr</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="n">raises</span><span class="p">:</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">string_to_char_ptr</span><span class="p">(</span><span class="s2">"/does/not/exist"</span><span class="p">)</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">dirp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">opendir</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="n">is_null</span><span class="p">(</span><span class="n">dirp</span><span class="p">):</span>
+<span class="w">        </span><span class="nb">print</span><span class="p">(</span><span class="s2">"no such directory"</span><span class="p">)</span>
+<span class="w">    </span><span class="k">else</span><span class="p">:</span>
+<span class="w">        </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">closedir</span><span class="p">(</span><span class="n">dirp</span><span class="p">)</span>
+<span class="w">    </span><span class="n">path</span><span class="o">.</span><span class="n">unsafe_free</span><span class="p">()</span>
+</code></pre></div>
+<p>Never read through a null pointer. Handing one in is only ever for C to
+notice and take the other branch.</p>
 <h2 id="structs">Structs<a class="headerlink" href="#structs" title="Permanent link">&para;</a></h2>
 <p>Structures are declared with the field layout of the corresponding C struct.
 Trivial ones conform to <code>TrivialRegisterPassable</code>, so they can be passed and
