@@ -29,7 +29,7 @@ the bottom.
 | `libc.dirent` | `<dirent.h>` | 12 |
 | `libc.sys.wait` | `<sys/wait.h>` | 14 |
 | `libc.inttypes` | `<inttypes.h>` | 7 |
-| `libc.sys.resource` | `<sys/resource.h>` | 7 |
+| `libc.sys.resource` | `<sys/resource.h>` | 13 |
 | `libc.network` | `<arpa/inet.h>` byte order helpers | 4 |
 | `libc.logging` | `<syslog.h>` | 4 |
 | `libc.fcntl` | `<fcntl.h>` | 49 |

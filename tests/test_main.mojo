@@ -21,6 +21,7 @@ from test_math import main as run_math
 from test_network import main as run_network
 from test_poll import main as run_poll
 from test_pwd import main as run_pwd
+from test_resource import main as run_resource
 from test_search import main as run_search
 from test_signal import main as run_signal
 from test_stdio import main as run_stdio
@@ -50,6 +51,7 @@ def main() raises:
     run_network()
     run_poll()
     run_pwd()
+    run_resource()
     run_search()
     run_signal()
     run_stdio()

@@ -29,7 +29,13 @@ from libc.stdlib import (
 )
 from libc.sys.prctl import PR_GET_NAME, PR_GET_TSC, PR_SET_NAME, PR_SET_TSC
 from libc.sys.random import GRND_INSECURE
-from libc.sys.resource import RUSAGE_CHILDREN, RUSAGE_SELF
+from libc.sys.resource import (
+    PRIO_PGRP,
+    PRIO_PROCESS,
+    PRIO_USER,
+    RUSAGE_CHILDREN,
+    RUSAGE_SELF,
+)
 from libc.sys.socket import SOCK_CLOEXEC, SOCK_NONBLOCK
 from libc.sys.wait import WCONTINUED, WNOHANG, WUNTRACED
 from libc.time import CLOCKS_PER_SEC
@@ -86,6 +92,9 @@ def test_the_rest() raises:
     assert_equal(Int(WCONTINUED), 16 if CompilationTarget.is_macos() else 8)
     assert_equal(RUSAGE_SELF, 0)
     assert_equal(RUSAGE_CHILDREN, -1)
+    assert_equal(Int(PRIO_PROCESS), 0)
+    assert_equal(Int(PRIO_PGRP), 1)
+    assert_equal(Int(PRIO_USER), 2)
     assert_equal(RAND_MAX, 2147483647)
     assert_equal(Int(LONG_MAX), 9223372036854775807)
     assert_equal(Int(LONG_MIN), -9223372036854775808)
