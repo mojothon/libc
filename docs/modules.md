@@ -37,6 +37,7 @@ the bottom.
 | `libc.wchar` | `<wchar.h>` | 27 |
 | `libc.sys.statvfs` | `<sys/statvfs.h>` | 3 |
 | `libc.sys.select` | `<sys/select.h>` | 9 |
+| `libc.poll` | `<poll.h>` | 14 |
 | `libc.setjmp` | `<setjmp.h>` | 2 |
 | `libc.sys.utsname` | `<sys/utsname.h>` | 2 |
 | `libc.sys.sendfile` | `<sys/sendfile.h>` | 1 |

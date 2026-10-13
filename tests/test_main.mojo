@@ -19,6 +19,7 @@ from test_layout import main as run_layout
 from test_locale import main as run_locale
 from test_math import main as run_math
 from test_network import main as run_network
+from test_poll import main as run_poll
 from test_search import main as run_search
 from test_stdio import main as run_stdio
 from test_sys import main as run_sys
@@ -45,6 +46,7 @@ def main() raises:
     run_locale()
     run_math()
     run_network()
+    run_poll()
     run_search()
     run_stdio()
     run_sys()
