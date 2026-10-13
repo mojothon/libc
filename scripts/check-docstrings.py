@@ -158,6 +158,48 @@ def documented_prototype(
     return None
 
 
+INTRODUCED = (
+    # `Libc POSIX \`open\` function.` — the name comes before "function".
+    re.compile(r"`([a-zA-Z_]\w*)`\s+function\b"),
+    # `C library <math.h> function \`atan\`.` — after it.
+    re.compile(r"function\s+`([a-zA-Z_]\w*)`"),
+    # `Libc \`freelocale\`, which gives back ...` — a whole first line.
+    re.compile(r"^Libc\s+`([a-zA-Z_]\w*)`[,.:]"),
+)
+
+
+def introduced_as(doc: str) -> str | None:
+    """The name the first line gives itself, which is not always the first.
+
+    One of these lines often says another function's name too: "`longjmp`,
+    which jumps back to where `setjmp` recorded" mentions two and is the
+    first one. Taking the nearest one to "function" is what tells them
+    apart, and a line that names nobody is left alone — like `get_errno`,
+    whose first line is about the `errno` variable rather than about itself.
+    """
+    first = doc.strip().splitlines()[0] if doc.strip() else ""
+    for shape in INTRODUCED:
+        m = shape.search(first)
+        if m:
+            return m.group(1)
+    return None
+
+
+def same_function(said: str, name: str, symbol: str) -> bool:
+    """Whether one name is this function under another spelling.
+
+    `atanf` documented by the page for `atan` is how the man pages do it,
+    and the difference is only the width it takes. Nothing else is close
+    enough to answer to it: not `atan2` beside `atan`, which takes a
+    different number of arguments and means a different thing by them.
+    """
+    return (
+        said in (symbol, name)
+        or ALIASES.get(name) == said
+        or name[len(said) :] in TYPE_SUFFIXES
+    )
+
+
 def main() -> int:
     prototypes = read_prototypes()
     if not prototypes:
@@ -179,6 +221,17 @@ def main() -> int:
         checked += 1
         secs = sections(doc)
         where = f"{path}: {name}()"
+
+        # 0. Who it introduces itself as, taken from the first line, which
+        #    is the only place outside the signature that any of these say
+        #    their own name. `labs` was doing it from under `llabs` and
+        #    `imaxabs` at once.
+        said = introduced_as(doc)
+        if said and not same_function(said, name, symbol):
+            problems.append(
+                f"{where} calls {symbol}() and introduces itself as"
+                f" `{said}`, which is the name of another function"
+            )
 
         # 1. An `Args` entry naming something the function does not take,
         #    which is how `atan` came to have a `y`.
@@ -223,16 +276,7 @@ def main() -> int:
         written_call = documented_prototype(secs)
         if written_call:
             written_name, count, line = written_call
-            # `atanf` documented by the page for `atan` is where the man
-            # pages put it, and the difference is only the suffix. Nothing
-            # else is close enough to be called the same function, least
-            # of all `atan2` beside `atan`, which takes a different number
-            # of arguments and means a different thing by them.
-            same = (
-                written_name in (symbol, name)
-                or ALIASES.get(name) == written_name
-                or name[len(written_name) :] in TYPE_SUFFIXES
-            )
+            same = same_function(written_name, name, symbol)
             if not same:
                 problems.append(
                     f"{where} calls {symbol}(), and its prototype says"
