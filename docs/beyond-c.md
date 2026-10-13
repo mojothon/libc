@@ -97,5 +97,10 @@ Being fair about the other direction:
 - **Coverage.** 16.7%, as above. `open` here is bound as `openat` with
   `AT_FDCWD` filled in, which is what POSIX says the two amount to, and is
   the sort of thing that happens when the real name cannot be called.
+- **Variadic arguments, and the argument after them.** `openat` is variadic
+  too, so the mode is not a named argument on macOS either and does not
+  arrive: a file asked for with 0o644 came out as 0o150, which is no umask
+  of 0o644 but whatever was on the stack. `fchmod` afterwards is the way to
+  be sure, and both docstrings say so.
 - **Speed.** Unmeasured. An external call is a call, and no more is
   claimed than that.
