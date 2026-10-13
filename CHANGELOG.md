@@ -3,6 +3,43 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.11.0] - 2026-10-13
+
+### Added
+
+- `libc.fcntl` binds `F_SETFL` and `O_NONBLOCK`, and a three-argument
+  `fcntl` to go with them. C's is variadic and `external_call` wants each
+  type written out, so it is the int-argument form that is bound, which
+  covers `F_SETFL`, `F_GETFL` and the commands that set a descriptor; a
+  command that wants a pointer or a lock has nothing here to give it one,
+  and the docstring says so. `F_SETFL` is 4 on both platforms and
+  `O_NONBLOCK` is 2048 here and 4 on Darwin.
+
+### Changed
+
+- **Breaking.** `msghdr.msg_namelen` is `UInt32` now, which is what a
+  `socklen_t` is on both platforms. It was `UInt16`, and the struct was
+  56 bytes either way — the padding after the field swallows the
+  difference — so nothing said a word while `recvmsg` wrote four bytes
+  there and a 16-bit field read the low half of them.
+
+### Fixed
+
+- **The errno constants are set per platform now.** They were written as
+  plain numbers, which are Linux's, and the numbering parts company with
+  Darwin's for good from 35 up: `EAGAIN` is 11 here and 35 there,
+  `EINPROGRESS` 115 and 36, `ENAMETOOLONG` 36 and 63, `ETIMEDOUT` 110
+  and 60, and the socket errors numbered 88 to 113 here are 38 to 61
+  there. Fifty-six of them differed, so on macOS forty-five answered
+  with a number libc will never use, and a caller checking
+  `errno == EAGAIN` against a failure that really is EAGAIN got a false
+  negative. The Linux side was verified against errno.h with `gcc -dM`
+  — all 134 of them, names and values both — and the Darwin side is
+  taken from XNU's bsd/sys/errno.h. Forty-six are Linux's own, `ERFKILL`
+  and `EHWPOISON` among them, and are left as they were.
+- `EWOULDBLOCK` is set per platform along with `EAGAIN`, being its alias
+  on both.
+
 ## [0.10.0] - 2026-10-13
 
 ### Added
