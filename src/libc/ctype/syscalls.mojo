@@ -26,7 +26,7 @@ def islower(c: Int32) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/islower.3.html).
         Fn signature: `int islower(int c)`.
     """
-    return external_call["islower", Int32](c)
+    return external_call["islower", Int32, Int32](c)
 
 
 @inline(.nodebug)
@@ -71,7 +71,7 @@ def isupper(c: Int32) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/isupper.3.html).
         Fn signature: `int isupper(int c)`.
     """
-    return external_call["isupper", Int32](c)
+    return external_call["isupper", Int32, Int32](c)
 
 
 @inline(.nodebug)
@@ -116,7 +116,7 @@ def isalpha(c: Int32) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/isalpha.3.html).
         Fn signature: `int isalpha(int c)`.
     """
-    return external_call["isalpha", Int32](c)
+    return external_call["isalpha", Int32, Int32](c)
 
 
 @inline(.nodebug)
@@ -138,7 +138,7 @@ def isdigit(c: Int32) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/isdigit.3.html).
         Fn signature: `int isdigit(int c)`.
     """
-    return external_call["isdigit", Int32](c)
+    return external_call["isdigit", Int32, Int32](c)
 
 
 @inline(.nodebug)
@@ -184,7 +184,7 @@ def isalnum(c: Int32) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/isalnum.3.html).
         Fn signature: `int isalnum(int c)`.
     """
-    return external_call["isalnum", Int32](c)
+    return external_call["isalnum", Int32, Int32](c)
 
 
 @inline(.nodebug)
@@ -230,7 +230,7 @@ def isxdigit(c: Int32) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/isxdigit.3.html).
         Fn signature: `int isxdigit(int c)`.
     """
-    return external_call["isxdigit", Int32](c)
+    return external_call["isxdigit", Int32, Int32](c)
 
 
 @inline(.nodebug)
@@ -276,7 +276,7 @@ def isspace(c: Int32) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/isspace.3.html).
         Fn signature: `int isspace(int c)`.
     """
-    return external_call["isspace", Int32](c)
+    return external_call["isspace", Int32, Int32](c)
 
 
 @inline(.nodebug)
@@ -298,7 +298,7 @@ def isblank(c: Int32) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/isblank.3.html).
         Fn signature: `int isblank(int c)`.
     """
-    return external_call["isblank", Int32](c)
+    return external_call["isblank", Int32, Int32](c)
 
 
 @inline(.nodebug)
@@ -343,7 +343,7 @@ def iscntrl(c: Int32) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/iscntrl.3.html).
         Fn signature: `int iscntrl(int c)`.
     """
-    return external_call["iscntrl", Int32](c)
+    return external_call["iscntrl", Int32, Int32](c)
 
 
 @inline(.nodebug)
@@ -389,7 +389,7 @@ def isgraph(c: Int32) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/isgraph.3.html).
         Fn signature: `int isgraph(int c)`.
     """
-    return external_call["isgraph", Int32](c)
+    return external_call["isgraph", Int32, Int32](c)
 
 
 @inline(.nodebug)
@@ -435,7 +435,7 @@ def isascii(c: Int32) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/isascii.3.html).
         Fn signature: `int isascii(int c)`.
     """
-    return external_call["isascii", Int32](c)
+    return external_call["isascii", Int32, Int32](c)
 
 
 @inline(.nodebug)
@@ -481,7 +481,7 @@ def isprint(c: Int32) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/isprint.3.html).
         Fn signature: `int isprint(int c)`.
     """
-    return external_call["isprint", Int32](c)
+    return external_call["isprint", Int32, Int32](c)
 
 
 @inline(.nodebug)
@@ -527,7 +527,7 @@ def ispunct(c: Int32) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/ispunct.3.html).
         Fn signature: `int ispunct(int c)`.
     """
-    return external_call["ispunct", Int32](c)
+    return external_call["ispunct", Int32, Int32](c)
 
 
 @inline(.nodebug)
@@ -572,7 +572,7 @@ def tolower(c: Int32) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/tolower.3.html).
         Fn signature: `int tolower(int c)`.
     """
-    return external_call["tolower", Int32](c)
+    return external_call["tolower", Int32, Int32](c)
 
 
 @inline(.nodebug)
@@ -615,7 +615,7 @@ def toupper(c: Int32) -> Int32:
         [Reference](https://man7.org/linux/man-pages/man3/toupper.3.html).
         Fn signature: `int toupper(int c)`.
     """
-    return external_call["toupper", Int32](c)
+    return external_call["toupper", Int32, Int32](c)
 
 
 @inline(.nodebug)
@@ -643,4 +643,4 @@ def toupper_l(c: Int32, loc: locale_t) -> Int32:
 
 @inline(.nodebug)
 def toascii(c: Int32) -> Int32:
-    return external_call["toascii", Int32](c)
+    return external_call["toascii", Int32, Int32](c)
