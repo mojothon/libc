@@ -26,14 +26,14 @@ comptime O_APPEND: Int32 = 8 if CompilationTarget.is_macos() else 1024
 comptime O_CREAT: Int32 = 512 if CompilationTarget.is_macos() else 64
 comptime O_TRUNC: Int32 = 1024 if CompilationTarget.is_macos() else 512
 comptime O_EXCL: Int32 = 2048 if CompilationTarget.is_macos() else 128
-comptime O_SYNC = 8192 if CompilationTarget.is_macos() else 1052672
+comptime O_SYNC: Int32 = 128 if CompilationTarget.is_macos() else 1052672
 comptime O_NONBLOCK: Int32 = 4 if CompilationTarget.is_macos() else 2048
 comptime O_ACCMODE = 3
 comptime O_CLOEXEC: Int32 = 16777216 if CompilationTarget.is_macos() else 524288
 
 # from fcntl.h
 comptime O_EXEC: Int32 = 1073741824 if CompilationTarget.is_macos() else -1
-comptime O_SEARCH = -1
+comptime O_SEARCH: Int32 = 1074790400 if CompilationTarget.is_macos() else -1  # O_EXEC|O_DIRECTORY there; Linux has neither O_SEARCH nor O_EXEC
 comptime O_DIRECTORY: Int32 = 1048576 if CompilationTarget.is_macos() else 65536
 comptime O_DSYNC = -1 if CompilationTarget.is_macos() else 4096  # Darwin has no such flag; it has O_SYNC
 comptime O_NOCTTY: Int32 = 131072 if CompilationTarget.is_macos() else 256
