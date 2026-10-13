@@ -20,6 +20,16 @@ def strcat(s1: c_ptr[UInt8], s2: c_ptr[UInt8]) -> c_ptr[UInt8]:
 
     Description:
         Appends the string pointed to by s2 to the end of the string pointed to by s1.
+        Room for what is coming is assumed rather than checked, and it writes past the
+        end when it is not there; the two strings must not overlap either.
+
+    Arguments:
+        s1: The string that gets added to, which wants room for what is there already
+            and for what is coming, null and all.
+        s2: The string that gets added, null and all.
+
+    Return Value:
+        The function returns a pointer to the resulting string s1.
     """
 
     return external_call["strcat", c_ptr[UInt8], c_ptr[UInt8], c_ptr[UInt8]](
@@ -39,6 +49,16 @@ def strcpy(s1: c_ptr[UInt8], s2: c_ptr[UInt8]) -> c_ptr[UInt8]:
 
     Description:
         Copies the string pointed to by s2 (including the terminating null character) to the array pointed to by s1.
+        Room at s1 is assumed rather than checked, and it writes past the end when the
+        array is short; the two must not overlap.
+
+    Arguments:
+        s1: Where the string goes, which wants room for all of s2 and the null that
+            ends it.
+        s2: The string to copy, null and all.
+
+    Return Value:
+        The function returns a pointer to the resulting string s1.
     """
 
     return external_call["strcpy", c_ptr[UInt8], c_ptr[UInt8], c_ptr[UInt8]](
@@ -59,7 +79,14 @@ def strncpy(s1: c_ptr[UInt8], s2: c_ptr[UInt8], n: UInt64) -> c_ptr[UInt8]:
     Description:
         Copies at most n characters from the string pointed to by s2 (including the terminating null character) to the array
         pointed to by s1. If the length of s2 is less than n, null characters are appended to the end of s1 to ensure that it
-        is exactly n characters long.
+        is exactly n characters long. When s2 runs n characters or longer no null is
+        written at all, and what sits at s1 is then not a string: it wants one put at
+        the end by hand before anything reads it as one.
+
+    Arguments:
+        s1: Where the characters go, which wants room for n of them.
+        s2: The string to copy from.
+        n: How many characters at most to copy.
 
     Return Value:
         The function returns a pointer to the resulting string s1.
@@ -74,6 +101,28 @@ def strncpy(s1: c_ptr[UInt8], s2: c_ptr[UInt8], n: UInt64) -> c_ptr[UInt8]:
 def memcpy(
     dest: c_ptr[NoneType], src: c_ptr[NoneType], n: UInt64
 ) -> c_ptr[NoneType]:
+    """C library <string.h> function `memcpy`.
+
+    Reference:
+        https://pubs.opengroup.org/onlinepubs/9699919799/functions/memcpy.html
+
+    Prototype:
+        void *memcpy(void *restrict dest, const void *restrict src, size_t n)
+
+    Description:
+        Copies n bytes from the object pointed to by src to the one
+        pointed to by dest. The two must not overlap, and what happens
+        when they do is left undefined: where they might, `memmove` is
+        the one that is made for it.
+
+    Arguments:
+        dest: Where the bytes go.
+        src: Where they come from.
+        n: How many bytes to copy.
+
+    Return Value:
+        The function returns dest.
+    """
     return external_call[
         "memcpy", c_ptr[NoneType], c_ptr[NoneType], c_ptr[NoneType], UInt64
     ](dest, src, n)
@@ -83,6 +132,30 @@ def memcpy(
 def mempcopy(
     dest: c_ptr[NoneType], src: c_ptr[NoneType], n: UInt64
 ) -> c_ptr[NoneType]:
+    """C library <string.h> function `mempcpy`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/mempcpy.3.html
+
+    Prototype:
+        void *mempcpy(void *restrict dest, const void *restrict src, size_t n)
+
+    Description:
+        Copies as `memcpy` does, overlap and all, and hands back
+        something else: the byte past the last one written, `dest + n`
+        rather than `dest`. Handy for filling a buffer in pieces. It is
+        a GNU one, not an ISO C or a POSIX one, so it is there on Linux
+        and glibc and not everywhere else.
+
+    Arguments:
+        dest: Where the bytes go.
+        src: Where they come from.
+        n: How many bytes to copy.
+
+    Return Value:
+        The function returns dest + n, that is, one past the last byte
+        it wrote.
+    """
     return external_call[
         "mempcpy", c_ptr[NoneType], c_ptr[NoneType], c_ptr[NoneType], UInt64
     ](dest, src, n)
@@ -92,6 +165,28 @@ def mempcopy(
 def memmove(
     dest: c_ptr[NoneType], src: c_ptr[NoneType], n: UInt64
 ) -> c_ptr[NoneType]:
+    """C library <string.h> function `memmove`.
+
+    Reference:
+        https://pubs.opengroup.org/onlinepubs/9699919799/functions/memmove.html
+
+    Prototype:
+        void *memmove(void *dest, const void *src, size_t n)
+
+    Description:
+        Copies n bytes from the object pointed to by src to the one
+        pointed to by dest. Unlike `memcpy` it does not mind whether
+        the two overlap: it copies as though it had put src aside
+        first, so the bytes come out as they went in.
+
+    Arguments:
+        dest: Where the bytes go.
+        src: Where they come from.
+        n: How many bytes to copy.
+
+    Return Value:
+        The function returns dest.
+    """
     return external_call[
         "memmove", c_ptr[NoneType], c_ptr[NoneType], c_ptr[NoneType], UInt64
     ](dest, src, n)
@@ -99,6 +194,28 @@ def memmove(
 
 @inline(.nodebug)
 def memset(s: c_ptr[NoneType], c: Int32, n: UInt64) -> c_ptr[NoneType]:
+    """C library <string.h> function `memset`.
+
+    Reference:
+        https://pubs.opengroup.org/onlinepubs/9699919799/functions/memset.html
+
+    Prototype:
+        void *memset(void *s, int c, size_t n)
+
+    Description:
+        Fills the first n bytes of the object pointed to by s with c.
+        Only the low eight bits of c are looked at, and they are taken
+        as an unsigned char, so 256 writes the same byte as 0 does and
+        -1 the same as 255.
+
+    Arguments:
+        s: Where the bytes go.
+        c: What to write there, of which the low eight bits are used.
+        n: How many bytes to write.
+
+    Return Value:
+        The function returns s.
+    """
     return external_call[
         "memset", c_ptr[NoneType], c_ptr[NoneType], Int32, UInt64
     ](s, c, n)
@@ -106,6 +223,28 @@ def memset(s: c_ptr[NoneType], c: Int32, n: UInt64) -> c_ptr[NoneType]:
 
 @inline(.nodebug)
 def strcopy(dest: c_ptr[UInt8], src: c_ptr[UInt8]) -> c_ptr[UInt8]:
+    """C library <string.h> function `strcpy` under another name.
+
+    Reference:
+        https://pubs.opengroup.org/onlinepubs/9699919799/functions/strcpy.html
+
+    Prototype:
+        char *strcpy(char *dest, const char *src)
+
+    Description:
+        `strcpy` as it is above, the binding being the same one and
+        only the names of the arguments differing: what is called is
+        `strcpy` either way. It is kept so that a call can be spelled
+        with dest and src.
+
+    Arguments:
+        dest: Where the string goes, which wants room for all of src
+            and the null that ends it.
+        src: The string to copy, null and all.
+
+    Return Value:
+        The function returns dest.
+    """
     return external_call["strcpy", c_ptr[UInt8], c_ptr[UInt8], c_ptr[UInt8]](
         dest, src
     )
@@ -113,6 +252,27 @@ def strcopy(dest: c_ptr[UInt8], src: c_ptr[UInt8]) -> c_ptr[UInt8]:
 
 @inline(.nodebug)
 def strncopy(dest: c_ptr[UInt8], src: c_ptr[UInt8], n: UInt64) -> c_ptr[UInt8]:
+    """C library <string.h> function `strncpy` under another name.
+
+    Reference:
+        https://pubs.opengroup.org/onlinepubs/9699919799/functions/strncpy.html
+
+    Prototype:
+        char *strncpy(char *dest, const char *src, size_t n)
+
+    Description:
+        `strncpy` as it is above, the binding being the same one and
+        only the names of the arguments differing. It is kept so that
+        a call can be spelled with dest and src.
+
+    Arguments:
+        dest: Where the characters go, which wants room for n of them.
+        src: The string to copy from.
+        n: How many characters at most to copy.
+
+    Return Value:
+        The function returns dest.
+    """
     return external_call[
         "strncpy", c_ptr[UInt8], c_ptr[UInt8], c_ptr[UInt8], UInt64
     ](dest, src, n)
@@ -120,21 +280,112 @@ def strncopy(dest: c_ptr[UInt8], src: c_ptr[UInt8], n: UInt64) -> c_ptr[UInt8]:
 
 @inline(.nodebug)
 def strdup(s: c_ptr[UInt8]) -> c_ptr[UInt8]:
+    """C library <string.h> function `strdup`.
+
+    Reference:
+        https://pubs.opengroup.org/onlinepubs/9699919799/functions/strdup.html
+
+    Prototype:
+        char *strdup(const char *s)
+
+    Description:
+        Makes a fresh copy of s and hands back a pointer to it, the
+        memory for it taken with `malloc`, which makes it memory C owns
+        and this caller's to hand back: `free` from `libc.stdlib` is
+        what takes it. When there is none to be had it answers with a
+        null pointer, and a Mojo `Pointer` cannot be null, nor is
+        there a way here to ask one whether it is — so this is for
+        copies that have the memory to give.
+
+    Arguments:
+        s: The string to copy.
+
+    Return Value:
+        The function returns a pointer to the copy, or a null pointer
+        when no memory was to be had.
+    """
     return external_call["strdup", c_ptr[UInt8], c_ptr[UInt8]](s)
 
 
 @inline(.nodebug)
 def strndup(s: c_ptr[UInt8], n: UInt64) -> c_ptr[UInt8]:
+    """C library <string.h> function `strndup`.
+
+    Reference:
+        https://pubs.opengroup.org/onlinepubs/9699919799/functions/strndup.html
+
+    Prototype:
+        char *strndup(const char *s, size_t n)
+
+    Description:
+        `strdup` with a bound on it: it copies the shorter of the
+        string and n bytes, and it always ends what it wrote with a
+        null, which `strncpy` does not, so what comes back is a string
+        whatever n was. The `malloc` and the `free` are as they are
+        for `strdup`, and so is the want of a way to see a null
+        pointer coming back.
+
+    Arguments:
+        s: The string to copy from.
+        n: How many bytes at most to copy.
+
+    Return Value:
+        The function returns a pointer to the copy, or a null pointer
+        when no memory was to be had.
+    """
     return external_call["strndup", c_ptr[UInt8], c_ptr[UInt8], UInt64](s, n)
 
 
 @inline(.nodebug)
 def strlen(s: c_ptr[UInt8]) -> UInt64:
+    """C library <string.h> function `strlen`.
+
+    Reference:
+        https://pubs.opengroup.org/onlinepubs/9699919799/functions/strlen.html
+
+    Prototype:
+        size_t strlen(const char *s)
+
+    Description:
+        Counts the bytes in s up to the null that ends it, that null
+        not counted. It stops at nothing else, so a block of memory
+        without one sends it reading past the end; `strnlen` below is
+        the one that takes a bound.
+
+    Arguments:
+        s: The string to measure, which does want a null at its end.
+
+    Return Value:
+        The function returns how many bytes it counted.
+    """
     return external_call["strlen", UInt64, c_ptr[UInt8]](s)
 
 
 @inline(.nodebug)
 def strnlen(s: c_ptr[UInt8], maxlen: UInt64) -> UInt64:
+    """C library <string.h> function `strnlen`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/strnlen.3.html
+
+    Prototype:
+        size_t strnlen(const char *s, size_t maxlen)
+
+    Description:
+        `strlen` with a bound on it: it counts up to maxlen bytes and
+        stops there, answering with maxlen when no null turned up in
+        them, which is what makes it the one to take over a buffer
+        that may not be ended. GNU had it well before POSIX did, which
+        took it in with the 2024 revision.
+
+    Arguments:
+        s: What to measure.
+        maxlen: How many bytes to look at at most.
+
+    Return Value:
+        The function returns how many bytes it counted, which is
+        maxlen when it got that far without finding a null.
+    """
     return external_call["strnlen", UInt64, c_ptr[UInt8], UInt64](s, maxlen)
 
 
