@@ -5,6 +5,7 @@
 # ----------------------------------
 from std.memory import Pointer
 from std.ffi import external_call
+from std.sys import CompilationTarget
 from libc.constant import c_ptr
 
 
@@ -17,6 +18,13 @@ comptime F_TEST: Int32 = 3
 # Linux's own, and glibc only says so under _GNU_SOURCE: Darwin's <fcntl.h>
 # has no O_TMPFILE.
 comptime O_TMPFILE: Int32 = 4259840
+
+# What `fcntl` is asked for when the flags are the thing being set, and the
+# flag `open` and `fcntl` both take. `F_SETFL` is 4 on both platforms;
+# `O_NONBLOCK` is 2048 here and 4 there, which is the one of the two that
+# differs.
+comptime F_SETFL: Int32 = 4
+comptime O_NONBLOCK: Int32 = 4 if CompilationTarget.is_macos() else 2048
 
 
 def creat(path: c_ptr[UInt8], mode: UInt32) -> Int32:
@@ -51,6 +59,30 @@ def fcntl(fildes: Int32, cmd: Int32) -> Int32:
         Fn signature: `int fcntl(int fildes, int cmd, ...)`.
     """
     return external_call["fcntl", Int32, Int32, Int32](fildes, cmd)
+
+
+def fcntl(fildes: Int32, cmd: Int32, arg: Int32) -> Int32:
+    """Libc POSIX `fcntl` function, with the argument some commands take.
+
+    C's is variadic and `external_call` wants each type written out, so it
+    is the int-argument form that is bound, which covers `F_SETFL`,
+    `F_GETFL` and the commands that set a descriptor. A command that wants
+    a pointer or a lock has nothing here to give it one.
+
+    Args:
+        fildes: A File Descriptor to close.
+        cmd: A command to execute.
+        arg: What the command works on, a flags word for `F_SETFL`, and
+            ignored by the commands that take nothing.
+
+    Returns:
+        Value 0 on success, -1 on error and `errno` is set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/fcntl.3p.html).
+        Fn signature: `int fcntl(int fildes, int cmd, ...)`.
+    """
+    return external_call["fcntl", Int32, Int32, Int32, Int32](fildes, cmd, arg)
 
 
 def open(path: c_ptr[UInt8], oflag: Int32) -> Int32:
