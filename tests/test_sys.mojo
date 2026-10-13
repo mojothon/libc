@@ -2,7 +2,10 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_false, assert_true
 
-from libc.constant import c_ptr
+from libc.constant import AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR, c_ptr
+from libc.sys.socket import getsockopt, setsockopt, socket
+from libc.sys.stat import mkfifo
+from libc.unistd import unlink
 from libc.setjmp import setjmp
 from libc.sys.select import (
     FD_CLR,
@@ -208,6 +211,66 @@ def test_what_a_wait_status_says() raises:
     assert_false(WIFSIGNALED(0x137F), "and no signal ended it")
 
 
+def test_mkfifo() raises:
+    """A named pipe, made and taken away.
+
+    Not opened: opening one for reading blocks until someone opens it for
+    writing, and a test that waits on a pipe nobody opens is a test that
+    hangs.
+    """
+    var path = string_to_char_ptr("/tmp/libc-test-fifo")
+    _ = unlink(path)
+    assert_equal(Int(mkfifo(path, 0o644)), 0, "a fifo is made")
+    assert_equal(Int(unlink(path)), 0, "and taken away again")
+
+
+def test_socket_options() raises:
+    """An option set on a socket and read back off it.
+
+    `SO_REUSEADDR` is an int, which is the smallest shape an option comes
+    in, and the round trip is what says the binding put the value where C
+    reads it rather than somewhere nearby.
+    """
+    var fd = socket(AF_INET, SOCK_STREAM, 0)
+    assert_true(fd >= 0, "a socket opens")
+
+    var on = unsafe_alloc[Int32](1)
+    on[] = 1
+    assert_equal(
+        Int(
+            setsockopt(
+                fd, SOL_SOCKET, SO_REUSEADDR, on.unsafe_bitcast[NoneType](), 4
+            )
+        ),
+        0,
+        "SO_REUSEADDR is turned on",
+    )
+
+    var back = unsafe_alloc[Int32](1)
+    back[] = 0
+    var room = unsafe_alloc[UInt32](1)
+    room[] = 4
+    assert_equal(
+        Int(
+            getsockopt(
+                fd,
+                SOL_SOCKET,
+                SO_REUSEADDR,
+                back.unsafe_bitcast[NoneType](),
+                room,
+            )
+        ),
+        0,
+        "and read back off the same socket",
+    )
+    assert_true(back[] != 0, "and it is still on")
+
+    on.unsafe_free()
+    back.unsafe_free()
+    room.unsafe_free()
+    _ = close(fd)
+
+
 def main() raises:
     test_uname()
     test_fd_set()
@@ -215,4 +278,6 @@ def main() raises:
     test_statvfs()
     test_what_a_wait_status_says()
     test_setjmp_records()
+    test_mkfifo()
+    test_socket_options()
     print("test_sys: ok")
