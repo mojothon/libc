@@ -89,6 +89,12 @@ ALIASES: dict[str, str] = {
     # Darwin's spelling of `__errno_location` and is checked on the macOS run.
     "get_errno": "__errno_location",
     "set_errno": "__errno_location",
+    # `open` is `openat` with the directory descriptor filled in as
+    # `AT_FDCWD`, which is what POSIX says the two amount to. It is called
+    # that way and not by its own name because C's `open` is variadic and
+    # arm64 Darwin passes variadic arguments on the stack, which an external
+    # call cannot express — so `open` here is the one that works there.
+    "open": "openat",
 }
 
 # Symbols that are real but belong to a libc this machine is not running, so
