@@ -43,6 +43,18 @@ def test_open_with_the_flags() raises:
 
     var fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0o644)
     assert_true(fd >= 0, "opened a new file for writing")
+
+    # What the mode argument came to, which is worth knowing: umask takes a
+    # bite out of it, and a later open of this path came back EACCES on
+    # Darwin with no permission bits set at all.
+    var info = unsafe_alloc[Stat](1)
+    info[] = Stat()
+    if fstat(fd, info) == 0:
+        print("  (the new file's mode came out as", info[].mode() & 0o7777, ")")
+    info.unsafe_free()
+
+    # Set outright, so what follows is about the flags and not about umask.
+    assert_equal(fchmod(fd, 0o644), 0, "and its permissions are set")
     assert_equal(write(fd, path, 4), 4, "wrote four bytes to it")
     assert_equal(close(fd), 0, "and closed it")
 
