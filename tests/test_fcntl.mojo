@@ -1,7 +1,7 @@
 from std.testing import assert_equal, assert_true
 
 from libc.constant import EEXIST
-from libc.errno import get_errno, set_errno
+from libc.errno import errno_message, get_errno, set_errno
 from libc.fcntl import (
     O_APPEND,
     O_CLOEXEC,
@@ -50,7 +50,11 @@ def test_open_with_the_flags() raises:
     # something that exists: it succeeds, which says O_RDONLY is 0 and not
     # the other platform's O_WRONLY.
     var back = open(path, O_RDONLY)
-    assert_true(back >= 0, "and opened it again for reading")
+    assert_true(
+        back >= 0,
+        "and opened it again for reading"
+        + ("" if back >= 0 else ": " + errno_message(get_errno())),
+    )
     assert_equal(close(back), 0, "and closed that")
 
     # O_EXCL on a file that is already there is answered with EEXIST, and
