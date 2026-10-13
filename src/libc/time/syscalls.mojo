@@ -12,6 +12,9 @@ from libc.constant import c_int, c_long, c_ptr, c_size_t
 from libc.utils import char_ptr_to_string
 
 
+# What `clock` counts in. POSIX says a million, on both platforms.
+comptime CLOCKS_PER_SEC: c_long = 1000000
+
 comptime CLOCK_REALTIME: c_int = 0
 comptime CLOCK_MONOTONIC: c_int = 6 if CompilationTarget.is_macos() else 1
 comptime TIME_UTC: c_int = 1
