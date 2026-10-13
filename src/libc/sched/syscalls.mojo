@@ -8,6 +8,12 @@ from std.memory import Pointer
 from libc.constant import c_ptr
 
 
+# The scheduling policies, and the numbers are the same on both platforms.
+comptime SCHED_OTHER: Int32 = 0
+comptime SCHED_FIFO: Int32 = 1
+comptime SCHED_RR: Int32 = 2
+
+
 struct sched_param(TrivialRegisterPassable):
     var sched_priority: Int32
 
