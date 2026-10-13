@@ -3,6 +3,86 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.0] - 2026-10-13
+
+### Added
+
+- `libc.unistd` binds the ids and the calls that wait: `getgid`, `getegid`,
+  `setuid`, `setgid`, `seteuid`, `setegid`, `chown`, `fchown`, `lchown`,
+  `fchownat`, `alarm`, `pause`, `sleep`, `nice` and `getpagesize`.
+  `getuid` and `geteuid` were here already and `getgid` and `getegid` were
+  not, which is the pair asked for the more often of the two.
+- `libc.string` binds `strncat`, `stpcpy`, `stpncpy`, `strsep`, `memmem`,
+  `ffs`, `ffsl` and `ffsll`.
+- `libc.stdlib` binds `random`, `srandom`, `initstate`, `setstate` and
+  `getsubopt`.
+- `libc.stdio` binds the stream lock — `flockfile`, `ftrylockfile`,
+  `funlockfile` — and with it `getw`, `putw` and `renameat`.
+- `libc.dirent` binds `telldir`, `seekdir`, `rewinddir` and `fdopendir`.
+  `telldir` answers a position within the directory and not a number of
+  bytes, so it means nothing to `lseek`; `rewinddir` also forgets about
+  entries added since the stream was opened, so a later `readdir` can show
+  them; `fdopendir` takes over a descriptor, and `closedir` closes it from
+  then on.
+- `libc.fcntl` binds `lockf`, which is not Linux-only the way
+  `posix_fadvise` and `posix_fallocate` are.
+- `libc.file` binds `getdelim`, of which `getline` is a special case.
+- `libc.utils` says how to hand C a NULL, which is `null_ptr[T]()`, and how
+  to ask whether a pointer it handed back is one. A `Pointer` cannot be null
+  in Mojo and a literal 0 is turned away, so it is the address that goes
+  into one.
+
+### Changed
+
+- **Breaking.** Thirty-one bindings answered in a type that could not hold
+  the answer, or took one too narrow to ask with. In three groups:
+  - Answered in an unsigned or a short type where C answers with a count
+    that can be -1: `getline`, which was `c_uint` and is `c_ssize_t`;
+    `pread` and `pwrite` in both `libc.file` and `libc.unistd`; `getrandom`,
+    which was `UInt64`; `readlink`, `readlinkat`, `writev` and `syscall`.
+  - Took a size or an offset too narrow to be one. `fread`, `pread` and
+    `pwrite` take `c_size_t` and a 64-bit offset, where they took `c_uint`
+    and, in `libc.unistd`, an `Int8`: that asked for at most 127 bytes from
+    an offset of at most 127. `fmemopen` and `snprintf` take `c_size_t`;
+    `ioctl` takes its request as `c_ulong`; `mknod` and `mknodat` take the
+    device as `UInt64`; `sched_getaffinity` and `sched_setaffinity`,
+    `pthread_attr_getguardsize` and `pthread_attr_setguardsize`, `getcwd`
+    and `swab` take a `UInt64` or an `Int64` where they took an `Int32`.
+  - Had the wrong signature outright. `dlerror` took an argument C's does
+    not and answered with an `Int32` where C answers with the message;
+    `dlopen` and `dlsym` were missing their second argument; `remquo` and
+    `remquof` take a pointer for the quotient, and a null pointer is allowed
+    there; `nan` and `nanf` take a string, not a byte; `accept4` was missing
+    its flags; `fdimf` took and answered `Float64`, which is `fdim`'s;
+    `getcwd` answers with the buffer it was given; `swab` answers nothing.
+- **Breaking.** `printf` takes only the format now. It took `*args` and
+  passed the pack along, and `external_call` wants the type of each argument
+  written out, which a pack has no way to give, so every call to it failed
+  to compile. A conversion therefore needs arguments and there are none to
+  give it, and a bare `%` is the start of one. The same is true of
+  `dprintf`, `sprintf` and `snprintf`, which cannot write a conversion, and
+  of `scanf`, `fscanf` and `sscanf`, which cannot read one, there being
+  nowhere to put what it reads.
+- The prototype check in CI knows about width now, and not only about kind:
+  an `Int32` where C takes an `off_t` was passing it, and so was a signed
+  type where C takes an unsigned one of the same size. It also compares how
+  many types a binding writes in `external_call[...]` against how many
+  arguments it hands over, which is how twenty-seven here were found to have
+  been declaring none at all.
+
+### Fixed
+
+- `libc.ctype` had sixteen bindings and `libc.string` had ten that told
+  `external_call` only their return type while handing it one or two
+  arguments. Nothing notices while the argument is an integer or a pointer,
+  which is why they have been working; it is not the call that was meant.
+- `mempcopy` called `mempcopy`, and C's name is `mempcpy`.
+- `AT_FDCWD` is -2 on Darwin, not -100.
+- `nice` answers with the niceness the process came to on Linux, and with 0
+  for success or -1 for failure on Darwin, so a 0 from Darwin is not a
+  niceness of 0. The docstring says which is which.
+- `rewinddir` does not promise the same number of entries back.
+
 ## [0.7.0] - 2026-10-12
 
 ### Added
