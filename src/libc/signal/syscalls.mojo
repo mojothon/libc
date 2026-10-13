@@ -182,6 +182,92 @@ def sigaltstack(ss: c_ptr[UInt8], oss: c_ptr[UInt8]) -> Int32:
     )
 
 
+def sigaddset(set: c_ptr[UInt8], signo: Int32) -> Int32:
+    """C library <signal.h> function `sigaddset`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sigdelset.3.html
+
+    Prototype:
+        int sigaddset(sigset_t *set, int signo)
+
+    Description:
+        The sigaddset() function adds the specified signal to the set. The set
+        is not a `sigset_t` here but bytes, sixty-four bytes on Darwin and a
+        hundred and twenty-eight on Linux, and an allocator asked for the
+        larger gives a set both are happy with: the bit for a signal lives in
+        the low bytes either way. Zero the block and it is an empty set, then
+        add to it with this.
+
+    Arguments:
+        set: The set to add to, as bytes.
+        signo: The signal to add, as a number. Anything outside the signals
+            this platform has is refused rather than added somewhere wrong.
+
+    Return Value:
+        On success, 0 is returned. On error, -1 is returned, and errno
+        is set to indicate the error. EINVAL means the number was not a
+        signal this platform knows.
+    """
+    return external_call["sigaddset", Int32, c_ptr[UInt8], Int32](set, signo)
+
+
+def sigismember(set: c_ptr[UInt8], signo: Int32) -> Int32:
+    """C library <signal.h> function `sigismember`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sigismember.3.html
+
+    Prototype:
+        int sigismember(const sigset_t *set, int signo)
+
+    Description:
+        The sigismember() function tests whether the given signal is in the
+        set, which is the question to ask a set that `sigaddset` and
+        `sigdelset` have been editing.
+
+    Arguments:
+        set: The set to ask about, as bytes. It is read and not written.
+        signo: The signal to ask about, as a number.
+
+    Return Value:
+        1 if the signal is in the set, 0 if it is not, and -1 on error with
+        errno set: whether something is a member and whether asking worked
+        are different answers, so this is not a boolean even though it looks
+        like one. Comparing it against 1 rather than testing it for truth is
+        what tells EINVAL apart from a set a signal was never added to.
+    """
+    return external_call["sigismember", Int32, c_ptr[UInt8], Int32](set, signo)
+
+
+def sigpending(set: c_ptr[UInt8]) -> Int32:
+    """C library <signal.h> function `sigpending`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/sigpending.2.html
+
+    Prototype:
+        int sigpending(sigset_t *set)
+
+    Description:
+        The sigpending() function writes the signals that are waiting to be
+        delivered into the set, those being the ones blocked and having
+        arrived, which is everything about the state of signals that can be
+        asked without stopping to wait for one. A way for a program that
+        blocks signals for a while to find out what it missed.
+
+    Arguments:
+        set: Where the waiting signals are written, as bytes, overwriting
+            whatever was there. Test membership in it with `sigismember`.
+
+    Return Value:
+        On success, 0 is returned. On error, -1 is returned, and errno
+        is set to indicate the error. The set is only meaningful when this
+        returned 0.
+    """
+    return external_call["sigpending", Int32, c_ptr[UInt8]](set)
+
+
 def sigdelset(set: c_ptr[UInt8], signo: Int32) -> Int32:
     """C library <signal.h> function `sigdelset`.
 
@@ -332,3 +418,69 @@ def sigprocmask(how: Int32, set: c_ptr[UInt8], oldset: c_ptr[UInt8]) -> Int32:
     return external_call[
         "sigprocmask", Int32, Int32, c_ptr[UInt8], c_ptr[UInt8]
     ](how, set, oldset)
+
+
+def sigsuspend(mask: c_ptr[UInt8]) -> Int32:
+    """C library <signal.h> function `sigsuspend`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/sigsuspend.2.html
+
+    Prototype:
+        int sigsuspend(const sigset_t *mask)
+
+    Description:
+        The sigsuspend() function swaps the blocked signals for `mask` and
+        then waits, swapping back and returning once a signal has been
+        handled. It exists because the two operations done separately leave a
+        gap: a signal that arrives after the mask is changed but before the
+        wait begins is neither blocked nor awaited, and so is missed. This is
+        the one call that does both without the gap.
+
+    Arguments:
+        mask: The signals to block while waiting, as bytes. Anything not in
+            it may be delivered, which is the point: leave one unblocked and
+            its handler is what wakes the wait.
+
+    Return Value:
+        Always -1, and always with errno set to EINTR, whether anything went
+        wrong or not: there is no other way back. Coming here for a success
+        code is looking for something this does not give out, and every
+        worthwhile error looks exactly like returning normally, so what it
+        tells you is only that it has stopped waiting.
+    """
+    return external_call["sigsuspend", Int32, c_ptr[UInt8]](mask)
+
+
+def sigwait(set: c_ptr[UInt8], signo: c_ptr[Int32]) -> Int32:
+    """C library <signal.h> function `sigwait`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sigwait.3.html
+
+    Prototype:
+        int sigwait(const sigset_t *set, int *signo)
+
+    Description:
+        The sigwait() function blocks until one of the signals in the set
+        arrives, then writes which one into `signo`, taking it rather than
+        running any handler for it. Signals here are asked for and received
+        by a thread sitting waiting, which is a plainer way to take them than
+        arranging for a handler to leave a note somewhere.
+
+    Arguments:
+        set: The signals being waited for, as bytes. They should be blocked
+            first with `sigprocmask`: one that is not blocked is delivered
+            and handled before this gets a look at it.
+        signo: Where the number of the signal that arrived is written.
+
+    Return Value:
+        0 on success, having written the signal's number. On failure it
+        hands back the error code itself rather than -1, and leaves errno
+        alone, which is the opposite of what every other call here does:
+        EINVAL out of this is a positive number, and checking against -1
+        — or asking errno for what went wrong — finds nothing.
+    """
+    return external_call["sigwait", Int32, c_ptr[UInt8], c_ptr[Int32]](
+        set, signo
+    )

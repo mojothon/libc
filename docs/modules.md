@@ -22,7 +22,7 @@ the bottom.
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 27 |
 | `libc.complex` | `<complex.h>` | 46 |
 | `libc.sched` | `<sched.h>` | 16 |
-| `libc.signal` | `<signal.h>` | 35 |
+| `libc.signal` | `<signal.h>` | 40 |
 | `libc.locale` | `<locale.h>` | 16 |
 | `libc.sys.epoll` | `<sys/epoll.h>` | 8 |
 | `libc.search` | `<search.h>` | 9 |
