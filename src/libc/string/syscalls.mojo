@@ -74,56 +74,68 @@ def strncpy(s1: c_ptr[UInt8], s2: c_ptr[UInt8], n: UInt64) -> c_ptr[UInt8]:
 def memcpy(
     dest: c_ptr[NoneType], src: c_ptr[NoneType], n: UInt64
 ) -> c_ptr[NoneType]:
-    return external_call["memcpy", c_ptr[NoneType]](dest, src, n)
+    return external_call[
+        "memcpy", c_ptr[NoneType], c_ptr[NoneType], c_ptr[NoneType], UInt64
+    ](dest, src, n)
 
 
 @inline(.nodebug)
 def mempcopy(
     dest: c_ptr[NoneType], src: c_ptr[NoneType], n: UInt64
 ) -> c_ptr[NoneType]:
-    return external_call["mempcpy", c_ptr[NoneType]](dest, src, n)
+    return external_call[
+        "mempcpy", c_ptr[NoneType], c_ptr[NoneType], c_ptr[NoneType], UInt64
+    ](dest, src, n)
 
 
 @inline(.nodebug)
 def memmove(
     dest: c_ptr[NoneType], src: c_ptr[NoneType], n: UInt64
 ) -> c_ptr[NoneType]:
-    return external_call["memmove", c_ptr[NoneType]](dest, src, n)
+    return external_call[
+        "memmove", c_ptr[NoneType], c_ptr[NoneType], c_ptr[NoneType], UInt64
+    ](dest, src, n)
 
 
 @inline(.nodebug)
 def memset(s: c_ptr[NoneType], c: Int32, n: UInt64) -> c_ptr[NoneType]:
-    return external_call["memset", c_ptr[NoneType]](s, c, n)
+    return external_call[
+        "memset", c_ptr[NoneType], c_ptr[NoneType], Int32, UInt64
+    ](s, c, n)
 
 
 @inline(.nodebug)
 def strcopy(dest: c_ptr[UInt8], src: c_ptr[UInt8]) -> c_ptr[UInt8]:
-    return external_call["strcpy", c_ptr[UInt8]](dest, src)
+    return external_call["strcpy", c_ptr[UInt8], c_ptr[UInt8], c_ptr[UInt8]](
+        dest, src
+    )
 
 
 @inline(.nodebug)
 def strncopy(dest: c_ptr[UInt8], src: c_ptr[UInt8], n: UInt64) -> c_ptr[UInt8]:
-    return external_call["strncpy", c_ptr[UInt8]](dest, src, n)
+    return external_call[
+        "strncpy", c_ptr[UInt8], c_ptr[UInt8], c_ptr[UInt8], UInt64
+    ](dest, src, n)
 
 
 @inline(.nodebug)
 def strdup(s: c_ptr[UInt8]) -> c_ptr[UInt8]:
-    return external_call["strdup", c_ptr[UInt8]](s)
+    return external_call["strdup", c_ptr[UInt8], c_ptr[UInt8]](s)
 
 
 @inline(.nodebug)
 def strndup(s: c_ptr[UInt8], n: UInt64) -> c_ptr[UInt8]:
-    return external_call["strndup", c_ptr[UInt8]](s, n)
+    return external_call["strndup", c_ptr[UInt8], c_ptr[UInt8], UInt64](s, n)
 
 
 @inline(.nodebug)
 def strlen(s: c_ptr[UInt8]) -> UInt64:
-    return external_call["strlen", UInt64](s)
+    return external_call["strlen", UInt64, c_ptr[UInt8]](s)
 
 
 @inline(.nodebug)
 def strnlen(s: c_ptr[UInt8], maxlen: UInt64) -> UInt64:
-    return external_call["strnlen", UInt64](s, maxlen)
+    return external_call["strnlen", UInt64, c_ptr[UInt8], UInt64](s, maxlen)
 
 
 @inline(.nodebug)
