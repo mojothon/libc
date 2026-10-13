@@ -4,7 +4,15 @@
 # github: github.com/llango
 # ----------------------------------
 from std.ffi import external_call
+from std.sys import CompilationTarget
 from libc.constant import c_ptr
+
+
+# What `dlopen` is asked for. `RTLD_LAZY` and `RTLD_NOW` are the same
+# number on both platforms; `RTLD_GLOBAL` is 256 here and 8 there.
+comptime RTLD_LAZY: Int32 = 1
+comptime RTLD_NOW: Int32 = 2
+comptime RTLD_GLOBAL: Int32 = 8 if CompilationTarget.is_macos() else 256
 
 
 def dlclose(handle: c_ptr[UInt8]) -> Int32:
