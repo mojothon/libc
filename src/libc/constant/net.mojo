@@ -115,6 +115,18 @@ comptime SOCK_PACKET = 10
 # alias SOCK_NONBLOCK = O_NONBLOCK
 comptime MSG_DONTWAIT = 64
 
+# Protocol constants. Unlike the ones above, which each platform chose for
+# itself, these are the numbers assigned to the protocols themselves, so
+# whichever of the two this is compiled on it is the same 6 and 17.
+comptime IPPROTO_IP = 0
+comptime IPPROTO_ICMP = 1
+comptime IPPROTO_IGMP = 2
+comptime IPPROTO_TCP = 6
+comptime IPPROTO_UDP = 17
+comptime IPPROTO_IPV6 = 41
+comptime IPPROTO_RAW = 255
+comptime IPPROTO_ICMPV6 = 58
+
 
 # Address Information
 comptime AI_PASSIVE = 1
