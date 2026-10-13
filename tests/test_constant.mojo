@@ -4,6 +4,7 @@ from std.testing import assert_equal, assert_true
 from libc.constant import *
 from libc.dlfcn import RTLD_GLOBAL, RTLD_LAZY, RTLD_NOW
 from libc.fcntl import F_LOCK, F_TLOCK, F_TEST, F_ULOCK, O_TMPFILE
+from libc.logging import LOG_UPTO
 from libc.sched import SCHED_FIFO, SCHED_OTHER, SCHED_RR
 from libc.signal import (
     SIGSTKSZ,
@@ -27,6 +28,7 @@ from libc.stdlib import (
     ULLONG_MAX,
     ULONG_MAX,
 )
+from libc.stdio import BUFSIZ
 from libc.sys.prctl import PR_GET_NAME, PR_GET_TSC, PR_SET_NAME, PR_SET_TSC
 from libc.sys.random import GRND_INSECURE
 from libc.sys.resource import (
@@ -125,6 +127,17 @@ def test_the_rest() raises:
     assert_equal(PR_GET_NAME, 16)
     assert_equal(PR_GET_TSC, 25)
     assert_equal(PR_SET_TSC, 26)
+    assert_equal(IPPROTO_IP, 0)
+    assert_equal(IPPROTO_ICMP, 1)
+    assert_equal(IPPROTO_IGMP, 2)
+    assert_equal(IPPROTO_TCP, 6)
+    assert_equal(IPPROTO_UDP, 17)
+    assert_equal(IPPROTO_IPV6, 41)
+    assert_equal(IPPROTO_RAW, 255)
+    assert_equal(IPPROTO_ICMPV6, 58)
+    assert_equal(BUFSIZ, 8192)
+    assert_equal(LOG_UPTO(4), 31)
+    assert_equal(LOG_UPTO(7), 255)
 
 
 def main() raises:

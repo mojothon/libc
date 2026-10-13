@@ -100,3 +100,21 @@ def closelog():
         Fn signature: `void closelog(void)`.
     """
     _ = external_call["closelog", c_void]()
+
+
+def LOG_UPTO(pri: c_int) -> c_int:
+    """Libc POSIX `LOG_UPTO` function.
+
+    A mask of every priority up to and including `pri`, for `setlogmask`.
+
+    C gives this as a macro, which is why it is a function here rather
+    than a constant: it is worked out rather than looked up, and there is
+    nothing for the two platforms to disagree over.
+
+    Args:
+        pri: The highest priority to let through.
+
+    Returns:
+        The mask, holding a bit for this priority and every lower one.
+    """
+    return c_int((1 << (pri + 1)) - 1)
