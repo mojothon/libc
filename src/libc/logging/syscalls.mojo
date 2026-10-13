@@ -86,8 +86,8 @@ def setlogmask(maskpri: c_int) -> c_int:
         What is masked out is dropped before it goes anywhere, so a level
         that is not in the mask costs nothing to send.
 
-        [Reference](https://man7.org/linux/man-pages/man3/closelog.3p.html).
-        Fn signature: ` int setlogmask(int maskpri)`.
+        [Reference](https://man7.org/linux/man-pages/man3/setlogmask.3p.html).
+        Fn signature: `int setlogmask(int maskpri)`.
     """
     return external_call["setlogmask", c_int, c_int](maskpri)
 
@@ -118,3 +118,4 @@ def LOG_UPTO(pri: c_int) -> c_int:
         The mask, holding a bit for this priority and every lower one.
     """
     return c_int((1 << (pri + 1)) - 1)
+
