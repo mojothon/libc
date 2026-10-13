@@ -54,4 +54,5 @@ nav:
   - Install: install.md
   - Usage: usage.md
   - Modules: modules.md
+  - Beyond C: beyond-c.md
   - Version: version.md
