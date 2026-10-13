@@ -688,6 +688,18 @@ def main() -> int:
     for path, name, symbol, passed, mojo_return, mojo_params in bindings():
         where = f"{path}: {name}() calls {symbol}()"
 
+        # `external_call` is told the type of each thing it is to pass along,
+        # and a binding that leaves them out of the list still compiles: it
+        # hands the arguments over without knowing what they are. Integers and
+        # pointers land in the right registers by luck of the calling
+        # convention, which is why twenty-seven here sat that way unnoticed.
+        if len(mojo_params) != passed:
+            problems.append(
+                f"{where} with {passed} argument(s) and {len(mojo_params)}"
+                " type(s) in its list, so `external_call` is not told what"
+                " it is passing"
+            )
+
         if symbol not in prototypes:
             if symbol not in PLATFORM_ONLY | NOT_DECLARED_HERE:
                 problems.append(f"{where}, which no header declares")
