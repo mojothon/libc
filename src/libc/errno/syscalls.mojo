@@ -385,3 +385,40 @@ def check(result: Int32) raises -> Int32:
     if result >= 0:
         return result
     raise Error(errno_message(get_errno()))
+
+
+def check_ptr[T: AnyType](given: c_ptr[T]) raises -> c_ptr[T]:
+    """Pass a pointer through, or raise with what went wrong.
+
+    The other half of libc says NULL when it fails and leaves the reason
+    in `errno`, and it is a different half from the one `check` is for:
+    `fopen`, `malloc`, `getcwd` and the rest answer with a pointer rather
+    than with a number, so a negative-number test says nothing about them
+    and they have been checked by hand until now.
+
+        var stream = check_ptr(fopen(path, string_to_char_ptr("r")))
+
+    raises `EACCES: Permission denied` rather than answering NULL and
+    leaving the reason for someone to remember to look at. C has no such
+    thing either here, for the same reason it has none for `check`.
+
+    Args:
+        given: What a call answered, where NULL means it failed.
+
+    Returns:
+        The same pointer, when it is not NULL.
+
+    Raises:
+        With `errno_message` for whatever `errno` held.
+
+    Notes:
+        Mojo's pointers are non-null by design — `Bool(ptr)` is refused
+        outright, and the type says a pointer always points at something.
+        C's half of this binding does not share that opinion, and a call
+        that fails answers with NULL whatever the type says, so NULL is
+        what arrives: a pointer whose address is 0. `Int` is what sees
+        that, being the one way left to ask.
+    """
+    if Int(given) != 0:
+        return given
+    raise Error(errno_message(get_errno()))
