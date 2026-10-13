@@ -98,11 +98,10 @@ def fcntl(fildes: Int32, cmd: Int32) -> Int32:
         cmd: A command to execute.
 
     Returns:
-        Value 0 on success, -1 on error and `errno` is set.
-
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/close.3p.html).
-        Fn signature: `int fcntl(int fildes, int cmd, ...)`.
+        Whatever the command asked for, which is a different thing each
+        time: duplicating answers with the new descriptor, asking for the
+        flags answers with them, and the commands that only set something
+        answer 0 for having done it. Only -1 is failure, with `errno` set.
     """
     return external_call["fcntl", Int32, Int32, Int32](fildes, cmd)
 
@@ -122,7 +121,10 @@ def fcntl(fildes: Int32, cmd: Int32, arg: Int32) -> Int32:
             ignored by the commands that take nothing.
 
     Returns:
-        Value 0 on success, -1 on error and `errno` is set.
+        Whatever the command asked for, which is a different thing each
+        time: duplicating answers with the new descriptor, asking for the
+        flags answers with them, and the commands that only set something
+        answer 0 for having done it. Only -1 is failure, with `errno` set.
 
     Notes:
         [Reference](https://man7.org/linux/man-pages/man3/fcntl.3p.html).
