@@ -189,7 +189,12 @@ def open(path: c_ptr[UInt8], oflag: Int32, mode: Int32) -> Int32:
 
 
 def openat(fd: Int32, path: c_ptr[UInt8], oflag: Int32) -> Int32:
-    """Libc POSIX `open` function.
+    """Libc POSIX `openat` function.
+
+    Description:
+        Opens `path` relative to a directory rather than to where the
+        process stands, `fd` being that directory's descriptor. `open` is
+        the special case of this where nothing is given to be relative to.
 
     Args:
         fd: A File Descriptor to open the file with.
