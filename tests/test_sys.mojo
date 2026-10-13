@@ -145,9 +145,12 @@ def test_statvfs() raises:
         buf[].f_ffree() <= buf[].f_files(),
         "and no more free inodes than there are",
     )
-    # `f_flag` holds the mount flags, of which ST_RDONLY is 1. The root of a
-    # running system is writable, so it should not be set.
-    assert_equal(buf[].f_flag() & 1, 0, "the root is not read only")
+    # `f_flag` holds the mount flags, a handful of ST_* bits and nothing
+    # else. Which of them is set is the platform's business — macOS's root
+    # is a read-only system volume and Linux's is not — but a member read
+    # out of its slot would come back as a block count, which is far past
+    # any combination of flags.
+    assert_true(buf[].f_flag() < 0x10000, "the flags are a handful of bits")
 
     buf.unsafe_free()
 
