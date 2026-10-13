@@ -54,6 +54,11 @@ jobs:
       # while promising 0 meant success, `fork` among them.
       - name: Check documented return values against the headers
         run: pixi run check-return-values
+      # The same for the rest of each docstring: every argument it names,
+      # and the prototype it puts its name to. Found `atan` describing
+      # itself as `atan2`, arguments and all.
+      - name: Check docstrings against the call they describe
+        run: pixi run check-docstrings
 
   conda-build:
     name: Conda package

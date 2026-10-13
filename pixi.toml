@@ -43,6 +43,14 @@ check-layouts = "python3 scripts/check-layouts.py"
 # given unsent. Two of the three rules are settled by asking gcc what the
 # return type is; the third cannot be, and carries a list of names instead.
 check-return-values = "python3 scripts/check-return-values.py"
+# A docstring is read by nothing but whoever reads it, so what is wrong in
+# one stays wrong until somebody asks. This asks three things: that every
+# name under `Args` is a parameter the function takes, that the prototype
+# names the function actually called, and that it takes as many arguments.
+# Everything it has found was a copy that kept the wrong heading — `atan`
+# carrying `atan2`'s prototype, and with it a second argument `y` that it
+# cannot be given; `ldiv`, `lldiv` and `imaxdiv` all saying `div`.
+check-docstrings = "python3 scripts/check-docstrings.py"
 
 [feature.build.dependencies]
 rattler-build = ">=0.40,<0.41"
