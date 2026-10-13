@@ -3,10 +3,11 @@ from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.constant import c_ptr
+from libc.dirent import dirent
 from libc.pthread import pthread_attr_t, pthread_condattr_t
 from libc.sched import timespec as sched_timespec
 from libc.sys.resource import Rlimit, getrlimit, getrusage
-from libc.sys.socket import socketaddr
+from libc.sys.socket import msghdr, socketaddr
 from libc.sys.stat import Stat, fstat, stat, timespec, timeval
 from libc.sys.wait import rusage
 
@@ -48,6 +49,14 @@ def test_sizes() raises:
     )
     assert_equal(stride[tm](), 56, "struct tm is 56 bytes")
     assert_equal(stride[socketaddr](), 16, "struct sockaddr is 16 bytes")
+    assert_equal(stride[msghdr](), 56, "struct msghdr is 56 bytes")
+    # 280 on glibc and 1048 on Darwin, where `d_name` is 1026 bytes and
+    # starts two bytes later.
+    assert_equal(
+        stride[dirent](),
+        1048 if CompilationTarget.is_macos() else 280,
+        "struct dirent is 280 bytes",
+    )
 
     # Opaque: bigger than what either platform has, so libc cannot overrun it.
     assert_true(
@@ -131,9 +140,23 @@ def test_sched_timespec_seconds_are_wide_enough() raises:
     p.unsafe_free()
 
 
+def test_msghdr_namelen_is_32_bits() raises:
+    # `socklen_t` is 32 bits, and C writes four bytes there. A 16-bit field
+    # would not even take the value, so this is a test that compiles or does
+    # not. The struct is 56 bytes either way, which is why the size alone
+    # says nothing about it.
+    var p = unsafe_alloc[msghdr](1)
+    p[].msg_namelen = 70000
+    assert_equal(
+        Int(p[].msg_namelen), 70000, "msg_namelen holds a 32-bit length"
+    )
+    p.unsafe_free()
+
+
 def main() raises:
     test_sizes()
     test_sched_timespec_seconds_are_wide_enough()
+    test_msghdr_namelen_is_32_bits()
     test_stat_reads_a_real_file()
     test_stat_on_a_regular_file()
     test_rusage_and_rlimit()

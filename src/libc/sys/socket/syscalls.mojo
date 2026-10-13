@@ -204,7 +204,12 @@ struct msghdr(TrivialRegisterPassable):
     """
 
     var msg_name: c_ptr[UInt8]
-    var msg_namelen: UInt16
+    # `socklen_t`, 32 bits and unsigned on both platforms. It was `UInt16`
+    # here, and the struct came out 56 bytes either way because the padding
+    # after it swallows the difference, which is how it went unnoticed: C
+    # writes four bytes at `msg_namelen`, and a 16-bit field reads the low
+    # half of them.
+    var msg_namelen: UInt32
     var msg_iov: c_ptr[iovec]
     var msg_iovlen: UInt64
     var msg_control: c_ptr[UInt8]
