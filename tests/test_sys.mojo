@@ -129,6 +129,25 @@ def test_statvfs() raises:
         buf[].f_frsize() <= 1 << 20,
         "the fragment size is a sane number of bytes",
     )
+    # The rest of the members, which are the ones that catch a slot read out
+    # of place: each count is no larger than the one above it, and on Darwin
+    # two of them share a 64-bit slot, so a member landing in the wrong half
+    # shows up as a number that is not smaller.
+    assert_true(buf[].f_bfree() > 0, "and some of them free")
+    assert_true(
+        buf[].f_bfree() <= buf[].f_blocks(), "and no more free than there are"
+    )
+    assert_true(
+        buf[].f_bavail() <= buf[].f_bfree(), "and no more available than free"
+    )
+    assert_true(buf[].f_files() > 0, "and some inodes")
+    assert_true(
+        buf[].f_ffree() <= buf[].f_files(),
+        "and no more free inodes than there are",
+    )
+    # `f_flag` holds the mount flags, of which ST_RDONLY is 1. The root of a
+    # running system is writable, so it should not be set.
+    assert_equal(buf[].f_flag() & 1, 0, "the root is not read only")
 
     buf.unsafe_free()
 
