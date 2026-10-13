@@ -19,7 +19,7 @@ def imaxabs(j: Int64) -> Int64:
         https://man7.org/linux/man-pages/man3/imaxabs.3.html
 
     Prototype:
-        intmax_t llabs(intmax_t j)
+        intmax_t imaxabs(intmax_t j)
 
     Description:
         Computes the absolute value of j.
@@ -40,7 +40,7 @@ def imaxdiv(numer: Int64, denom: Int64) -> imaxdiv_t:
         https://man7.org/linux/man-pages/man3/ldiv.3.html
 
     Prototype:
-        ldiv_t div(long x, long y)
+        imaxdiv_t imaxdiv(intmax_t numer, intmax_t denom)
 
     Description:
         Computes the quotient and remainder of  the division of the numerator numer by the denominator denom.
