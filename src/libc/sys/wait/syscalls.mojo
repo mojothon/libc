@@ -125,3 +125,122 @@ def wait4(
     return external_call[
         "wait4", Int32, Int32, c_ptr[Int32], Int32, c_ptr[rusage]
     ](pid, status, options, usage)
+
+
+# What a wait status says. C has these as macros, which is to say they are
+# text substitution: no types, no way to name one or pass it along, and
+# nothing for a debugger to step into. Here they are functions.
+#
+# The low seven bits say which signal ended the process and zero says none
+# did, the next eight say the exit status or the stop signal, and bit 7 says
+# a core was dumped. Linux and Darwin agree on all of that.
+#
+# `WIFCONTINUED` is not here: it is 0xffff here and 0x13 on Darwin, and a
+# test would have to really continue a really stopped process to say which,
+# so it is left out rather than guessed at.
+
+
+def WIFEXITED(status: Int32) -> Bool:
+    """Whether the process ended by exiting, as C's `WIFEXITED`.
+
+    Args:
+        status: What `wait`, `waitpid` or `wait4` wrote into its status
+            argument.
+
+    Returns:
+        True when the process chose its own ending, so `WEXITSTATUS` has
+        something to say.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wait.3p.html).
+        False when a signal ended it or stopped it, in which case it is
+        `WTERMSIG` or `WSTOPSIG` that has something to say instead.
+    """
+    return (status & 0x7F) == 0
+
+
+def WEXITSTATUS(status: Int32) -> Int32:
+    """The status the process exited with, as C's `WEXITSTATUS`.
+
+    Args:
+        status: A status `WIFEXITED` says was an exit.
+
+    Returns:
+        The low eight bits of what was given to `exit`, which is all of it
+        that survives: anything above 255 is gone before this sees it.
+    """
+    return (status >> 8) & 0xFF
+
+
+def WIFSIGNALED(status: Int32) -> Bool:
+    """Whether a signal ended the process, as C's `WIFSIGNALED`.
+
+    Args:
+        status: What a wait call wrote.
+
+    Returns:
+        True when a signal ended it and it did not merely stop, so
+        `WTERMSIG` has something to say.
+    """
+    var low = status & 0x7F
+    return low != 0 and low != 0x7F
+
+
+def WTERMSIG(status: Int32) -> Int32:
+    """The signal that ended the process, as C's `WTERMSIG`.
+
+    Args:
+        status: A status `WIFSIGNALED` says was a signal.
+
+    Returns:
+        The signal's number.
+    """
+    return status & 0x7F
+
+
+def WIFSTOPPED(status: Int32) -> Bool:
+    """Whether the process is stopped rather than ended, as C's
+    `WIFSTOPPED`.
+
+    Args:
+        status: What a wait call wrote.
+
+    Returns:
+        True when the process is stopped rather than ended, so `WSTOPSIG`
+        has something to say.
+
+    Notes:
+        A status like this only comes back when the wait was asked for with
+        `WUNTRACED`, or when the process is being traced.
+    """
+    return (status & 0xFF) == 0x7F
+
+
+def WSTOPSIG(status: Int32) -> Int32:
+    """The signal that stopped the process, as C's `WSTOPSIG`.
+
+    Args:
+        status: A status `WIFSTOPPED` says was a stop.
+
+    Returns:
+        The signal's number.
+    """
+    return (status >> 8) & 0xFF
+
+
+def WCOREDUMP(status: Int32) -> Bool:
+    """Whether a core was dumped, as C's `WCOREDUMP`.
+
+    Args:
+        status: A status `WIFSIGNALED` says was a signal.
+
+    Returns:
+        True when the ending left a core behind.
+
+    Notes:
+        Not in POSIX, and it is a promise about the past rather than a
+        setting: the core is written by the kernel on the way out, and a
+        resource limit of 0 on core size is one way for this to be false
+        of a signal that would otherwise have written one.
+    """
+    return (status & 0x80) != 0
