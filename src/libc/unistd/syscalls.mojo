@@ -84,7 +84,10 @@ def dup(oldfd: Int32) -> Int32:
         oldfd: File descriptor to duplicate.
 
     Returns:
-        0 on success, -1 on error.
+        The new descriptor, or -1 on failure with `errno` set. Success is a
+        number here and not a yes, and zero is one of the numbers: it is
+        stdin's, and it is what this hands back when stdin was closed
+        before `oldfd` was made. Only -1 went wrong.
     """
     return external_call["dup", Int32, Int32](oldfd)
 
@@ -103,7 +106,9 @@ def dup2(oldfd: Int32, newfd: Int32) -> Int32:
         newfd: File descriptor to duplicate to.
 
     Returns:
-        0 on success, -1 on error.
+        The new descriptor, which is `newfd`, or -1 on failure with `errno`
+        set. Zero is a descriptor here rather than a yes, so whether this
+        failed is asked for by asking for -1.
     """
     return external_call["dup2", Int32, Int32, Int32](oldfd, newfd)
 
@@ -123,7 +128,8 @@ def dup3(oldfd: Int32, newfd: Int32, flags: Int32) -> Int32:
         flags: Flags to set on the new file descriptor.
 
     Returns:
-        0 on success, -1 on error.
+        The new descriptor, which is `newfd`, or -1 on failure with `errno`
+        set. As with `dup`, zero is a descriptor and not a success code.
     """
     return external_call["dup3", Int32, Int32, Int32, Int32](
         oldfd, newfd, flags
@@ -207,7 +213,11 @@ def fork() -> Int32:
         fork() creates a new process by duplicating the calling process.
 
     Returns:
-        0 on success, -1 on error.
+        Twice over, which nothing else here does: 0 in the child, and in
+        the parent the child's own process id. Failure is -1 and is only
+        ever answered once, with `errno` set. Getting 0 is not this
+        reporting that it worked — that is the child carrying on — and a
+        parent reading it that way takes itself for a failure.
     """
     return external_call["fork", Int32]()
 
@@ -427,7 +437,11 @@ def isatty(fd: Int32) -> Int32:
         fd: File descriptor.
 
     Returns:
-        0 on success, -1 on error.
+        1 if `fd` is a terminal, 0 if it is not, which is an answer rather
+        than a failure even though `errno` is set to `ENOTTY` alongside it.
+        The two kinds of no are not told apart by what comes back either:
+        something that is not a terminal and something that is not even
+        open both give 0, and only errno says which.
     """
     return external_call["isatty", Int32, Int32](fd)
 
