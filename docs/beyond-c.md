@@ -75,12 +75,29 @@ every call is compared against the C prototype — 601 of them now, each
 compiled from the header on this machine — and a mismatch is reported
 rather than found later.
 
-What it does not check, yet: the `comptime` constants and the struct
-layouts. Those were checked by hand against `gcc -dM` and `offsetof` when
-they were written, and Rust's `libc` checks both, by generating a C file
-that reports what C thinks and comparing it to what the bindings say. A
-binding that cannot be checked is a binding that rots, and this one has
-two of its three parts on trust.
+And now `scripts/check-constants.py` does the same for the numbers. It
+includes every header either script knows, asks C to print each constant,
+and compares: 553 of them at this writing, of which 52 are written as
+expressions (`S_IRUSR | S_IWUSR`) rather than as numbers, so those are
+handed to C whole and a misspelled name inside one fails to compile. It
+runs on both platforms in CI, which is the point of it — the platform
+decides which side of an `if is_macos()` is under trial, and neither job
+can check the branch it is not standing on.
+
+It earned its place on the first run. Fifty-five constants were Darwin's
+values with no platform branch at all: `O_APPEND` was 8, which is what
+Darwin says and not what Linux says, Linux saying 1024, and the same for
+`O_CREAT`, `O_TRUNC`, every `LOG_*` and most of `F_*`. None of it failed
+a test, because nothing here asserted what the number *meant* — `open`
+received 512 where 64 was intended and created something other than was
+asked for, quietly, in the way these things do. A number read off `gcc
+-dM` by eye is right exactly once, and that was a long time ago.
+
+What neither script checks is struct layout. `tests/test_layout.mojo`
+asserts thirty-two things about `stat`, `socketaddr`, `msghdr`, `rusage`
+and a few others, which is real coverage of the handful somebody thought
+to test and nothing at all about the rest. Rust's `libc` generates that
+too. This is the remaining piece on trust.
 
 glibc, for its part, does not come with anything that checks glibc.
 
