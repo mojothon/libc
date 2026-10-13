@@ -7,6 +7,29 @@ from std.ffi import external_call
 from std.memory import Pointer
 
 
+# The `prctl` options, all Linux's own — there is no <sys/prctl.h> on
+# Darwin, so nothing there needs them. The values were read out of
+# <sys/prctl.h>.
+comptime PR_SET_PDEATHSIG: Int32 = 1
+comptime PR_GET_PDEATHSIG: Int32 = 2
+comptime PR_GET_DUMPABLE: Int32 = 3
+comptime PR_SET_DUMPABLE: Int32 = 4
+comptime PR_GET_UNALIGN: Int32 = 5
+comptime PR_SET_UNALIGN: Int32 = 6
+comptime PR_GET_TIMING: Int32 = 13
+comptime PR_SET_TIMING: Int32 = 14
+comptime PR_SET_NAME: Int32 = 15
+comptime PR_GET_NAME: Int32 = 16
+comptime PR_GET_SECCOMP: Int32 = 21
+comptime PR_SET_SECCOMP: Int32 = 22
+comptime PR_GET_TSC: Int32 = 25
+comptime PR_SET_TSC: Int32 = 26
+comptime PR_GET_SECUREBITS: Int32 = 27
+comptime PR_SET_SECUREBITS: Int32 = 28
+comptime PR_SET_TIMERSLACK: Int32 = 29
+comptime PR_GET_TIMERSLACK: Int32 = 30
+
+
 def prctl(
     option: Int32, arg2: UInt64, arg3: UInt64, arg4: UInt64, arg5: UInt64
 ) -> Int32:
