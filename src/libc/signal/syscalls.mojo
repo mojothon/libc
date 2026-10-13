@@ -40,9 +40,9 @@ comptime SIGTSTP: Int32 = 18 if CompilationTarget.is_macos() else 20
 comptime SIG_DFL: Int32 = 0
 comptime SIG_IGN: Int32 = 1
 comptime SIG_ERR: Int32 = -1
-comptime SIG_BLOCK: Int32 = 0
-comptime SIG_UNBLOCK: Int32 = 1
-comptime SIG_SETMASK: Int32 = 2
+comptime SIG_BLOCK: Int32 = 1 if CompilationTarget.is_macos() else 0
+comptime SIG_UNBLOCK: Int32 = 2 if CompilationTarget.is_macos() else 1
+comptime SIG_SETMASK: Int32 = 3 if CompilationTarget.is_macos() else 2
 
 # The least an alternate signal stack wants, which is what `sigaltstack`
 # asks of its size: 131072 there and 8192 here.
