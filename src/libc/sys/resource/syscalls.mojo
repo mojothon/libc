@@ -9,6 +9,11 @@ from libc.constant import c_ptr
 from libc.sys.wait import rusage
 
 
+# Whose usage `getrusage` is asked about. The same on both platforms.
+comptime RUSAGE_SELF: Int32 = 0
+comptime RUSAGE_CHILDREN: Int32 = -1
+
+
 struct Rlimit(TrivialRegisterPassable):
     """A C `struct rlimit`: the soft and the hard limit.
 
