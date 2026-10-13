@@ -2,8 +2,9 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
-from libc.constant import c_ptr
+from libc.constant import EAGAIN, c_ptr
 from libc.errno import get_errno, set_errno
+from libc.fcntl import F_SETFL, O_NONBLOCK, fcntl
 from libc.setjmp import setjmp
 from libc.sys.select import (
     FD_CLR,
@@ -17,7 +18,7 @@ from libc.sys.select import (
 from libc.sys.stat import Stat, stat
 from libc.sys.statvfs import Statvfs, statvfs
 from libc.sys.utsname import Utsname, uname
-from libc.unistd import close, pipe, write
+from libc.unistd import close, pipe, read, write
 from libc.utils import null_ptr, string_to_char_ptr
 
 
@@ -169,6 +170,31 @@ def test_errno() raises:
 
     set_errno(0)
     assert_equal(get_errno(), 0, "set_errno cleared it")
+
+    # The errno whose number differs between the platforms that is easy to
+    # provoke: a non-blocking read of an empty pipe. Linux says 11 and Darwin
+    # says 35, so this is what keeps `EAGAIN` honest on both, and a value
+    # that is not the platform's own fails here rather than in a caller's
+    # error handling.
+    var fds = unsafe_alloc[Int32](2)
+    assert_equal(pipe(fds), 0, "pipe succeeded")
+    assert_equal(
+        fcntl(fds.unsafe_offset(0)[], F_SETFL, O_NONBLOCK),
+        0,
+        "the read end is non-blocking",
+    )
+    var one = unsafe_alloc[UInt8](1)
+    set_errno(0)
+    assert_equal(
+        read(fds.unsafe_offset(0)[], one, 1),
+        -1,
+        "reading an empty non-blocking pipe fails",
+    )
+    assert_equal(
+        Int(get_errno()), Int(EAGAIN), "and says EAGAIN, this platform's number"
+    )
+    fds.unsafe_free()
+    one.unsafe_free()
 
     missing.unsafe_free()
     buf.unsafe_free()
