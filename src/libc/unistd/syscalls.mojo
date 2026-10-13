@@ -499,7 +499,10 @@ def lseek(fd: Int32, offset: Int64, whence: Int32) -> Int64:
         whence: Whence.
 
     Returns:
-        0 on success, -1 on error.
+        The offset the file now sits at, in bytes from its start, or -1 on
+        failure with `errno` set. What comes back is where this landed and
+        not whether it landed, so anything wanting to know where the file
+        was has to ask before asking this to move it.
     """
     return external_call["lseek", Int64, Int32, Int64, Int32](
         fd, offset, whence
@@ -542,7 +545,10 @@ def pread(fd: Int32, buf: c_ptr[UInt8], count: UInt64, offset: Int64) -> Int:
         offset: Offset.
 
     Returns:
-        0 on success, -1 on error.
+        How many bytes were read, which is short only at the end of the
+        file, or -1 on failure with `errno` set. Where the file position
+        was is left alone either way, which is the whole difference
+        between this and reading after `lseek`.
     """
     return external_call["pread", Int, Int32, c_ptr[UInt8], UInt64, Int64](
         fd, buf, count, offset
@@ -567,7 +573,10 @@ def pwrite(fd: Int32, buf: c_ptr[UInt8], count: UInt64, offset: Int64) -> Int:
         offset: Offset.
 
     Returns:
-        0 on success, -1 on error.
+        How many bytes were written, which can be short for the reasons
+        `write` lists, or -1 on failure with `errno` set. Where the file
+        position was is left alone either way, so writing the same offset
+        twice is not what happens next.
     """
     return external_call["pwrite", Int, Int32, c_ptr[UInt8], UInt64, Int64](
         fd, buf, count, offset
@@ -590,7 +599,11 @@ def read(fd: Int32, buf: c_ptr[UInt8], count: UInt32) -> Int:
         count: Number of bytes to read.
 
     Returns:
-        0 on success, -1 on error.
+        How many bytes were read, or -1 on failure with `errno` set. Fewer
+        than were asked for is ordinary rather than failure: a pipe hands
+        over whatever has arrived so far and a terminal stops at the end
+        of a line, so asking for 4096 and getting 11 is a read that
+        worked. Zero is the end of the file, and -1 is the only failure.
     """
     return external_call["read", Int, Int, c_ptr[NoneType], Int](
         Int(fd), buf.unsafe_bitcast[NoneType](), Int(count)
@@ -613,7 +626,11 @@ def readlink(path: c_ptr[UInt8], buf: c_ptr[UInt8], size: UInt64) -> Int:
         size: Size of the buffer.
 
     Returns:
-        0 on success, -1 on error.
+        How many bytes went into the buffer, or -1 on failure with
+        `errno` set. It puts down the target and stops there: there is no
+        NUL at the end and no room made for one, so reading the buffer as
+        a string runs on into whatever bytes follow it. Take how many it
+        says and use that much, or leave a byte spare and put one there.
     """
     return external_call["readlink", Int, c_ptr[UInt8], c_ptr[UInt8], UInt64](
         path, buf, size
@@ -639,7 +656,10 @@ def readlinkat(
         size: Size of the buffer.
 
     Returns:
-        0 on success, -1 on error.
+        How many bytes went into the buffer, or -1 on failure with
+        `errno` set, with the same absence of a NUL that `readlink`
+        leaves: how much came back is how much of the buffer means
+        anything, and treating it as a string reads past the end of that.
     """
     return external_call[
         "readlinkat", Int, Int32, c_ptr[UInt8], c_ptr[UInt8], UInt64
@@ -839,7 +859,12 @@ def write(fd: Int32, buf: c_ptr[UInt8], count: UInt32) -> Int:
         count: Number of bytes to write.
 
     Returns:
-        0 on success, -1 on error.
+        How many bytes were written, or -1 on failure with `errno` set.
+        Fewer than were handed over is allowed — a pipe whose buffer has
+        filled, a signal arriving part way through, a disk with nothing
+        left on it — and whatever did not go out stays the caller's to
+        send again. Testing this against -1 and not against how much was
+        handed over is how the tail gets quietly lost.
     """
     return external_call["write", Int, Int, c_ptr[NoneType], Int](
         Int(fd), buf.unsafe_bitcast[NoneType](), Int(count)
@@ -862,7 +887,11 @@ def writev(fd: Int32, iov: c_ptr[UInt8], iovcnt: Int32) -> Int:
         iovcnt: Number of buffers to write.
 
     Returns:
-        0 on success, -1 on error.
+        How many bytes went out in total across all of the buffers, or -1
+        on failure with `errno` set. Fewer than they come to means it
+        stopped part way, and the stopping need not have been on a
+        boundary: the rest lives at some offset inside one of them rather
+        than at the front of the next.
     """
     return external_call["writev", Int, Int32, c_ptr[UInt8], Int32](
         fd, iov, iovcnt
