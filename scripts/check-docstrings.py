@@ -62,7 +62,7 @@ TYPE_SUFFIXES = frozenset({"", "f", "l", "q", "f16", "f32", "f64", "f128"})
 SRC = ROOT / "src" / "libc"
 
 MENTIONED = re.compile(r"\b([A-Z][A-Z0-9_]{3,})\b")
-CALLED = re.compile(r"`([a-z_][a-z0-9_]{2,})\(\)`")
+CALLED = re.compile(r"`([A-Za-z_]\w*)\(\w*\)`")
 
 # English, and things belonging to the manual rather than to this package.
 # `setbuf` has to be able to write that `XXXXXX` belongs in a template, and
@@ -72,7 +72,7 @@ PROSE = frozenset({
     "IEEE754", "XXXXXX", "PATH", "TODO", "NOTE", "POSIX", "ASCII", "UTF",
     "GNU", "BSD", "LINUX", "MACOS", "DARWIN", "ANSI", "MAP_FAILED",
     "LC_GLOBAL_LOCALE", "LC_ALL_MASK", "FE_DFL_ENV", "TCP", "UDP", "IPV6",
-    "HTTP", "HTTPS", "NULL",
+    "HTTP", "HTTPS", "NULL", "sizeof", "size_t",
 })
 # `CPU_*` and its like are a whole family being pointed at, not one thing
 # promised, so they are read differently from `IPPROTO_TCP`.
