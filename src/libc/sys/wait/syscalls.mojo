@@ -4,8 +4,16 @@
 # github: github.com/llango
 # ----------------------------------
 from std.ffi import external_call
+from std.sys import CompilationTarget
 from std.memory import Pointer
 from libc.constant import c_ptr
+
+
+# What `waitpid` is asked for. `WNOHANG` and `WUNTRACED` are the same
+# number on both platforms; `WCONTINUED` is 8 here and 16 there.
+comptime WNOHANG: Int32 = 1
+comptime WUNTRACED: Int32 = 2
+comptime WCONTINUED: Int32 = 16 if CompilationTarget.is_macos() else 8
 
 
 struct rusage(TrivialRegisterPassable):
