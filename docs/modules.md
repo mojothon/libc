@@ -7,41 +7,41 @@ the bottom.
 | Module | C header | Symbols |
 | --- | --- | --- |
 | `libc.math` | `<math.h>` | 115 |
-| `libc.stdlib` | `<stdlib.h>` | 37 |
+| `libc.stdlib` | `<stdlib.h>` | 45 |
 | `libc.float` | `<float.h>` | 30 |
-| `libc.unistd` | `<unistd.h>` | 56 |
+| `libc.unistd` | `<unistd.h>` | 57 |
 | `libc.file` | `<stdio.h>` file operations | 40 |
 | `libc.ctype` | `<ctype.h>` | 29 |
-| `libc.sys.socket` | `<sys/socket.h>` | 19 |
+| `libc.sys.socket` | `<sys/socket.h>` | 21 |
 | `libc.sys.stat` | `<sys/stat.h>` | 17 |
-| `libc.time` | `<time.h>` | 29 |
+| `libc.time` | `<time.h>` | 30 |
 | `libc.fenv` | `<fenv.h>` | 26 |
 | `libc.sys.mman` | `<sys/mman.h>` | 15 |
 | `libc.pthread` | `<pthread.h>` | 14 |
 | `libc.string` | `<string.h>` | 39 |
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 27 |
 | `libc.complex` | `<complex.h>` | 46 |
-| `libc.sched` | `<sched.h>` | 13 |
-| `libc.signal` | `<signal.h>` | 9 |
+| `libc.sched` | `<sched.h>` | 16 |
+| `libc.signal` | `<signal.h>` | 35 |
 | `libc.locale` | `<locale.h>` | 16 |
 | `libc.sys.epoll` | `<sys/epoll.h>` | 8 |
 | `libc.search` | `<search.h>` | 9 |
 | `libc.dirent` | `<dirent.h>` | 12 |
-| `libc.sys.wait` | `<sys/wait.h>` | 4 |
+| `libc.sys.wait` | `<sys/wait.h>` | 7 |
 | `libc.inttypes` | `<inttypes.h>` | 7 |
-| `libc.sys.resource` | `<sys/resource.h>` | 5 |
+| `libc.sys.resource` | `<sys/resource.h>` | 7 |
 | `libc.network` | `<arpa/inet.h>` byte order helpers | 4 |
 | `libc.logging` | `<syslog.h>` | 4 |
-| `libc.fcntl` | `<fcntl.h>` | 7 |
-| `libc.dlfcn` | `<dlfcn.h>` | 4 |
+| `libc.fcntl` | `<fcntl.h>` | 12 |
+| `libc.dlfcn` | `<dlfcn.h>` | 7 |
 | `libc.wchar` | `<wchar.h>` | 27 |
 | `libc.sys.statvfs` | `<sys/statvfs.h>` | 3 |
 | `libc.sys.select` | `<sys/select.h>` | 9 |
 | `libc.setjmp` | `<setjmp.h>` | 2 |
 | `libc.sys.utsname` | `<sys/utsname.h>` | 2 |
 | `libc.sys.sendfile` | `<sys/sendfile.h>` | 1 |
-| `libc.sys.random` | `<sys/random.h>` | 1 |
-| `libc.sys.prctl` | `<sys/prctl.h>` | 1 |
+| `libc.sys.random` | `<sys/random.h>` | 2 |
+| `libc.sys.prctl` | `<sys/prctl.h>` | 19 |
 | `libc.sys.auxv` | `<sys/auxv.h>` | 1 |
 | `libc.errno` | `<errno.h>` | 2 |
 | `libc.constant` | C type aliases and constants | — |
