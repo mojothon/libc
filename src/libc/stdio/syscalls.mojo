@@ -18,6 +18,11 @@ from std.ffi import external_call
 from libc.constant import c_char, c_int, c_ptr, c_size_t, c_void
 from libc.file import FILE
 
+# How big the buffer is that `setvbuf` and `setbuf` are handed. Every C
+# library on these two platforms says 8192, which is why nothing here has
+# to ask which one it is on.
+comptime BUFSIZ = 8192
+
 
 def fwrite(
     ptr: c_ptr[c_void], size: c_size_t, nmemb: c_size_t, stream: c_ptr[FILE]

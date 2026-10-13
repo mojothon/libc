@@ -19,7 +19,7 @@ the bottom.
 | `libc.sys.mman` | `<sys/mman.h>` | 15 |
 | `libc.pthread` | `<pthread.h>` | 14 |
 | `libc.string` | `<string.h>` | 39 |
-| `libc.stdio` | `<stdio.h>` output, buffering, pipes | 27 |
+| `libc.stdio` | `<stdio.h>` output, buffering, pipes | 28 |
 | `libc.complex` | `<complex.h>` | 46 |
 | `libc.sched` | `<sched.h>` | 16 |
 | `libc.signal` | `<signal.h>` | 40 |
@@ -31,7 +31,7 @@ the bottom.
 | `libc.inttypes` | `<inttypes.h>` | 7 |
 | `libc.sys.resource` | `<sys/resource.h>` | 13 |
 | `libc.network` | `<arpa/inet.h>` byte order helpers | 4 |
-| `libc.logging` | `<syslog.h>` | 4 |
+| `libc.logging` | `<syslog.h>` | 5 |
 | `libc.fcntl` | `<fcntl.h>` | 49 |
 | `libc.dlfcn` | `<dlfcn.h>` | 7 |
 | `libc.wchar` | `<wchar.h>` | 27 |
