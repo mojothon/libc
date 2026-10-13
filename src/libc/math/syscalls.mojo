@@ -280,50 +280,296 @@ def fmod(x: Float64, y: Float64) -> Float64:
 
 
 def remainderf(x: Float32, y: Float32) -> Float32:
+    """C library <math.h> function `remainderf`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/remainder.3.html
+
+    Prototype:
+        float remainderf(float x, float y)
+
+    Description:
+        The remainder of dividing x by y, which is x - n * y for the integer n
+            nearest to x / y, the even one of the two when x / y sits exactly
+            halfway between them. Rounding to the nearest is what sets it apart
+            from `fmod`, which truncates: this one can answer with a negative
+            number, and `fmod` cannot when x is positive.
+
+    Arguments:
+        x: The number being divided.
+        y: What it is divided by.
+
+    Return value:
+        The remainder, which is 0 or has the sign of x - n * y, or NaN when y is
+            0 or either one is not a number.
+    """
     return external_call["remainderf", Float32, Float32, Float32](x, y)
 
 
 def remainder(x: Float64, y: Float64) -> Float64:
+    """C library <math.h> function `remainder`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/remainder.3.html
+
+    Prototype:
+        double remainder(double x, double y)
+
+    Description:
+        The remainder of dividing x by y, which is x - n * y for the integer n
+            nearest to x / y, the even one of the two when x / y sits exactly
+            halfway between them. Rounding to the nearest is what sets it apart
+            from `fmod`, which truncates: this one can answer with a negative
+            number, and `fmod` cannot when x is positive.
+
+    Arguments:
+        x: The number being divided.
+        y: What it is divided by.
+
+    Return value:
+        The remainder, which is 0 or has the sign of x - n * y, or NaN when y is
+            0 or either one is not a number.
+    """
     return external_call["remainder", Float64, Float64, Float64](x, y)
 
 
 def remquof(x: Float32, y: Float32, quo: c_ptr[Int32]) -> Float32:
+    """C library <math.h> function `remquof`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/remquo.3.html
+
+    Prototype:
+        float remquof(float x, float y, int *quo)
+
+    Description:
+        The same remainder as `remainderf`, and the sign of x / y with at least
+            its low three bits written where quo points, which is what the
+            `remquo` family is for: it hands back the part of the quotient the
+            remainder throws away.
+
+    Arguments:
+        x: The number being divided.
+        y: What it is divided by.
+        quo: Where to write the sign of x / y and those low bits. A null pointer
+            asks for nothing to be written, which is
+            `libc.utils.null_ptr[Int32]()` spelled the way Mojo needs.
+
+    Return value:
+        The remainder, or NaN when y is 0 or either one is not a number. What
+            quo got is not part of the answer handed back.
+    """
     return external_call["remquof", Float32, Float32, Float32, c_ptr[Int32]](
         x, y, quo
     )
 
 
 def remquo(x: Float64, y: Float64, quo: c_ptr[Int32]) -> Float64:
+    """C library <math.h> function `remquo`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/remquo.3.html
+
+    Prototype:
+        double remquo(double x, double y, int *quo)
+
+    Description:
+        The same remainder as `remainder`, and the sign of x / y with at least
+            its low three bits written where quo points, which is what the
+            `remquo` family is for: it hands back the part of the quotient the
+            remainder throws away.
+
+    Arguments:
+        x: The number being divided.
+        y: What it is divided by.
+        quo: Where to write the sign of x / y and those low bits. A null pointer
+            asks for nothing to be written, which is
+            `libc.utils.null_ptr[Int32]()` spelled the way Mojo needs.
+
+    Return value:
+        The remainder, or NaN when y is 0 or either one is not a number. What
+            quo got is not part of the answer handed back.
+    """
     return external_call["remquo", Float64, Float64, Float64, c_ptr[Int32]](
         x, y, quo
     )
 
 
 def fmaf(x: Float32, y: Float32, z: Float32) -> Float32:
+    """C library <math.h> function `fmaf`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/fma.3.html
+
+    Prototype:
+        float fmaf(float x, float y, float z)
+
+    Description:
+        (x * y) + z rounded once, where doing it in two steps would round twice:
+            the product is not rounded before z is added to it. That single
+            rounding is the whole reason these exist, and on hardware that has
+            the instruction it is one instruction.
+
+    Arguments:
+        x: The first of the two being multiplied.
+        y: The second of them.
+        z: What is added to the product before it is rounded.
+
+    Return value:
+        (x * y) + z with one rounding, which can differ in the last place from
+            `x * y + z` written out.
+    """
     return external_call["fmaf", Float32, Float32, Float32, Float32](x, y, z)
 
 
 def fma(x: Float64, y: Float64, z: Float64) -> Float64:
+    """C library <math.h> function `fma`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/fma.3.html
+
+    Prototype:
+        double fma(double x, double y, double z)
+
+    Description:
+        (x * y) + z rounded once, where doing it in two steps would round twice:
+            the product is not rounded before z is added to it. That single
+            rounding is the whole reason these exist, and on hardware that has
+            the instruction it is one instruction.
+
+    Arguments:
+        x: The first of the two being multiplied.
+        y: The second of them.
+        z: What is added to the product before it is rounded.
+
+    Return value:
+        (x * y) + z with one rounding, which can differ in the last place from
+            `x * y + z` written out.
+    """
     return external_call["fma", Float64, Float64, Float64, Float64](x, y, z)
 
 
 def fmaxf(x: Float32, y: Float32) -> Float32:
+    """C library <math.h> function `fmaxf`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/fmax.3.html
+
+    Prototype:
+        float fmaxf(float x, float y)
+
+    Description:
+        The larger of the two. When one of them is not a number the other comes
+            back: these do not pass NaN along the way `+` and the comparisons
+            do.
+
+    Arguments:
+        x: One of the two.
+        y: The other.
+
+    Return value:
+        The larger one, or the other number when one of them is NaN, or NaN when
+            both are.
+    """
     return external_call["fmaxf", Float32, Float32, Float32](x, y)
 
 
 def fmax(x: Float64, y: Float64) -> Float64:
+    """C library <math.h> function `fmax`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/fmax.3.html
+
+    Prototype:
+        double fmax(double x, double y)
+
+    Description:
+        The larger of the two. When one of them is not a number the other comes
+            back: these do not pass NaN along the way `+` and the comparisons
+            do.
+
+    Arguments:
+        x: One of the two.
+        y: The other.
+
+    Return value:
+        The larger one, or the other number when one of them is NaN, or NaN when
+            both are.
+    """
     return external_call["fmax", Float64, Float64, Float64](x, y)
 
 
 def fminf(x: Float32, y: Float32) -> Float32:
+    """C library <math.h> function `fminf`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/fmin.3.html
+
+    Prototype:
+        float fminf(float x, float y)
+
+    Description:
+        The smaller of the two. When one of them is not a number the other comes
+            back: these do not pass NaN along the way `+` and the comparisons
+            do.
+
+    Arguments:
+        x: One of the two.
+        y: The other.
+
+    Return value:
+        The smaller one, or the other number when one of them is NaN, or NaN
+            when both are.
+    """
     return external_call["fminf", Float32, Float32, Float32](x, y)
 
 
 def fmin(x: Float64, y: Float64) -> Float64:
+    """C library <math.h> function `fmin`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/fmin.3.html
+
+    Prototype:
+        double fmin(double x, double y)
+
+    Description:
+        The smaller of the two. When one of them is not a number the other comes
+            back: these do not pass NaN along the way `+` and the comparisons
+            do.
+
+    Arguments:
+        x: One of the two.
+        y: The other.
+
+    Return value:
+        The smaller one, or the other number when one of them is NaN, or NaN
+            when both are.
+    """
     return external_call["fmin", Float64, Float64, Float64](x, y)
 
 
 def fdimf(x: Float32, y: Float32) -> Float32:
+    """C library <math.h> function `fdimf`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/fdim.3.html
+
+    Prototype:
+        float fdimf(float x, float y)
+
+    Description:
+        The positive difference of x and y: x - y when that is positive, and 0
+            when it is not.
+
+    Arguments:
+        x: The minuend.
+        y: The subtrahend.
+
+    Return value:
+        The positive difference, which is +0 rather than -0 when x is not
+            greater than y. NaN comes back when either one is not a number.
+    """
     return external_call["fdimf", Float32, Float32, Float32](x, y)
 
 
@@ -351,10 +597,52 @@ def fdim(x: Float64, y: Float64) -> Float64:
 
 
 def nanf(tag: c_ptr[UInt8]) -> Float32:
+    """C library <math.h> function `nanf`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/nan.3.html
+
+    Prototype:
+        float nanf(const char *tag)
+
+    Description:
+        A quiet NaN carrying the payload that tag names. What a tag may say is
+            up to the implementation, and one it cannot read, an empty one
+            included, gets a plain quiet NaN.
+
+    Arguments:
+        tag: The payload, as a tag string: a hexadecimal number such as 0x123,
+            or empty for none at all.
+
+    Return value:
+        A quiet NaN, which is a number that is not one: every comparison it
+            takes part in is false, including the one against itself.
+    """
     return external_call["nanf", Float32, c_ptr[UInt8]](tag)
 
 
 def nan(tag: c_ptr[UInt8]) -> Float64:
+    """C library <math.h> function `nan`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/nan.3.html
+
+    Prototype:
+        double nan(const char *tag)
+
+    Description:
+        A quiet NaN carrying the payload that tag names. What a tag may say is
+            up to the implementation, and one it cannot read, an empty one
+            included, gets a plain quiet NaN.
+
+    Arguments:
+        tag: The payload, as a tag string: a hexadecimal number such as 0x123,
+            or empty for none at all.
+
+    Return value:
+        A quiet NaN, which is a number that is not one: every comparison it
+            takes part in is false, including the one against itself.
+    """
     return external_call["nan", Float64, c_ptr[UInt8]](tag)
 
 
