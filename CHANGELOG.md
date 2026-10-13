@@ -3,6 +3,57 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.0] - 2026-10-13
+
+### Changed
+
+- **Breaking.** `libc.sched.timespec.tv_sec` is 64 bits wide now, which is
+  what C's is and what the three other `struct timespec` in this package
+  already wrote. It was `Int32`, and the size came out 16 either way, the
+  padding hiding it, which is why nothing said a word: what C writes
+  there is eight bytes and a 32-bit field reads the low half of them, so
+  a second past 2038 would have come back as whatever its low 32 bits
+  are. It has a constructor now, as those do, and the layout test holds
+  the width of the field and not only the size of the struct.
+
+### Fixed
+
+- Most of this one is what the docstrings said, which in four packages
+  was not so:
+  - `libc.sched`: `sched_getscheduler` described a `param` argument it
+    has not got, and said the answer came back in it; it and
+    `sched_rr_get_interval` said the answer is written into an argument,
+    where both answer 0 or -1 themselves; two of them said `sched_param`
+    has a `sched_slice` field, which it does not have on Linux or
+    anywhere else; `sched_setaffinity` said a null `cpuset` clears the
+    affinity, where Linux answers `EFAULT`. The four that take a policy
+    say which number each one is, no `SCHED_*` being bound, and the two
+    that take a CPU set say the bits are the caller's to set, there being
+    no `CPU_*` macros here either.
+  - `libc.signal`: nine said nothing about what they are given and eight
+    nothing about what comes back. They say now that a handler is a C
+    function pointer and Mojo cannot make one, so `signal`, `sigaction`
+    and `sigaltstack` cannot be given a handler of one's own, and that
+    there is no `struct sigaction` and no `stack_t` here either, so what
+    goes in those arguments is bytes. A `sigset_t` is only a block with a
+    bit per signal, so the four that take one can be had as they stand.
+  - `libc.utils`: `string_to_char_ptr` said it takes ASCII, where it
+    copies the UTF-8 bytes across as they are, and `char_ptr_to_string`
+    said nothing about borrowing the buffer it measures rather than
+    copying out of it, nor about what a buffer that is not UTF-8 gives.
+  - `libc.sys.prctl`: the list of options had `PR_SET_TSC` in it four
+    times and two of the numbers wrong; it names each one once now, gives
+    the numbers the header has, and says `prctl` is Linux's own and does
+    not link on Darwin.
+- `libc.dirent`: `opendir` and `readdir` had nothing written down at all,
+  which is odd beside the four added around them. `readdir` now says that
+  a null from it is one answer to two questions, the end of the stream and
+  something gone wrong, and `errno` is not cleared on the way out, so the
+  two cannot be told apart unless it is cleared first.
+- `libc.ctype`: `toascii` was the last of the twenty-nine with no
+  docstring. It masks off all but the low seven bits and asks nothing
+  about what is left, so 255 comes back as 127.
+
 ## [0.8.0] - 2026-10-13
 
 ### Added
