@@ -4,12 +4,14 @@ from std.testing import assert_equal, assert_true
 
 from libc.constant import c_ptr
 from libc.pthread import pthread_attr_t, pthread_condattr_t
+from libc.sched import timespec as sched_timespec
 from libc.sys.resource import Rlimit, getrlimit, getrusage
 from libc.sys.socket import socketaddr
 from libc.sys.stat import Stat, fstat, stat, timespec, timeval
 from libc.sys.wait import rusage
 
 from libc.time import tm
+from libc.time import timespec as time_timespec
 from libc.utils import string_to_char_ptr
 from libc.wchar import mbstate_t
 
@@ -36,6 +38,14 @@ def test_sizes() raises:
     assert_equal(stride[Rlimit](), 16, "struct rlimit is 16 bytes")
     assert_equal(stride[timeval](), 16, "struct timeval is 16 bytes")
     assert_equal(stride[timespec](), 16, "struct timespec is 16 bytes")
+
+    # Three packages have their own `struct timespec`, and C has one width.
+    assert_equal(
+        stride[sched_timespec](), 16, "libc.sched's timespec is 16 bytes"
+    )
+    assert_equal(
+        stride[time_timespec](), 16, "libc.time's timespec is 16 bytes"
+    )
     assert_equal(stride[tm](), 56, "struct tm is 56 bytes")
     assert_equal(stride[socketaddr](), 16, "struct sockaddr is 16 bytes")
 
@@ -110,8 +120,20 @@ def test_rusage_and_rlimit() raises:
     limit.unsafe_free()
 
 
+def test_sched_timespec_seconds_are_wide_enough() raises:
+    # `sched_rr_get_interval` fills one of these in, and C writes eight bytes
+    # at `tv_sec`. A 32-bit field there reads back the low half of whatever
+    # was written and says nothing about it.
+    var p = unsafe_alloc[sched_timespec](1)
+    p[] = sched_timespec()
+    p[].tv_sec = 1 << 40
+    assert_equal(p[].tv_sec, 1 << 40, "tv_sec holds a second past 2038")
+    p.unsafe_free()
+
+
 def main() raises:
     test_sizes()
+    test_sched_timespec_seconds_are_wide_enough()
     test_stat_reads_a_real_file()
     test_stat_on_a_regular_file()
     test_rusage_and_rlimit()

@@ -13,8 +13,31 @@ struct sched_param(TrivialRegisterPassable):
 
 
 struct timespec(TrivialRegisterPassable):
-    var tv_sec: Int32
+    """A C `struct timespec`: seconds plus nanoseconds.
+
+    `tv_sec` is 64 bits wide, which is what C's `time_t` is here and what
+    the other packages in this one write; it was 32 here once, and a
+    `struct timespec` whose seconds field is too short is one a call
+    writes across the end of.
+    """
+
+    var tv_sec: Int64
     var tv_nsec: Int64
+
+    def __init__(out self):
+        """Zeroes both members."""
+        self.tv_sec = 0
+        self.tv_nsec = 0
+
+    def __init__(out self, sec: Int64, nsec: Int64):
+        """Builds `sec` seconds plus `nsec` nanoseconds.
+
+        Args:
+            sec: Whole seconds.
+            nsec: Nanoseconds, normally below 1_000_000_000.
+        """
+        self.tv_sec = sec
+        self.tv_nsec = nsec
 
 
 def sched_get_priority_max(policy: Int32) -> Int32:
