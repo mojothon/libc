@@ -10,6 +10,7 @@
 # comparison callback, which has no safe equivalent in Mojo yet.
 # ----------------------------------
 from std.ffi import external_call
+from std.sys import CompilationTarget
 from std.memory import unsafe_stack_allocation
 
 from libc.constant import (
@@ -26,6 +27,21 @@ from libc.constant import (
     c_ulonglong,
     c_void,
 )
+
+# `rand`'s ceiling, and the widest values the `strto*` family saturate at.
+# `long` is 64 bits on both platforms, so these agree. The two `HUGE_*` are
+# infinity, written as a literal past what a float can hold, which is the
+# nearest Mojo has to a spelling for one.
+comptime RAND_MAX: Int32 = 2147483647
+comptime LONG_MAX: c_long = 9223372036854775807
+comptime LONG_MIN: c_long = -9223372036854775807 - 1
+comptime ULONG_MAX: c_ulong = 18446744073709551615
+comptime ULLONG_MAX: c_ulonglong = 18446744073709551615
+comptime HUGE_VAL: Float64 = Float64(1e400)
+comptime HUGE_VALF: Float32 = Float32(1e400)
+
+# How long a path `realpath` wants room for: 4096 here and 1024 there.
+comptime PATH_MAX: Int32 = 1024 if CompilationTarget.is_macos() else 4096
 
 
 # -------------------------------------------------------
