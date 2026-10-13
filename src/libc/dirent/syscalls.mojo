@@ -82,10 +82,56 @@ def closedir(arg: c_ptr[DIR]) -> Int32:
 
 
 def opendir(arg: c_ptr[c_char]) -> c_ptr[DIR]:
+    """Libc POSIX `opendir` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/opendir.3.html
+
+    Description:
+        Opens a directory stream for the directory at `arg`, sitting at
+        the first entry. The stream is what `readdir` walks and
+        `closedir` ends, and it has a descriptor of its own, so one
+        opened here wants closing here.
+
+    Args:
+        arg: The path of the directory to open.
+
+    Returns:
+        The stream, or null with `errno` set when it could not be opened:
+        a path that is not a directory gives `ENOTDIR`, one that is not
+        there `ENOENT`, and one that may not be read `EACCES`. `is_null`
+        from `libc.utils` is how to ask.
+    """
     return external_call["opendir", c_ptr[DIR], c_ptr[c_char]](arg)
 
 
 def readdir(arg: c_ptr[DIR]) -> c_ptr[dirent]:
+    """Libc POSIX `readdir` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/readdir.3.html
+
+    Description:
+        Reads the next entry from the stream and moves it along one. The
+        entries come back in the order the filesystem holds them, which
+        is not sorted and is not promised to be the same on the way
+        through a second time.
+
+    Args:
+        arg: The stream to read from, as `opendir` or `fdopendir` gave
+            it.
+
+    Returns:
+        The next entry, or null when there is none left, which is one
+        answer for two questions: it is how the stream says it is at the
+        end, and it is how it says it went wrong. `errno` is not cleared
+        on the way out, so the two cannot be told apart unless it is
+        cleared first. `is_null` from `libc.utils` is how to ask.
+
+        What it points at is a buffer the stream owns, so it is not the
+        caller's to free, and the next call overwrites it: take what is
+        wanted out of it before asking again.
+    """
     return external_call["readdir", c_ptr[dirent], c_ptr[DIR]](arg)
 
 
