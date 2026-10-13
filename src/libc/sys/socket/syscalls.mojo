@@ -4,9 +4,16 @@
 # github: github.com/llango
 # ----------------------------------
 from std.ffi import external_call
+from std.sys import CompilationTarget
 from std.memory import Pointer
 from std.utils.static_tuple import StaticTuple
 from libc.constant import c_ptr
+
+
+# What `accept4` is asked for, and both of them differ: SOCK_NONBLOCK is
+# 2048 here and 16384 there, SOCK_CLOEXEC 524288 here and 16777216 there.
+comptime SOCK_NONBLOCK: Int32 = 16384 if CompilationTarget.is_macos() else 2048
+comptime SOCK_CLOEXEC: Int32 = 16777216 if CompilationTarget.is_macos() else 524288
 
 
 struct socketaddr(TrivialRegisterPassable):
