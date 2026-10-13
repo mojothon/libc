@@ -49,6 +49,11 @@ jobs:
       # the wrong size here is wrong differently on each platform.
       - name: Check struct sizes against the headers
         run: pixi run check-layouts
+      # Nothing else reads what these say they return, so a wrong one is a
+      # wrong one forever: fifteen here answered with bytes or a descriptor
+      # while promising 0 meant success, `fork` among them.
+      - name: Check documented return values against the headers
+        run: pixi run check-return-values
 
   conda-build:
     name: Conda package

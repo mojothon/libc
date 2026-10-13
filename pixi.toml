@@ -34,6 +34,15 @@ check-constants = "python3 scripts/check-constants.py"
 # agreed to accept. Bigger than C needs is fine, and half of them are, on
 # purpose: they hold whichever of the two platforms wanted most.
 check-layouts = "python3 scripts/check-layouts.py"
+# What a binding says it hands back is what everybody calling it tests, and
+# nothing else reads those lines: they are wishes written above each
+# `external_call`. Fifteen here once said "0 on success" for calls whose
+# answer was bytes, a descriptor, or which branch of `fork` you were now
+# in — and the ones that mislead are the ones that are nearly right, like
+# `write` stopping short, which is success having left part of what it was
+# given unsent. Two of the three rules are settled by asking gcc what the
+# return type is; the third cannot be, and carries a list of names instead.
+check-return-values = "python3 scripts/check-return-values.py"
 
 [feature.build.dependencies]
 rattler-build = ">=0.40,<0.41"
