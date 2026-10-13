@@ -170,9 +170,16 @@ def open(path: c_ptr[UInt8], oflag: Int32, mode: Int32) -> Int32:
         Two things follow, and both are why these call `openat` instead: two
         `external_call`s under the one name do not agree on a signature, and
         arm64 Darwin passes variadic arguments on the stack, which an external
-        call cannot express at all. `openat` takes the same arguments with the
-        directory descriptor in front, so `open(path, oflag, mode)` is
-        `openat(AT_FDCWD, path, oflag, mode)`, and that works everywhere.
+        call cannot express at all.
+
+        `openat` takes the same arguments with the directory descriptor in
+        front, so `open(path, oflag, mode)` is `openat(AT_FDCWD, path, oflag,
+        mode)`. That is an improvement and not a cure, `openat` being
+        variadic in the same way: on macOS the mode does not arrive, and a
+        file asked for with 0o644 came out as 0o150, which is no umask of
+        0o644 but a different number — whatever was on the stack where the
+        argument should have been. Ask with `fchmod` afterwards when the
+        permissions matter, which is what the test for this does.
     """
     return external_call["openat", Int32, Int32, c_ptr[UInt8], Int32, Int32](
         AT_FDCWD, path, oflag, mode
@@ -214,6 +221,11 @@ def openat(fd: Int32, path: c_ptr[UInt8], oflag: Int32, mode: Int32) -> Int32:
     Notes:
         [Reference](https://man7.org/linux/man-pages/man3/open.3p.html).
         Fn signature: `int openat(int fd, const char *path, int oflag, ...)`.
+
+        Variadic, and so is `open`, and the mode is the argument after the
+        named ones: on macOS it does not arrive, and the file comes out with
+        whatever was on the stack instead. `fchmod` afterwards is the way to
+        be sure of the permissions. `open` says more about this.
     """
     return external_call["openat", Int32, Int32, c_ptr[UInt8], Int32, Int32](
         fd, path, oflag, mode
