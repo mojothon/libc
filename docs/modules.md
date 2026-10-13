@@ -45,6 +45,7 @@ the bottom.
 | `libc.sys.prctl` | `<sys/prctl.h>` | 19 |
 | `libc.sys.auxv` | `<sys/auxv.h>` | 1 |
 | `libc.errno` | `<errno.h>` | 6 |
+| `libc.pwd` | `<pwd.h>` | 6 |
 | `libc.constant` | C type aliases and constants | — |
 | `libc.utils` | String/pointer helpers | — |
 
