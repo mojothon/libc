@@ -3,6 +3,7 @@ from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
 from libc.unistd import (
+    SC_PAGESIZE,
     alarm,
     chown,
     fchown,
@@ -15,13 +16,18 @@ from libc.unistd import (
     getpid,
     getuid,
     lchown,
+    getsid,
+    getpgid,
     nice,
     setegid,
+    setpgid,
     seteuid,
     sleep,
     pread,
     pwrite,
     swab,
+    sysconf,
+    usleep,
 )
 from libc.constant import O_RDWR, c_char, c_ptr
 from libc.file import close, fclose, fopen, open
@@ -154,6 +160,36 @@ def test_pread_and_pwrite_at_an_offset() raises:
     hello.unsafe_free()
 
 
+def test_sysconf() raises:
+    """`sysconf` and the page size, which two calls agree on."""
+    var page = sysconf(SC_PAGESIZE)
+    assert_true(page > 0, "sysconf knows how big a page is")
+    assert_equal(
+        Int(page), Int(getpagesize()), "and says the same as getpagesize"
+    )
+
+
+def test_usleep() raises:
+    """A sleep that is over before it is noticed."""
+    assert_equal(Int(usleep(1000)), 0, "a thousand microseconds pass")
+
+
+def test_process_groups() raises:
+    """Which group and which session this process is in.
+
+    `setsid` is not called here: it would make the test process a session
+    leader and leave it there, which is a thing to do to a process on
+    purpose and not by the way.
+    """
+    assert_true(getpgid(0) > 0, "this process is in a process group")
+    assert_true(getsid(0) > 0, "and in a session")
+    var moved = setpgid(0, 0)
+    assert_true(
+        moved == 0 or moved == -1,
+        "moving into its own group answers 0, or -1 with a reason in errno",
+    )
+
+
 def main() raises:
     test_getcwd()
     test_swab()
@@ -162,5 +198,8 @@ def main() raises:
     test_alarm_and_sleep()
     test_nice_and_pagesize()
     test_chown_on_what_is_not_there()
+    test_sysconf()
+    test_usleep()
+    test_process_groups()
     test_pread_and_pwrite_at_an_offset()
     print("test_unistd: ok")
