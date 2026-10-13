@@ -643,4 +643,22 @@ def toupper_l(c: Int32, loc: locale_t) -> Int32:
 
 @inline(.nodebug)
 def toascii(c: Int32) -> Int32:
+    """Libc POSIX `toascii` function.
+
+    Args:
+        c: The value to take the low seven bits of, which wants to be
+            either what an `unsigned char` holds or `EOF`, for the reason
+            the ones that only ask have.
+
+    Returns:
+        `c` with everything above the seventh bit dropped, which is all
+        it does: it does not ask whether the result is printable, or a
+        control character, or anything at all, so 0 comes back as 0 and
+        255 as 127, and a value that was already in the ASCII range comes
+        back unchanged.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/toascii.3.html).
+        Fn signature: `int toascii(int c)`.
+    """
     return external_call["toascii", Int32, Int32](c)
