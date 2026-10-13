@@ -305,6 +305,34 @@ def main() -> int:
                     f" ({', '.join(written)})"
                 )
 
+        # 4. A name written down that the package does not have, asked only
+        #    of the body: where Links, Prototypes and the introductory line
+        #    are not being read, because those are about C rather than
+        #    about what is being offered here. `socket` documented
+        #    `IPPROTO_*` for years before anything had that number in it,
+        #    and `setbuf` asked for a `BUFSIZ`-sized buffer that had never
+        #    been given a size.
+        said_lines = {line for heading in EXTERNAL_HEADINGS for _i, line in secs.get(heading, [])}
+        intro = doc.strip().splitlines()[0] if doc.strip() else ""
+        body = "\n".join(
+            line
+            for line in doc.splitlines()
+            if "http" not in line and line.strip() not in said_lines and line.strip() != intro.strip()
+        )
+        for sym in MENTIONED.findall(body) + CALLED.findall(body):
+            if (
+                sym in PROSE
+                or FAMILY.match(sym)
+                or sym in defined
+                or same_function(sym, name, symbol)
+            ):
+                continue
+            problems.append(
+                f"{where} is written about in terms of `{sym}`, which the"
+                " package does not bind: either bind it or say it without"
+                " promising it"
+            )
+
         # 2 and 3: a prototype copied from another function, or one that
         # says a different number of arguments than the binding passes.
         # How many it passes is asked rather than looked up in gcc's list,
