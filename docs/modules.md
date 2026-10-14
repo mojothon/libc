@@ -68,6 +68,23 @@ already own; see the note at the top of `src/libc/stdio/syscalls.mojo`.
 structs the ABI actually passes; `long double complex` is left out because
 Mojo has no 80-bit type.
 
+## The six no test asks for
+
+Six of the bindings are never called by a test, and cannot be:
+
+| Call | Why not |
+|---|---|
+| `libc.file.ioctl` | Variadic: which device it is and what it is asked to do both come after the arguments that can be given. |
+| `libc.file.scanf` | Reads from standard input, which a test cannot promise will ever come to an end. |
+| `libc.signal.sigsuspend` | Waits for a signal to arrive. A test that waits is a test that stops. |
+| `libc.signal.sigwait` | The same. Given a set with nothing in it, glibc waits rather than refusing. |
+| `libc.stdio.getchar` | Reads from standard input, as `scanf` does. |
+| `libc.unistd.pause` | Waits for a signal. |
+
+None of them is known to be broken; they are simply not asked. A
+test that hung, or that ended the process running it, would be
+worse than no test at all.
+
 ## API reference
 
 Generate the docstring reference for any module with the Mojo toolchain:
