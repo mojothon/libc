@@ -729,6 +729,16 @@ def main() -> int:
     for path, name, symbol, passed, mojo_return, mojo_params in bindings():
         where = f"{path}: {name}() calls {symbol}()"
 
+        # A Mojo `String` is not a thing C can be handed. Nothing says so
+        # until the call is actually made, and a call nobody makes is a
+        # call that is never compiled, so `shm_open` and `shm_unlink`
+        # each carried one for as long as nobody called them.
+        if any(a.strip() == "String" for a in mojo_params):
+            problems.append(
+                f"{where} with a Mojo `String`, which is not a type C can"
+                " be given; C is given the bytes"
+            )
+
         # `external_call` is told the type of each thing it is to pass along,
         # and a binding that leaves them out of the list still compiles: it
         # hands the arguments over without knowing what they are. Integers and
