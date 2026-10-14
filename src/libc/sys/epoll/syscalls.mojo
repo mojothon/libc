@@ -87,7 +87,7 @@ struct epoll_event:
         """The tag, read as a 64-bit value."""
         var value: UInt64 = 0
         for i in range(8):
-            value |= UInt64(self.data[i]) << UInt64(8 * (7 - i))
+            value |= UInt64(self.data[i]) << UInt64(8 * i)
         return value
 
     def data_fd(self) -> Int32:
@@ -177,8 +177,9 @@ def epoll_pwait2(
         epfd: The file descriptor of the epoll instance.
         events: The events to wait for.
         maxevents: The maximum number of events to wait for.
-        timeout: The timeout in milliseconds.
-        sigmask: The signal mask to apply to the wait.
+                timeout: How long to wait, given as a `timespec` and not as the
+            number of milliseconds `epoll_wait` and `epoll_pwait` take,
+            which is the whole of what sets this one apart from them. sigmask: The signal mask to apply to the wait.
 
     Description:
         Waits for events on the epoll instance.
