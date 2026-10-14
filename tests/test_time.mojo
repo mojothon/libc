@@ -2,23 +2,31 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
+from libc.constant import c_long, c_ptr
 from libc.time import (
     CLOCK_MONOTONIC,
     CLOCK_REALTIME,
     TIME_UTC,
+    asctime,
     asctime_r,
     clock,
     clock_getres,
     clock_gettime,
+    ctime,
     ctime_r,
     difftime,
+    gettimeofday,
+    gmtime,
     gmtime_r,
+    localtime,
     localtime_r,
+    mktime,
     nanosleep,
     strftime,
     strptime,
     time,
     timegm,
+    timelocal,
     timespec,
     timespec_get,
     tm,
@@ -181,6 +189,52 @@ def test_localtime() raises:
     tzset()
 
 
+def test_the_ones_that_keep_their_own_buffer() raises:
+    """Seven of these had never been called, and they are the ones that
+    hand back a pointer into a buffer libc keeps for itself, which is
+    why the ones ending in `_r` exist and why each of these is read
+    straight away rather than held.
+
+    They are asked about the epoch, because it is the one second that
+    reads the same wherever the clock is: `gmtime` reads in Greenwich,
+    so what it says about it does not depend on where this is running.
+    """
+    var zero = unsafe_alloc[c_long](1)
+    zero.unsafe_offset(0)[] = 0
+
+    var broken = gmtime(zero)
+    assert_true(Int(UInt(broken)) != 0, "gmtime breaks the epoch down")
+    var said = char_ptr_to_string(asctime(broken))
+    assert_true(said.startswith("Thu Jan  1"), "and asctime reads it back out")
+    assert_true(said.endswith("1970\n"), "in nineteen seventy")
+
+    # `ctime` reads in the local time, so what it says about the epoch
+    # depends on where this is; only its shape is being asked about.
+    var local_said = char_ptr_to_string(ctime(zero))
+    assert_true(
+        local_said.endswith("\n"), "ctime ends its line as it always does"
+    )
+
+    var now = unsafe_alloc[c_long](1)
+    now.unsafe_offset(0)[] = 1700000000
+    var local = localtime(now)
+    assert_true(Int(UInt(local)) != 0, "localtime breaks a time down")
+    assert_equal(Int(mktime(local)), 1700000000, "and mktime puts it back")
+    assert_equal(Int(timelocal(local)), 1700000000, "as does timelocal")
+
+    var seconds = unsafe_alloc[Int64](2)
+    seconds.unsafe_offset(0)[] = 0
+    seconds.unsafe_offset(1)[] = 0
+    assert_equal(
+        gettimeofday(seconds, seconds.unsafe_offset(1)), 0, "gettimeofday"
+    )
+    assert_true(seconds.unsafe_offset(0)[] > 0, "and it says what time it is")
+
+    now.unsafe_free()
+    seconds.unsafe_free()
+    zero.unsafe_free()
+
+
 def main() raises:
     test_clock_and_time()
     test_utc_round_trip()
@@ -190,4 +244,5 @@ def main() raises:
     test_clocks()
     test_nanosleep()
     test_localtime()
+    test_the_ones_that_keep_their_own_buffer()
     print("test_time: ok")
