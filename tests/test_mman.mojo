@@ -1,10 +1,12 @@
 """Tests for the `libc.sys.mman` bindings, none of which had been called."""
 from std.memory.alloc import unsafe_alloc
+from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.fcntl import O_CREAT, O_RDWR
 from libc.constant import (
     MADV_WILLNEED,
+    MCL_CURRENT,
     MAP_ANONYMOUS,
     MAP_PRIVATE,
     MAP_SHARED,
@@ -16,11 +18,17 @@ from libc.constant import (
 from libc.sys.mman import (
     madvise,
     mincore,
+    mlock,
+    mlock2,
+    mlockall,
     mmap,
     mprotect,
     msync,
+    munlock,
+    munlockall,
     munmap,
     posix_madvise,
+    remap_file_pages,
     shm_open,
     shm_unlink,
 )
@@ -105,7 +113,70 @@ def test_shm_open_makes_an_object() raises:
     assert_equal(shm_unlink(name), 0, "and the name is taken away")
 
 
+def test_mlock_keeps_a_page_and_munlock_lets_it_go() raises:
+    """`mlock` asks that a piece of memory be kept in RAM rather than
+    written out to swap, and `munlock` takes the asking back. One
+    page is well inside what an ordinary process is allowed to lock,
+    that being a limit and not the whole of its memory.
+    """
+    comptime SIZE = 4096
+    comptime RW: Int32 = PROT_READ | PROT_WRITE
+    comptime PRIVATE_ANON: Int32 = MAP_PRIVATE | MAP_ANONYMOUS
+
+    var p = mmap(null_ptr[UInt8](), SIZE, RW, PRIVATE_ANON, -1, 0)
+    assert_true(Int(UInt(p)) > 0, "there is a page to lock")
+
+    assert_equal(mlock(p, SIZE), 0, "mlock keeps it in")
+    assert_equal(munlock(p, SIZE), 0, "and munlock lets it go")
+    _ = munmap(p, SIZE)
+
+
+def test_munlockall_takes_back_everything() raises:
+    """`mlockall` asks for the whole of the process to be kept in,
+    which is more than an ordinary process is usually allowed to ask
+    for, so whether it is granted is not asked here.
+
+    `munlockall` takes back whatever was locked before it, which is
+    nothing at all if the asking came to nothing — and that is why
+    it is the one of the two that can be counted on to answer 0.
+    """
+    _ = mlockall(MCL_CURRENT)
+    assert_equal(munlockall(), 0, "munlockall takes back whatever was locked")
+
+
+def test_the_two_that_are_linux_only() raises:
+    """`mlock2` is `mlock` with flags, one of which says not to bring
+    the pages in until they are touched. Given none, it is what
+    `mlock` is.
+
+    `remap_file_pages` moves pages about inside a mapping and has
+    been on its way out since 2.6.23: what is left of it is for
+    tmpfs and nothing else, so asked of an anonymous mapping it
+    refuses, and that is the answer asked for here.
+    """
+    comptime if not CompilationTarget.is_macos():
+        comptime SIZE = 4096
+        comptime RW: Int32 = PROT_READ | PROT_WRITE
+        comptime PRIVATE_ANON: Int32 = MAP_PRIVATE | MAP_ANONYMOUS
+
+        var p = mmap(null_ptr[UInt8](), SIZE, RW, PRIVATE_ANON, -1, 0)
+        assert_true(Int(UInt(p)) > 0, "there is a page to lock")
+
+        assert_equal(mlock2(p, SIZE, 0), 0, "mlock2 with no flags keeps it in")
+        assert_equal(munlock(p, SIZE), 0, "and munlock lets it go")
+
+        assert_equal(
+            remap_file_pages(p, SIZE, PROT_READ, 0, 0),
+            -1,
+            "remap_file_pages refuses an anonymous mapping",
+        )
+        _ = munmap(p, SIZE)
+
+
 def main() raises:
     test_mmap_hands_back_memory()
     test_shm_open_makes_an_object()
+    test_mlock_keeps_a_page_and_munlock_lets_it_go()
+    test_munlockall_takes_back_everything()
+    test_the_two_that_are_linux_only()
     print("test_mman: ok")
