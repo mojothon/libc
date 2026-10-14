@@ -307,7 +307,7 @@ struct msghdr:
     def msg_iovlen(self) -> UInt64:
         """How many pieces the array holds, an `int` on Darwin."""
         comptime if CompilationTarget.is_macos():
-            return UInt32(self._at(24) & 0xFFFFFFFF)
+            return UInt64(self._at(24) & 0xFFFFFFFF)
         else:
             return self._at(24)
 
@@ -326,7 +326,7 @@ struct msghdr:
     def msg_controllen(self) -> UInt64:
         """How much ancillary data there is."""
         comptime if CompilationTarget.is_macos():
-            return UInt32(self._at(40) & 0xFFFFFFFF)
+            return UInt64(self._at(40) & 0xFFFFFFFF)
         else:
             return self._at(40)
 

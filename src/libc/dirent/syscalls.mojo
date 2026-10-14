@@ -89,7 +89,7 @@ struct dirent:
 
     def type(self) -> UInt8:
         """The `d_type` file-type byte, on glibc and Darwin alike."""
-        return self._bytes[DIRENT_TYPE_OFFSET]
+        return self._byte(DIRENT_TYPE_OFFSET)
 
     def name(self) -> String:
         """The NUL terminated entry name as a Mojo `String`."""
