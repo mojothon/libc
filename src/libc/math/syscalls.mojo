@@ -1896,45 +1896,52 @@ def tgammaf(x: Float32) -> Float32:
 
 
 def gamma(x: Float64) -> Float64:
-    """C library <math.h> function `tgamma`.
+    """C library <math.h> function `gamma`.
 
     Link:
         https://man7.org/linux/man-pages/man3/gamma.3.html
 
     Prototype:
-        double tgamma(double x)
+        double gamma(double x)
 
     Description:
-        Computes the gamma function of x.
+        Computes the natural logarithm of the absolute value of the
+        gamma function of x. This is another name for `lgamma`, and it
+        is the older of the two: it called `tgamma` here for a while,
+        which is the gamma function itself and not its logarithm, and
+        which is a number nothing else about this call gives away.
 
     Arguments:
-        x: The value for which to compute the gamma function.
+        x: The value for which to compute the logarithm.
 
     Return value:
-        The gamma value. For finite values less than or equal to zero, this function returns nan.
+        The logarithm of the gamma value.
     """
-    return external_call["tgamma", Float64, Float64](x)
+    return external_call["lgamma", Float64, Float64](x)
 
 
 def gammaf(x: Float32) -> Float32:
-    """C library <math.h> function `tgammaf`.
+    """C library <math.h> function `gammaf`.
 
     Link:
         https://man7.org/linux/man-pages/man3/gamma.3.html
 
     Prototype:
-        float tgammaf(float x)
+        float gammaf(float x)
 
     Description:
-        Computes the gamma function of x.
+        Computes the natural logarithm of the absolute value of the
+        gamma function of x, as `gamma` does: another name for
+        `lgammaf`, and not `tgammaf`, which is the gamma function
+        itself.
 
     Arguments:
-        x: The value for which to compute the gamma function.
+        x: The value for which to compute the logarithm.
 
     Return value:
-        The gamma value. For finite values less than or equal to zero, this function returns nan.
+        The logarithm of the gamma value.
     """
-    return external_call["tgammaf", Float32, Float32](x)
+    return external_call["lgammaf", Float32, Float32](x)
 
 
 # ----------------------------------------------------

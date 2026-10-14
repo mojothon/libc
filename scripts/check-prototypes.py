@@ -69,10 +69,14 @@ HEADERS = [
 # A function is allowed to call a symbol C spells differently, but only
 # when that is the point of it, and the reason goes here.
 ALIASES: dict[str, str] = {
-    # `gamma` is the name SVID used for `tgamma`; C is free not to have the
-    # old one, and calling the real one is what the old name meant.
-    "gamma": "tgamma",
-    "gammaf": "tgammaf",
+    # `gamma` is the name SVID used, and what it named is the logarithm
+    # of the gamma function: it is `lgamma` under its old name, which is
+    # why `gamma(5)` answers 3.178 and not 24. `tgamma` is the gamma
+    # function itself, which is a different call altogether — and the
+    # one this binding used to make, saying `tgamma` in its notes while
+    # being called `gamma`, which is how it went unnoticed.
+    "gamma": "lgamma",
+    "gammaf": "lgammaf",
     # `raise` is already the name of a Mojo builtin, so the binding cannot
     # be called that.
     "craise": "raise",
