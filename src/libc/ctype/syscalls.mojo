@@ -458,6 +458,11 @@ def isascii_l(c: Int32, loc: locale_t) -> Int32:
     Notes:
         [Reference](https://man7.org/linux/man-pages/man3/isascii_l.3.html).
         Fn signature: `int isascii_l(int c, locale_t loc)`.
+    Notes:
+        Darwin and the other BSDs only. glibc exports no such symbol, so on
+        Linux the loader will not find it and this cannot be called at all.
+        `isascii` is the one that is there on both.
+
     """
     return external_call["isascii_l", Int32, Int32, locale_t](c, loc)
 

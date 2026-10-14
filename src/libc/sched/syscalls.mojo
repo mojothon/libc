@@ -144,6 +144,11 @@ def sched_getcpucount() -> Int32:
 
     Return Value:
         The number of CPUs in the system.
+    Notes:
+        Darwin and the other BSDs only. glibc declares this in <sched.h> but
+        exports no such symbol, there it is a macro over `sched_getaffinity`
+        and `CPU_COUNT`, so on Linux this cannot be called.
+
     """
     return external_call["sched_getcpucount", Int32]()
 
