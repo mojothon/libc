@@ -12,6 +12,10 @@ from libc.constant import c_int, c_long, c_ptr
 # Which knob `sysconf` is asked about: 30 here and 29 on Darwin. C spells
 # it `_SC_PAGESIZE`, and a leading underscore makes a name private to a Mojo
 # module, so it is `SC_PAGESIZE` here.
+# The number `syscall` takes for `getpid`. Linux numbers it 39 and
+# Darwin 20.
+comptime SYS_getpid: Int64 = 20 if CompilationTarget.is_macos() else 39
+
 comptime SC_PAGESIZE: Int32 = 29 if CompilationTarget.is_macos() else 30
 
 
