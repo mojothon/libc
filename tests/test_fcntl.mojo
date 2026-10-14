@@ -1,7 +1,7 @@
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import EEXIST
+from libc.constant import AT_FDCWD, EEXIST
 from libc.errno import errno_message, get_errno, set_errno
 from libc.sys.stat import Stat, fchmod, fstat
 from libc.fcntl import (
@@ -14,6 +14,7 @@ from libc.fcntl import (
     O_WRONLY,
     lockf,
     open,
+    openat,
 )
 from libc.unistd import close, unlink, write
 from libc.utils import string_to_char_ptr
@@ -90,7 +91,30 @@ def test_open_with_the_flags() raises:
     path.unsafe_free()
 
 
+def test_openat_opens_by_way_of_a_directory() raises:
+    """`openat` is `open` with the path taken as relative to a
+    directory rather than to wherever the process happens to be.
+    `AT_FDCWD` means wherever that is, which makes it `open` by
+    another name, and is what is given here, a directory to open
+    relative to being one more thing that could go wrong.
+
+    The one with a mode is the one that can make a file that is not
+    there yet, and is the one asked to make one.
+    """
+    var here = openat(Int32(AT_FDCWD), string_to_char_ptr("/tmp"), O_RDONLY)
+    assert_true(here >= 0, "openat opens what is there")
+    _ = close(here)
+
+    var path = string_to_char_ptr("/tmp/mojo_libc_openat")
+    var made = openat(Int32(AT_FDCWD), path, O_CREAT | O_WRONLY, 0o644)
+    assert_true(made >= 0, "and the one with a mode makes what is not")
+    _ = close(made)
+    _ = unlink(path)
+    path.unsafe_free()
+
+
 def main() raises:
     test_lockf_on_what_is_not_open()
     test_open_with_the_flags()
+    test_openat_opens_by_way_of_a_directory()
     print("test_fcntl: ok")
