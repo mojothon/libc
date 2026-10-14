@@ -5,6 +5,7 @@ from std.testing import assert_equal, assert_false, assert_true
 from libc.constant import AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR, c_ptr
 from libc.sys.socket import getsockopt, setsockopt, socket
 from libc.sys.stat import mkfifo
+from libc.time import timespec
 from libc.unistd import unlink
 from libc.setjmp import setjmp
 from libc.sys.select import (
@@ -14,6 +15,7 @@ from libc.sys.select import (
     FD_ZERO,
     Timeval,
     fd_set,
+    pselect,
     select,
 )
 from libc.sys.statvfs import Statvfs, statvfs
@@ -271,6 +273,65 @@ def test_socket_options() raises:
     _ = close(fd)
 
 
+def test_pselect_on_a_pipe() raises:
+    """`pselect` is `select` with the wait given as a `timespec`
+    rather than as a `timeval`, and with a signal mask to wear while
+    it waits. Given none, it has nothing to wear and waits as
+    `select` does.
+    """
+    var ends = unsafe_alloc[Int32](2)
+    assert_equal(pipe(ends), 0, "the pipe was made")
+    var reader = ends.unsafe_load(0)
+    var writer = ends.unsafe_load(1)
+
+    var fds = unsafe_alloc[fd_set](1)
+    fds[] = fd_set()
+    var none = unsafe_alloc[timespec](1)
+    none.unsafe_offset(0)[] = timespec(0, 0)
+
+    FD_ZERO(fds)
+    FD_SET(fds, reader)
+    assert_equal(
+        pselect(
+            reader + 1,
+            fds,
+            null_ptr[fd_set](),
+            null_ptr[fd_set](),
+            none,
+            null_ptr[NoneType](),
+        ),
+        0,
+        "an empty pipe is not ready to read",
+    )
+
+    var byte = unsafe_alloc[UInt8](1)
+    byte.unsafe_offset(0)[] = UInt8(65)
+    assert_equal(write(writer, byte, 1), 1, "one byte written")
+
+    FD_ZERO(fds)
+    FD_SET(fds, reader)
+    assert_equal(
+        pselect(
+            reader + 1,
+            fds,
+            null_ptr[fd_set](),
+            null_ptr[fd_set](),
+            none,
+            null_ptr[NoneType](),
+        ),
+        1,
+        "the pipe is ready now",
+    )
+    assert_true(FD_ISSET(fds, reader), "pselect left the bit set")
+
+    none.unsafe_free()
+    byte.unsafe_free()
+    fds.unsafe_free()
+    _ = close(reader)
+    _ = close(writer)
+    ends.unsafe_free()
+
+
 def main() raises:
     test_uname()
     test_fd_set()
@@ -280,4 +341,5 @@ def main() raises:
     test_setjmp_records()
     test_mkfifo()
     test_socket_options()
+    test_pselect_on_a_pipe()
     print("test_sys: ok")
