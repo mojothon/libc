@@ -9,7 +9,7 @@ the bottom.
 | `libc.math` | `<math.h>` | 115 |
 | `libc.stdlib` | `<stdlib.h>` | 45 |
 | `libc.float` | `<float.h>` | 30 |
-| `libc.unistd` | `<unistd.h>` | 64 |
+| `libc.unistd` | `<unistd.h>` | 65 |
 | `libc.file` | `<stdio.h>` file operations | 40 |
 | `libc.ctype` | `<ctype.h>` | 29 |
 | `libc.sys.socket` | `<sys/socket.h>` | 23 |
@@ -29,7 +29,7 @@ the bottom.
 | `libc.dirent` | `<dirent.h>` | 15 |
 | `libc.sys.wait` | `<sys/wait.h>` | 14 |
 | `libc.inttypes` | `<inttypes.h>` | 7 |
-| `libc.sys.resource` | `<sys/resource.h>` | 13 |
+| `libc.sys.resource` | `<sys/resource.h>` | 15 |
 | `libc.network` | `<arpa/inet.h>` byte order helpers | 4 |
 | `libc.logging` | `<syslog.h>` | 6 |
 | `libc.fcntl` | `<fcntl.h>` | 49 |

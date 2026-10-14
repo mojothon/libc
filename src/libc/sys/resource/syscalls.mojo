@@ -4,12 +4,18 @@
 # github: github.com/llango
 # ----------------------------------
 from std.ffi import external_call
+from std.sys import CompilationTarget
 from std.memory import Pointer
 from libc.constant import c_ptr
 from libc.sys.wait import rusage
 
 
 # Whose usage `getrusage` is asked about. The same on both platforms.
+# Which limit is meant. The two platforms number them differently:
+# Linux has RLIMIT_NOFILE at 7 and RLIMIT_AS at 9, Darwin at 8 and 5.
+comptime RLIMIT_NOFILE: Int32 = 8 if CompilationTarget.is_macos() else 7
+comptime RLIMIT_AS: Int32 = 5 if CompilationTarget.is_macos() else 9
+
 comptime RUSAGE_SELF: Int32 = 0
 comptime RUSAGE_CHILDREN: Int32 = -1
 
