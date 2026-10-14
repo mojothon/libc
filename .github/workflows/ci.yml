@@ -49,6 +49,11 @@ jobs:
       # the wrong size here is wrong differently on each platform.
       - name: Check struct sizes against the headers
         run: pixi run check-layouts
+      # A header can declare a symbol the library does not export, and the
+      # headers on both platforms do: the prototypes above cannot tell, so
+      # this asks `nm` what is actually there to be called.
+      - name: Check that every called symbol is exported
+        run: pixi run check-symbols
       # Nothing else reads what these say they return, so a wrong one is a
       # wrong one forever: fifteen here answered with bytes or a descriptor
       # while promising 0 meant success, `fork` among them.

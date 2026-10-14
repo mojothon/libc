@@ -34,6 +34,7 @@ check-constants = "python3 scripts/check-constants.py"
 # agreed to accept. Bigger than C needs is fine, and half of them are, on
 # purpose: they hold whichever of the two platforms wanted most.
 check-layouts = "python3 scripts/check-layouts.py"
+check-symbols = "python3 scripts/check-symbols.py"
 # What a binding says it hands back is what everybody calling it tests, and
 # nothing else reads those lines: they are wishes written above each
 # `external_call`. Fifteen here once said "0 on success" for calls whose
