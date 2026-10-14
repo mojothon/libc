@@ -3,7 +3,7 @@ from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
 from libc.fcntl import O_CREAT, O_RDONLY, open as open_with_mode
-from libc.constant import AT_FDCWD, SEEK_END, SEEK_SET
+from libc.constant import AT_FDCWD, c_ptr, SEEK_END, SEEK_SET
 from libc.sys.stat import Stat, fstat, stat
 from libc.unistd import (
     SC_PAGESIZE,
@@ -13,6 +13,9 @@ from libc.unistd import (
     chown,
     dup2,
     dup3,
+    execv,
+    execve,
+    execvp,
     fchdir,
     fchown,
     fchownat,
@@ -45,7 +48,9 @@ from libc.unistd import (
     readv,
     setegid,
     seteuid,
+    setgid,
     setpgid,
+    setuid,
     sleep,
     swab,
     symlinkat,
@@ -499,6 +504,38 @@ def test_syscall_by_number() raises:
     )
 
 
+def test_the_exec_family_refuses_what_is_not_there() raises:
+    """`execv`, `execve` and `execvp` replace the process with
+    another program, and only come back if they could not, which
+    makes a program that is not there the one thing they can safely
+    be given.
+
+    `execvp` is the one that goes and looks for the name rather
+    than being told a path, so it is given a bare name, that being
+    the shape it is for.
+    """
+    var name = string_to_char_ptr("mojo-libc-no-such-program")
+    var argv = unsafe_alloc[c_ptr[UInt8]](2)
+    argv.unsafe_offset(0)[] = name
+    argv.unsafe_offset(1)[] = null_ptr[UInt8]()
+
+    assert_equal(
+        execv(name, argv), -1, "execv comes back when there is no such program"
+    )
+
+    var envp = unsafe_alloc[c_ptr[UInt8]](1)
+    envp.unsafe_offset(0)[] = null_ptr[UInt8]()
+    assert_equal(execve(name, argv, envp), -1, "and so does execve")
+
+    assert_equal(
+        execvp(name, argv), -1, "and execvp, which looks rather than is told"
+    )
+
+    envp.unsafe_free()
+    argv.unsafe_free()
+    name.unsafe_free()
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -519,6 +556,7 @@ def main() raises:
     test_process_groups()
     test_dup3()
     test_syscall_by_number()
+    test_the_exec_family_refuses_what_is_not_there()
     test_pread_and_pwrite_at_an_offset()
     test_readv_gathers_what_writev_scattered()
     print("test_unistd: ok")
