@@ -11,6 +11,7 @@ from libc.ctype import (
     iscntrl,
     iscntrl_l,
     isdigit,
+    isdigit_l,
     isgraph,
     isgraph_l,
     islower,
@@ -240,6 +241,24 @@ def test_l_variants_agree_in_the_c_locale() raises:
     c_locale.unsafe_free()
 
 
+def test_isdigit_l_takes_a_locale() raises:
+    """`isdigit_l` is `isdigit` asked of a locale that is handed to
+    it rather than of whatever one happens to be in force. The C
+    locale is made here and asked which characters are digits, which
+    is the ten that every locale agrees on.
+    """
+    var c_locale = string_to_char_ptr("C")
+    var loc = newlocale(LC_ALL, c_locale, null_ptr[Locale]())
+    assert_true(Int(loc) != 0, "the locale object was made")
+
+    assert_true(isdigit_l(Int32(ord("7")), loc) != 0, "'7' is a digit there")
+    assert_equal(isdigit_l(Int32(ord("x")), loc), 0, "'x' is not")
+    assert_equal(isdigit_l(Int32(ord(" ")), loc), 0, "nor is a space")
+
+    freelocale(loc)
+    c_locale.unsafe_free()
+
+
 def main() raises:
     test_classification_against_c()
     test_conversion()
@@ -249,5 +268,6 @@ def main() raises:
     test_isupper()
     test_isalpha()
     test_isdigit()
+    test_isdigit_l_takes_a_locale()
     test_isspace()
     print("test_ctype: ok")
