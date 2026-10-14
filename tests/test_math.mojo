@@ -35,6 +35,7 @@ from libc.math import (
     expm1f,
     fabs,
     fabsf,
+    fabs,
     fdim,
     fdimf,
     floor,
@@ -87,6 +88,7 @@ from libc.math import (
     powf,
     remainderf,
     remquo,
+    remquof,
     rintf,
     roundf,
     scalbln,
@@ -105,6 +107,7 @@ from libc.math import (
     tanhf,
     tgamma,
     tgammaf,
+    trunc,
     truncf,
 )
 
@@ -375,6 +378,41 @@ def test_nanf_and_the_absolute_values() raises:
     assert_equal(Int(llabs(-5)), 5, "and so does llabs")
 
 
+def test_trunc_takes_the_fraction_towards_zero() raises:
+    """`trunc` takes the fraction away and leaves the whole, and takes
+    it towards zero, which is what sets it apart from `floor`: what
+    `floor` makes of -2.7 is -3 and what `trunc` makes of it is -2.
+    """
+    assert_equal(trunc(2.7), 2.0, "trunc takes the fraction off 2.7")
+    assert_equal(
+        trunc(-2.7), -2.0, "and off -2.7, towards zero rather than downwards"
+    )
+    assert_equal(trunc(0.0), 0.0, "and leaves nothing as it found it")
+
+
+def test_remquof_keeps_the_quotient() raises:
+    """`remquof` is `remainderf` with the quotient kept as well and
+    put where it is pointed. The quotient is not the whole of it — a
+    few bits and the sign are all that is promised — but the two of
+    them still have to come back to the number that went in, and that
+    is what is asked of them here.
+    """
+    var quotient = unsafe_alloc[Int32](1)
+    quotient.unsafe_offset(0)[] = 0
+    var left = remquof(5.0, 3.0, quotient)
+
+    assert_true(
+        fabs(Float64(left) + Float64(Int(quotient.unsafe_load())) * 3.0 - 5.0)
+        < 0.001,
+        "the remainder and the quotient come back to five",
+    )
+    assert_true(
+        fabs(Float64(left)) <= 1.5,
+        "and the remainder is no more than half of three",
+    )
+    quotient.unsafe_free()
+
+
 def main() raises:
     test_abs()
     test_sqrt_and_rounding()
@@ -390,4 +428,6 @@ def main() raises:
     test_the_gamma_functions()
     test_nanf_and_the_absolute_values()
     test_nan()
+    test_trunc_takes_the_fraction_towards_zero()
+    test_remquof_keeps_the_quotient()
     print("test_math: ok")
