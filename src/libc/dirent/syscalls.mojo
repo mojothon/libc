@@ -15,20 +15,23 @@ from libc.constant import *
 #   Darwin  ino(8) seekoff(8) reclen(2) namlen(2) type(1)
 #           name[1024]                                       -> name at 21
 #
-# The fields above `d_name` line up, so one struct serves both: keep the array
-# big enough for Darwin and start reading it two bytes later there. The struct
-# then has the same size as the C one on each platform (280 on glibc, 1048 on
-# Darwin), which is what makes `readdir`'s pointer safe to dereference.
-# A `struct dirent` is 280 bytes on glibc and 272 on Darwin, and the two
-# disagree about where things sit: `d_name` is at 19 in one and 12 in the
-# other, `d_type` at 18 and 10. So the record is held as bytes and every
-# member is read at the offset that fits the platform, the way `Stat` does
-# it. 280 covers both: Darwin's 272 fits, and `readdir` writes into it.
+# A `struct dirent` is 280 bytes on glibc and 1048 on Darwin, and the two
+# disagree about where things sit: `d_name` starts at 19 on one and 21 on
+# the other, and `d_type` is at 18 and 20. `d_reclen` is at 16 on both.
+# So the record is held as bytes and every member is read at the offset
+# that fits the platform, the way `Stat` does it.
+#
+# Darwin's record is the wider one and this does not cover all of it: 280
+# bytes takes in all of glibc's and the first 259 of Darwin's `d_name`,
+# which is 1024 long there. That is a limit on reading, not on storage —
+# `readdir` hands back a pointer into the record it owns and this is only
+# ever read through, so nothing is written past the end. A name longer
+# than 259 bytes comes back cut short.
 comptime DIRENT_BYTES = 280
 comptime DIRENT_SLOTS = DIRENT_BYTES // 8
-comptime DIRENT_NAME_OFFSET = 12 if CompilationTarget.is_macos() else 19
-comptime DIRENT_TYPE_OFFSET = 10 if CompilationTarget.is_macos() else 18
-comptime DIRENT_RECLEN_OFFSET = 8 if CompilationTarget.is_macos() else 16
+comptime DIRENT_NAME_OFFSET = 21 if CompilationTarget.is_macos() else 19
+comptime DIRENT_TYPE_OFFSET = 20 if CompilationTarget.is_macos() else 18
+comptime DIRENT_RECLEN_OFFSET = 16
 
 
 struct DIR(TrivialRegisterPassable):
@@ -48,11 +51,12 @@ struct DIR(TrivialRegisterPassable):
 struct dirent:
     """A C `struct dirent`, the record `readdir` hands back.
 
-    glibc's has `d_ino`, `d_off`, `d_reclen`, `d_type` and then `d_name`
-    at 19. Darwin's has no `d_off` at all: `d_ino`, `d_reclen`, `d_type`,
-    `d_namlen`, and `d_name` at 12. Neither is a prefix of the other, so
-    the bytes are held as they come and the members are read at the
-    offset that fits, which is what the `*_OFFSET` constants above say.
+    glibc's is `d_ino`, `d_off`, `d_reclen`, `d_type` and then `d_name` at
+    19. Darwin's keeps a `d_seekoff` where glibc has `d_off` and carries a
+    `d_namlen` besides, so its `d_type` is at 20 and `d_name` at 21. Only
+    `d_reclen` is at the same place on both, 16. Neither is a prefix of
+    the other, so the bytes are held as they come and each member is read
+    at the offset that fits, which is what the constants above say.
     """
 
     # Eight-byte slots rather than bytes: C says this record is 8-aligned,
