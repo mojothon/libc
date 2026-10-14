@@ -20,6 +20,7 @@ from test_epoll import main as run_epoll
 from test_socket import main as run_socket
 from test_signal import main as run_signal
 from test_random import main as run_random
+from test_wait import main as run_wait
 from test_errno import main as run_errno
 from test_fenv import main as run_fenv
 from test_float import main as run_float
@@ -59,6 +60,7 @@ def main() raises:
     run_socket()
     run_signal()
     run_random()
+    run_wait()
     run_errno()
     run_fenv()
     run_float()
