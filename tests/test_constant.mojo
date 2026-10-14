@@ -76,9 +76,11 @@ def test_signal_constants() raises:
     assert_equal(SIG_DFL, 0)
     assert_equal(SIG_IGN, 1)
     assert_equal(SIG_ERR, -1)
-    assert_equal(SIG_BLOCK, 0)
-    assert_equal(SIG_UNBLOCK, 1)
-    assert_equal(SIG_SETMASK, 2)
+    # The only one of these that is not the same on both: Darwin numbers
+    # the three from 1 and Linux from 0.
+    assert_equal(Int(SIG_BLOCK), 1 if CompilationTarget.is_macos() else 0)
+    assert_equal(Int(SIG_UNBLOCK), 2 if CompilationTarget.is_macos() else 1)
+    assert_equal(Int(SIG_SETMASK), 3 if CompilationTarget.is_macos() else 2)
     # The one of these that differs: 131072 on Darwin, 8192 here.
     assert_equal(
         Int(SIGSTKSZ), 131072 if CompilationTarget.is_macos() else 8192
