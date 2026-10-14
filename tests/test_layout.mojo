@@ -50,13 +50,10 @@ def test_sizes() raises:
     assert_equal(stride[tm](), 56, "struct tm is 56 bytes")
     assert_equal(stride[socketaddr](), 16, "struct sockaddr is 16 bytes")
     assert_equal(stride[msghdr](), 56, "struct msghdr is 56 bytes")
-    # 280 on glibc and 1048 on Darwin, where `d_name` is 1026 bytes and
-    # starts two bytes later.
-    assert_equal(
-        stride[dirent](),
-        1048 if CompilationTarget.is_macos() else 280,
-        "struct dirent is 280 bytes",
-    )
+    # 280 covers both: glibc's is 280 and Darwin's 272, and `d_name`
+    # sits at 19 in one and 12 in the other, so the struct holds the
+    # larger and reads each member at the offset that fits.
+    assert_equal(stride[dirent](), 280, "struct dirent is 280 bytes")
 
     # Opaque: bigger than what either platform has, so libc cannot overrun it.
     assert_true(
@@ -146,9 +143,9 @@ def test_msghdr_namelen_is_32_bits() raises:
     # not. The struct is 56 bytes either way, which is why the size alone
     # says nothing about it.
     var p = unsafe_alloc[msghdr](1)
-    p[].msg_namelen = 70000
+    p[].set_msg_namelen(70000)
     assert_equal(
-        Int(p[].msg_namelen), 70000, "msg_namelen holds a 32-bit length"
+        Int(p[].msg_namelen()), 70000, "msg_namelen holds a 32-bit length"
     )
     p.unsafe_free()
 

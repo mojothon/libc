@@ -16,7 +16,7 @@ comptime SOCK_NONBLOCK: Int32 = 16384 if CompilationTarget.is_macos() else 2048
 comptime SOCK_CLOEXEC: Int32 = 16777216 if CompilationTarget.is_macos() else 524288
 
 
-struct socketaddr(TrivialRegisterPassable):
+struct socketaddr:
     """A socket address, as C's `struct sockaddr` has it: a family and
     fourteen bytes whose meaning is up to the family.
 
@@ -26,10 +26,58 @@ struct socketaddr(TrivialRegisterPassable):
     network order and the four after that are the address, with the rest
     zero; for `AF_UNIX` it is a path. Nothing here packs or unpacks any
     of that for you.
+
+    The two platforms do not put the family in the same place. glibc's
+    leads with a two-byte `sa_family` and Darwin's puts a `sa_len` byte
+    in front of it, so there the family is one byte at offset 1, and
+    `sa_len` wants filling in with the size of the whole address before
+    the address is handed to C. Both structs are sixteen bytes, which is
+    why the size alone never showed this. So the bytes are held as they
+    come and the family is set and read by method, `set_family` writing
+    `sa_len` too where the platform has one.
     """
 
-    var sa_family: UInt16
-    var sa_data: StaticTuple[UInt8, 14]
+    var _slots: Array[UInt16, 8]
+
+    def __init__(out self):
+        """Zeroes all sixteen bytes, which is what `memset` would leave."""
+        self._slots = Array[UInt16, 8](fill=0)
+
+    def _byte(self, off: Int) -> UInt8:
+        """The one byte at `off`."""
+        return UInt8((self._slots[off // 2] >> UInt16((off % 2) * 8)) & 0xFF)
+
+    def _set_byte(mut self, off: Int, value: UInt8) -> None:
+        """Writes one byte at `off`, leaving its neighbour alone."""
+        var at = off // 2
+        var shift = UInt16((off % 2) * 8)
+        var mask = UInt16(0xFF) << shift
+        self._slots[at] = (self._slots[at] & (mask ^ UInt16(0xFFFF))) | (
+            UInt16(value) << shift
+        )
+
+    def family(self) -> UInt16:
+        """The address family, `AF_INET` and friends."""
+        comptime if CompilationTarget.is_macos():
+            return UInt16(self._byte(1))
+        else:
+            return self._slots[0]
+
+    def set_family(mut self, value: UInt16) -> None:
+        """Sets the family, and `sa_len` with it where Darwin has one."""
+        comptime if CompilationTarget.is_macos():
+            self._set_byte(0, 16)  # sa_len: the size of a struct sockaddr
+            self._set_byte(1, UInt8(value))
+        else:
+            self._slots[0] = value
+
+    def byte(self, off: Int) -> UInt8:
+        """The byte at `off` of the sixteen, the family's own data."""
+        return self._byte(off)
+
+    def set_byte(mut self, off: Int, value: UInt8) -> None:
+        """Writes the byte at `off` of the sixteen, as the family asks."""
+        self._set_byte(off, value)
 
 
 def bind(
@@ -209,23 +257,107 @@ struct iovec(TrivialRegisterPassable):
         self.iov_len = iov_len
 
 
-struct msghdr(TrivialRegisterPassable):
+struct msghdr:
     """One message for `sendmsg`, holding the address it goes to and the
     pieces it is made of, which are not all in one place.
+
+    The two platforms agree on the first three members and then not on
+    the widths. Darwin's `msg_iovlen` is an `int` and its
+    `msg_controllen` a `socklen_t`, four bytes each, so its struct is 48
+    bytes and `msg_flags` sits at 44. glibc makes both of them eight
+    bytes, its struct is 56, and `msg_flags` is at 48. Held in slots and
+    read and written at the offset and width that fit, which is why the
+    members come from methods. 56 covers both.
     """
 
-    var msg_name: c_ptr[UInt8]
-    # `socklen_t`, 32 bits and unsigned on both platforms. It was `UInt16`
-    # here, and the struct came out 56 bytes either way because the padding
-    # after it swallows the difference, which is how it went unnoticed: C
-    # writes four bytes at `msg_namelen`, and a 16-bit field reads the low
-    # half of them.
-    var msg_namelen: UInt32
-    var msg_iov: c_ptr[iovec]
-    var msg_iovlen: UInt64
-    var msg_control: c_ptr[UInt8]
-    var msg_controllen: UInt64
-    var msg_flags: Int32
+    var _slots: Array[UInt64, 7]
+
+    def __init__(out self):
+        """Zeroes the message, which is what `memset` would leave."""
+        self._slots = Array[UInt64, 7](fill=0)
+
+    def _at(self, off: Int) -> UInt64:
+        """The eight bytes at `off`."""
+        return self._slots[off // 8]
+
+    def msg_name(self) -> c_ptr[UInt8]:
+        """Where the address goes, or null for a connected socket."""
+        return c_ptr[UInt8](unsafe_from_address=Int(self._at(0)))
+
+    def set_msg_name(mut self, value: c_ptr[UInt8]) -> None:
+        """Sets where the address comes from."""
+        self._slots[0] = UInt64(Int(value))
+
+    def msg_namelen(self) -> UInt32:
+        """How long the address is, a `socklen_t` on both platforms."""
+        return UInt32(self._at(8) & 0xFFFFFFFF)
+
+    def set_msg_namelen(mut self, value: UInt32) -> None:
+        """Sets how long the address is."""
+        self._slots[1] = UInt64(value)
+
+    def msg_iov(self) -> c_ptr[iovec]:
+        """The scatter/gather array of pieces the message is made of."""
+        return c_ptr[iovec](unsafe_from_address=Int(self._at(16)))
+
+    def set_msg_iov(mut self, value: c_ptr[iovec]) -> None:
+        """Sets the array of pieces."""
+        self._slots[2] = UInt64(Int(value))
+
+    def msg_iovlen(self) -> UInt64:
+        """How many pieces the array holds, an `int` on Darwin."""
+        comptime if CompilationTarget.is_macos():
+            return UInt32(self._at(24) & 0xFFFFFFFF)
+        else:
+            return self._at(24)
+
+    def set_msg_iovlen(mut self, value: UInt64) -> None:
+        """Sets how many pieces there are."""
+        self._slots[3] = value
+
+    def msg_control(self) -> c_ptr[UInt8]:
+        """The ancillary data, or null when there is none."""
+        return c_ptr[UInt8](unsafe_from_address=Int(self._at(32)))
+
+    def set_msg_control(mut self, value: c_ptr[UInt8]) -> None:
+        """Sets the ancillary data."""
+        self._slots[4] = UInt64(Int(value))
+
+    def msg_controllen(self) -> UInt64:
+        """How much ancillary data there is."""
+        comptime if CompilationTarget.is_macos():
+            return UInt32(self._at(40) & 0xFFFFFFFF)
+        else:
+            return self._at(40)
+
+    def set_msg_controllen(mut self, value: UInt64) -> None:
+        """Sets how much ancillary data there is.
+
+        On Darwin that is four bytes with `msg_flags` in the four above
+        it, so only the low half is written.
+        """
+        comptime if CompilationTarget.is_macos():
+            self._slots[5] = (self._slots[5] & 0xFFFFFFFF00000000) | (
+                value & 0xFFFFFFFF
+            )
+        else:
+            self._slots[5] = value
+
+    def msg_flags(self) -> Int32:
+        """The flags on a message that was received."""
+        comptime if CompilationTarget.is_macos():
+            return Int32(self._at(40) >> 32)
+        else:
+            return Int32(self._at(48) & 0xFFFFFFFF)
+
+    def set_msg_flags(mut self, value: Int32) -> None:
+        """Sets the flags."""
+        comptime if CompilationTarget.is_macos():
+            self._slots[5] = (self._slots[5] & 0xFFFFFFFF) | (
+                UInt64(value) << 32
+            )
+        else:
+            self._slots[6] = UInt64(value)
 
 
 def sendmsg(sockfd: Int32, msg: c_ptr[msghdr], flags: Int32) -> Int64:
