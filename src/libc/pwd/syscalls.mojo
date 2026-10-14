@@ -65,15 +65,15 @@ struct passwd:
 
     def pw_gecos(self) raises -> String:
         """The user's real name, and whatever else follows it."""
-        return self._text_at(24 if not CompilationTarget.is_macos() else 48)
+        return self._text_at(24 if not CompilationTarget.is_macos() else 40)
 
     def pw_dir(self) raises -> String:
         """The user's home directory."""
-        return self._text_at(32 if not CompilationTarget.is_macos() else 56)
+        return self._text_at(32 if not CompilationTarget.is_macos() else 48)
 
     def pw_shell(self) raises -> String:
         """The user's login shell, which is `/bin/false` for nobody."""
-        return self._text_at(40 if not CompilationTarget.is_macos() else 64)
+        return self._text_at(40 if not CompilationTarget.is_macos() else 56)
 
     def pw_change(self) raises -> Int64:
         """When the password was last changed. Darwin only.
@@ -86,17 +86,23 @@ struct passwd:
         else:
             return Int64(0)
 
-    def pw_expire(self) raises -> String:
-        """When the account expires, as text. Darwin only."""
+    def pw_expire(self) raises -> Int64:
+        """When the account expires, in seconds. Darwin only.
+
+        It is a `time_t` in the struct, not a `char *`, so reading it as
+        text would have followed a small integer as though it were an
+        address. Linux's struct has no such member and this answers 0
+        there.
+        """
         comptime if CompilationTarget.is_macos():
-            return self._text_at(32)
+            return Int64(self._member(64))
         else:
-            return String("")
+            return Int64(0)
 
     def pw_class(self) raises -> String:
         """The user's access class. Darwin only."""
         comptime if CompilationTarget.is_macos():
-            return self._text_at(40)
+            return self._text_at(32)
         else:
             return String("")
 
