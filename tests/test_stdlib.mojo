@@ -1,30 +1,43 @@
 from std.memory.alloc import unsafe_alloc
+from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
-from libc.constant import c_ptr
+from libc.constant import c_char, c_ptr, c_uint
 from libc.file import close
 from libc.stdio import remove
+from libc.unistd import rmdir
 from libc.stdlib import (
+    aligned_alloc,
     atof,
     atoi,
     atol,
+    atoll,
     calloc,
     free,
     getenv,
     getsubopt,
     initstate,
     malloc,
+    mkdtemp,
     mkstemp,
+    posix_memalign,
+    putenv,
     rand,
+    rand_r,
     random,
-    realpath,
     realloc,
+    realpath,
+    secure_getenv,
     setenv,
     setstate,
     srand,
     srandom,
-    strtol,
     strtod,
+    strtof,
+    strtol,
+    strtoll,
+    strtoul,
+    strtoull,
     unsetenv,
 )
 from libc.utils import char_ptr_to_string, null_ptr, string_to_char_ptr
@@ -170,8 +183,101 @@ def test_getsubopt() raises:
     valuep.unsafe_free()
 
 
+def test_the_untried_calls() raises:
+    """Eleven of these had never been called. Two of them take an alignment
+    and a size, in that order and of that one type; three of them write
+    where they stopped into a pointer they are given rather than handing it
+    back, which is the part a signature alone does not show.
+    """
+    var p = aligned_alloc(64, 128)
+    assert_true(Int(UInt(p)) != 0, "aligned_alloc hands back memory")
+    assert_equal(Int(UInt(p)) % 64, 0, "and it starts on the alignment")
+
+    var slot = unsafe_alloc[c_ptr[c_char]](1)
+    assert_equal(
+        posix_memalign(slot, 32, 64), 0, "posix_memalign says it worked"
+    )
+    var q = slot.unsafe_offset(0)[]
+    assert_true(Int(UInt(q)) != 0, "and it wrote a pointer into the slot")
+    assert_equal(Int(UInt(q)) % 32, 0, "that starts where it was asked to")
+    _ = free(q)
+    slot.unsafe_free()
+    _ = free(p)
+
+    var big = string_to_char_ptr("123456789012")
+    assert_equal(
+        Int(atoll(big)), 123456789012, "atoll reads past what an int holds"
+    )
+    big.unsafe_free()
+
+    var mixed = string_to_char_ptr("42abc")
+    var end = unsafe_alloc[c_ptr[c_char]](1)
+    assert_equal(
+        Int(strtoll(mixed, end, 10)), 42, "strtoll stops at the letters"
+    )
+    assert_equal(
+        char_ptr_to_string(end.unsafe_offset(0)[]),
+        "abc",
+        "and writes where it stopped rather than returning it",
+    )
+    assert_equal(
+        Int(strtoul(mixed, end, 10)), 42, "strtoul reads the same string"
+    )
+    assert_equal(Int(strtoull(mixed, end, 10)), 42, "and so does strtoull")
+
+    var half = string_to_char_ptr("2.5abc")
+    assert_true(
+        (Float64(strtof(half, end)) - 2.5) < 1e-6, "strtof reads two and a half"
+    )
+    assert_equal(
+        char_ptr_to_string(end.unsafe_offset(0)[]),
+        "abc",
+        "and stops in the same place",
+    )
+    end.unsafe_free()
+    mixed.unsafe_free()
+    half.unsafe_free()
+
+    # `putenv` keeps the string it is given rather than copying it, so this
+    # one is handed over and not freed; `getenv` is what says it was taken.
+    var assign = string_to_char_ptr("MOJO_LIBC_TRIED=1")
+    assert_equal(putenv(assign), 0, "putenv takes the string")
+    var name = string_to_char_ptr("MOJO_LIBC_TRIED")
+    assert_equal(
+        char_ptr_to_string(getenv(name)),
+        "1",
+        "and getenv finds what it was told",
+    )
+    name.unsafe_free()
+
+    var seed = unsafe_alloc[c_uint](1)
+    seed.unsafe_offset(0)[] = 42
+    var first = rand_r(seed)
+    seed.unsafe_offset(0)[] = 42
+    assert_equal(rand_r(seed), first, "the same seed gives the same number")
+    seed.unsafe_free()
+
+    var tpl = string_to_char_ptr("/tmp/libcXXXXXX")
+    var made = mkdtemp(tpl)
+    assert_true(Int(UInt(made)) != 0, "mkdtemp made a directory")
+    var path = char_ptr_to_string(made)
+    assert_true(path.startswith("/tmp/libc"), "named after the template")
+    assert_true(path != "/tmp/libcXXXXXX", "with the Xs replaced, not kept")
+    assert_equal(rmdir(made), 0, "and it is there to be removed")
+    tpl.unsafe_free()
+
+    comptime if not CompilationTarget.is_macos():
+        # There is no such call on Darwin, only on glibc.
+        var home = string_to_char_ptr("HOME")
+        assert_true(
+            Int(UInt(secure_getenv(home))) != 0, "secure_getenv finds HOME too"
+        )
+        home.unsafe_free()
+
+
 def main() raises:
     test_malloc()
+    test_the_untried_calls()
     test_calloc()
     test_realloc()
     test_conversions()
