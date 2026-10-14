@@ -246,14 +246,17 @@ def munmap(addr: c_ptr[UInt8], length: Int64) -> Int32:
     return external_call["munmap", Int32, c_ptr[UInt8], Int64](addr, length)
 
 
-def shm_open(name: String, oflag: Int32, mode: Int32) -> Int32:
+def shm_open(name: c_ptr[UInt8], oflag: Int32, mode: Int32) -> Int32:
     """C library <sys/mman.h> function `shm_open`.
 
     Reference:
         https://man7.org/linux/man-pages/man2/shm_open.2.html
 
     Args:
-        name: The name of the shared memory object.
+        name: The name of the shared memory object: a NUL-terminated
+            string, and one that begins with a `/`. A Mojo `String` is
+            not what C is given here, for all that `String` is what the
+            rest of this package writes; C wants the bytes.
         oflag: The flags to use for opening the shared memory object.
         mode: The mode to use for creating the shared memory object.
 
@@ -266,19 +269,20 @@ def shm_open(name: String, oflag: Int32, mode: Int32) -> Int32:
         with `errno` set. Zero is a descriptor too, so this is asked about
         with -1 and nothing else.
     """
-    return external_call["shm_open", Int32, String, Int32, Int32](
+    return external_call["shm_open", Int32, c_ptr[UInt8], Int32, Int32](
         name, oflag, mode
     )
 
 
-def shm_unlink(name: String) -> Int32:
+def shm_unlink(name: c_ptr[UInt8]) -> Int32:
     """C library <sys/mman.h> function `shm_unlink`.
 
     Reference:
         https://man7.org/linux/man-pages/man2/shm_unlink.2.html
 
     Args:
-        name: The name of the shared memory object.
+        name: The name of the shared memory object, a NUL-terminated
+            string beginning with a `/`, as `shm_open` was given it.
 
     Description:
         shm_unlink() removes a shared memory object.
@@ -286,7 +290,7 @@ def shm_unlink(name: String) -> Int32:
     Returns:
         0 on success, -1 on error.
     """
-    return external_call["shm_unlink", Int32, String](name)
+    return external_call["shm_unlink", Int32, c_ptr[UInt8]](name)
 
 
 def remap_file_pages(
