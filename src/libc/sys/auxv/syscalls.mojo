@@ -4,6 +4,13 @@
 # github: github.com/llango
 # ----------------------------------
 from std.ffi import external_call
+from std.sys import CompilationTarget
+
+# What `getauxval` is asked for. Linux keeps this table on the stack
+# for the loader to hand over; Darwin has no such table and no
+# `getauxval` either, so the number here is only where it exists.
+comptime AT_NULL: UInt64 = 0
+comptime AT_PAGESZ: UInt64 = 0 if CompilationTarget.is_macos() else 6
 
 
 def getauxval(type: UInt64) -> UInt64:
