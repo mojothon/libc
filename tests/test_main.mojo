@@ -18,6 +18,8 @@ from test_sched import main as run_sched
 from test_pthread import main as run_pthread
 from test_epoll import main as run_epoll
 from test_socket import main as run_socket
+from test_signal import main as run_signal
+from test_random import main as run_random
 from test_errno import main as run_errno
 from test_fenv import main as run_fenv
 from test_float import main as run_float
@@ -30,7 +32,6 @@ from test_poll import main as run_poll
 from test_pwd import main as run_pwd
 from test_resource import main as run_resource
 from test_search import main as run_search
-from test_signal import main as run_signal
 from test_stdio import main as run_stdio
 from test_stat import main as run_stat
 from test_sys import main as run_sys
@@ -56,6 +57,8 @@ def main() raises:
     run_pthread()
     run_epoll()
     run_socket()
+    run_signal()
+    run_random()
     run_errno()
     run_fenv()
     run_float()
@@ -68,7 +71,6 @@ def main() raises:
     run_pwd()
     run_resource()
     run_search()
-    run_signal()
     run_stdio()
     run_stat()
     run_sys()
