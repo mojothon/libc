@@ -11,6 +11,7 @@ from libc.unistd import (
     chdir,
     chown,
     dup2,
+    dup3,
     fchdir,
     fchown,
     fchownat,
@@ -440,6 +441,45 @@ def test_getopt() raises:
     argv.unsafe_free()
 
 
+def test_dup3() raises:
+    """`dup3` is `dup2` with the flags decided at the same time, so the
+    new descriptor comes back already as asked rather than being told
+    afterwards with `fcntl`.
+
+    The number it is asked to use is one this test had and had let go,
+    so nothing that was already open is closed to make room for it.
+    """
+    var ends = unsafe_alloc[Int32](2)
+    assert_equal(pipe(ends), 0, "a pipe to copy the reading end of")
+
+    var spare = unsafe_alloc[Int32](2)
+    assert_equal(pipe(spare), 0, "and another only for the number")
+    var number = spare.unsafe_load(0)
+    _ = close(number)
+    _ = close(spare.unsafe_load(1))
+    spare.unsafe_free()
+
+    var copy = dup3(ends.unsafe_load(0), number, 0)
+    assert_equal(copy, number, "dup3 hands back the number it was asked for")
+
+    var going = unsafe_alloc[UInt8](1)
+    going.unsafe_offset(0)[] = 0x7E
+    assert_equal(
+        write(ends.unsafe_load(1), going, 1), 1, "a byte goes into the pipe"
+    )
+
+    var coming = unsafe_alloc[UInt8](1)
+    assert_equal(read(copy, coming, 1), 1, "and it comes back out of the copy")
+    assert_equal(Int(coming.unsafe_load()), 0x7E, "and it is the same byte")
+
+    going.unsafe_free()
+    coming.unsafe_free()
+    ends.unsafe_free()
+    _ = close(copy)
+    _ = close(ends.unsafe_load(0))
+    _ = close(ends.unsafe_load(1))
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -458,6 +498,7 @@ def main() raises:
     test_sysconf()
     test_usleep()
     test_process_groups()
+    test_dup3()
     test_pread_and_pwrite_at_an_offset()
     test_readv_gathers_what_writev_scattered()
     print("test_unistd: ok")
