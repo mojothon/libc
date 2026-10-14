@@ -5,12 +5,20 @@ from libc.math import (
     abs,
     atan2,
     ceil,
+    copysign,
     erf,
     fabs,
+    fdim,
     fdimf,
     floor,
+    fma,
     fmod,
+    hypot,
+    ldiv,
+    lldiv,
     nan,
+    nextafter,
+    pow,
     powf,
     remquo,
     sqrt,
@@ -63,6 +71,34 @@ def test_remquo() raises:
     )
 
 
+def test_arguments_in_order() raises:
+    """Two arguments of the same type can be handed over in the wrong order
+    and nothing says so: it still compiles, still matches the prototype and
+    still returns a number. Each of these is asked for something that only
+    comes out one way round.
+    """
+    assert_true((pow(2.0, 10.0) - 1024.0) < 1e-9, "2 to the 10, not 10 squared")
+    assert_true((copysign(1.0, -1.0) + 1.0) < 1e-12, "the sign comes second")
+
+    var after = nextafter(1.0, 4.0)
+    assert_true(after > 1.0, "nextafter steps away from the first")
+    assert_true(after < 4.0, "and toward the second")
+
+    assert_true((fma(2.0, 3.0, 4.0) - 10.0) < 1e-9, "2*3+4, the 4 added last")
+    assert_true(fdim(1.0, 4.0) == 0.0, "the positive difference, or zero")
+    assert_true(
+        (fdim(4.0, 1.0) - 3.0) < 1e-12, "which is not the same both ways"
+    )
+    assert_true((hypot(3.0, 4.0) - 5.0) < 1e-9, "a 3-4-5 triangle")
+
+    var d = ldiv(10, 3)
+    assert_equal(d.quot, 3, "10 over 3 goes 3 times")
+    assert_equal(d.rem, 1, "with 1 left over")
+    var ld = lldiv(10, 3)
+    assert_equal(ld.quot, 3, "and the long long one")
+    assert_equal(ld.rem, 1, "with 1 left over too")
+
+
 def test_nan() raises:
     """`nan` takes its tag as a string, not as a byte."""
     var tag = unsafe_alloc[UInt8](1)
@@ -77,6 +113,7 @@ def main() raises:
     test_sqrt_and_rounding()
     test_pow()
     test_the_right_symbol_is_called()
+    test_arguments_in_order()
     test_remquo()
     test_nan()
     print("test_math: ok")
