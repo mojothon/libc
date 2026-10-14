@@ -13,7 +13,7 @@ the bottom.
 | `libc.file` | `<stdio.h>` file operations | 40 |
 | `libc.ctype` | `<ctype.h>` | 29 |
 | `libc.sys.socket` | `<sys/socket.h>` | 23 |
-| `libc.sys.stat` | `<sys/stat.h>` | 18 |
+| `libc.sys.stat` | `<sys/stat.h>` | 19 |
 | `libc.time` | `<time.h>` | 30 |
 | `libc.fenv` | `<fenv.h>` | 26 |
 | `libc.sys.mman` | `<sys/mman.h>` | 15 |

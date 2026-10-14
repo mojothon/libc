@@ -267,16 +267,20 @@ def umask(mask: Int32) -> Int32:
     return external_call["umask", Int32, Int32](mask)
 
 
-def utime(path: c_ptr[UInt8], times: c_ptr[timeval]) -> Int32:
+def utime(path: c_ptr[UInt8], times: c_ptr[utimbuf]) -> Int32:
     """Libc POSIX `utime` function.
 
     Args:
         path: A path to a file.
-        times: A pointer to a `timeval` struct.
+        times: A pointer to a `utimbuf` struct, that is to two times in
+            seconds, the access time first. Not a `timeval`: that is what
+            `utimes` takes, and the two are the same size, which is how a
+            `timeval` came to be handed here and its microseconds read as
+            the modified time.
 
     Returns: 0 on success, or -1 with `errno` set.
     """
-    return external_call["utime", Int32, c_ptr[UInt8], c_ptr[timeval]](
+    return external_call["utime", Int32, c_ptr[UInt8], c_ptr[utimbuf]](
         path, times
     )
 
@@ -296,6 +300,21 @@ struct timeval(TrivialRegisterPassable):
 
     var tv_sec: Int64
     var tv_usec: Int64
+
+
+struct utimbuf(TrivialRegisterPassable):
+    """A C `struct utimbuf`: the two times `utime` sets, both in seconds.
+
+    It is not a `timeval`, though it is exactly as wide: `utime` takes
+    this and `utimes` is the one that takes a `timeval`. Both are two
+    8-byte fields, so handing one over where the other is meant is a
+    call that compiles and that reads the second field as microseconds
+    instead of as the modified time, which leaves `mtime` at whatever
+    that came to.
+    """
+
+    var actime: Int64
+    var modtime: Int64
 
 
 def utimensat(
