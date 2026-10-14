@@ -7,7 +7,7 @@ from libc.sys.socket import getsockopt, setsockopt, socket
 from libc.sys.stat import mkfifo
 from libc.time import timespec
 from libc.unistd import unlink
-from libc.setjmp import setjmp
+from libc.setjmp import longjmp, setjmp
 from libc.sys.select import (
     FD_CLR,
     FD_ISSET,
@@ -332,6 +332,28 @@ def test_pselect_on_a_pipe() raises:
     ends.unsafe_free()
 
 
+def test_longjmp_goes_back_to_where_setjmp_was() raises:
+    """`setjmp` writes down where it was and answers 0. `longjmp`
+    goes back to that place and makes `setjmp` answer with the
+    number it was given, which is the only way of telling the two
+    apart.
+
+    The number is 7 and not 0, a 0 coming back as a 1, and it is
+    asked for only the once, so that it does not go back for ever.
+    """
+    var env = unsafe_alloc[UInt8](256)
+    for i in range(256):
+        env.unsafe_store(i, UInt8(0))
+
+    var first = setjmp(env)
+    if first == 0:
+        longjmp(env, 7)
+    assert_equal(
+        Int(first), 7, "longjmp made setjmp answer with what it was given"
+    )
+    env.unsafe_free()
+
+
 def main() raises:
     test_uname()
     test_fd_set()
@@ -342,4 +364,5 @@ def main() raises:
     test_mkfifo()
     test_socket_options()
     test_pselect_on_a_pipe()
+    test_longjmp_goes_back_to_where_setjmp_was()
     print("test_sys: ok")
