@@ -25,6 +25,7 @@ from test_resource import main as run_resource
 from test_search import main as run_search
 from test_signal import main as run_signal
 from test_stdio import main as run_stdio
+from test_stat import main as run_stat
 from test_sys import main as run_sys
 from test_stdlib import main as run_stdlib
 from test_string import main as run_string
@@ -55,6 +56,7 @@ def main() raises:
     run_search()
     run_signal()
     run_stdio()
+    run_stat()
     run_sys()
     run_stdlib()
     run_string()
