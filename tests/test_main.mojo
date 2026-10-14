@@ -21,6 +21,9 @@ from test_socket import main as run_socket
 from test_signal import main as run_signal
 from test_random import main as run_random
 from test_wait import main as run_wait
+from test_auxv import main as run_auxv
+from test_statvfs import main as run_statvfs
+from test_sendfile import main as run_sendfile
 from test_errno import main as run_errno
 from test_fenv import main as run_fenv
 from test_float import main as run_float
@@ -61,6 +64,9 @@ def main() raises:
     run_signal()
     run_random()
     run_wait()
+    run_auxv()
+    run_statvfs()
+    run_sendfile()
     run_errno()
     run_fenv()
     run_float()
