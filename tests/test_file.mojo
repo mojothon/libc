@@ -4,6 +4,7 @@ from std.testing import assert_equal, assert_true
 
 from libc.constant import AT_FDCWD, SEEK_END, SEEK_SET, c_ptr
 from libc.fcntl import O_CREAT, O_RDONLY, O_WRONLY, open as open_with_mode
+from libc.stdio import remove
 from libc.file import (
     clearerr,
     creat,
@@ -17,6 +18,7 @@ from libc.file import (
     fputc,
     fputs,
     freopen,
+    fscanf,
     fseek,
     fseeko,
     ftell,
@@ -25,6 +27,7 @@ from libc.file import (
     printf,
     snprintf,
     sprintf,
+    sscanf,
 )
 from libc.stdlib import free
 from libc.unistd import close, unlink
@@ -197,7 +200,39 @@ def test_the_printf_family() raises:
     assert_equal(printf(string_to_char_ptr("\n")), 1, "and printf does too")
 
 
+def test_the_scanf_family_asked_for_nothing() raises:
+    """`sscanf` and `fscanf` are variadic, and the places they would
+    write what they read are in the variadic part, which cannot be
+    given from here — so there is no asking them for anything.
+
+    Asked for nothing, a format with no `%` in it, they answer with
+    how many things they took, which is none, and that is the whole
+    of what they can be asked here.
+    """
+    var text = string_to_char_ptr("hello")
+    assert_equal(
+        Int(sscanf(text, text)), 0, "sscanf took nothing from what it was given"
+    )
+
+    var path = string_to_char_ptr("/tmp/mojo_libc_scanf")
+    var writing = fopen(path, string_to_char_ptr("w"))
+    assert_true(Int(writing) != 0, "there is a file to read back")
+    _ = fputs(text, writing)
+    _ = fclose(writing)
+
+    var reading = fopen(path, string_to_char_ptr("r"))
+    assert_equal(
+        Int(fscanf(reading, text)), 0, "and fscanf took nothing from it"
+    )
+    _ = fclose(reading)
+
+    _ = remove(path)
+    path.unsafe_free()
+    text.unsafe_free()
+
+
 def main() raises:
+    test_the_scanf_family_asked_for_nothing()
     test_a_stream_back_and_forth()
     test_streams_from_other_things()
     test_getline_reads_to_the_newline()
