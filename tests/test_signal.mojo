@@ -4,12 +4,14 @@ from std.testing import assert_equal, assert_true
 from libc.constant import EINVAL, c_ptr
 from libc.errno import get_errno, set_errno
 from libc.signal import (
-    SIG_BLOCK,
     SIGINT,
+    SIG_BLOCK,
+    craise,
     kill,
+    sigaction,
     sigaddset,
-    sigdelset,
     sigaltstack,
+    sigdelset,
     sigemptyset,
     sigfillset,
     sigismember,
@@ -162,6 +164,35 @@ def test_sigaltstack_asked_and_told_nothing() raises:
     )
 
 
+def test_sigaction_asked_and_told_nothing() raises:
+    """`sigaction` given nothing to install and nowhere to put what
+    is already there has nothing to do but check the signal is one
+    there is such a thing as, which is what it answers about.
+
+    Installing a handler wants a C function pointer, which is why
+    this is as far as it goes.
+    """
+    assert_equal(
+        sigaction(SIGINT, null_ptr[UInt8](), null_ptr[UInt8]()),
+        0,
+        "sigaction answers for a signal there is such a thing as",
+    )
+    assert_equal(
+        sigaction(0, null_ptr[UInt8](), null_ptr[UInt8]()),
+        -1,
+        "and refuses one there is not",
+    )
+
+
+def test_craise_with_nothing_to_send() raises:
+    """`craise` sends a signal to whoever called it. Signal 0 sends
+    nothing at all, so it is the one that can be asked for here:
+    every other number either ends the process or is a thing this
+    test cannot say what it would do.
+    """
+    assert_equal(craise(0), 0, "craise with signal 0 sends nothing and says so")
+
+
 def main() raises:
     test_sigaddset_round_trips_through_sigismember()
     test_sigismember_refuses_a_number_that_is_not_a_signal()
@@ -170,4 +201,6 @@ def main() raises:
     test_sigprocmask_read_twice_reads_the_same()
     test_kill_with_nothing_to_send()
     test_sigaltstack_asked_and_told_nothing()
+    test_sigaction_asked_and_told_nothing()
+    test_craise_with_nothing_to_send()
     print("signal ok")
