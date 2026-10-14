@@ -29,12 +29,16 @@ from libc.stdio import (
     getw,
     pclose,
     popen,
+    putc,
+    putchar,
     putw,
     remove,
     rename,
     renameat,
+    setbuf,
     setvbuf,
     tmpfile,
+    tmpnam,
     ungetc,
 )
 from libc.stdlib import free, mkstemp
@@ -192,6 +196,65 @@ def test_getdelim() raises:
     text.unsafe_free()
 
 
+def test_the_two_that_write_one_character() raises:
+    """`putc` is given the character and then the stream, and `putchar`
+    is `putc` with the stream already decided for it. Both hand back the
+    character they wrote.
+
+    What `putchar` is asked to write is a newline, it being a character
+    that can be put in the middle of this output without showing up in
+    it, and one that does not wait to be flushed.
+    """
+    var path = string_to_char_ptr("/tmp/mojo_libc_stdio_putc")
+    var out = fopen(path, string_to_char_ptr("w"))
+    assert_true(Int(UInt(out)) != 0, "the file is open")
+    assert_equal(Int(putc(0x41, out)), 0x41, "putc hands back what it wrote")
+    assert_equal(fclose(out), 0, "and it is closed again")
+
+    var back = fopen(path, string_to_char_ptr("r"))
+    var got = unsafe_alloc[c_char](2)
+    assert_equal(Int(fread(got, 1, 1, back)), 1, "one byte comes back out")
+    assert_equal(Int(got.unsafe_load()), 0x41, "and it is the one that went in")
+    _ = fclose(back)
+    got.unsafe_free()
+
+    assert_equal(Int(putchar(10)), 10, "putchar hands back what it wrote too")
+
+
+def test_setbuf_and_tmpnam() raises:
+    """`setbuf` tells a stream to keep its characters in a buffer the
+    caller holds rather than one of libc's own, which is why the buffer
+    has to outlive the stream. `tmpnam` writes a name that is not in use
+    into a buffer it is handed, and hands back that same pointer.
+    """
+    var path = string_to_char_ptr("/tmp/mojo_libc_stdio_setbuf")
+    var out = fopen(path, string_to_char_ptr("w"))
+    assert_true(Int(UInt(out)) != 0, "the file is open")
+
+    var held = unsafe_alloc[c_char](4096)
+    _ = setbuf(out, held)
+    assert_equal(Int(putc(0x42, out)), 0x42, "and a character goes into it")
+    assert_equal(fclose(out), 0, "the stream is closed")
+    held.unsafe_free()
+
+    var back = fopen(path, string_to_char_ptr("r"))
+    var got = unsafe_alloc[c_char](2)
+    assert_equal(Int(fread(got, 1, 1, back)), 1, "and it comes back out")
+    assert_equal(
+        Int(got.unsafe_load()), 0x42, "through the buffer it was given"
+    )
+    _ = fclose(back)
+    got.unsafe_free()
+
+    var name = unsafe_alloc[c_char](256)
+    var made = tmpnam(name)
+    assert_true(Int(UInt(made)) != 0, "tmpnam hands back a name")
+    assert_true(
+        Int(name.unsafe_load()) != 0, "and it wrote it where it was told to"
+    )
+    name.unsafe_free()
+
+
 def main() raises:
     test_tmpfile_roundtrip()
     test_rename_and_remove()
@@ -202,4 +265,6 @@ def main() raises:
     test_putw_and_getw()
     test_renameat()
     test_getdelim()
+    test_the_two_that_write_one_character()
+    test_setbuf_and_tmpnam()
     print("test_stdio: ok")
