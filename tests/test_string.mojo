@@ -1,25 +1,36 @@
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
+from libc.stdlib import free
 from libc.string import (
     ffs,
     ffsl,
     ffsll,
     memchr,
     memcmp,
+    memcpy,
     memmem,
+    memmove,
+    mempcopy,
     stpcpy,
+    stpncpy,
     strcasecmp,
+    strcat,
     strchr,
     strcmp,
     strcoll,
+    strcopy,
     strcpy,
     strcspn,
+    strdup,
     strerror,
     strlen,
     strncasecmp,
-    strncmp,
     strncat,
+    strncmp,
+    strncopy,
+    strncpy,
+    strndup,
     strnlen,
     strpbrk,
     strrchr,
@@ -265,8 +276,118 @@ def test_ffs() raises:
     assert_equal(ffsll(1 << 62), 63)
 
 
+def test_copying() raises:
+    """The ten copying calls here had never been made. Each takes its
+    destination first and its source second, and both are pointers, so
+    handing them over the other way round is a call the compiler is happy
+    with and that nothing here would have caught.
+    """
+    var src = string_to_char_ptr("abcdef")
+
+    var dst = unsafe_alloc[UInt8](16)
+    for i in range(16):
+        dst.unsafe_store(i, 0)
+    _ = memcpy(
+        dst.unsafe_bitcast[NoneType](), src.unsafe_bitcast[NoneType](), 7
+    )
+    assert_equal(
+        char_ptr_to_string(dst), "abcdef", "memcpy fills the first one"
+    )
+
+    # Overlapping is what `memmove` is for and what `memcpy` does not
+    # promise, so this is the one that says which of the two it is.
+    var overlap = unsafe_alloc[UInt8](8)
+    for i in range(6):
+        overlap.unsafe_store(i, UInt8(ord("a") + i))
+    overlap.unsafe_store(6, 0)
+    _ = memmove(
+        overlap.unsafe_offset(2).unsafe_bitcast[NoneType](),
+        overlap.unsafe_bitcast[NoneType](),
+        4,
+    )
+    assert_equal(
+        char_ptr_to_string(overlap), "ababcd", "memmove survives overlap"
+    )
+
+    var moved = unsafe_alloc[UInt8](8)
+    for i in range(8):
+        moved.unsafe_store(i, 0)
+    var end = mempcopy(
+        moved.unsafe_bitcast[NoneType](), src.unsafe_bitcast[NoneType](), 4
+    )
+    assert_equal(char_ptr_to_string(moved), "abcd", "mempcopy copies too")
+    assert_equal(
+        Int(UInt(end.unsafe_bitcast[UInt8]())) - Int(UInt(moved)),
+        4,
+        "and hands back one past what it wrote",
+    )
+
+    var dup = strdup(src)
+    assert_equal(char_ptr_to_string(dup), "abcdef", "strdup copies the string")
+    assert_true(
+        Int(UInt(dup)) != Int(UInt(src)), "and it is a copy, not the same one"
+    )
+    _ = free(dup)
+
+    var part = strndup(src, 3)
+    assert_equal(char_ptr_to_string(part), "abc", "strndup stops at three")
+    _ = free(part)
+
+    var cat = unsafe_alloc[UInt8](16)
+    for i in range(16):
+        cat.unsafe_store(i, 0)
+    _ = strcopy(cat, string_to_char_ptr("hello, "))
+    _ = strcat(cat, string_to_char_ptr("libc"))
+    assert_equal(
+        char_ptr_to_string(cat), "hello, libc", "strcat joins onto the end"
+    )
+
+    # What `strncpy` is known for: with a source longer than the count it
+    # writes no NUL, so what it leaves is not a string.
+    var cut = unsafe_alloc[UInt8](9)
+    for i in range(8):
+        cut.unsafe_store(i, UInt8(ord("X")))
+    cut.unsafe_store(8, 0)
+    _ = strncpy(cut, src, 3)
+    assert_equal(
+        char_ptr_to_string(cut),
+        "abcXXXXX",
+        "strncpy writes three and leaves no NUL behind",
+    )
+
+    var pad = unsafe_alloc[UInt8](8)
+    for i in range(8):
+        pad.unsafe_store(i, 0)
+    var stop = stpncpy(pad, string_to_char_ptr("ab"), 6)
+    assert_equal(
+        Int(UInt(stop)) - Int(UInt(pad)),
+        2,
+        "stpncpy stops where the NULs begin",
+    )
+
+    var again = unsafe_alloc[UInt8](8)
+    for i in range(8):
+        again.unsafe_store(i, 0)
+    _ = strncopy(again, src, 7)
+    assert_equal(
+        char_ptr_to_string(again),
+        "abcdef",
+        "strncopy is strncpy under another name",
+    )
+
+    dst.unsafe_free()
+    overlap.unsafe_free()
+    moved.unsafe_free()
+    cat.unsafe_free()
+    cut.unsafe_free()
+    pad.unsafe_free()
+    again.unsafe_free()
+    src.unsafe_free()
+
+
 def main() raises:
     test_strlen()
+    test_copying()
     test_strcpy()
     test_memcmp_and_memchr()
     test_compare()
