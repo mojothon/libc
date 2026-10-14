@@ -1,6 +1,7 @@
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
+from libc.utils import string_to_char_ptr
 from libc.math import (
     abs,
     acos,
@@ -13,13 +14,16 @@ from libc.math import (
     asinhf,
     atan,
     atan2,
+    atan2f,
     atanf,
     atanh,
     atanhf,
     cbrt,
     cbrtf,
     ceil,
+    ceilf,
     copysign,
+    copysignf,
     cos,
     cosf,
     cosh,
@@ -30,13 +34,36 @@ from libc.math import (
     expm1,
     expm1f,
     fabs,
+    fabsf,
     fdim,
     fdimf,
     floor,
+    floorf,
     fma,
+    fmaf,
+    fmax,
+    fmaxf,
+    fmin,
+    fminf,
     fmod,
+    fmodf,
+    frexp,
+    frexpf,
+    gamma,
+    gammaf,
     hypot,
+    hypotf,
+    ilogb,
+    ilogbf,
+    labs,
+    ldexp,
+    ldexpf,
     ldiv,
+    lgamma,
+    lgamma_r,
+    lgammaf,
+    lgammaf_r,
+    llabs,
     lldiv,
     log,
     log10,
@@ -45,12 +72,27 @@ from libc.math import (
     log1pf,
     log2,
     log2f,
+    logb,
+    logbf,
     logf,
+    modf,
+    modff,
     nan,
+    nanf,
+    nearbyint,
+    nearbyintf,
     nextafter,
+    nextafterf,
     pow,
     powf,
+    remainderf,
     remquo,
+    rintf,
+    roundf,
+    scalbln,
+    scalblnf,
+    scalbn,
+    scalbnf,
     sin,
     sinf,
     sinh,
@@ -61,6 +103,9 @@ from libc.math import (
     tanf,
     tanh,
     tanhf,
+    tgamma,
+    tgammaf,
+    truncf,
 )
 
 
@@ -208,6 +253,128 @@ def test_exponentials_and_logarithms() raises:
     assert_true(fabs(Float64(cbrtf(27.0)) - 3.0) < 1e-6)
 
 
+def test_rounding_and_remainders() raises:
+    """These answer with a number near the one they were given, and what
+    sets them apart is which way they go when the number is between two:
+    up, down, towards nothing, or to the nearest. `copysignf` is here
+    because it is the one that takes the size from the first of its two
+    and the sign from the second, which is the whole of what it does.
+    """
+    assert_true(fabs(Float64(ceilf(2.3)) - 3.0) < 1e-6)
+    assert_true(fabs(Float64(floorf(2.7)) - 2.0) < 1e-6)
+    assert_true(fabs(Float64(roundf(2.5)) - 3.0) < 1e-6)
+    assert_true(fabs(Float64(truncf(2.7)) - 2.0) < 1e-6)
+    assert_true(fabs(nearbyint(2.4) - 2.0) < 1e-12)
+    assert_true(fabs(Float64(nearbyintf(2.6)) - 3.0) < 1e-6)
+    assert_true(fabs(Float64(rintf(2.6)) - 3.0) < 1e-6)
+
+    assert_true(fabs(Float64(fabsf(-3.0)) - 3.0) < 1e-6)
+    assert_true(fabs(fmax(1.0, 2.0) - 2.0) < 1e-12)
+    assert_true(fabs(Float64(fmaxf(1.0, 2.0)) - 2.0) < 1e-6)
+    assert_true(fabs(fmin(1.0, 2.0) - 1.0) < 1e-12)
+    assert_true(fabs(Float64(fminf(1.0, 2.0)) - 1.0) < 1e-6)
+
+    assert_true(fabs(Float64(copysignf(3.0, -1.0)) + 3.0) < 1e-6)
+    assert_true(fabs(Float64(copysignf(-3.0, 1.0)) - 3.0) < 1e-6)
+
+
+def test_scaling_and_exponents() raises:
+    """`ldexp` takes the number and then the power of two, `frexp` writes
+    the power of two where it is told to rather than handing it back,
+    and `logb` is the one that says which power of two a number is.
+    """
+    assert_true(fabs(ldexp(3.0, 2) - 12.0) < 1e-12)
+    assert_true(fabs(Float64(ldexpf(3.0, 2)) - 12.0) < 1e-6)
+    assert_true(fabs(scalbn(3.0, 2) - 12.0) < 1e-12)
+    assert_true(fabs(Float64(scalbnf(3.0, 2)) - 12.0) < 1e-6)
+    assert_true(fabs(scalbln(3.0, 2) - 12.0) < 1e-12)
+    assert_true(fabs(Float64(scalblnf(3.0, 2)) - 12.0) < 1e-6)
+
+    var power = unsafe_alloc[Int32](1)
+    assert_true(fabs(frexp(8.0, power) - 0.5) < 1e-12)
+    assert_equal(
+        power.unsafe_offset(0)[], 4, "frexp writes the two where it was told"
+    )
+    assert_true(fabs(Float64(frexpf(8.0, power)) - 0.5) < 1e-6)
+    assert_equal(power.unsafe_offset(0)[], 4, "and so does frexpf")
+    power.unsafe_free()
+
+    var whole = unsafe_alloc[Float64](1)
+    assert_true(fabs(modf(2.75, whole) - 0.75) < 1e-12)
+    assert_true(fabs(whole.unsafe_offset(0)[] - 2.0) < 1e-12)
+    whole.unsafe_free()
+
+    var whole_f = unsafe_alloc[Float32](1)
+    assert_true(fabs(Float64(modff(2.75, whole_f)) - 0.75) < 1e-6)
+    assert_true(fabs(Float64(whole_f.unsafe_offset(0)[]) - 2.0) < 1e-6)
+    whole_f.unsafe_free()
+
+    assert_equal(Int(ilogb(8.0)), 3, "ilogb says which power of two")
+    assert_equal(Int(ilogbf(8.0)), 3, "and so does ilogbf")
+    assert_true(fabs(logb(8.0) - 3.0) < 1e-12)
+    assert_true(fabs(Float64(logbf(8.0)) - 3.0) < 1e-6)
+
+
+def test_the_two_that_are_not_symmetric() raises:
+    """`atan2f` is given the y and then the x, which is not the order
+    anybody writes them in; `nextafterf` goes from the first towards the
+    second; `remainderf` is what is left of the first after the second;
+    and `fmaf` multiplies the first two and adds the third.
+    """
+    assert_true(fabs(Float64(atan2f(1.0, 0.0)) - 1.5707963267948966) < 1e-6)
+    assert_true(fabs(Float64(atan2f(0.0, 1.0)) - 0.0) < 1e-6)
+
+    assert_true(
+        Float64(nextafterf(1.0, 4.0)) > 1.0,
+        "nextafterf goes towards the second",
+    )
+    assert_true(
+        Float64(nextafterf(1.0, 0.0)) < 1.0, "and back down towards nothing"
+    )
+
+    assert_true(fabs(Float64(remainderf(7.0, 3.0)) - 1.0) < 1e-6)
+    assert_true(fabs(Float64(fmodf(7.0, 3.0)) - 1.0) < 1e-6)
+    assert_true(fabs(Float64(hypotf(3.0, 4.0)) - 5.0) < 1e-6)
+    assert_true(fabs(Float64(fmaf(2.0, 3.0, 4.0)) - 10.0) < 1e-6)
+
+
+def test_the_gamma_functions() raises:
+    """`tgamma` is the factorial moved along by one and `lgamma` is its
+    logarithm, which is the one that does not overflow. `gamma` is
+    another name for `lgamma`, and the two ending in `_r` write the sign
+    where they are told to rather than leaving it somewhere of libc's
+    own choosing.
+    """
+    assert_true(fabs(tgamma(5.0) - 24.0) < 1e-12)
+    assert_true(fabs(Float64(tgammaf(5.0)) - 24.0) < 1e-6)
+    assert_true(fabs(lgamma(5.0) - 3.1780538303479458) < 1e-12)
+    assert_true(fabs(Float64(lgammaf(5.0)) - 3.1780538303479458) < 1e-6)
+    assert_true(fabs(gamma(5.0) - 3.1780538303479458) < 1e-12)
+    assert_true(fabs(Float64(gammaf(5.0)) - 3.1780538303479458) < 1e-6)
+
+    var sign = unsafe_alloc[Int32](1)
+    assert_true(fabs(lgamma_r(5.0, sign) - 3.1780538303479458) < 1e-12)
+    assert_equal(
+        sign.unsafe_offset(0)[], 1, "lgamma_r writes the sign where it was told"
+    )
+    assert_true(fabs(Float64(lgammaf_r(5.0, sign)) - 3.1780538303479458) < 1e-6)
+    assert_equal(sign.unsafe_offset(0)[], 1, "and so does lgammaf_r")
+    sign.unsafe_free()
+
+
+def test_nanf_and_the_absolute_values() raises:
+    var tag = string_to_char_ptr("")
+    var nothing = nanf(tag)
+    assert_true(
+        Float64(nothing) != Float64(nothing),
+        "nanf hands back a thing that is not equal to itself",
+    )
+    tag.unsafe_free()
+
+    assert_equal(Int(labs(-5)), 5, "labs takes the sign away")
+    assert_equal(Int(llabs(-5)), 5, "and so does llabs")
+
+
 def main() raises:
     test_abs()
     test_sqrt_and_rounding()
@@ -217,5 +384,10 @@ def main() raises:
     test_remquo()
     test_trigonometry()
     test_exponentials_and_logarithms()
+    test_rounding_and_remainders()
+    test_scaling_and_exponents()
+    test_the_two_that_are_not_symmetric()
+    test_the_gamma_functions()
+    test_nanf_and_the_absolute_values()
     test_nan()
     print("test_math: ok")
