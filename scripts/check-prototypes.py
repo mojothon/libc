@@ -748,6 +748,23 @@ def main() -> int:
         # hands the arguments over without knowing what they are. Integers and
         # pointers land in the right registers by luck of the calling
         # convention, which is why twenty-seven here sat that way unnoticed.
+        # A struct handed over by value where C asked for its address:
+        # what C writes goes into a copy and the caller's own object
+        # never moves, and the call still returns 0. Nothing says so
+        # until the call is made, and `pthread_attr_setdetachstate` was
+        # written that way for as long as nobody made it.
+        if symbol in prototypes:
+            wanted = [
+                a for a in prototypes[symbol][4] if a.strip() not in ("void", "")
+            ]
+            for c_param, m_param in zip(wanted, mojo_params):
+                if "*" in c_param and m_param.strip() in structs:
+                    problems.append(
+                        f"{where} handing a `{m_param.strip()}` by value where"
+                        f" C asked for `{c_param.strip()}`, so what C writes"
+                        " goes into a copy"
+                    )
+
         if len(mojo_params) != passed:
             problems.append(
                 f"{where} with {passed} argument(s) and {len(mojo_params)}"

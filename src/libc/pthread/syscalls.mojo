@@ -58,6 +58,12 @@ def pthread_atfork(
         All three are C function pointers. Mojo cannot make one, so the only
         thing a Mojo caller can honestly pass is a null pointer for each.
 
+        That is not the end of it. glibc exports this one as
+        pthread_atfork@GLIBC_2.2.5 and exports no default version, so a
+        lookup by name does not find it: the call cannot be made from
+        Mojo at all, null pointers or not. A C program links it easily
+        enough, which is what makes the difference easy to miss.
+
     Returns:
         0 on success, or -1 on error.
     """
@@ -127,7 +133,7 @@ def pthread_attr_getdetachstate(
 
 
 def pthread_attr_setdetachstate(
-    attr: pthread_attr_t, detachstate: Int32
+    attr: c_ptr[pthread_attr_t], detachstate: Int32
 ) -> Int32:
     """C library <pthread.h> function `pthread_attr_setdetachstate`.
 
@@ -143,7 +149,7 @@ def pthread_attr_setdetachstate(
        nonzero error number.
     """
     return external_call[
-        "pthread_attr_setdetachstate", Int32, pthread_attr_t, Int32
+        "pthread_attr_setdetachstate", Int32, c_ptr[pthread_attr_t], Int32
     ](attr, detachstate)
 
 
