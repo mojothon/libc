@@ -7,6 +7,7 @@ from libc.constant import AT_FDCWD, SEEK_END, SEEK_SET
 from libc.sys.stat import Stat, fstat, stat
 from libc.unistd import (
     SC_PAGESIZE,
+    SYS_getpid,
     alarm,
     chdir,
     chown,
@@ -48,6 +49,7 @@ from libc.unistd import (
     sleep,
     swab,
     symlinkat,
+    syscall,
     sysconf,
     truncate,
     unlink,
@@ -480,6 +482,23 @@ def test_dup3() raises:
     _ = close(ends.unsafe_load(1))
 
 
+def test_syscall_by_number() raises:
+    """`syscall` is a call by number, for the ones the C library has
+    no name of its own for. `SYS_getpid` is the number of one it
+    does have a name for, which is what makes it possible to check:
+    what comes back has to be this process, the same as `getpid`
+    says.
+
+    It is the only shape of `syscall` there is here, the binding
+    taking the number alone and no arguments after it.
+    """
+    assert_equal(
+        Int(syscall(SYS_getpid)),
+        Int(getpid()),
+        "syscall by number says the same as getpid does",
+    )
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -499,6 +518,7 @@ def main() raises:
     test_usleep()
     test_process_groups()
     test_dup3()
+    test_syscall_by_number()
     test_pread_and_pwrite_at_an_offset()
     test_readv_gathers_what_writev_scattered()
     print("test_unistd: ok")
