@@ -16,6 +16,7 @@ from test_mman import main as run_mman
 from test_dlfcn import main as run_dlfcn
 from test_sched import main as run_sched
 from test_pthread import main as run_pthread
+from test_epoll import main as run_epoll
 from test_errno import main as run_errno
 from test_fenv import main as run_fenv
 from test_float import main as run_float
@@ -52,6 +53,7 @@ def main() raises:
     run_dlfcn()
     run_sched()
     run_pthread()
+    run_epoll()
     run_errno()
     run_fenv()
     run_float()
