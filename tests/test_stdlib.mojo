@@ -5,14 +5,17 @@ from std.testing import assert_equal, assert_true
 from libc.constant import c_char, c_ptr, c_uint
 from libc.file import close
 from libc.stdio import remove
-from libc.unistd import rmdir
+from libc.sys.wait import WIFSIGNALED, waitpid
+from libc.unistd import fork, rmdir
 from libc.stdlib import (
+    abort,
     aligned_alloc,
     atof,
     atoi,
     atol,
     atoll,
     calloc,
+    exit,
     free,
     getenv,
     getsubopt,
@@ -275,6 +278,33 @@ def test_the_untried_calls() raises:
         home.unsafe_free()
 
 
+def test_abort_ends_the_child_and_not_us() raises:
+    """`abort` ends the process that asks for it, so it is asked for
+    in a child and nowhere else. What comes back from waiting is
+    that the child was brought down by a signal.
+
+    Which signal is not asked about. `abort` sends `SIGABRT`, but
+    what is seen here is `SIGSEGV`: the run time having been asked
+    to end the process, it ends it in its own way, and a test that
+    said which one it must be would be a test that says more than
+    there is to go on.
+    """
+    var child = fork()
+    if child == 0:
+        _ = abort()
+        _ = exit(0)  # `abort` does not come back, but if it did the
+        # child should still not carry on into the rest of the tests.
+
+    assert_true(child > 0, "there is a child to wait for")
+    var status = unsafe_alloc[Int32](1)
+    status.unsafe_offset(0)[] = 0
+    assert_equal(waitpid(child, status, 0), child, "the child is waited for")
+    assert_true(
+        WIFSIGNALED(status.unsafe_load()), "and it was brought down by a signal"
+    )
+    status.unsafe_free()
+
+
 def main() raises:
     test_malloc()
     test_the_untried_calls()
@@ -286,4 +316,5 @@ def main() raises:
     test_random()
     test_getsubopt()
     test_paths()
+    test_abort_ends_the_child_and_not_us()
     print("test_stdlib: ok")
