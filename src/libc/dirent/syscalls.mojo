@@ -19,8 +19,16 @@ from libc.constant import *
 # big enough for Darwin and start reading it two bytes later there. The struct
 # then has the same size as the C one on each platform (280 on glibc, 1048 on
 # Darwin), which is what makes `readdir`'s pointer safe to dereference.
-comptime DIRENT_NAME_SIZE = 1026 if CompilationTarget.is_macos() else 256
-comptime DIRENT_NAME_OFFSET = 2 if CompilationTarget.is_macos() else 0
+# A `struct dirent` is 280 bytes on glibc and 272 on Darwin, and the two
+# disagree about where things sit: `d_name` is at 19 in one and 12 in the
+# other, `d_type` at 18 and 10. So the record is held as bytes and every
+# member is read at the offset that fits the platform, the way `Stat` does
+# it. 280 covers both: Darwin's 272 fits, and `readdir` writes into it.
+comptime DIRENT_BYTES = 280
+comptime DIRENT_SLOTS = DIRENT_BYTES // 8
+comptime DIRENT_NAME_OFFSET = 12 if CompilationTarget.is_macos() else 19
+comptime DIRENT_TYPE_OFFSET = 10 if CompilationTarget.is_macos() else 18
+comptime DIRENT_RECLEN_OFFSET = 8 if CompilationTarget.is_macos() else 16
 
 
 struct DIR(TrivialRegisterPassable):
@@ -38,30 +46,59 @@ struct DIR(TrivialRegisterPassable):
 # character array, not a pointer, so modelling it as a pointer both reads
 # garbage and shifts the field to the wrong offset.
 struct dirent:
-    var d_ino: c_ulong
-    var d_off: c_ulong
-    var d_reclen: c_ushort
-    # glibc only. On Darwin this byte is the low half of `d_namlen`; use
-    # `type()` to read the file type on either platform.
-    var d_type: c_char
-    var d_name: Array[UInt8, DIRENT_NAME_SIZE]
+    """A C `struct dirent`, the record `readdir` hands back.
 
-    def name(self) -> String:
-        """The NUL terminated entry name as a Mojo `String`."""
-        var bytes = List[UInt8](capacity=DIRENT_NAME_SIZE)
-        var i = DIRENT_NAME_OFFSET
-        while i < DIRENT_NAME_SIZE and self.d_name[i] != 0:
-            bytes.append(self.d_name[i])
-            i += 1
-        return String(unsafe_from_utf8=Span[UInt8](bytes))
+    glibc's has `d_ino`, `d_off`, `d_reclen`, `d_type` and then `d_name`
+    at 19. Darwin's has no `d_off` at all: `d_ino`, `d_reclen`, `d_type`,
+    `d_namlen`, and `d_name` at 12. Neither is a prefix of the other, so
+    the bytes are held as they come and the members are read at the
+    offset that fits, which is what the `*_OFFSET` constants above say.
+    """
+
+    # Eight-byte slots rather than bytes: C says this record is 8-aligned,
+    # and an `Array[UInt8]` would take the struct's alignment down to 1.
+    var _slots: Array[UInt64, DIRENT_SLOTS]
+
+    def __init__(out self):
+        """Zeroes the whole record."""
+        self._slots = Array[UInt64, DIRENT_SLOTS](fill=0)
+
+    def _byte(self, off: Int) -> UInt8:
+        """The single byte at `off`, whichever slot holds it."""
+        return UInt8((self._slots[off // 8] >> UInt64((off % 8) * 8)) & 0xFF)
+
+    def _u16(self, off: Int) -> UInt16:
+        """Two little-endian bytes at `off`."""
+        return UInt16(self._byte(off)) | (UInt16(self._byte(off + 1)) << 8)
+
+    def _u64(self, off: Int) -> UInt64:
+        """Eight little-endian bytes at `off`."""
+        var acc: UInt64 = 0
+        for i in range(8):
+            acc |= UInt64(self._byte(off + i)) << UInt64(i * 8)
+        return acc
+
+    def ino(self) -> UInt64:
+        """The inode number of the entry."""
+        return self._u64(0)
+
+    def reclen(self) -> UInt16:
+        """The length of this record, which is how `readdir` steps to the next.
+        """
+        return self._u16(DIRENT_RECLEN_OFFSET)
 
     def type(self) -> UInt8:
         """The `d_type` file-type byte, on glibc and Darwin alike."""
-        comptime if CompilationTarget.is_macos():
-            # Offset 20, which is `d_name[1]` given the array starts at 19.
-            return self.d_name[1]
-        else:
-            return self.d_type
+        return self._bytes[DIRENT_TYPE_OFFSET]
+
+    def name(self) -> String:
+        """The NUL terminated entry name as a Mojo `String`."""
+        var bytes = List[UInt8]()
+        var i = DIRENT_NAME_OFFSET
+        while i < DIRENT_BYTES and self._byte(i) != 0:
+            bytes.append(self._byte(i))
+            i += 1
+        return String(unsafe_from_utf8=Span[UInt8](bytes))
 
 
 def closedir(arg: c_ptr[DIR]) -> Int32:

@@ -104,9 +104,12 @@ def main() raises:
 ```
 
 !!! warning
-    `struct dirent.d_name` is modelled as `Array[UInt8, 256]`, not a pointer.
-    Reading it as a pointer both yields a garbage address and shifts the field
-    to the wrong offset.
+    `struct dirent` is held as raw bytes and read through `ino()`, `reclen()`,
+    `type()` and `name()`. Its `d_name` is an inline character array, not a
+    pointer, and the two platforms do not put it in the same place: it sits at
+    offset 19 on glibc and 12 on Darwin, with `d_type` at 18 and 10. Reading it
+    as a pointer, or guessing one offset for both, yields a garbage address or a
+    name taken from the wrong bytes.
 
 ## Constants
 
