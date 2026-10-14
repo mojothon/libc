@@ -622,6 +622,40 @@ def peel(c_type: str, mojo_type: str) -> tuple[str, str]:
         return c_type, mojo_type
 
 
+def declared_structs() -> set[str]:
+    """The names of the structs this package declares, lowercased."""
+    names: set[str] = set()
+    for path in sorted(SRC.rglob("*.mojo")):
+        for m in re.finditer(r"^struct (\w+)", path.read_text(), re.M):
+            names.add(m.group(1).lower())
+    return names
+
+
+def struct_mismatch(
+    c_pointed: str, mojo_pointed: str, structs: set[str]
+) -> tuple[str, str] | None:
+    """`(wanted, given)` when C points at one named struct and Mojo at
+    another one, or None when that is not what is happening.
+
+    A pointer is eight bytes whatever it points at, so the sizes agree
+    and nothing above has anything to say: `utime` was handed a
+    `timeval` where C asked for a `utimbuf`, and it compiled, ran and
+    answered 0 while writing the microseconds field into the modified
+    time. Only the name of what is pointed at tells the two apart.
+
+    A pointer to `UInt8` or to nothing in particular is left alone:
+    that is how an opaque one is written here, and it is not wrong.
+    """
+    m = re.search(r"struct\s+(\w+)", c_pointed)
+    if not m:
+        return None
+    given = mojo_pointed.strip()
+    if given.lower() not in structs:
+        return None
+    wanted = m.group(1)
+    return None if given.lower() == wanted.lower() else (wanted, given)
+
+
 def size_problem(
     c_type: str,
     mojo_type: str,
@@ -691,6 +725,7 @@ def main() -> int:
         else:
             notes[off[1]].append(line)
 
+    structs = declared_structs()
     for path, name, symbol, passed, mojo_return, mojo_params in bindings():
         where = f"{path}: {name}() calls {symbol}()"
 
@@ -779,6 +814,14 @@ def main() -> int:
                     off,
                     f"{where} with {mojo_param} as argument {place}, where C"
                     f" takes {c_param}, which is {off[0]}",
+                )
+
+            named = struct_mismatch(inner_c, inner_mojo, structs)
+            if named:
+                problems.append(
+                    f"{where} with {mojo_param} as argument {place}, where C"
+                    f" takes {c_param}, which points at `struct {named[0]}`"
+                    f" rather than at {named[1]}"
                 )
 
         # A function that calls something C spells differently is usually a
