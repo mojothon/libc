@@ -8,21 +8,24 @@ from libc.fenv import (
     FE_INEXACT,
     FE_INVALID,
     FE_TONEAREST,
-    FE_UPWARD,
     FE_TOWARDZERO,
-    fenv_t,
-    fexcept_t,
+    FE_UPWARD,
     feclearexcept,
+    fedisableexcept,
+    feenableexcept,
     fegetenv,
+    fegetexcept,
     fegetexceptflag,
     fegetround,
     feholdexcept,
+    fenv_t,
     feraiseexcept,
     fesetenv,
     fesetexceptflag,
     fesetround,
     fetestexcept,
     feupdateenv,
+    fexcept_t,
 )
 from libc.math import rint
 from libc.stdlib import strtod
@@ -132,9 +135,45 @@ def test_environment_round_trip() raises:
     env.unsafe_free()
 
 
+def test_a_trap_is_turned_on_and_then_off() raises:
+    """`feenableexcept` asks that one of the floating point
+    exceptions stop the program rather than only raising a flag,
+    which is what makes it a trap. `fedisableexcept` asks for the
+    flag back, and `fegetexcept` says which are traps at the moment.
+
+    What was there before is put back at the end, since a trap left
+    on would end the program the next time a division by zero or an
+    overflow happens anywhere in it, tests included.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var was = fegetexcept()
+
+        _ = feenableexcept(FE_INVALID)
+        assert_true(
+            (Int(fegetexcept()) & Int(FE_INVALID)) != 0,
+            "FE_INVALID is a trap once it is asked for",
+        )
+
+        _ = fedisableexcept(FE_INVALID)
+        assert_equal(
+            Int(fegetexcept()) & Int(FE_INVALID),
+            0,
+            "and only a flag again once it is taken back",
+        )
+
+        _ = fedisableexcept(FE_ALL_EXCEPT)
+        _ = feenableexcept(was)
+        assert_equal(
+            Int(fegetexcept()),
+            Int(was),
+            "and what was there before is there again",
+        )
+
+
 def main() raises:
     test_rounding_modes()
     test_exception_flags()
     test_exceptflag_round_trip()
     test_environment_round_trip()
+    test_a_trap_is_turned_on_and_then_off()
     print("test_fenv: ok")
