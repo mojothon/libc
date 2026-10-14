@@ -2,41 +2,64 @@
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
+from libc.fcntl import O_CREAT, O_RDONLY, open as open_with_mode
+from libc.constant import AT_FDCWD, SEEK_END, SEEK_SET
+from libc.sys.stat import Stat, fstat, stat
 from libc.unistd import (
     SC_PAGESIZE,
     alarm,
+    chdir,
     chown,
+    dup2,
+    fchdir,
     fchown,
     fchownat,
+    fpathconf,
+    fsync,
+    ftruncate,
     getcwd,
     getegid,
     geteuid,
     getgid,
+    getopt,
     getpagesize,
-    getpid,
-    getuid,
-    lchown,
-    getsid,
     getpgid,
+    getpid,
+    getppid,
+    getsid,
+    gettid,
+    getuid,
+    isatty,
+    lchown,
+    linkat,
+    lseek,
     nice,
-    setegid,
-    setpgid,
-    seteuid,
-    sleep,
     pipe,
     pread,
     pwrite,
+    read,
+    readlink,
+    readlinkat,
     readv,
+    setegid,
+    seteuid,
+    setpgid,
+    sleep,
     swab,
+    symlinkat,
     sysconf,
+    truncate,
+    unlink,
+    unlinkat,
     usleep,
+    write,
     writev,
 )
 from libc.constant import O_RDWR, c_char, c_ptr
 from libc.file import close, fclose, fopen, open
 from libc.stdio import fwrite, remove
 from libc.sys.socket import iovec
-from libc.utils import char_ptr_to_string, string_to_char_ptr
+from libc.utils import char_ptr_to_string, null_ptr, string_to_char_ptr
 
 
 def test_getcwd() raises:
@@ -250,8 +273,182 @@ def test_readv_gathers_what_writev_scattered() raises:
     _ = close(writer)
 
 
+def test_descriptors_and_offsets() raises:
+    """`dup2` is given the descriptor to copy and then the number to copy
+    it onto, and both are one type, so they can change places and nothing
+    says a word. `lseek` is given the offset and then where to measure it
+    from; `ftruncate` takes a length and the file is that long after.
+    """
+    var path = string_to_char_ptr("/tmp/libc_unistd_me")
+    var fd = open_with_mode(path, O_CREAT | O_RDWR, 0o644)
+    assert_true(fd >= 0, "the file is there to be written")
+
+    assert_equal(
+        write(fd, string_to_char_ptr("hello"), 5), 5, "wrote five bytes"
+    )
+    assert_equal(lseek(fd, 0, SEEK_END), 5, "lseek measures from the end")
+    assert_equal(lseek(fd, 0, SEEK_SET), 0, "and from the start")
+
+    assert_equal(dup2(fd, 10), 10, "dup2 hands back the number it was given")
+    assert_equal(lseek(10, 0, SEEK_END), 5, "and that one is the same file")
+
+    assert_equal(fsync(fd), 0, "fsync says it is down on the disk")
+
+    assert_equal(ftruncate(fd, 3), 0, "ftruncate takes a length")
+    var st = unsafe_alloc[Stat](1)
+    assert_equal(fstat(fd, st), 0, "and the file can be asked about")
+    assert_equal(st.unsafe_offset(0)[].size(), 3, "it is three bytes long now")
+    st.unsafe_free()
+
+    _ = close(10)
+    _ = close(fd)
+    _ = unlink(path)
+    path.unsafe_free()
+
+
+def test_truncate_takes_a_path() raises:
+    """The same thing as `ftruncate`, asked for by name instead."""
+    var path = string_to_char_ptr("/tmp/libc_truncate_me")
+    var fd = open_with_mode(path, O_CREAT | O_RDWR, 0o644)
+    assert_equal(
+        write(fd, string_to_char_ptr("abcdef"), 6), 6, "wrote six bytes"
+    )
+    _ = close(fd)
+
+    assert_equal(truncate(path, 2), 0, "truncate takes a path and a length")
+    var st = unsafe_alloc[Stat](1)
+    assert_equal(stat(path, st), 0, "and the file can be asked")
+    assert_equal(st.unsafe_offset(0)[].size(), 2, "it is two bytes long now")
+    st.unsafe_free()
+    _ = unlink(path)
+    path.unsafe_free()
+
+
+def test_links() raises:
+    """`linkat` gives a file a second name and `symlinkat` gives it a name
+    that points at one; `readlink` is what says which of the two a name
+    is, and `nlink` is what says the first one was made.
+    """
+    var path = string_to_char_ptr("/tmp/libc_linked")
+    var fd = open_with_mode(path, O_CREAT | O_RDWR, 0o644)
+    _ = close(fd)
+
+    var hard = string_to_char_ptr("/tmp/libc_hard_name")
+    _ = unlink(hard)
+    assert_equal(
+        linkat(AT_FDCWD, path, AT_FDCWD, hard, 0),
+        0,
+        "linkat makes a second name for it",
+    )
+
+    var soft = string_to_char_ptr("/tmp/libc_soft_name")
+    _ = unlink(soft)
+    assert_equal(
+        symlinkat(path, AT_FDCWD, soft), 0, "symlinkat makes a name that points"
+    )
+
+    var buf = unsafe_alloc[UInt8](64)
+    for i in range(64):
+        buf.unsafe_store(i, 0)
+    assert_equal(readlink(soft, buf, 64), 16, "readlink reads where it points")
+    assert_equal(
+        char_ptr_to_string(buf), "/tmp/libc_linked", "and that is the file"
+    )
+
+    var again = unsafe_alloc[UInt8](64)
+    for i in range(64):
+        again.unsafe_store(i, 0)
+    assert_equal(
+        readlinkat(AT_FDCWD, soft, again, 64), 16, "readlinkat reads it too"
+    )
+    assert_equal(
+        char_ptr_to_string(again), "/tmp/libc_linked", "and says the same thing"
+    )
+
+    var st = unsafe_alloc[Stat](1)
+    assert_equal(stat(path, st), 0, "the file can be asked")
+    assert_equal(st.unsafe_offset(0)[].nlink(), 2, "and it has two names")
+    st.unsafe_free()
+
+    assert_equal(unlinkat(AT_FDCWD, hard, 0), 0, "unlinkat takes one away")
+    buf.unsafe_free()
+    again.unsafe_free()
+    _ = unlink(soft)
+    _ = unlink(path)
+    path.unsafe_free()
+    hard.unsafe_free()
+    soft.unsafe_free()
+
+
+def test_chdir_and_fchdir() raises:
+    """Both move the whole process, so this goes to `/tmp` and comes back
+    to where it started.
+    """
+    var start = unsafe_alloc[UInt8](256)
+    assert_true(Int(UInt(getcwd(start, 256))) != 0, "where it began is known")
+
+    var tmp = string_to_char_ptr("/tmp")
+    assert_equal(chdir(tmp), 0, "chdir takes a path")
+
+    var fd = open(string_to_char_ptr("/tmp"), O_RDONLY)
+    assert_true(fd >= 0, "the directory opens")
+    assert_equal(fchdir(fd), 0, "fchdir takes a descriptor")
+    _ = close(fd)
+
+    assert_equal(chdir(start), 0, "and it comes back")
+    start.unsafe_free()
+    tmp.unsafe_free()
+
+
+def test_the_ids_and_the_terminal() raises:
+    assert_true(getppid() > 0, "there is a parent process")
+    assert_true(gettid() > 0, "and this thread has an id")
+
+    # Not standard input, which is a terminal when somebody is watching
+    # and not when they are not: `/dev/null` is never one.
+    var nothing = string_to_char_ptr("/dev/null")
+    var fd = open(nothing, O_RDONLY)
+    assert_true(fd >= 0, "/dev/null opens")
+    assert_equal(isatty(fd), 0, "and it is not a terminal")
+    _ = close(fd)
+    nothing.unsafe_free()
+
+
+def test_fpathconf() raises:
+    var path = string_to_char_ptr("/tmp")
+    var fd = open(path, O_RDONLY)
+    assert_true(fd >= 0, "/tmp opens")
+    # 0 is `_PC_LINK_MAX`, the first of the things it is asked about.
+    assert_true(fpathconf(fd, 0) > 0, "a directory has a limit on links")
+    _ = close(fd)
+    path.unsafe_free()
+
+
+def test_getopt() raises:
+    """`getopt` takes the count, then the arguments, then the letters it
+    is to look for, and answers with the letter it found.
+    """
+    var argv = unsafe_alloc[c_ptr[UInt8]](3)
+    argv.unsafe_offset(0)[] = string_to_char_ptr("prog")
+    argv.unsafe_offset(1)[] = string_to_char_ptr("-a")
+    argv.unsafe_offset(2)[] = null_ptr[UInt8]()
+    assert_equal(
+        getopt(2, argv, string_to_char_ptr("a")),
+        Int32(ord("a")),
+        "getopt finds the option it was asked about",
+    )
+    argv.unsafe_free()
+
+
 def main() raises:
     test_getcwd()
+    test_descriptors_and_offsets()
+    test_truncate_takes_a_path()
+    test_links()
+    test_chdir_and_fchdir()
+    test_the_ids_and_the_terminal()
+    test_fpathconf()
+    test_getopt()
     test_swab()
     test_getpid()
     test_ids()
