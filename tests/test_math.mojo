@@ -3,10 +3,32 @@ from std.testing import assert_equal, assert_true
 
 from libc.math import (
     abs,
+    acos,
+    acosf,
+    acosh,
+    acoshf,
+    asin,
+    asinf,
+    asinh,
+    asinhf,
+    atan,
     atan2,
+    atanf,
+    atanh,
+    atanhf,
+    cbrt,
+    cbrtf,
     ceil,
     copysign,
+    cos,
+    cosf,
+    cosh,
+    coshf,
     erf,
+    exp,
+    expf,
+    expm1,
+    expm1f,
     fabs,
     fdim,
     fdimf,
@@ -16,12 +38,29 @@ from libc.math import (
     hypot,
     ldiv,
     lldiv,
+    log,
+    log10,
+    log10f,
+    log1p,
+    log1pf,
+    log2,
+    log2f,
+    logf,
     nan,
     nextafter,
     pow,
     powf,
     remquo,
+    sin,
+    sinf,
+    sinh,
+    sinhf,
     sqrt,
+    sqrtf,
+    tan,
+    tanf,
+    tanh,
+    tanhf,
 )
 
 
@@ -108,6 +147,67 @@ def test_nan() raises:
     assert_true(value != value, "a NaN is not equal to itself")
 
 
+def test_trigonometry() raises:
+    """Not one of the sines, cosines or tangents had been called, nor
+    their inverses, nor the hyperbolic ones, and each has the same name
+    as the one twice its size. So each is asked about a number whose
+    answer is known: the sine of nothing is nothing, the cosine of
+    nothing is one, and each inverse undoes what it is the inverse of.
+    """
+    assert_true(fabs(sin(0.0) - 0.0) < 1e-12)
+    assert_true(fabs(Float64(sinf(0.0)) - 0.0) < 1e-6)
+    assert_true(fabs(cos(0.0) - 1.0) < 1e-12)
+    assert_true(fabs(Float64(cosf(0.0)) - 1.0) < 1e-6)
+    assert_true(fabs(tan(0.0) - 0.0) < 1e-12)
+    assert_true(fabs(Float64(tanf(0.0)) - 0.0) < 1e-6)
+
+    assert_true(fabs(asin(0.0) - 0.0) < 1e-12)
+    assert_true(fabs(Float64(asinf(0.0)) - 0.0) < 1e-6)
+    assert_true(fabs(acos(1.0) - 0.0) < 1e-12)
+    assert_true(fabs(Float64(acosf(1.0)) - 0.0) < 1e-6)
+    assert_true(fabs(atan(0.0) - 0.0) < 1e-12)
+    assert_true(fabs(Float64(atanf(0.0)) - 0.0) < 1e-6)
+
+    assert_true(fabs(sinh(0.0) - 0.0) < 1e-12)
+    assert_true(fabs(Float64(sinhf(0.0)) - 0.0) < 1e-6)
+    assert_true(fabs(cosh(0.0) - 1.0) < 1e-12)
+    assert_true(fabs(Float64(coshf(0.0)) - 1.0) < 1e-6)
+    assert_true(fabs(tanh(0.0) - 0.0) < 1e-12)
+    assert_true(fabs(Float64(tanhf(0.0)) - 0.0) < 1e-6)
+
+    assert_true(fabs(asinh(0.0) - 0.0) < 1e-12)
+    assert_true(fabs(Float64(asinhf(0.0)) - 0.0) < 1e-6)
+    assert_true(fabs(acosh(1.0) - 0.0) < 1e-12)
+    assert_true(fabs(Float64(acoshf(1.0)) - 0.0) < 1e-6)
+    assert_true(fabs(atanh(0.0) - 0.0) < 1e-12)
+    assert_true(fabs(Float64(atanhf(0.0)) - 0.0) < 1e-6)
+
+
+def test_exponentials_and_logarithms() raises:
+    """What each of these is the inverse of is what says which one it
+    is: `log2` answers in twos where `log10` answers in tens, and
+    `expm1` and `log1p` are the two that stay honest next to nothing,
+    which is where a plain `exp` minus one loses its answer.
+    """
+    assert_true(fabs(exp(0.0) - 1.0) < 1e-12)
+    assert_true(fabs(Float64(expf(0.0)) - 1.0) < 1e-6)
+    assert_true(fabs(expm1(0.0) - 0.0) < 1e-12)
+    assert_true(fabs(Float64(expm1f(0.0)) - 0.0) < 1e-6)
+
+    assert_true(fabs(log(1.0) - 0.0) < 1e-12)
+    assert_true(fabs(Float64(logf(1.0)) - 0.0) < 1e-6)
+    assert_true(fabs(log2(2.0) - 1.0) < 1e-12)
+    assert_true(fabs(Float64(log2f(2.0)) - 1.0) < 1e-6)
+    assert_true(fabs(log10(100.0) - 2.0) < 1e-12)
+    assert_true(fabs(Float64(log10f(100.0)) - 2.0) < 1e-6)
+    assert_true(fabs(log1p(0.0) - 0.0) < 1e-12)
+    assert_true(fabs(Float64(log1pf(0.0)) - 0.0) < 1e-6)
+
+    assert_true(fabs(Float64(sqrtf(4.0)) - 2.0) < 1e-6)
+    assert_true(fabs(cbrt(8.0) - 2.0) < 1e-12)
+    assert_true(fabs(Float64(cbrtf(27.0)) - 3.0) < 1e-6)
+
+
 def main() raises:
     test_abs()
     test_sqrt_and_rounding()
@@ -115,5 +215,7 @@ def main() raises:
     test_the_right_symbol_is_called()
     test_arguments_in_order()
     test_remquo()
+    test_trigonometry()
+    test_exponentials_and_logarithms()
     test_nan()
     print("test_math: ok")
