@@ -3,3 +3,4 @@ from .net import *
 from .logging import *
 from .file import *
 from .ctype import *
+from .mman import *
