@@ -4,3 +4,4 @@ from .logging import *
 from .file import *
 from .ctype import *
 from .mman import *
+from .epoll import *
