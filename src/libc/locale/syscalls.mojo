@@ -50,10 +50,15 @@ comptime locale_t = c_ptr[Locale]
 struct lconv:
     """A C `struct lconv`: how the current locale writes numbers and money.
 
-    POSIX fixes the order of these members and both platforms follow it, so the
-    bytes are read as fields rather than through accessors. The ten strings
-    come first, then fourteen `char`s; libc owns the object this points at and
-    this declaration is only ever used to read it.
+    The ten strings come first, then fourteen `char`s; libc owns the object
+    this points at and this declaration is only ever used to read it.
+
+    The first eight `char`s are the same on both, and the last six are not:
+    glibc orders them `int_p_cs_precedes`, `int_p_sep_by_space`,
+    `int_n_cs_precedes`, `int_n_sep_by_space`, `int_p_sign_posn`,
+    `int_n_sign_posn`, while Darwin puts `int_n_cs_precedes` second and
+    `int_p_sep_by_space` third. So those six are read by method rather than
+    as fields, the struct being 96 bytes either way.
 
     The `char` members are `CHAR_MAX` when the locale has nothing to say — in
     the `C` locale every one of them is 127.
@@ -77,12 +82,43 @@ struct lconv:
     var n_sep_by_space: UInt8
     var p_sign_posn: UInt8
     var n_sign_posn: UInt8
-    var int_p_cs_precedes: UInt8
-    var int_p_sep_by_space: UInt8
-    var int_p_sign_posn: UInt8
-    var int_n_cs_precedes: UInt8
-    var int_n_sep_by_space: UInt8
-    var int_n_sign_posn: UInt8
+    # The last six `char`s, in the order each platform lays them out. They
+    # do not agree: glibc goes p_cs, p_sep, n_cs, n_sep, p_sign, n_sign and
+    # Darwin goes p_cs, n_cs, p_sep, n_sep, p_sign, n_sign. They sit at 88
+    # to 93 either way, and the struct is 96 bytes either way, so neither
+    # the size nor anything else says which is which — only the two reads
+    # below can. Held as bytes and read by name.
+    var _tail: Array[UInt8, 6]
+
+    def int_p_cs_precedes(self) -> UInt8:
+        """Whether the international currency symbol precedes its value."""
+        return self._tail[0]
+
+    def int_p_sep_by_space(self) -> UInt8:
+        """Whether a space separates the currency symbol from the value."""
+        comptime if CompilationTarget.is_macos():
+            return self._tail[2]
+        else:
+            return self._tail[1]
+
+    def int_n_cs_precedes(self) -> UInt8:
+        """Whether the symbol precedes a negative value."""
+        comptime if CompilationTarget.is_macos():
+            return self._tail[1]
+        else:
+            return self._tail[2]
+
+    def int_n_sep_by_space(self) -> UInt8:
+        """Whether a space separates the symbol from a negative value."""
+        return self._tail[3]
+
+    def int_p_sign_posn(self) -> UInt8:
+        """Where the sign sits in a positive amount."""
+        return self._tail[4]
+
+    def int_n_sign_posn(self) -> UInt8:
+        """Where the sign sits in a negative amount."""
+        return self._tail[5]
 
 
 def setlocale(category: Int32, locale: c_ptr[UInt8]) -> c_ptr[UInt8]:
