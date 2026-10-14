@@ -3,6 +3,7 @@ from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.constant import c_long, c_ptr
+from libc.unistd import geteuid
 from libc.time import (
     CLOCK_MONOTONIC,
     CLOCK_REALTIME,
@@ -12,6 +13,7 @@ from libc.time import (
     clock,
     clock_getres,
     clock_gettime,
+    clock_settime,
     ctime,
     ctime_r,
     difftime,
@@ -235,7 +237,28 @@ def test_the_ones_that_keep_their_own_buffer() raises:
     zero.unsafe_free()
 
 
+def test_clock_settime_is_refused_to_an_ordinary_process() raises:
+    """`clock_settime` sets the clock, which is a thing only root may
+    do, so an ordinary process is refused — and it is the refusing
+    that is asked for here rather than the setting.
+
+    It is asked only when whoever is running the tests is not root:
+    root would be granted, and the clock of the machine running
+    them would move.
+    """
+    if geteuid() != 0:
+        var when = unsafe_alloc[timespec](1)
+        when.unsafe_offset(0)[] = timespec(0, 0)
+        assert_equal(
+            Int(clock_settime(CLOCK_REALTIME, when)),
+            -1,
+            "an ordinary process is refused the clock",
+        )
+        when.unsafe_free()
+
+
 def main() raises:
+    test_clock_settime_is_refused_to_an_ordinary_process()
     test_clock_and_time()
     test_utc_round_trip()
     test_strftime()
