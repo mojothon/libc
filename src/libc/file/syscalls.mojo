@@ -51,6 +51,11 @@ def fcntl(fildes: c_int, cmd: c_int) -> c_int:
     Notes:
         [Reference](https://man7.org/linux/man-pages/man3/close.3p.html).
         Fn signature: `int fcntl(int fildes, int cmd, ...)`.
+    Notes:
+        C's is a variadic call and Mojo cannot pass a variadic
+        argument, so the ones after the listed ones are not handed
+        over; what libc reads instead is whatever is next to them.
+
     """
 
     return external_call["fcntl", c_int, c_int, c_int](fildes, cmd)
@@ -85,6 +90,11 @@ def open(path: c_ptr[c_char], oflag: c_int) -> c_int:
     Notes:
         [Reference](https://man7.org/linux/man-pages/man3/open.3p.html).
         Fn signature: `int open(const char *path, int oflag, ...)`.
+    Notes:
+        C's is a variadic call and Mojo cannot pass a variadic
+        argument, so the ones after the listed ones are not handed
+        over; what libc reads instead is whatever is next to them.
+
     """
 
     return external_call["open", c_int, c_ptr[c_char], c_int](path, oflag)
@@ -109,6 +119,11 @@ def openat(fd: c_int, path: c_ptr[c_char], oflag: c_int) -> c_int:
     Notes:
         [Reference](https://man7.org/linux/man-pages/man3/open.3p.html).
         Fn signature: `int openat(int fd, const char *path, int oflag, ...)`.
+    Notes:
+        C's is a variadic call and Mojo cannot pass a variadic
+        argument, so the ones after the listed ones are not handed
+        over; what libc reads instead is whatever is next to them.
+
     """
     return external_call["openat", c_int, c_int, c_ptr[c_char], c_int](
         fd, path, oflag
@@ -395,6 +410,13 @@ def dprintf(fildes: c_int, format: c_ptr[c_char]) -> c_int:
         [Reference](https://man7.org/linux/man-pages/man3/fprintf.3p.html).
         Fn signature: `int dprintf(int fildes,
         const char *restrict format, ...)`.
+    Notes:
+        C's is a variadic call, and Mojo cannot pass a variadic
+        argument, so only what is listed here is handed over. A format
+        asking for more — anything with a `%` in it — is answered by
+        libc reading whatever sits next to the arguments, which is not
+        a value anybody put there.
+
     """
     return external_call["dprintf", c_int, c_int, c_ptr[c_char]](fildes, format)
 
@@ -423,6 +445,13 @@ def printf(format: c_ptr[c_char]) -> c_int:
         arguments written out, and a pack of them has none to give.
 
         [Reference](https://man7.org/linux/man-pages/man3/fprintf.3p.html).
+    Notes:
+        C's is a variadic call, and Mojo cannot pass a variadic
+        argument, so only what is listed here is handed over. A format
+        asking for more — anything with a `%` in it — is answered by
+        libc reading whatever sits next to the arguments, which is not
+        a value anybody put there.
+
     """
     return external_call["printf", c_int, c_ptr[c_char]](format)
 
@@ -455,6 +484,13 @@ def snprintf(
         [Reference](https://man7.org/linux/man-pages/man3/fprintf.3p.html).
         Fn signature: ``int snprintf(char *restrict s, size_t n,`.
         const char *restrict format, ...)`.
+    Notes:
+        C's is a variadic call, and Mojo cannot pass a variadic
+        argument, so only what is listed here is handed over. A format
+        asking for more — anything with a `%` in it — is answered by
+        libc reading whatever sits next to the arguments, which is not
+        a value anybody put there.
+
     """
     return external_call[
         "snprintf",
@@ -487,6 +523,13 @@ def sprintf(s: c_ptr[c_char], format: c_ptr[c_char]) -> c_int:
         [Reference](https://man7.org/linux/man-pages/man3/fprintf.3p.html).
         Fn signature: ``int sprintf(char *restrict s,`.
         const char *restrict format, ...)`.
+    Notes:
+        C's is a variadic call, and Mojo cannot pass a variadic
+        argument, so only what is listed here is handed over. A format
+        asking for more — anything with a `%` in it — is answered by
+        libc reading whatever sits next to the arguments, which is not
+        a value anybody put there.
+
     """
     return external_call["sprintf", c_int, c_ptr[c_char], c_ptr[c_char]](
         s, format
@@ -517,6 +560,14 @@ def fscanf(stream: c_ptr[FILE], format: c_ptr[c_char]) -> c_int:
         [Reference](https://man7.org/linux/man-pages/man3/fscanf.3p.html).
         Fn signature: ``int fscanf(FILE *restrict stream,`.
         const char *restrict format, ...)`.
+    Notes:
+        C's is a variadic call, and the pointers it writes through are
+        the variadic part of it, so Mojo cannot pass them: only the
+        stream and the format are handed over. A format with a `%` in
+        it is then answered by writing through whatever address libc
+        finds next to the arguments. Nothing can be read back from
+        this call.
+
     """
     return external_call["fscanf", c_int, c_ptr[FILE], c_ptr[c_char]](
         stream, format
@@ -545,6 +596,14 @@ def scanf(format: c_ptr[c_char]) -> c_int:
 
         [Reference](https://man7.org/linux/man-pages/man3/fscanf.3p.html).
         Fn signature: ``int scanf(const char *restrict format, ...)`.`.
+    Notes:
+        C's is a variadic call, and the pointers it writes through are
+        the variadic part of it, so Mojo cannot pass them: only the
+        stream and the format are handed over. A format with a `%` in
+        it is then answered by writing through whatever address libc
+        finds next to the arguments. Nothing can be read back from
+        this call.
+
     """
     return external_call["scanf", c_int, c_ptr[c_char]](format)
 
@@ -573,6 +632,14 @@ def sscanf(s: c_ptr[c_char], format: c_ptr[c_char]) -> c_int:
         [Reference](https://man7.org/linux/man-pages/man3/fscanf.3p.html).
         Fn signature: ``int sscanf(const char *restrict s,`.
         const char *restrict format, ...)`.
+    Notes:
+        C's is a variadic call, and the pointers it writes through are
+        the variadic part of it, so Mojo cannot pass them: only the
+        string and the format are handed over. A format with a `%` in
+        it is then answered by writing through whatever address libc
+        finds next to the arguments. Nothing can be read back from
+        this call.
+
     """
     return external_call["sscanf", c_int, c_ptr[c_char], c_ptr[c_char]](
         s, format
@@ -911,5 +978,10 @@ def ioctl(fildes: c_int, request: c_ulong) -> c_int:
     Notes:
         [Reference](https://man7.org/linux/man-pages/man3/ioctl.3p.html).
         Fn signature: `int ioctl(int fildes, int request, ... /* arg */)`.
+    Notes:
+        C's is a variadic call and Mojo cannot pass a variadic
+        argument, so the ones after the listed ones are not handed
+        over; what libc reads instead is whatever is next to them.
+
     """
     return external_call["ioctl", c_int, c_int, c_ulong](fildes, request)
