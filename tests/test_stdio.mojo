@@ -111,17 +111,17 @@ def test_stream_locking() raises:
     var stream = tmpfile()
     assert_true(Int(UInt(stream)) != 0)
 
-    flockfile(stream)
+    _ = flockfile(stream)
     # The lock is one you can take twice, so the same thread asking for it
     # again gets it rather than waiting for itself.
     assert_equal(ftrylockfile(stream), 0, "and again from the same thread")
 
-    funlockfile(stream)
-    funlockfile(stream)
+    _ = funlockfile(stream)
+    _ = funlockfile(stream)
 
     # Given up as often as it was taken, it is free again.
     assert_equal(ftrylockfile(stream), 0, "then it is free")
-    funlockfile(stream)
+    _ = funlockfile(stream)
     assert_equal(fclose(stream), 0)
 
 
@@ -133,7 +133,7 @@ def test_putw_and_getw() raises:
     assert_true(Int(UInt(stream)) != 0)
 
     assert_equal(putw(0x41424344, stream), 0, "one int goes in")
-    rewind(stream)
+    _ = rewind(stream)
     assert_equal(getw(stream), 0x41424344, "and the same int comes back")
 
     assert_equal(fclose(stream), 0)
@@ -170,7 +170,7 @@ def test_getdelim() raises:
     var stream = tmpfile()
     var text = string_to_char_ptr("one,two")
     assert_equal(fwrite(text, 1, 7, stream), 7)
-    rewind(stream)
+    _ = rewind(stream)
 
     var lineptr = unsafe_alloc[c_ptr[c_char]](1)
     var n = unsafe_alloc[c_size_t](1)
@@ -185,7 +185,7 @@ def test_getdelim() raises:
     # With no comma left to find, it reads to the end of the file.
     assert_equal(getdelim(lineptr, n, 44, stream), 3, "and two is three")
 
-    free(lineptr.unsafe_offset(0)[].bitcast[c_void]())
+    _ = free(lineptr.unsafe_offset(0)[].unsafe_bitcast[c_void]())
     lineptr.unsafe_free()
     n.unsafe_free()
     assert_equal(fclose(stream), 0)
