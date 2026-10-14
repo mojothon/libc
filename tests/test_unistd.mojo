@@ -536,6 +536,22 @@ def test_the_exec_family_refuses_what_is_not_there() raises:
     name.unsafe_free()
 
 
+def test_setuid_and_setgid_asked_for_what_we_already_are() raises:
+    """`setuid` and `setgid` change who the process is, which an
+    ordinary process may only do to someone it already is. Asked
+    for the id it has, each answers 0 and nothing has changed.
+
+    Asked for root, an ordinary process is refused — that being the
+    one answer that can be counted on only when it is not root
+    already, which is why it is asked conditionally.
+    """
+    assert_equal(setuid(getuid()), 0, "setuid asked for the id we already have")
+    assert_equal(setgid(getgid()), 0, "and setgid asked for the one it has")
+
+    if geteuid() != 0:
+        assert_equal(setuid(0), -1, "and an ordinary process is refused root")
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -557,6 +573,7 @@ def main() raises:
     test_dup3()
     test_syscall_by_number()
     test_the_exec_family_refuses_what_is_not_there()
+    test_setuid_and_setgid_asked_for_what_we_already_are()
     test_pread_and_pwrite_at_an_offset()
     test_readv_gathers_what_writev_scattered()
     print("test_unistd: ok")
