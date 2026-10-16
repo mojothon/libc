@@ -28,6 +28,40 @@ def test_imax() raises:
     assert_equal(imaxabs(-7), 7)
     assert_equal(imaxabs(7), 7)
 
+
+def test_imaxdiv_truncates_toward_zero() raises:
+    """`imaxdiv` returns both the quotient and the remainder as
+    one value. The quotient is truncated toward zero: -10 / 3
+    comes out as -3 with a remainder of -1, the way C99 says
+    it should, not -4 with a remainder of 2, the way floor
+    division would have it.
+    """
+    var r = imaxdiv(10, 3)
+    assert_equal(r.quot, 3, "ten divided by three is three")
+    assert_equal(r.rem, 1, "with one left over")
+
+    r = imaxdiv(-10, 3)
+    assert_equal(
+        r.quot, -3, "minus ten divided by three is minus three, not four"
+    )
+    assert_equal(
+        r.rem, -1, "with a remainder that keeps the sign of the dividend"
+    )
+
+    r = imaxdiv(10, -3)
+    assert_equal(
+        r.quot, -3, "and ten divided by minus three is also minus three"
+    )
+    assert_equal(r.rem, 1, "with a remainder of one")
+
+    r = imaxdiv(7, 1)
+    assert_equal(r.quot, 7, "and seven divided by one is seven")
+    assert_equal(r.rem, 0, "with nothing left over")
+
+    r = imaxdiv(0, 5)
+    assert_equal(r.quot, 0, "and zero divided by five is zero")
+    assert_equal(r.rem, 0, "with nothing left over")
+
     var divided = imaxdiv(17, 5)
     assert_equal(divided.quot, 3)
     assert_equal(divided.rem, 2)
@@ -80,6 +114,7 @@ def test_wcsto() raises:
 
 def main() raises:
     test_imax()
+    test_imaxdiv_truncates_toward_zero()
     test_strto()
     test_wcsto()
     print("test_inttypes: ok")
