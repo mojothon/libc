@@ -19,6 +19,32 @@ comptime SYS_getpid: Int64 = 20 if CompilationTarget.is_macos() else 39
 comptime SC_PAGESIZE: Int32 = 29 if CompilationTarget.is_macos() else 30
 
 
+# Which knob `pathconf` and `fpathconf` are asked about. The numbers are
+# not the same on the two sides: glibc starts the list at 0 and XNU at 1,
+# so the first nine are shifted one along and the rest are scattered. C
+# spells these with a leading underscore, which makes a name private to a
+# Mojo module, so it is `PC_LINK_MAX` here.
+#
+# `_PC_LINK_MAX` and `_PC_MAX_CANON` through `_PC_VDISABLE` are the POSIX
+# ones and exist on both; `_PC_SYNC_IO` onwards are the optional ones,
+# and are here because a caller asking `pathconf` about anything has to
+# name it somehow.
+comptime PC_LINK_MAX: Int32 = 1 if CompilationTarget.is_macos() else 0
+comptime PC_MAX_CANON: Int32 = 2 if CompilationTarget.is_macos() else 1
+comptime PC_MAX_INPUT: Int32 = 3 if CompilationTarget.is_macos() else 2
+comptime PC_NAME_MAX: Int32 = 4 if CompilationTarget.is_macos() else 3
+comptime PC_PATH_MAX: Int32 = 5 if CompilationTarget.is_macos() else 4
+comptime PC_PIPE_BUF: Int32 = 6 if CompilationTarget.is_macos() else 5
+comptime PC_CHOWN_RESTRICTED: Int32 = 7 if CompilationTarget.is_macos() else 6
+comptime PC_NO_TRUNC: Int32 = 8 if CompilationTarget.is_macos() else 7
+comptime PC_VDISABLE: Int32 = 9 if CompilationTarget.is_macos() else 8
+comptime PC_SYNC_IO: Int32 = 25 if CompilationTarget.is_macos() else 9
+comptime PC_ASYNC_IO: Int32 = 17 if CompilationTarget.is_macos() else 10
+comptime PC_PRIO_IO: Int32 = 19 if CompilationTarget.is_macos() else 11
+comptime PC_FILESIZEBITS: Int32 = 18 if CompilationTarget.is_macos() else 13
+comptime PC_SYMLINK_MAX: Int32 = 24 if CompilationTarget.is_macos() else 19
+
+
 def access(path: c_ptr[UInt8], mode: Int32) -> Int32:
     """Libc POSIX `access` function.
 

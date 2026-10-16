@@ -7,6 +7,20 @@ from libc.fcntl import O_CREAT, O_RDONLY, open as open_with_mode
 from libc.constant import AT_FDCWD, c_ptr, SEEK_END, SEEK_SET
 from libc.sys.stat import Stat, fchmod, fstat, stat
 from libc.unistd import (
+    PC_ASYNC_IO,
+    PC_CHOWN_RESTRICTED,
+    PC_FILESIZEBITS,
+    PC_LINK_MAX,
+    PC_MAX_CANON,
+    PC_MAX_INPUT,
+    PC_NAME_MAX,
+    PC_NO_TRUNC,
+    PC_PATH_MAX,
+    PC_PIPE_BUF,
+    PC_PRIO_IO,
+    PC_SYMLINK_MAX,
+    PC_SYNC_IO,
+    PC_VDISABLE,
     SC_PAGESIZE,
     SYS_getpid,
     alarm,
@@ -451,8 +465,7 @@ def test_fpathconf() raises:
     """
     var fds = unsafe_alloc[Int32](2)
     assert_equal(pipe(fds), 0, "there is a pipe to ask about")
-    # 5 is `_PC_PIPE_BUF`.
-    var asked = fpathconf(fds.unsafe_offset(0)[], 5)
+    var asked = fpathconf(fds.unsafe_offset(0)[], PC_PIPE_BUF)
     assert_true(
         asked > 0 and asked <= 1 << 20,
         "a pipe has a block size, and it is a sane one",
@@ -460,6 +473,32 @@ def test_fpathconf() raises:
     _ = close(fds.unsafe_offset(0)[])
     _ = close(fds.unsafe_offset(1)[])
     fds.unsafe_free()
+
+
+def test_the_pc_knobs_are_the_platforms_own_numbers() raises:
+    """The `_PC_*` numbers are not the same on both sides, and a binding
+    that hardcoded Linux's would answer EINVAL on Darwin for every one of
+    them. What is checked here is the part that can be checked without a
+    call: that the POSIX nine sit in order and one apart, which is what
+    makes them safe to name in a test.
+    """
+    # glibc numbers from 0 and XNU from 1, so every one of the nine POSIX
+    # knobs is one along on Darwin.
+    assert_equal(
+        Int(PC_LINK_MAX),
+        1 if CompilationTarget.is_macos() else 0,
+        "PC_LINK_MAX is the first of the knobs",
+    )
+    assert_equal(
+        Int(PC_MAX_CANON - PC_LINK_MAX),
+        1,
+        "and the next one follows straight after it",
+    )
+    assert_equal(
+        Int(PC_VDISABLE - PC_LINK_MAX),
+        8,
+        "and there are nine of them in a row",
+    )
 
 
 def test_getopt() raises:
@@ -595,6 +634,7 @@ def main() raises:
     test_chdir_and_fchdir()
     test_the_ids_and_the_terminal()
     test_fpathconf()
+    test_the_pc_knobs_are_the_platforms_own_numbers()
     test_getopt()
     test_swab()
     test_getpid()
