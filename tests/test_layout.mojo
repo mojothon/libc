@@ -84,30 +84,17 @@ def test_stat_reads_a_real_file() raises:
     assert_equal(stat(c_path, buf), 0, "stat succeeded")
     c_path.unsafe_free()
 
-    # A character device, so the size is not meaningful, but the device number,
-    # the mode and a timestamp are. The device number and the mode are
-    # left out on Darwin: `/dev/null` is a synthetic device there, and
-    # both `rdev` and `mode` answer 0. The mtime is asked about on both
-    # sides because the kernel still sets it.
-    comptime if not CompilationTarget.is_macos():
-        assert_true(buf[].rdev() != 0, "/dev/null has a device number")
-    comptime if not CompilationTarget.is_macos():
-        assert_true(buf[].mode() != 0, "/dev/null has a mode")
+    # A character device, so the size is not meaningful, but the device
+    # number, the mode and a timestamp all are, on both sides: `/dev/null`
+    # is a real character device on Darwin too, not a synthetic one.
+    assert_true(buf[].rdev() != 0, "/dev/null has a device number")
+    assert_true(buf[].mode() != 0, "/dev/null has a mode")
     assert_true(buf[].mtime() > 0, "/dev/null has a timestamp")
 
     buf.unsafe_free()
 
 
 def test_stat_on_a_regular_file() raises:
-    # The Darwin `stat` slot offsets are not checked here either: the
-    # slot that holds `st_nlink` on Linux has read back as zero for
-    # `/etc/hosts` on every guess so far, and there is no Darwin machine
-    # available to read the real layout against. The struct itself is
-    # the right size; the question is which slot each member lives in.
-    # So this is a Linux-only assertion until somebody can run the test
-    # there or read the kernel struct for it.
-    comptime if CompilationTarget.is_macos():
-        return
     # The members whose offsets differ between the platforms: `st_mode` and
     # `st_nlink` are 4 and 6 bytes in on Darwin but 24 and 16 on Linux, and
     # `st_blksize` is 32 bits there and 64 here. /etc/hosts is a regular file

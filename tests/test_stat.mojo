@@ -58,11 +58,6 @@ def test_chmod_and_fchmodat() raises:
     did anything: `chmod` on a path that is not there also answers 0 to
     nobody who checks.
     """
-    # Darwin `st_mode` slot is the same unverified offset as in
-    # `test_stat_on_a_regular_file` — Linux path only until somebody can
-    # run the test there or read the layout against a known value.
-    comptime if CompilationTarget.is_macos():
-        return
     var path = string_to_char_ptr("/tmp/libc_chmod_me")
     var fd = open(path, O_CREAT | O_WRONLY, 0o644)
     assert_true(fd >= 0, "the file is there to be changed")
@@ -97,12 +92,6 @@ def test_lstat_does_not_follow_a_link() raises:
     say the same thing, so a binding calling one for the other would
     have looked right for as long as nobody pointed it at a link.
     """
-    # The `S_IFMT` mask checks `st_mode`, which on Darwin lives at the
-    # same offset that is still unverified in
-    # `test_stat_on_a_regular_file`. Linux only until a real Darwin run
-    # can read the slot back.
-    comptime if CompilationTarget.is_macos():
-        return
     var target = string_to_char_ptr("/tmp/libc_link_target")
     var fd = open(target, O_CREAT | O_WRONLY, 0o644)
     assert_true(fd >= 0, "the target is a real file")
@@ -141,9 +130,6 @@ def test_mknod_makes_a_fifo() raises:
     being root. The type goes in the top of the mode, so asking for a
     fifo and being given a file is still a call that answered 0.
     """
-    # Same `st_mode` slot offset as above — unverified on Darwin.
-    comptime if CompilationTarget.is_macos():
-        return
     var one = string_to_char_ptr("/tmp/libc_fifo_one")
     _ = unlink(one)
     assert_equal(mknod(one, S_IFIFO | 0o644, 0), 0, "mknod makes a fifo")
