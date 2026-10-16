@@ -1,4 +1,5 @@
 from std.memory.alloc import unsafe_alloc
+from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.constant import EINVAL
@@ -104,22 +105,23 @@ def test_setrlimit_asked_for_the_limit_already_there() raises:
     after.unsafe_offset(0)[] = Rlimit()
     assert_equal(getrlimit(RLIMIT_NOFILE, after), 0, "and read again")
 
-    var asked = unsafe_alloc[Rlimit](1)
-    asked.unsafe_offset(0)[] = Rlimit()
-    assert_equal(
-        prlimit(0, RLIMIT_NOFILE, null_ptr[Rlimit](), asked),
-        0,
-        "and prlimit reads it as well",
-    )
-    assert_equal(
-        Int(after.unsafe_offset(0)[].rlim_cur),
-        Int(asked.unsafe_offset(0)[].rlim_cur),
-        "and the two of them say the same",
-    )
+    comptime if not CompilationTarget.is_macos():
+        var asked = unsafe_alloc[Rlimit](1)
+        asked.unsafe_offset(0)[] = Rlimit()
+        assert_equal(
+            prlimit(0, RLIMIT_NOFILE, null_ptr[Rlimit](), asked),
+            0,
+            "and prlimit reads it as well",
+        )
+        assert_equal(
+            Int(after.unsafe_offset(0)[].rlim_cur),
+            Int(asked.unsafe_offset(0)[].rlim_cur),
+            "and the two of them say the same",
+        )
+        asked.unsafe_free()
 
     here.unsafe_free()
     after.unsafe_free()
-    asked.unsafe_free()
 
 
 def main() raises:

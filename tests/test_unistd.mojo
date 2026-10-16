@@ -1,5 +1,6 @@
 """Tests for the `libc.unistd` bindings."""
 from std.memory.alloc import unsafe_alloc
+from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.fcntl import O_CREAT, O_RDONLY, open as open_with_mode
@@ -410,7 +411,8 @@ def test_chdir_and_fchdir() raises:
 
 def test_the_ids_and_the_terminal() raises:
     assert_true(getppid() > 0, "there is a parent process")
-    assert_true(gettid() > 0, "and this thread has an id")
+    comptime if not CompilationTarget.is_macos():
+        assert_true(gettid() > 0, "and this thread has an id")
 
     # Not standard input, which is a terminal when somebody is watching
     # and not when they are not: `/dev/null` is never one.
@@ -456,35 +458,40 @@ def test_dup3() raises:
     The number it is asked to use is one this test had and had let go,
     so nothing that was already open is closed to make room for it.
     """
-    var ends = unsafe_alloc[Int32](2)
-    assert_equal(pipe(ends), 0, "a pipe to copy the reading end of")
+    comptime if not CompilationTarget.is_macos():
+        var ends = unsafe_alloc[Int32](2)
+        assert_equal(pipe(ends), 0, "a pipe to copy the reading end of")
 
-    var spare = unsafe_alloc[Int32](2)
-    assert_equal(pipe(spare), 0, "and another only for the number")
-    var number = spare.unsafe_load(0)
-    _ = close(number)
-    _ = close(spare.unsafe_load(1))
-    spare.unsafe_free()
+        var spare = unsafe_alloc[Int32](2)
+        assert_equal(pipe(spare), 0, "and another only for the number")
+        var number = spare.unsafe_load(0)
+        _ = close(number)
+        _ = close(spare.unsafe_load(1))
+        spare.unsafe_free()
 
-    var copy = dup3(ends.unsafe_load(0), number, 0)
-    assert_equal(copy, number, "dup3 hands back the number it was asked for")
+        var copy = dup3(ends.unsafe_load(0), number, 0)
+        assert_equal(
+            copy, number, "dup3 hands back the number it was asked for"
+        )
 
-    var going = unsafe_alloc[UInt8](1)
-    going.unsafe_offset(0)[] = 0x7E
-    assert_equal(
-        write(ends.unsafe_load(1), going, 1), 1, "a byte goes into the pipe"
-    )
+        var going = unsafe_alloc[UInt8](1)
+        going.unsafe_offset(0)[] = 0x7E
+        assert_equal(
+            write(ends.unsafe_load(1), going, 1), 1, "a byte goes into the pipe"
+        )
 
-    var coming = unsafe_alloc[UInt8](1)
-    assert_equal(read(copy, coming, 1), 1, "and it comes back out of the copy")
-    assert_equal(Int(coming.unsafe_load()), 0x7E, "and it is the same byte")
+        var coming = unsafe_alloc[UInt8](1)
+        assert_equal(
+            read(copy, coming, 1), 1, "and it comes back out of the copy"
+        )
+        assert_equal(Int(coming.unsafe_load()), 0x7E, "and it is the same byte")
 
-    going.unsafe_free()
-    coming.unsafe_free()
-    ends.unsafe_free()
-    _ = close(copy)
-    _ = close(ends.unsafe_load(0))
-    _ = close(ends.unsafe_load(1))
+        going.unsafe_free()
+        coming.unsafe_free()
+        ends.unsafe_free()
+        _ = close(copy)
+        _ = close(ends.unsafe_load(0))
+        _ = close(ends.unsafe_load(1))
 
 
 def test_syscall_by_number() raises:
