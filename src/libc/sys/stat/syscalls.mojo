@@ -146,11 +146,17 @@ struct Stat:
     the platform, the way `struct dirent` does it.
     """
 
-    var _slots: Array[Int64, 18]
+    var _slots: Array[Int64, 19]
 
     def __init__(out self):
-        """Zeroes all 144 bytes, which is what `memset` would leave behind."""
-        self._slots = Array[Int64, 18](fill=0)
+        """Zeroes all 152 bytes, which is what `memset` would leave behind.
+        The XNU `struct stat` is 148 bytes (eight bytes for the
+        `st_qspare` plus the rest); the extra four are padding that the
+        19 slots hold without being read, and the buffer `stat` writes
+        into needs to be at least as big as what the kernel is going to
+        write — `check-layouts` only checks Linux, which is why this
+        used to be 18."""
+        self._slots = Array[Int64, 19](fill=0)
 
     def dev(self) -> Int64:
         """The ID of the device holding the file."""
@@ -161,23 +167,26 @@ struct Stat:
 
     def ino(self) -> Int64:
         """The file serial number, its inode."""
+        # XNU: `st_dev 8B` then `st_mode 2B` + `st_nlink 2B` + `st_ino 8B`,
+        # so `st_ino` straddles the boundary between slot 1 and slot 2.
         comptime if CompilationTarget.is_macos():
-            return self._slots[1]
+            return (self._slots[1] >> 32) | (self._slots[2] << 32)
         else:
             return self._slots[1]
 
     def nlink(self) -> Int64:
         """How many hard links point at the file."""
-        # Darwin: `st_mode` (2B) + `st_nlink` (2B) + `st_uid` (4B) share slot 2.
+        # XNU: `st_nlink` (2B) sits at offset 10, the high 2 bytes of slot 1.
         comptime if CompilationTarget.is_macos():
-            return Int64((self._slots[2] >> 16) & 0xFFFF)
+            return Int64((self._slots[1] >> 16) & 0xFFFF)
         else:
             return self._slots[2]
 
     def mode(self) -> Int:
         """The file type and permission bits."""
+        # XNU: `st_mode` (2B) at offset 8, the low 2 bytes of slot 1.
         comptime if CompilationTarget.is_macos():
-            return Int(self._slots[2] & 0xFFFF)
+            return Int(self._slots[1] & 0xFFFF)
         else:
             return Int(self._slots[3] & 0xFFFFFFFF)
 
