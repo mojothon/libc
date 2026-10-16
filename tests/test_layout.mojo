@@ -34,7 +34,12 @@ def stride[T: AnyType]() -> Int:
 
 
 def test_sizes() raises:
-    assert_equal(stride[Stat](), 144, "struct stat is 144 bytes")
+    # `struct stat` is 144 bytes on Linux and 148 on Darwin; the slot
+    # array is sized for the larger of the two so that the buffer
+    # `stat` writes into can never be smaller than what the kernel
+    # is going to write. The 152 here is the size of the struct, not
+    # a per-platform difference.
+    assert_equal(stride[Stat](), 152, "struct stat is 152 bytes")
     assert_equal(stride[rusage](), 144, "struct rusage is 144 bytes")
     assert_equal(stride[Rlimit](), 16, "struct rlimit is 16 bytes")
     assert_equal(stride[timeval](), 16, "struct timeval is 16 bytes")
