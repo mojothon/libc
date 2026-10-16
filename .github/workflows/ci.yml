@@ -37,6 +37,12 @@ jobs:
         with:
           cache: true
       - name: Run the test suite
+        # A test that waits for something never to arrive would hold the
+        # job for six hours, and none of the log is readable until it
+        # lets go — including the line saying which suite it was in.
+        # The whole thing takes a minute here and a few on the runner,
+        # so twenty is room rather than a limit.
+        timeout-minutes: 20
         run: pixi run test
       - name: Precompile the package
         run: pixi run package
