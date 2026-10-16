@@ -113,8 +113,9 @@ NOT_DECLARED_HERE = {
     # `isascii_l` is a macro on glibc, expanding to `__isascii_l`, but the
     # symbol is there and exported.
     "isascii_l",
-    # glibc declares `sched_getcpucount` only under `_GNU_SOURCE`, and an
-    # older or non-glibc toolchain has nothing to say about it at all.
+    # glibc neither declares nor exports `sched_getcpucount`: the
+    # symbol is internal to libc, so the binding can be checked by
+    # the prototype alone, never by the symbol table.
     "sched_getcpucount",
     # `mempcpy` is declared as a macro over `__mempcpy` here, but the symbol
     # is exported and links.

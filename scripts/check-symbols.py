@@ -31,7 +31,14 @@ SOURCES = sorted((ROOT / "src" / "libc").rglob("*.mojo"))
 # the check is the next one, not these.
 KNOWN_MISSING = {
     "isascii_l": "the BSDs export it and glibc does not",
-    "sched_getcpucount": "the BSDs export it and glibc makes it a macro",
+    "sched_getcpucount": "the BSDs export it and glibc does not",
+    # Linux-specific man pages (epoll(7), getrandom(2), mlock2(2), prctl(2))
+    # say so on the first line: the symbols are not on the other side at all.
+    "epoll_create": "Linux only; Darwin has kqueue instead",
+    "epoll_create1": "Linux only; Darwin has kqueue instead",
+    "getrandom": "Linux only; Darwin uses arc4random_buf",
+    "mlock2": "Linux only; mlock2(2) is a Linux-specific call",
+    "prctl": "Linux only; prctl(2) is a Linux-specific call",
 }
 
 
