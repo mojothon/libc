@@ -20,6 +20,7 @@ from test_epoll import main as run_epoll
 from test_socket import main as run_socket
 from test_signal import main as run_signal
 from test_random import main as run_random
+from test_setjmp import main as run_setjmp
 from test_wait import main as run_wait
 from test_auxv import main as run_auxv
 from test_statvfs import main as run_statvfs
@@ -64,6 +65,7 @@ def main() raises:
     run_socket()
     run_signal()
     run_random()
+    run_setjmp()
     run_wait()
     run_auxv()
     run_statvfs()
