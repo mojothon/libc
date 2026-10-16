@@ -39,6 +39,8 @@ KNOWN_MISSING = {
     "getrandom": "Linux only; Darwin uses arc4random_buf",
     "mlock2": "Linux only; mlock2(2) is a Linux-specific call",
     "prctl": "Linux only; prctl(2) is a Linux-specific call",
+    "ppoll": "Linux only; ppoll(2) is a Linux-specific call",
+    "remap_file_pages": "Linux only; the man page is gone and the call is no-op on the other side",
 }
 
 
@@ -101,10 +103,24 @@ def main() -> int:
         text = path.read_text(errors="ignore")
         lines = text.split("\n")
         for i, line in enumerate(lines):
-            m = re.search(r'external_call\["(\w+)"', line)
-            if not m:
+            # The symbol may be on the same line as `external_call[`,
+            # or on one of the next few if the call was broken across
+            # lines for legibility. `branch_of` looks at the line of
+            # the `external_call` itself, not the symbol.
+            if "external_call" not in line:
                 continue
-            name = m.group(1)
+            m = re.search(r'"(\w+)"', line)
+            if m:
+                name = m.group(1)
+            else:
+                name = None
+                for j in range(i + 1, min(i + 6, len(lines))):
+                    m2 = re.search(r'"(\w+)"', lines[j])
+                    if m2:
+                        name = m2.group(1)
+                        break
+                if not name:
+                    continue
             branch = branch_of(lines, i)
             # One called plainly anywhere counts as called everywhere.
             if name in called and called[name][1] == "plain":
