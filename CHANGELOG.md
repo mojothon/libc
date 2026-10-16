@@ -3,6 +3,79 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- `libc.sys.wait` is exercised by `test_wait`: a forked child leaves
+  with a status of its own choosing, and `waitpid` and `wait4` each
+  take it back, the latter also saying what the child used. The
+  pair was already wired in; the tests are why this row is here at
+  all.
+- `test_setjmp` is the only test for `libc.setjmp`. It asks for a
+  `setjmp` to return 0 the first time and 42 the second, the only
+  way to know `longjmp` is doing what it says. The first return is
+  0, the second is 42; the hang that would happen if `longjmp` did
+  not jump back is the other thing the test runs under a timeout.
+- `test_inttypes` covers `imaxdiv` with all four sign combinations
+  of numerator and denominator, the 7/1 edge, and the 0/5 edge. The
+  quotient is truncated toward zero — `-10 / 3` is `-3` with `-1`
+  left over, not `-4` with `2`, the way a floor division would have
+  it.
+- `test_resource` reads a limit with `getrlimit` and asks
+  `setrlimit` to set it to what it already is, which is the only
+  way to call `setrlimit` that cannot fail. `prlimit` is then asked
+  to read the same limit for this process (pid 0), and the two
+  readings agree. The test exists because `Rlimit` is a struct
+  passed by pointer and the wrong struct would have looked right
+  at every step until the values were checked.
+- `test_fenv` asks `feenableexcept` to trap a floating-point
+  exception and `fedisableexcept` to put the flag back, and reads
+  `fegetexcept` between the two. `FE_INVALID` is the one asked
+  for; whatever was there before is restored at the end, so a
+  trap left on would not end the test program the next time
+  division by zero happened anywhere in it.
+- `test_logging` asks `syslog` to write a message and the system
+  log daemon to keep it, with the `LOG_PID` and `LOG_CONS` flags
+  set. `setlogmask` is asked to filter everything above a level
+  out, and the level is restored at the end.
+- `test_mman` is a `mlock` and `munlock` round trip on a 4 KiB
+  buffer, which is the smallest `mlock` is willing to count. The
+  call is wrapped in a `comptime if not is_macos` because the
+  call is Linux-specific; the same goes for `mlock2` and
+  `remap_file_pages`, which have no test there.
+
+### Changed
+
+- **Five Linux-only bindings are now in `KNOWN_MISSING`.** `epoll_create`,
+  `epoll_create1`, `getrandom`, `mlock2` and `prctl` each have a
+  man page that says it is Linux-specific on its first line, and
+  the other side has nothing to call. They were each given a `Notes:`
+  segment in the docstring saying so (`prctl` already had one).
+  Darwin's check-symbols would have reported all five as missing,
+  which was the right answer for the wrong reason, and would have
+  lost a CI run on a no-op.
+- `check-symbols` looks for `external_call["X"` on a single line,
+  which left multi-line calls — `ppoll`, `remap_file_pages`,
+  `pselect`, `readv`, `writev` — uncounted. They are counted now,
+  and `ppoll` and `remap_file_pages` were the two that were
+  Linux-specific. They join the others in `KNOWN_MISSING`.
+
+### Fixed
+
+- `RLIMIT_NOFILE` and `RLIMIT_AS` are set per platform. They are
+  7 and 9 on Linux and 8 and 5 on Darwin, and the bindings had
+  been written with the Linux numbers, which on macOS a caller
+  reading a limit would have asked `getrlimit` for the wrong
+  resource by name.
+- `SYS_getpid` is 39 on Linux and 20 on Darwin. It was 39 on both
+  sides, which on macOS would have been a number the kernel
+  never uses.
+- `check-prototypes` had a wrong note about `sched_getcpucount`:
+  glibc keeps it internal, neither declared nor exported, and
+  the binding can be checked by the prototype alone, never by
+  the symbol table.
+
 ## [0.11.0] - 2026-10-13
 
 ### Added
