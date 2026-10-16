@@ -118,7 +118,9 @@ def test_stat_on_a_regular_file() raises:
     assert_equal(stat(path, buf), 0, "stat succeeded")
     assert_equal(buf[].nlink(), 1, "/etc/hosts has one link")
     assert_equal(buf[].uid(), 0, "/etc/hosts is owned by root")
-    assert_equal(buf[].mode() & 0o777000, 0o100000, "/etc/hosts is a regular file")
+    assert_equal(
+        buf[].mode() & 0o777000, 0o100000, "/etc/hosts is a regular file"
+    )
     assert_true(buf[].size() > 0, "/etc/hosts is not empty")
     assert_true(
         buf[].blksize() > 0 and buf[].blksize() <= 1 << 20,

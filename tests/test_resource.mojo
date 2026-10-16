@@ -63,10 +63,17 @@ def test_setpriority_can_only_be_moved_this_way() raises:
     var after = _current()
     assert_true(after >= before, "and it is no less polite than it was")
 
-    # A request past the end is pulled back to it rather than refused: twenty
-    # five asked for lands on nineteen, and nothing complains.
-    assert_equal(setpriority(PRIO_PROCESS, 0, 25), 0, "asking past the end too")
-    assert_equal(_current(), after, "and it landed in the same place")
+    # A request past the end is pulled back to it rather than refused: the
+    # value asked for here is way past either ceiling (Linux's is 19,
+    # Darwin's is 20), and what comes back is whatever clamping left. The
+    # only thing that is asked of it is that the call returns 0 instead
+    # of refusing with EPERM, and that what reads back is no further from
+    # the polite end than where the last one put it.
+    assert_equal(
+        setpriority(PRIO_PROCESS, 0, 100), 0, "asking past the end too"
+    )
+    var landed = _current()
+    assert_true(landed >= after, "and the clamping kept it where it was")
 
 
 def test_a_which_that_is_not_one_of_the_three_is_refused() raises:
