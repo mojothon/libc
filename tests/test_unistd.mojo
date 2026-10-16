@@ -436,8 +436,15 @@ def test_fpathconf() raises:
     var path = string_to_char_ptr("/tmp")
     var fd = open(path, O_RDONLY)
     assert_true(fd >= 0, "/tmp opens")
-    # 0 is `_PC_LINK_MAX`, the first of the things it is asked about.
-    assert_true(fpathconf(fd, 0) > 0, "a directory has a limit on links")
+    # 3 is `_PC_NAME_MAX`, the longest name a directory will take. It is
+    # asked of a directory rather than `_PC_LINK_MAX` (0), because Darwin
+    # answers -1 for that one against a directory — the man page allows
+    # an implementation to have no limit for a variable it is asked
+    # about, and leaves `errno` alone when it does.
+    assert_true(
+        fpathconf(fd, 3) >= 255,
+        "a directory takes names at least 255 bytes long",
+    )
     _ = close(fd)
     path.unsafe_free()
 
