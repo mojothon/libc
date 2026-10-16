@@ -31,7 +31,15 @@ def test_what_the_scheduler_says() raises:
     this is on, and `sched_getparam` what priority it was given. Since
     the ordinary policy reaches no further than zero, those two have to
     agree here, though on another policy they would not.
+
+    macOS does not answer the question the same way: the ordinary
+    policy there is a thread policy with its own numbering, and
+    `sched_get_priority_max(0)` answers an error rather than the
+    flat zero Linux says. The test is skipped on the side that
+    would answer a different question.
     """
+    comptime if CompilationTarget.is_macos():
+        return
     assert_equal(
         sched_get_priority_max(ORDINARY),
         0,
