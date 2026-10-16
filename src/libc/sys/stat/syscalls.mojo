@@ -213,24 +213,27 @@ struct Stat:
 
     def size(self) -> Int64:
         """The file size in bytes."""
+        # `struct user64_stat` is what `stat()` writes into: dev(8) + ino(4)
+        # + mode(2) + nlink(2) + uid(4) + gid(4) + rdev(4) = 28 bytes of
+        # header, then three `timespec` (16 each), then size at offset 80.
         comptime if CompilationTarget.is_macos():
-            return (self._slots[12] >> 32) | (self._slots[13] << 32)
+            return self._slots[10]
         else:
             return self._slots[6]
 
     def blksize(self) -> Int64:
         """The preferred block size for I/O on this file."""
-        # A 32-bit `blksize_t` lives at offset 116, the high 4 bytes of slot 14.
-        # `st_blocks` straddles the boundary below it and `st_flags` sits above.
+        # `st_blksize` (4B) at offset 96 — the low 4 bytes of slot 12.
         comptime if CompilationTarget.is_macos():
-            return Int64(self._slots[14] >> 32)
+            return Int64(self._slots[12] & 0xFFFFFFFF)
         else:
             return self._slots[7]
 
     def blocks(self) -> Int64:
         """How many 512-byte blocks the file occupies."""
+        # `st_blocks` (8B) at offset 88 — the whole of slot 11.
         comptime if CompilationTarget.is_macos():
-            return (self._slots[13] >> 32) | (self._slots[14] << 32)
+            return self._slots[11]
         else:
             return self._slots[8]
 
