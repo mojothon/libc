@@ -24,6 +24,11 @@ def epoll_create(size: Int32) -> Int32:
 
     Returns:
         The file descriptor of the new epoll instance.
+
+    Notes:
+        epoll(7) is Linux-specific, the man page says so on its first
+        line. The BSDs use kqueue, and there is no equivalent on the
+        other side.
     """
     return external_call["epoll_create", Int32, Int32](size)
 
@@ -41,6 +46,11 @@ def epoll_create1(flags: Int32) -> Int32:
         Creates a new epoll instance with the specified flags.
     Returns:
         The file descriptor of the new epoll instance.
+
+    Notes:
+        epoll(7) is Linux-specific, the man page says so on its first
+        line. The BSDs use kqueue, and there is no equivalent on the
+        other side.
     """
     return external_call["epoll_create1", Int32, Int32](flags)
 
@@ -63,9 +73,21 @@ struct epoll_event:
     def __init__(out self, events: UInt32, data: UInt64):
         """Builds an event tagged with the given 64-bit value.
 
-        Args:
-            events: The `EPOLLIN`, `EPOLLOUT`, ... bits to watch for.
-            data: The tag to hand back when the event fires.
+            Args:
+                events: The `EPOLLIN`, `EPOLLOUT`, ... bits to watch for.
+                data: The tag to hand back when the event fires.
+
+
+        Notes:
+            epoll(7) is Linux-specific and the man page says
+            so on its first line. The BSDs use kqueue,
+            and there is no equivalent on the other side.
+
+
+        Notes:
+            epoll(7) is Linux-specific and the man page says
+            so on its first line. The BSDs use kqueue,
+            and there is no equivalent on the other side.
         """
         self.events = events
         self.data = Array[UInt8, 8](fill=0)

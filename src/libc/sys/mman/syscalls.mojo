@@ -90,6 +90,11 @@ def mlock2(addr: c_ptr[UInt8], length: Int64, flags: Int32) -> Int32:
 
     Returns:
         0 on success, -1 on error.
+
+    Notes:
+        mlock2(2) is Linux-specific, the man page says so on its first
+        line. It is `mlock` with extra flags, none of which are set
+        with a 0 argument.
     """
     return external_call["mlock2", Int32, c_ptr[UInt8], Int64, Int32](
         addr, length, flags

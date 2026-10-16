@@ -36,6 +36,9 @@ def getrandom(buf: c_ptr[UInt8], buflen: UInt64, flags: UInt32) -> Int:
         Asking for more than 256 bytes at a time with `GRND_INSECURE`, or
         at all from a device that has nothing to give, is what makes it
         come back short.
+
+        `getrandom` is Linux-specific, the man page says so on its first
+        line. The BSDs use `arc4random_buf` or read from `/dev/urandom`.
     """
     return external_call["getrandom", Int, c_ptr[UInt8], UInt64, UInt32](
         buf, buflen, flags
