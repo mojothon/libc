@@ -5,7 +5,15 @@
 # ----------------------------------
 from std.memory import Pointer
 from std.ffi import external_call
+from std.sys import CompilationTarget
 from libc.constant import c_ptr
+
+# POSIX leaves the values of these two up to the platform. glibc
+# says JOINABLE is 0 and DETACHED is 1; Darwin says 1 and 2. A test
+# that wants the opposite of the one it just read should ask for
+# the other constant rather than pick a number.
+comptime PTHREAD_CREATE_JOINABLE: Int32 = 1 if CompilationTarget.is_macos() else 0
+comptime PTHREAD_CREATE_DETACHED: Int32 = 2 if CompilationTarget.is_macos() else 1
 
 
 struct pthread_attr_t:

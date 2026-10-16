@@ -9,6 +9,8 @@ from std.testing import assert_equal, assert_true
 from libc.constant import c_ptr
 from libc.pthread import (
     pthread_attr_destroy,
+    PTHREAD_CREATE_DETACHED,
+    PTHREAD_CREATE_JOINABLE,
     pthread_attr_getdetachstate,
     pthread_attr_getguardsize,
     pthread_attr_getstack,
@@ -48,7 +50,11 @@ def test_the_attribute_object() raises:
     assert_equal(pthread_attr_getdetachstate(attr, state), 0)
     # POSIX does not say what number either state is, so what is asked is
     # not which number detached is but whether what went in comes out.
-    var other: Int32 = 0 if state.unsafe_load() != 0 else 1
+    var got: Int32 = state.unsafe_load()
+    var other: Int32 = (
+        PTHREAD_CREATE_DETACHED if got
+        == PTHREAD_CREATE_JOINABLE else PTHREAD_CREATE_JOINABLE
+    )
     assert_equal(pthread_attr_setdetachstate(attr, other), 0)
     assert_equal(pthread_attr_getdetachstate(attr, state), 0)
     assert_equal(
