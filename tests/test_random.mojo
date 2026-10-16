@@ -5,6 +5,7 @@ It asks the kernel for bytes nobody can guess, which is what reading
 It had never been called.
 """
 from std.memory.alloc import unsafe_alloc
+from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.sys.random import getrandom
@@ -18,7 +19,13 @@ def test_getrandom_fills_what_it_is_given() raises:
     the zeroes that were there before. Bytes nobody can guess cannot
     be told apart from any other eight bytes, so there is nothing
     else that would be worth asking.
+
+    Darwin has no `getrandom` to call, and the binding answers -1
+    there rather than inventing one, so nothing is asked of it on
+    that side.
     """
+    comptime if CompilationTarget.is_macos():
+        return
     var buf = unsafe_alloc[UInt8](8)
     for i in range(8):
         buf.unsafe_store(i, 0)
