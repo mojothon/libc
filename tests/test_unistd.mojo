@@ -5,7 +5,7 @@ from std.testing import assert_equal, assert_true
 
 from libc.fcntl import O_CREAT, O_RDONLY, open as open_with_mode
 from libc.constant import AT_FDCWD, c_ptr, SEEK_END, SEEK_SET
-from libc.sys.stat import Stat, fstat, stat
+from libc.sys.stat import Stat, fchmod, fstat, stat
 from libc.unistd import (
     SC_PAGESIZE,
     SYS_getpid,
@@ -316,12 +316,20 @@ def test_descriptors_and_offsets() raises:
 
 
 def test_truncate_takes_a_path() raises:
-    """The same thing as `ftruncate`, asked for by name instead."""
+    """The same thing as `ftruncate`, asked for by name instead.
+
+    `truncate` takes a path, which means it needs write permission on the
+    file — and the mode handed to `open` with `O_CREAT` does not arrive on
+    arm64 Darwin, being variadic. So the permissions are set with
+    `fchmod`, which is not variadic, before the descriptor is closed and
+    the path is used.
+    """
     var path = string_to_char_ptr("/tmp/libc_truncate_me")
     var fd = open_with_mode(path, O_CREAT | O_RDWR, 0o644)
     assert_equal(
         write(fd, string_to_char_ptr("abcdef"), 6), 6, "wrote six bytes"
     )
+    assert_equal(fchmod(fd, 0o644), 0, "and its permissions are set")
     _ = close(fd)
 
     assert_equal(truncate(path, 2), 0, "truncate takes a path and a length")
