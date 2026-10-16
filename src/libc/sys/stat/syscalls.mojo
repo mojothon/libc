@@ -168,11 +168,11 @@ struct Stat:
     def ino(self) -> Int64:
         """The file serial number, its inode."""
         # `stat()` writes `struct user64_stat` on Darwin: dev(8) + ino(4)
-        # + mode(2) + nlink(2) + uid(4) + ... . The kernel ABI has `ino`
-        # (a 4-byte `__darwin_ino_t`) sitting in the high half of slot 1,
-        # with `mode` and `nlink` packed into the high half of slot 1 too.
+        # + mode(2) + nlink(2) + uid(4) + gid(4) + rdev(4) + 3 * timespec.
+        # The first slot holds `dev`; the second slot holds `ino` in its
+        # low 4 bytes, with `mode` (2B) and `nlink` (2B) above it.
         comptime if CompilationTarget.is_macos():
-            return Int64(self._slots[1] >> 32)
+            return Int64(self._slots[1] & 0xFFFFFFFF)
         else:
             return self._slots[1]
 
@@ -180,15 +180,15 @@ struct Stat:
         """How many hard links point at the file."""
         # `st_nlink` (2B) at offset 10 — the high 2 bytes of slot 1.
         comptime if CompilationTarget.is_macos():
-            return Int64((self._slots[1] >> 16) & 0xFFFF)
+            return Int64((self._slots[1] >> 48) & 0xFFFF)
         else:
             return self._slots[2]
 
     def mode(self) -> Int:
         """The file type and permission bits."""
-        # `st_mode` (2B) at offset 8 — the low 2 bytes of slot 1.
+        # `st_mode` (2B) at offset 8 — slot 1 bytes 4..5.
         comptime if CompilationTarget.is_macos():
-            return Int(self._slots[1] & 0xFFFF)
+            return Int((self._slots[1] >> 32) & 0xFFFF)
         else:
             return Int(self._slots[3] & 0xFFFFFFFF)
 
