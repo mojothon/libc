@@ -8,6 +8,7 @@
 from std.ffi import external_call
 from std.memory import Pointer
 from libc.constant import c_ptr
+from libc.time import timespec
 
 
 def epoll_create(size: Int32) -> Int32:
@@ -169,11 +170,6 @@ def epoll_pwait(
         Int32,
         c_ptr[NoneType],
     ](epfd, events, maxevents, timeout, sigmask)
-
-
-struct timespec(TrivialRegisterPassable):
-    var tv_sec: Int64
-    var tv_nsec: Int64
 
 
 def epoll_pwait2(

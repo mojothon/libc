@@ -13,7 +13,7 @@ the bottom.
 | `libc.file` | `<stdio.h>` file operations | 40 |
 | `libc.ctype` | `<ctype.h>` | 29 |
 | `libc.sys.socket` | `<sys/socket.h>` | 23 |
-| `libc.sys.stat` | `<sys/stat.h>` | 19 |
+| `libc.sys.stat` | `<sys/stat.h>` | 18 |
 | `libc.time` | `<time.h>` | 30 |
 | `libc.fenv` | `<fenv.h>` | 26 |
 | `libc.sys.mman` | `<sys/mman.h>` | 15 |
@@ -21,10 +21,10 @@ the bottom.
 | `libc.string` | `<string.h>` | 39 |
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 28 |
 | `libc.complex` | `<complex.h>` | 46 |
-| `libc.sched` | `<sched.h>` | 16 |
+| `libc.sched` | `<sched.h>` | 15 |
 | `libc.signal` | `<signal.h>` | 40 |
 | `libc.locale` | `<locale.h>` | 16 |
-| `libc.sys.epoll` | `<sys/epoll.h>` | 8 |
+| `libc.sys.epoll` | `<sys/epoll.h>` | 7 |
 | `libc.search` | `<search.h>` | 9 |
 | `libc.dirent` | `<dirent.h>` | 15 |
 | `libc.sys.wait` | `<sys/wait.h>` | 14 |

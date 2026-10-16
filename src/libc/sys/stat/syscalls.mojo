@@ -7,6 +7,7 @@ from std.ffi import external_call
 from std.memory import Pointer
 from std.sys import CompilationTarget
 from libc.constant import c_int, c_ptr
+from libc.time import timespec
 
 
 def chmod(path: c_ptr[UInt8], mode: Int32) -> Int32:
@@ -302,11 +303,6 @@ def utime(path: c_ptr[UInt8], times: c_ptr[utimbuf]) -> Int32:
     return external_call["utime", Int32, c_ptr[UInt8], c_ptr[utimbuf]](
         path, times
     )
-
-
-struct timespec(TrivialRegisterPassable):
-    var tv_sec: Int64
-    var tv_nsec: Int64
 
 
 struct timeval(TrivialRegisterPassable):

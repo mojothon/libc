@@ -45,7 +45,10 @@ def test_sizes() raises:
     assert_equal(stride[timeval](), 16, "struct timeval is 16 bytes")
     assert_equal(stride[timespec](), 16, "struct timespec is 16 bytes")
 
-    # Three packages have their own `struct timespec`, and C has one width.
+    # Three packages re-export `libc.time.timespec` and a fourth owns the
+    # struct, so the four names are the same Mojo struct — and the test
+    # below asks for the size once per import to make sure each import
+    # path still resolves.
     assert_equal(
         stride[sched_timespec](), 16, "libc.sched's timespec is 16 bytes"
     )
