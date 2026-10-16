@@ -162,21 +162,22 @@ struct Stat:
     def ino(self) -> Int64:
         """The file serial number, its inode."""
         comptime if CompilationTarget.is_macos():
-            return (self._slots[1] >> 32) | (self._slots[2] << 32)
+            return self._slots[1]
         else:
             return self._slots[1]
 
     def nlink(self) -> Int64:
         """How many hard links point at the file."""
+        # Darwin: `st_mode` (2B) + `st_nlink` (2B) + `st_uid` (4B) share slot 2.
         comptime if CompilationTarget.is_macos():
-            return Int64((self._slots[1] >> 16) & 0xFFFF)
+            return Int64((self._slots[2] >> 16) & 0xFFFF)
         else:
             return self._slots[2]
 
     def mode(self) -> Int:
         """The file type and permission bits."""
         comptime if CompilationTarget.is_macos():
-            return Int(self._slots[1] & 0xFFFF)
+            return Int(self._slots[2] & 0xFFFF)
         else:
             return Int(self._slots[3] & 0xFFFFFFFF)
 
