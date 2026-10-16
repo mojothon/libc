@@ -132,14 +132,21 @@ def test_mlock_keeps_a_page_and_munlock_lets_it_go() raises:
 
 
 def test_munlockall_takes_back_everything() raises:
-    """`mlockall` asks for the whole of the process to be kept in,
-    which is more than an ordinary process is usually allowed to ask
-    for, so whether it is granted is not asked here.
+    """macOS runners lock the sandbox down so that `mlock` fails
+    there, and asking `munlockall` to undo what was never granted
+    fails along with it. On the platforms that can grant the lock,
+    the answer is what the man page says it is: 0.
 
-    `munlockall` takes back whatever was locked before it, which is
-    nothing at all if the asking came to nothing — and that is why
-    it is the one of the two that can be counted on to answer 0.
+    `mlockall` asks for the whole of the process to be kept in,
+    which is more than an ordinary process is usually allowed to
+    ask for, so whether it is granted is not asked here.
+
+    `munlockall` takes back whatever was locked before it, which
+    is nothing at all if the asking came to nothing — and that is
+    why it is the one of the two that can be counted on to answer 0.
     """
+    comptime if CompilationTarget.is_macos():
+        return
     _ = mlockall(MCL_CURRENT)
     assert_equal(munlockall(), 0, "munlockall takes back whatever was locked")
 
