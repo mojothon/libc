@@ -73,16 +73,9 @@ struct epoll_event:
     def __init__(out self, events: UInt32, data: UInt64):
         """Builds an event tagged with the given 64-bit value.
 
-            Args:
-                events: The `EPOLLIN`, `EPOLLOUT`, ... bits to watch for.
-                data: The tag to hand back when the event fires.
-
-
-        Notes:
-            epoll(7) is Linux-specific and the man page says
-            so on its first line. The BSDs use kqueue,
-            and there is no equivalent on the other side.
-
+        Args:
+            events: The `EPOLLIN`, `EPOLLOUT`, ... bits to watch for.
+            data: The tag to hand back when the event fires.
 
         Notes:
             epoll(7) is Linux-specific and the man page says
