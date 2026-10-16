@@ -69,7 +69,16 @@ def test_the_attribute_object() raises:
     var guard = unsafe_alloc[UInt64](1)
     assert_equal(pthread_attr_setguardsize(attr, GUARD), 0)
     assert_equal(pthread_attr_getguardsize(attr, guard), 0)
-    assert_equal(Int(guard.unsafe_load()), GUARD, "and the guard size")
+    # POSIX lets an implementation round a guard size up to whatever
+    # granularity it keeps stacks on. glibc hands back what it was
+    # given; Darwin answers in multiples of its 16 KiB page, so 4096
+    # comes back as 16384 there. Asking for the number to have come
+    # back unchanged would fail the side that is within its rights,
+    # so what is asked is that it is at least what was asked for.
+    assert_true(
+        Int(guard.unsafe_load()) >= GUARD,
+        "and a guard size no smaller than the one asked for",
+    )
 
     var base = unsafe_alloc[c_ptr[UInt8]](1)
     assert_equal(
