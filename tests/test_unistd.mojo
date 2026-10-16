@@ -433,20 +433,33 @@ def test_the_ids_and_the_terminal() raises:
 
 
 def test_fpathconf() raises:
-    var path = string_to_char_ptr("/tmp")
-    var fd = open(path, O_RDONLY)
-    assert_true(fd >= 0, "/tmp opens")
-    # 3 is `_PC_NAME_MAX`, the longest name a directory will take. It is
-    # asked of a directory rather than `_PC_LINK_MAX` (0), because Darwin
-    # answers -1 for that one against a directory — the man page allows
-    # an implementation to have no limit for a variable it is asked
-    # about, and leaves `errno` alone when it does.
+    """`fpathconf` is asked about a pipe, which is the one thing both
+    platforms answer the same way for.
+
+    `_PC_PIPE_BUF` is the largest write a pipe will do in one piece, and
+    a pipe is the one kind of file descriptor where the answer is not
+    left to the filesystem: XNU answers `PIPE_BUF` for a pipe without
+    consulting anything else, and glibc's answer is a constant too. The
+    two differ — 512 on Darwin, 4096 on Linux — so what is asserted is
+    that the call answers at all, and that the value is a plausible
+    block size.
+
+    Asking a directory for `_PC_LINK_MAX` used to stand in for this, and
+    Darwin answers -1 for it: the man page allows an implementation to
+    have no limit for a variable it is asked about and to say so with -1
+    and `errno` untouched.
+    """
+    var fds = unsafe_alloc[Int32](2)
+    assert_equal(pipe(fds), 0, "there is a pipe to ask about")
+    # 5 is `_PC_PIPE_BUF`.
+    var asked = fpathconf(fds.unsafe_offset(0)[], 5)
     assert_true(
-        fpathconf(fd, 3) >= 255,
-        "a directory takes names at least 255 bytes long",
+        asked > 0 and asked <= 1 << 20,
+        "a pipe has a block size, and it is a sane one",
     )
-    _ = close(fd)
-    path.unsafe_free()
+    _ = close(fds.unsafe_offset(0)[])
+    _ = close(fds.unsafe_offset(1)[])
+    fds.unsafe_free()
 
 
 def test_getopt() raises:
