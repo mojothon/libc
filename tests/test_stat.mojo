@@ -3,7 +3,7 @@ from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.constant import AT_FDCWD
-from libc.fcntl import O_CREAT, O_RDONLY, O_WRONLY, open
+from libc.fcntl import O_CREAT, O_RDWR, O_WRONLY, open
 from libc.sys.stat import (
     Stat,
     chmod,
@@ -162,11 +162,17 @@ def test_the_times() raises:
     are handed an array of two, the access time and then the modified
     one; `futimens` takes a descriptor in place of a path. None of the
     three says what it did, so each is asked back through `mtime`.
+
+    The descriptor `futimens` is handed is the one the file was created
+    with, held open for the length of the test. It used to be closed and
+    a second one opened, which fails on Darwin: `open`'s mode argument
+    is variadic and does not arrive on arm64, so a file created with
+    `O_CREAT` there carries no read permission — and the macOS runner is
+    not root, so reopening it answers EACCES.
     """
     var path = string_to_char_ptr("/tmp/libc_time_me")
-    var fd = open(path, O_CREAT | O_WRONLY, 0o644)
+    var fd = open(path, O_CREAT | O_RDWR, 0o644)
     assert_true(fd >= 0, "the file is there to be dated")
-    _ = close(fd)
 
     var st = unsafe_alloc[Stat](1)
 
@@ -192,18 +198,16 @@ def test_the_times() raises:
     assert_equal(st.unsafe_offset(0)[].mtime(), 2000000, "and mtime moved")
     ts.unsafe_free()
 
-    var again = open(path, O_RDONLY)
-    assert_true(again >= 0, "opened once more")
     var ts2 = unsafe_alloc[timespec](2)
     ts2.unsafe_offset(0)[].tv_sec = 3000000
     ts2.unsafe_offset(0)[].tv_nsec = 0
     ts2.unsafe_offset(1)[].tv_sec = 3000000
     ts2.unsafe_offset(1)[].tv_nsec = 0
-    assert_equal(futimens(again, ts2), 0, "futimens takes a descriptor")
-    assert_equal(fstat(again, st), 0, "and it can be asked through it")
+    assert_equal(futimens(fd, ts2), 0, "futimens takes a descriptor")
+    assert_equal(fstat(fd, st), 0, "and it can be asked through it")
     assert_equal(st.unsafe_offset(0)[].mtime(), 3000000, "mtime moved again")
     ts2.unsafe_free()
-    _ = close(again)
+    _ = close(fd)
 
     st.unsafe_free()
     _ = unlink(path)
