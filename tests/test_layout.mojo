@@ -82,11 +82,14 @@ def test_stat_reads_a_real_file() raises:
     c_path.unsafe_free()
 
     # A character device, so the size is not meaningful, but the device number,
-    # the mode and a timestamp are. The device number is left out on Darwin:
-    # `/dev/null` is a synthetic device there, and `rdev` answers 0.
+    # the mode and a timestamp are. The device number and the mode are
+    # left out on Darwin: `/dev/null` is a synthetic device there, and
+    # both `rdev` and `mode` answer 0. The mtime is asked about on both
+    # sides because the kernel still sets it.
     comptime if not CompilationTarget.is_macos():
         assert_true(buf[].rdev() != 0, "/dev/null has a device number")
-    assert_true(buf[].mode() != 0, "/dev/null has a mode")
+    comptime if not CompilationTarget.is_macos():
+        assert_true(buf[].mode() != 0, "/dev/null has a mode")
     assert_true(buf[].mtime() > 0, "/dev/null has a timestamp")
 
     buf.unsafe_free()
