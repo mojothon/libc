@@ -161,19 +161,22 @@ struct Stat:
 
     def ino(self) -> Int64:
         """The file serial number, its inode."""
-        return self._slots[1]
+        comptime if CompilationTarget.is_macos():
+            return (self._slots[1] >> 32) | (self._slots[2] << 32)
+        else:
+            return self._slots[1]
 
     def nlink(self) -> Int64:
         """How many hard links point at the file."""
         comptime if CompilationTarget.is_macos():
-            return (self._slots[2] >> 16) & 0xFFFF
+            return Int64((self._slots[1] >> 16) & 0xFFFF)
         else:
             return self._slots[2]
 
     def mode(self) -> Int:
         """The file type and permission bits."""
         comptime if CompilationTarget.is_macos():
-            return Int(self._slots[2] & 0xFFFF)
+            return Int(self._slots[1] & 0xFFFF)
         else:
             return Int(self._slots[3] & 0xFFFFFFFF)
 
@@ -201,43 +204,44 @@ struct Stat:
     def size(self) -> Int64:
         """The file size in bytes."""
         comptime if CompilationTarget.is_macos():
-            return self._slots[10]
+            return (self._slots[12] >> 32) | (self._slots[13] << 32)
         else:
             return self._slots[6]
 
     def blksize(self) -> Int64:
         """The preferred block size for I/O on this file."""
+        # A 32-bit `blksize_t` lives at offset 116, the high 4 bytes of slot 14.
+        # `st_blocks` straddles the boundary below it and `st_flags` sits above.
         comptime if CompilationTarget.is_macos():
-            # A 32-bit `blksize_t`, with `st_flags` in the half above it.
-            return Int64(self._slots[12] & 0xFFFFFFFF)
+            return Int64(self._slots[14] >> 32)
         else:
             return self._slots[7]
 
     def blocks(self) -> Int64:
         """How many 512-byte blocks the file occupies."""
         comptime if CompilationTarget.is_macos():
-            return self._slots[11]
+            return (self._slots[13] >> 32) | (self._slots[14] << 32)
         else:
             return self._slots[8]
 
     def atime(self) -> Int64:
         """The seconds of the last access time."""
         comptime if CompilationTarget.is_macos():
-            return self._slots[4]
+            return (self._slots[4] >> 32) | (self._slots[5] << 32)
         else:
             return self._slots[9]
 
     def mtime(self) -> Int64:
         """The seconds of the last modification time."""
         comptime if CompilationTarget.is_macos():
-            return self._slots[6]
+            return (self._slots[6] >> 32) | (self._slots[7] << 32)
         else:
             return self._slots[11]
 
     def ctime(self) -> Int64:
         """The seconds of the last status change."""
         comptime if CompilationTarget.is_macos():
-            return self._slots[8]
+            return (self._slots[8] >> 32) | (self._slots[9] << 32)
         else:
             return self._slots[13]
 
