@@ -4,6 +4,7 @@
 # github: github.com/llango
 # ----------------------------------
 from std.ffi import external_call
+from std.sys import CompilationTarget
 from std.memory import Pointer
 from libc.constant import c_ptr
 
@@ -175,9 +176,12 @@ def sched_getparam(pid: Int32, param: c_ptr[sched_param]) -> Int32:
         On success, sched_getparam() returns 0. On error, -1 is returned, and errno is set to indicate the error.
 
     """
-    return external_call["sched_getparam", Int32, Int32, c_ptr[sched_param]](
-        pid, param
-    )
+    comptime if CompilationTarget.is_macos():
+        return -1
+    else:
+        return external_call[
+            "sched_getparam", Int32, Int32, c_ptr[sched_param]
+        ](pid, param)
 
 
 def sched_getscheduler(pid: Int32) -> Int32:
@@ -203,7 +207,10 @@ def sched_getscheduler(pid: Int32) -> Int32:
         On success, the policy is returned as a number. On error, -1 is
         returned, and errno is set to indicate the error.
     """
-    return external_call["sched_getscheduler", Int32, Int32](pid)
+    comptime if CompilationTarget.is_macos():
+        return -1
+    else:
+        return external_call["sched_getscheduler", Int32, Int32](pid)
 
 
 def sched_rr_get_interval(pid: Int32, interval: c_ptr[timespec]) -> Int32:
@@ -291,9 +298,12 @@ def sched_setparam(pid: Int32, param: c_ptr[sched_param]) -> Int32:
         On success, sched_setparam() returns 0. On error, -1 is returned, and errno is set to indicate the error.
 
     """
-    return external_call["sched_setparam", Int32, Int32, c_ptr[sched_param]](
-        pid, param
-    )
+    comptime if CompilationTarget.is_macos():
+        return -1
+    else:
+        return external_call[
+            "sched_setparam", Int32, Int32, c_ptr[sched_param]
+        ](pid, param)
 
 
 def sched_setscheduler(

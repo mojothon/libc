@@ -4,6 +4,7 @@
 # github: github.com/llango
 # ----------------------------------
 from std.ffi import external_call
+from std.sys import CompilationTarget
 from std.memory import Pointer
 from libc.constant import c_ptr
 
@@ -40,6 +41,9 @@ def getrandom(buf: c_ptr[UInt8], buflen: UInt64, flags: UInt32) -> Int:
         `getrandom` is Linux-specific, the man page says so on its first
         line. The BSDs use `arc4random_buf` or read from `/dev/urandom`.
     """
-    return external_call["getrandom", Int, c_ptr[UInt8], UInt64, UInt32](
-        buf, buflen, flags
-    )
+    comptime if CompilationTarget.is_macos():
+        return -1
+    else:
+        return external_call["getrandom", Int, c_ptr[UInt8], UInt64, UInt32](
+            buf, buflen, flags
+        )

@@ -135,9 +135,12 @@ def dup3(oldfd: Int32, newfd: Int32, flags: Int32) -> Int32:
         The new descriptor, which is `newfd`, or -1 on failure with `errno`
         set. As with `dup`, zero is a descriptor and not a success code.
     """
-    return external_call["dup3", Int32, Int32, Int32, Int32](
-        oldfd, newfd, flags
-    )
+    comptime if CompilationTarget.is_macos():
+        return -1
+    else:
+        return external_call["dup3", Int32, Int32, Int32, Int32](
+            oldfd, newfd, flags
+        )
 
 
 def execve(
@@ -425,7 +428,10 @@ def gettid() -> Int32:
     Returns:
         The thread ID.
     """
-    return external_call["gettid", Int32]()
+    comptime if CompilationTarget.is_macos():
+        return -1
+    else:
+        return external_call["gettid", Int32]()
 
 
 def isatty(fd: Int32) -> Int32:

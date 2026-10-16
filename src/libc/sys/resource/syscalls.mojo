@@ -99,9 +99,12 @@ def prlimit(
     Returns:
         0 on success.
     """
-    return external_call[
-        "prlimit", Int32, Int32, Int32, c_ptr[Rlimit], c_ptr[Rlimit]
-    ](pid, resource, new_limit, old_limit)
+    comptime if CompilationTarget.is_macos():
+        return -1
+    else:
+        return external_call[
+            "prlimit", Int32, Int32, Int32, c_ptr[Rlimit], c_ptr[Rlimit]
+        ](pid, resource, new_limit, old_limit)
 
 
 def getrusage(who: Int32, usage: c_ptr[rusage]) -> Int32:
