@@ -259,8 +259,13 @@ def abort() -> c_void:
         void abort(void)
 
     Description:
-        Raises `SIGABRT`, terminating the process abnormally. Does not
-        return.
+        Terminates the calling process abnormally, without running
+        atexit handlers or returning to the caller. C's `abort`
+        raises `SIGABRT`; what is seen from a Mojo process is the
+        run time ending the child with a different signal, which
+        `test_abort_ends_the_child_and_not_us` checks by waiting
+        and reading the status word rather than by guessing at
+        the name.
     """
 
     _ = external_call["abort", c_void]()
