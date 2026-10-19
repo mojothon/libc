@@ -44,6 +44,7 @@ the bottom.
 | `libc.libgen` | `<libgen.h>` cutting a path in two | 2 |
 | `libc.logging` | `<syslog.h>` | 6 |
 | `libc.fcntl` | `<fcntl.h>` | 49 |
+| `libc.getopt` | `<getopt.h>` taking a command line apart | 12 |
 | `libc.dlfcn` | `<dlfcn.h>` | 7 |
 | `libc.wchar` | `<wchar.h>` | 27 |
 | `libc.sys.statvfs` | `<sys/statvfs.h>` | 3 |

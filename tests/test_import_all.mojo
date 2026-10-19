@@ -313,6 +313,23 @@ def bring_in_libc_glob():
     )
 
 
+def bring_in_libc_getopt():
+    from libc.getopt import (
+        Option,
+        getopt_long,
+        getopt_long_only,
+        no_argument,
+        optarg,
+        opterr,
+        optind,
+        optopt,
+        optional_argument,
+        required_argument,
+        set_opterr,
+        set_optind,
+    )
+
+
 def bring_in_libc_grp():
     from libc.grp import (
         endgrent,
@@ -1215,6 +1232,7 @@ def main() raises:
     bring_in_libc_float()
     bring_in_libc_fnmatch()
     bring_in_libc_glob()
+    bring_in_libc_getopt()
     bring_in_libc_grp()
     bring_in_libc_iconv()
     bring_in_libc_ifaddrs()

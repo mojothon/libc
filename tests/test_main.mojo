@@ -32,6 +32,7 @@ from test_fenv import main as run_fenv
 from test_float import main as run_float
 from test_fnmatch import main as run_fnmatch
 from test_glob import main as run_glob
+from test_getopt import main as run_getopt
 from test_grp import main as run_grp
 from test_iconv import main as run_iconv
 from test_ifaddrs import main as run_ifaddrs
@@ -89,6 +90,7 @@ def main() raises:
     run_float()
     run_fnmatch()
     run_glob()
+    run_getopt()
     run_grp()
     run_iconv()
     run_ifaddrs()

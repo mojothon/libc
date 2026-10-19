@@ -196,6 +196,23 @@ All notable changes to this project are documented here. The format follows
   `_SC_*` and `_CS_*` knobs do not. The tests ask `sh -c 'exit 7'` for
   its code and hand a child a pipe to write into, which is what the
   file actions are for. `libc.spawn` starts at 23.
+- **`libc.getopt` is new: `getopt_long`, `getopt_long_only`, `Option`,
+  and the four globals the pair reports through.** Taking a command
+  line apart, long options included. `getopt` itself is in
+  `libc.unistd`, where POSIX puts it. `no_argument`,
+  `required_argument` and `optional_argument` carry the same three
+  numbers on both platforms, and so does the layout of `struct option`
+  — 32 bytes with its members at 0, 8, 16 and 24.
+
+  The four globals are the first data this package binds: `optarg`,
+  `optind`, `optopt` and `opterr` are variables and not functions, so
+  there is no calling them. Each is reached by asking `dlsym` where it
+  sits and reading the value out of that address, with the handle
+  handed back on each call so that `dlopen`'s count does not climb.
+  `set_optind` is how a second command line is parsed: the `optreset`
+  that Darwin has is BSD's and not POSIX's, and glibc does not carry
+  it. The tests take five small command lines apart and check what
+  came back against what was handed in. `libc.getopt` starts at 12.
 
 ## [0.12.0] - 2026-10-19
 
