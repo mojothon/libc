@@ -461,6 +461,16 @@ def bring_in_libc_math():
     )
 
 
+def bring_in_libc_netdb():
+    from libc.netdb import (
+        addrinfo,
+        freeaddrinfo,
+        gai_strerror,
+        getaddrinfo,
+        getnameinfo,
+    )
+
+
 def bring_in_libc_network():
     from libc.network import (
         htonl,
@@ -1079,6 +1089,7 @@ def main() raises:
     bring_in_libc_locale()
     bring_in_libc_logging()
     bring_in_libc_math()
+    bring_in_libc_netdb()
     bring_in_libc_network()
     bring_in_libc_poll()
     bring_in_libc_pthread()
