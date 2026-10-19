@@ -324,6 +324,15 @@ def bring_in_libc_grp():
     )
 
 
+def bring_in_libc_iconv():
+    from libc.iconv import (
+        iconv,
+        iconv_close,
+        iconv_open,
+        iconv_t,
+    )
+
+
 def bring_in_libc_inttypes():
     from libc.inttypes import (
         imaxabs,
@@ -1133,6 +1142,7 @@ def main() raises:
     bring_in_libc_fnmatch()
     bring_in_libc_glob()
     bring_in_libc_grp()
+    bring_in_libc_iconv()
     bring_in_libc_inttypes()
     bring_in_libc_libgen()
     bring_in_libc_locale()

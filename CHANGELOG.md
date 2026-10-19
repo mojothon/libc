@@ -120,6 +120,17 @@ All notable changes to this project are documented here. The format follows
   compiling. What the tests do not assume is which groups exist: id 0 is
   `root` on one and `wheel` on the other, so the round-trip asks for
   whatever name the database hands out first. `libc.grp` starts at 6.
+- **`libc.iconv` is new: `iconv_open`, `iconv`, `iconv_close` and the
+  `iconv_t` they pass around.** Converting bytes from one encoding to
+  another, which until now needed a subprocess and `iconv -f`. The two
+  platforms agree on the three calls — glibc's is in libc itself and
+  XNU's is GNU libiconv under the same names — and differ only in which
+  encodings they have, so the tests ask for UTF-8 to UTF-8, the one
+  conversion every platform has and whose answer is known in advance.
+  Both failures are tested too, and the second is the easy one to get
+  wrong: an encoding libc does not know is `(iconv_t) -1` and *not*
+  NULL, so `is_null` asks the wrong question of it, and `iconv` says it
+  stopped short with `(size_t) -1`. `libc.iconv` starts at 4.
 
 ## [0.12.0] - 2026-10-19
 
