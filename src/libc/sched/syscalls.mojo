@@ -7,12 +7,18 @@ from std.ffi import external_call
 from std.sys import CompilationTarget
 from std.memory import Pointer
 from libc.constant import c_ptr
+from std.sys import CompilationTarget
 from libc.time import timespec
 
 
-# The scheduling policies, and the numbers are the same on both platforms.
-comptime SCHED_OTHER: Int32 = 0
-comptime SCHED_FIFO: Int32 = 1
+# The scheduling policies. POSIX fixes a number for none of them, and
+# the two platforms happen to agree on one out of the three: OTHER is
+# 0 here and 1 there, FIFO is 1 here and 4 there, and RR is 2 on
+# both. That last one is a coincidence rather than a rule, and it is
+# the sort of thing a reader would otherwise take for granted and then
+# carry to the other two.
+comptime SCHED_OTHER: Int32 = 1 if CompilationTarget.is_macos() else 0
+comptime SCHED_FIFO: Int32 = 4 if CompilationTarget.is_macos() else 1
 comptime SCHED_RR: Int32 = 2
 
 

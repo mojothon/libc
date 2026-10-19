@@ -9,6 +9,7 @@ from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.sched import (
+    SCHED_OTHER,
     sched_get_priority_max,
     sched_get_priority_min,
     sched_getaffinity,
@@ -21,8 +22,10 @@ from libc.sched import (
 )
 
 # `SCHED_OTHER`, the policy a process is put on when nobody asks for
-# another: the ordinary one, whose only priority is zero.
-comptime ORDINARY = 0
+# another: the ordinary one, whose only priority is zero. The number is
+# not 0 on both platforms — it is 1 here — so the constant is what is
+# used rather than the digit that happens to be right here.
+comptime ORDINARY = SCHED_OTHER
 
 
 def test_what_the_scheduler_says() raises:

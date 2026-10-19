@@ -7,6 +7,7 @@ from std.memory import Pointer
 from std.ffi import external_call
 from std.sys import CompilationTarget
 from libc.constant import c_ptr
+from libc.sched import sched_param
 from libc.time import timespec
 
 # POSIX leaves the values of these two up to the platform. glibc
@@ -339,6 +340,19 @@ comptime PTHREAD_PROCESS_PRIVATE: Int32 = 2 if CompilationTarget.is_macos() else
 comptime PTHREAD_PRIO_NONE: Int32 = 0
 comptime PTHREAD_PRIO_INHERIT: Int32 = 1
 comptime PTHREAD_PRIO_PROTECT: Int32 = 2
+
+# Whether a thread made from an attribute object is to take its
+# scheduling from the caller or carry its own settings. INHERIT is 0
+# on glibc and 1 here; EXPLICIT is 1 and 2.
+comptime PTHREAD_INHERIT_SCHED: Int32 = 1 if CompilationTarget.is_macos() else 0
+comptime PTHREAD_EXPLICIT_SCHED: Int32 = 2 if CompilationTarget.is_macos() else 1
+
+# How far a thread's contention reaches. SYSTEM is 0 on glibc and 1
+# here; PROCESS is 1 and 2. Darwin notes in its own header that it
+# supports SYSTEM only, which is the one thing to know about asking
+# for PROCESS there.
+comptime PTHREAD_SCOPE_SYSTEM: Int32 = 1 if CompilationTarget.is_macos() else 0
+comptime PTHREAD_SCOPE_PROCESS: Int32 = 2 if CompilationTarget.is_macos() else 1
 
 
 struct pthread_mutex_t:
@@ -1593,3 +1607,264 @@ def pthread_rwlockattr_setpshared(
         c_ptr[pthread_rwlockattr_t],
         Int32,
     ](attr, pshared)
+
+
+def pthread_attr_getschedparam(
+    attr: c_ptr[pthread_attr_t], param: c_ptr[sched_param]
+) -> Int32:
+    """C library <pthread.h> function `pthread_attr_getschedparam`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_attr_getschedparam.3.html
+
+    Prototype:
+        int pthread_attr_getschedparam(const pthread_attr_t *restrict attr,
+                                       struct sched_param *restrict param)
+
+    Description:
+        Reads the scheduling priority an attribute object carries.
+
+    Args:
+        attr: The attribute object to be queried.
+        param: Where the priority is written, as a `sched_param`.
+
+    Returns:
+        0 on success, or the error number on failure.
+
+    Notes:
+        The policy is a separate setting kept by
+        `pthread_attr_getschedpolicy`; this one is the priority alone.
+    """
+    return external_call[
+        "pthread_attr_getschedparam",
+        Int32,
+        c_ptr[pthread_attr_t],
+        c_ptr[sched_param],
+    ](attr, param)
+
+
+def pthread_attr_setschedparam(
+    attr: c_ptr[pthread_attr_t], param: c_ptr[sched_param]
+) -> Int32:
+    """C library <pthread.h> function `pthread_attr_setschedparam`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_attr_setschedparam.3.html
+
+    Prototype:
+        int pthread_attr_setschedparam(pthread_attr_t *restrict attr,
+                                       const struct sched_param *restrict param)
+
+    Description:
+        Sets the scheduling priority an attribute object carries.
+
+    Args:
+        attr: The attribute object.
+        param: The priority, as a `sched_param`.
+
+    Returns:
+        0 on success, or the error number on failure.
+
+    Notes:
+        Nothing checks the priority against the policy here — the two
+        are kept apart and are put together when a thread is made.
+    """
+    return external_call[
+        "pthread_attr_setschedparam",
+        Int32,
+        c_ptr[pthread_attr_t],
+        c_ptr[sched_param],
+    ](attr, param)
+
+
+def pthread_attr_getschedpolicy(
+    attr: c_ptr[pthread_attr_t], policy: c_ptr[Int32]
+) -> Int32:
+    """C library <pthread.h> function `pthread_attr_getschedpolicy`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_attr_getschedpolicy.3.html
+
+    Prototype:
+        int pthread_attr_getschedpolicy(const pthread_attr_t *restrict attr,
+                                        int *restrict policy)
+
+    Description:
+        Reads the scheduling policy an attribute object carries.
+
+    Args:
+        attr: The attribute object to be queried.
+        policy: Where the policy is written, as one of the `SCHED_*`
+            constants from `libc.sched`.
+
+    Returns:
+        0 on success, or the error number on failure.
+    """
+    return external_call[
+        "pthread_attr_getschedpolicy",
+        Int32,
+        c_ptr[pthread_attr_t],
+        c_ptr[Int32],
+    ](attr, policy)
+
+
+def pthread_attr_setschedpolicy(
+    attr: c_ptr[pthread_attr_t], policy: Int32
+) -> Int32:
+    """C library <pthread.h> function `pthread_attr_setschedpolicy`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_attr_setschedpolicy.3.html
+
+    Prototype:
+        int pthread_attr_setschedpolicy(pthread_attr_t *attr, int policy)
+
+    Description:
+        Sets the scheduling policy an attribute object carries.
+
+    Args:
+        attr: The attribute object.
+        policy: One of the `SCHED_*` constants.
+
+    Returns:
+        0 on success, or `ENOTSUP` where the policy is not one this
+        platform runs.
+
+    Notes:
+        The number is not the same on both: `SCHED_FIFO` is 1 on glibc
+        and 4 here. Take the constant from `libc.sched` rather than
+        writing the digit down.
+    """
+    return external_call[
+        "pthread_attr_setschedpolicy", Int32, c_ptr[pthread_attr_t], Int32
+    ](attr, policy)
+
+
+def pthread_attr_getinheritsched(
+    attr: c_ptr[pthread_attr_t], inheritsched: c_ptr[Int32]
+) -> Int32:
+    """C library <pthread.h> function `pthread_attr_getinheritsched`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_attr_getinheritsched.3.html
+
+    Prototype:
+        int pthread_attr_getinheritsched(
+        const pthread_attr_t *restrict attr, int *restrict inheritsched)
+
+    Description:
+        Says whether a thread made from these attributes is to take
+        its scheduling from the caller or carry its own.
+
+    Args:
+        attr: The attribute object to be queried.
+        inheritsched: Where the answer is written, as
+        `PTHREAD_INHERIT_SCHED` or `PTHREAD_EXPLICIT_SCHED`.
+
+    Returns:
+        0 on success, or the error number on failure.
+    """
+    return external_call[
+        "pthread_attr_getinheritsched",
+        Int32,
+        c_ptr[pthread_attr_t],
+        c_ptr[Int32],
+    ](attr, inheritsched)
+
+
+def pthread_attr_setinheritsched(
+    attr: c_ptr[pthread_attr_t], inheritsched: Int32
+) -> Int32:
+    """C library <pthread.h> function `pthread_attr_setinheritsched`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_attr_setinheritsched.3.html
+
+    Prototype:
+        int pthread_attr_setinheritsched(pthread_attr_t *attr,
+                                         int inheritsched)
+
+    Description:
+        Says whether a thread made from these attributes is to take
+        its scheduling from the caller or carry its own.
+
+    Args:
+        attr: The attribute object.
+        inheritsched: `PTHREAD_INHERIT_SCHED` or
+            `PTHREAD_EXPLICIT_SCHED`.
+
+    Returns:
+        0 on success, or `EINVAL` where it is neither.
+
+    Notes:
+        INHERIT is 0 on glibc and 1 here, and EXPLICIT is 1 and 2 —
+        a test that wants the other one should name it rather than
+        flip a bit.
+    """
+    return external_call[
+        "pthread_attr_setinheritsched", Int32, c_ptr[pthread_attr_t], Int32
+    ](attr, inheritsched)
+
+
+def pthread_attr_getscope(
+    attr: c_ptr[pthread_attr_t], scope: c_ptr[Int32]
+) -> Int32:
+    """C library <pthread.h> function `pthread_attr_getscope`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_attr_getscope.3.html
+
+    Prototype:
+        int pthread_attr_getscope(const pthread_attr_t *restrict attr,
+                                  int *restrict contentionscope)
+
+    Description:
+        Reads how far the threads made from these attributes are to
+        contend with one another.
+
+    Args:
+        attr: The attribute object to be queried.
+        scope: Where the answer is written, as `PTHREAD_SCOPE_SYSTEM`
+            or `PTHREAD_SCOPE_PROCESS`.
+
+    Returns:
+        0 on success, or the error number on failure.
+    """
+    return external_call[
+        "pthread_attr_getscope",
+        Int32,
+        c_ptr[pthread_attr_t],
+        c_ptr[Int32],
+    ](attr, scope)
+
+
+def pthread_attr_setscope(attr: c_ptr[pthread_attr_t], scope: Int32) -> Int32:
+    """C library <pthread.h> function `pthread_attr_setscope`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_attr_setscope.3.html
+
+    Prototype:
+        int pthread_attr_setscope(pthread_attr_t *attr, int contentionscope)
+
+    Description:
+        Says how far the threads made from these attributes are to
+        contend with one another.
+
+    Args:
+        attr: The attribute object.
+        scope: `PTHREAD_SCOPE_SYSTEM` or `PTHREAD_SCOPE_PROCESS`.
+
+    Returns:
+        0 on success, `ENOTSUP` where the platform runs only one of
+        them, or `EINVAL` where it is neither.
+
+    Notes:
+        Darwin's own header says it supports SYSTEM only, so asking
+        for PROCESS there is expected to be refused rather than to
+        change anything. The two numbers differ across platforms in
+        any case: SYSTEM is 0 on glibc and 1 here.
+    """
+    return external_call[
+        "pthread_attr_setscope", Int32, c_ptr[pthread_attr_t], Int32
+    ](attr, scope)
