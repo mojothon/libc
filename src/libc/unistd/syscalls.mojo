@@ -6,7 +6,7 @@
 from std.ffi import external_call
 from std.sys import CompilationTarget
 from std.memory import Pointer
-from libc.constant import c_int, c_long, c_ptr
+from libc.constant import c_int, c_long, c_ptr, c_size_t
 
 
 # The number `syscall` takes for `getpid`. Linux numbers it 39 and
@@ -1427,6 +1427,121 @@ def sysconf(name: c_int) -> c_long:
         which it was.
     """
     return external_call["sysconf", c_long, c_int](name)
+
+
+# Which variable `confstr` is asked about, in the same shape as the
+# `_SC_*` above and for the same reason: of the twenty-five both platforms
+# have, every one is numbered differently. glibc numbers them from 0 in
+# POSIX order and XNU from 1 in an order of its own, so `_CS_PATH` is 0
+# here and 1 there.
+#
+# `_CS_GNU_LIBC_VERSION`, `_CS_GNU_LIBPTHREAD_VERSION` and the `_CS_LFS_*`
+# are glibc's own and XNU has nothing to answer them; `_CS_DARWIN_USER_*`
+# are XNU's. A variable only one side answers is not one this package can
+# claim to bind.
+comptime CS_PATH: Int32 = 1 if CompilationTarget.is_macos() else 0
+comptime CS_POSIX_V6_ILP32_OFF32_CFLAGS: Int32 = (
+    2 if CompilationTarget.is_macos() else 1116
+)
+comptime CS_POSIX_V6_ILP32_OFF32_LDFLAGS: Int32 = (
+    3 if CompilationTarget.is_macos() else 1117
+)
+comptime CS_POSIX_V6_ILP32_OFF32_LIBS: Int32 = (
+    4 if CompilationTarget.is_macos() else 1118
+)
+comptime CS_POSIX_V6_ILP32_OFFBIG_CFLAGS: Int32 = (
+    5 if CompilationTarget.is_macos() else 1120
+)
+comptime CS_POSIX_V6_ILP32_OFFBIG_LDFLAGS: Int32 = (
+    6 if CompilationTarget.is_macos() else 1121
+)
+comptime CS_POSIX_V6_ILP32_OFFBIG_LIBS: Int32 = (
+    7 if CompilationTarget.is_macos() else 1122
+)
+comptime CS_POSIX_V6_LP64_OFF64_CFLAGS: Int32 = (
+    8 if CompilationTarget.is_macos() else 1124
+)
+comptime CS_POSIX_V6_LP64_OFF64_LDFLAGS: Int32 = (
+    9 if CompilationTarget.is_macos() else 1125
+)
+comptime CS_POSIX_V6_LP64_OFF64_LIBS: Int32 = (
+    10 if CompilationTarget.is_macos() else 1126
+)
+comptime CS_POSIX_V6_LPBIG_OFFBIG_CFLAGS: Int32 = (
+    11 if CompilationTarget.is_macos() else 1128
+)
+comptime CS_POSIX_V6_LPBIG_OFFBIG_LDFLAGS: Int32 = (
+    12 if CompilationTarget.is_macos() else 1129
+)
+comptime CS_POSIX_V6_LPBIG_OFFBIG_LIBS: Int32 = (
+    13 if CompilationTarget.is_macos() else 1130
+)
+comptime CS_XBS5_ILP32_OFF32_CFLAGS: Int32 = (
+    20 if CompilationTarget.is_macos() else 1100
+)
+comptime CS_XBS5_ILP32_OFF32_LDFLAGS: Int32 = (
+    21 if CompilationTarget.is_macos() else 1101
+)
+comptime CS_XBS5_ILP32_OFF32_LIBS: Int32 = (
+    22 if CompilationTarget.is_macos() else 1102
+)
+comptime CS_XBS5_ILP32_OFFBIG_CFLAGS: Int32 = (
+    24 if CompilationTarget.is_macos() else 1104
+)
+comptime CS_XBS5_ILP32_OFFBIG_LDFLAGS: Int32 = (
+    25 if CompilationTarget.is_macos() else 1105
+)
+comptime CS_XBS5_ILP32_OFFBIG_LIBS: Int32 = (
+    26 if CompilationTarget.is_macos() else 1106
+)
+comptime CS_XBS5_LP64_OFF64_CFLAGS: Int32 = (
+    28 if CompilationTarget.is_macos() else 1108
+)
+comptime CS_XBS5_LP64_OFF64_LDFLAGS: Int32 = (
+    29 if CompilationTarget.is_macos() else 1109
+)
+comptime CS_XBS5_LP64_OFF64_LIBS: Int32 = (
+    30 if CompilationTarget.is_macos() else 1110
+)
+comptime CS_XBS5_LPBIG_OFFBIG_CFLAGS: Int32 = (
+    32 if CompilationTarget.is_macos() else 1112
+)
+comptime CS_XBS5_LPBIG_OFFBIG_LDFLAGS: Int32 = (
+    33 if CompilationTarget.is_macos() else 1113
+)
+comptime CS_XBS5_LPBIG_OFFBIG_LIBS: Int32 = (
+    34 if CompilationTarget.is_macos() else 1114
+)
+
+
+def confstr(name: c_int, buf: c_ptr[UInt8], length: c_size_t) -> c_size_t:
+    """Libc POSIX `confstr` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/confstr.3p.html
+
+    Args:
+        name: Which variable to ask about, as one of the `_CS_*` above.
+        buf: Where the answer goes, or NULL to ask only how long it is.
+        length: How many bytes `buf` holds, terminator included.
+
+    Returns:
+        How many bytes the answer needs, terminator included, which is 0
+        when `name` names nothing this system has. The answer is not
+        written when `buf` is NULL or `length` is 0, and is truncated
+        without a terminator when `length` is too short.
+
+    Notes:
+        Fn signature: `size_t confstr(int name, char *buf, size_t len)`.
+
+        The one variable worth asking for by name rather than by number
+        is `CS_PATH`, the default search path. The rest are the compiler
+        and linker flags for one of the ABIs, which is what a build
+        system wants and not much else.
+    """
+    return external_call["confstr", c_size_t, c_int, c_ptr[UInt8], c_size_t](
+        name, buf, length
+    )
 
 
 def usleep(usec: UInt32) -> c_int:

@@ -25,6 +25,8 @@ from libc.unistd import (
     SC_NPROCESSORS_ONLN,
     SC_OPEN_MAX,
     SC_PAGESIZE,
+    CS_PATH,
+    confstr,
     SYS_getpid,
     alarm,
     chdir,
@@ -246,6 +248,40 @@ def test_sysconf_names_the_knobs_it_answers_for() raises:
         open_max > 0 and open_max < 1 << 30,
         "and there is a ceiling on open descriptors",
     )
+
+
+def test_confstr_answers_for_the_default_path() raises:
+    """`confstr` hands back a string rather than a number, and the one
+    variable worth asking for is `CS_PATH`: the default search path.
+
+    It is asked twice, the first time with no buffer at all, which is how
+    the call is meant to be sized — the answer is how many bytes it needs,
+    terminator included, and nothing is written. The second time it is
+    given a buffer of exactly that size, and what comes back is the same
+    length and a path with a colon in it.
+    """
+    # NULL and 0: ask only how long the answer is.
+    var wanted = confstr(CS_PATH, null_ptr[UInt8](), 0)
+    assert_true(
+        wanted > 0,
+        "confstr says how long the default path is, and it is not empty",
+    )
+
+    var buf = unsafe_alloc[UInt8](Int(wanted))
+    for i in range(Int(wanted)):
+        buf.unsafe_store(i, 0)
+    var got = confstr(CS_PATH, buf, wanted)
+    assert_equal(got, wanted, "and hands back the same length when asked")
+    var path = char_ptr_to_string(buf)
+    assert_true(
+        path.byte_length() > 0,
+        "and the buffer holds something",
+    )
+    assert_true(
+        String(path).find(":") != -1,
+        "and it is a search path, so it has a separator in it",
+    )
+    buf.unsafe_free()
 
 
 def test_usleep() raises:
@@ -665,6 +701,7 @@ def main() raises:
     test_fpathconf()
     test_the_pc_knobs_are_the_platforms_own_numbers()
     test_sysconf_names_the_knobs_it_answers_for()
+    test_confstr_answers_for_the_default_path()
     test_getopt()
     test_swab()
     test_getpid()
