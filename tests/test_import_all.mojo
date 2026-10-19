@@ -333,6 +333,19 @@ def bring_in_libc_iconv():
     )
 
 
+def bring_in_libc_ifaddrs():
+    from libc.ifaddrs import (
+        IFF_BROADCAST,
+        IFF_LOOPBACK,
+        IFF_POINTOPOINT,
+        IFF_RUNNING,
+        IFF_UP,
+        freeifaddrs,
+        getifaddrs,
+        ifaddrs,
+    )
+
+
 def bring_in_libc_inttypes():
     from libc.inttypes import (
         imaxabs,
@@ -1163,6 +1176,7 @@ def main() raises:
     bring_in_libc_glob()
     bring_in_libc_grp()
     bring_in_libc_iconv()
+    bring_in_libc_ifaddrs()
     bring_in_libc_inttypes()
     bring_in_libc_langinfo()
     bring_in_libc_libgen()

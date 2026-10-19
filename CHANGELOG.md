@@ -144,6 +144,19 @@ All notable changes to this project are documented here. The format follows
   is the one answer an undefined item gives on both, which is the only
   safe test of `nl_langinfo` that does not depend on the locale.
   `libc.langinfo` starts at 56.
+- **`libc.ifaddrs` is new: `ifaddrs`, `getifaddrs`, `freeifaddrs`, and
+  the five `IFF_*` flags both platforms agree on.** The list of
+  network interfaces the kernel knows, walked by `ifa_next` until it
+  reads null and released by `freeifaddrs` on the head. The seven
+  members of `ifaddrs` line up the same on both: 0, 8, 16, 24, 32, 40
+  and 48, fifty-six bytes either way, with glibc's union of
+  `ifa_dstaddr` and `ifa_broadaddr` and Darwin's flat pointer sharing
+  one slot. `IFF_UP`, `IFF_BROADCAST`, `IFF_LOOPBACK`, `IFF_POINTOPOINT`
+  and `IFF_RUNNING` share numbers — 1, 2, 8, 16 and 64 — but
+  `IFF_MULTICAST` does not, being 4096 here and 32768 there. Reading an
+  address's family goes through `socketaddr` from `libc.sys.socket`,
+  which is where Darwin's `sa_len` byte and glibc's bare family are
+  already read the same way. `libc.ifaddrs` starts at 8.
 
 ## [0.12.0] - 2026-10-19
 

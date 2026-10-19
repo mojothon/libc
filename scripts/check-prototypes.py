@@ -50,7 +50,8 @@ SRC = ROOT / "src" / "libc"
 HEADERS = [
     "aio.h", "arpa/inet.h", "complex.h", "ctype.h", "dirent.h", "dlfcn.h",
     "errno.h", "fcntl.h", "fenv.h", "float.h", "fnmatch.h", "ftw.h",
-    "glob.h", "grp.h", "iconv.h", "inttypes.h", "langinfo.h", "libgen.h",
+    "glob.h", "grp.h", "iconv.h", "ifaddrs.h", "inttypes.h", "langinfo.h",
+    "libgen.h",
     "locale.h", "math.h", "monetary.h", "mqueue.h", "netdb.h",
     "netinet/in.h", "nl_types.h", "poll.h", "pthread.h", "pwd.h",
     "regex.h", "sched.h", "search.h", "semaphore.h", "setjmp.h", "signal.h",

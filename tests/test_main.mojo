@@ -34,6 +34,7 @@ from test_fnmatch import main as run_fnmatch
 from test_glob import main as run_glob
 from test_grp import main as run_grp
 from test_iconv import main as run_iconv
+from test_ifaddrs import main as run_ifaddrs
 from test_inttypes import main as run_inttypes
 from test_langinfo import main as run_langinfo
 from test_layout import main as run_layout
@@ -88,6 +89,7 @@ def main() raises:
     run_glob()
     run_grp()
     run_iconv()
+    run_ifaddrs()
     run_inttypes()
     run_langinfo()
     run_layout()
