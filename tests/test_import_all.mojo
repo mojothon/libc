@@ -547,6 +547,17 @@ def bring_in_libc_netdb():
     )
 
 
+def bring_in_libc_netif():
+    from libc.netif import (
+        IF_NAMESIZE,
+        IfNameindex,
+        if_freenameindex,
+        if_indextoname,
+        if_nameindex,
+        if_nametoindex,
+    )
+
+
 def bring_in_libc_network():
     from libc.network import (
         htonl,
@@ -1184,6 +1195,7 @@ def main() raises:
     bring_in_libc_logging()
     bring_in_libc_math()
     bring_in_libc_netdb()
+    bring_in_libc_netif()
     bring_in_libc_network()
     bring_in_libc_poll()
     bring_in_libc_pthread()

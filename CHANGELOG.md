@@ -157,6 +157,16 @@ All notable changes to this project are documented here. The format follows
   address's family goes through `socketaddr` from `libc.sys.socket`,
   which is where Darwin's `sa_len` byte and glibc's bare family are
   already read the same way. `libc.ifaddrs` starts at 8.
+- **`libc.netif` is new: `if_nametoindex`, `if_indextoname`,
+  `if_nameindex`, `if_freenameindex`, `IfNameindex` and `IF_NAMESIZE`.**
+  The same interfaces `getifaddrs` lists, asked for by name or by
+  number instead. Both platforms agree on everything here: the two
+  members of `struct if_nameindex` sit at 0 and 8, `IF_NAMESIZE` is
+  sixteen either way, and the array `if_nameindex` hands back ends in
+  the one entry whose number is 0 and whose name is null. The struct is
+  called `IfNameindex` because `if_nameindex` the function wants the
+  name C gives the struct, and the two cannot share one — the same
+  reason `Stat` is not `stat`. `libc.netif` starts at 6.
 
 ## [0.12.0] - 2026-10-19
 

@@ -32,6 +32,7 @@ the bottom.
 | `libc.sys.resource` | `<sys/resource.h>` | 15 |
 | `libc.network` | `<arpa/inet.h>` byte order and address conversion | 6 |
 | `libc.netdb` | `<netdb.h>` name and service lookup | 29 |
+| `libc.netif` | `<net/if.h>` interface names and numbers | 6 |
 | `libc.regex` | `<regex.h>` POSIX regular expressions | 26 |
 | `libc.glob` | `<glob.h>` pathname matching | 18 |
 | `libc.grp` | `<grp.h>` the group database | 6 |

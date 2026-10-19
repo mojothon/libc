@@ -42,6 +42,7 @@ from test_libgen import main as run_libgen
 from test_locale import main as run_locale
 from test_math import main as run_math
 from test_netdb import main as run_netdb
+from test_netif import main as run_netif
 from test_network import main as run_network
 from test_poll import main as run_poll
 from test_pwd import main as run_pwd
@@ -97,6 +98,7 @@ def main() raises:
     run_locale()
     run_math()
     run_netdb()
+    run_netif()
     run_network()
     run_poll()
     run_pwd()

@@ -63,17 +63,11 @@ def sibling(name: str):
 CHECK_CONSTANTS = sibling("check-constants")
 
 # Only the ones C spells differently. Everything else here is named after
-# the C struct it stands for, which is the point of it.
-SPELLED_DIFFERENTLY = {
-    "Stat": "stat",
-    "Statvfs": "statvfs",
-    "Utsname": "utsname",
-    "Rlimit": "rlimit",
-    "Timeval": "timeval",
-    "socketaddr": "sockaddr",
-    "cdouble": "double _Complex",
-    "cfloat": "float _Complex",
-}
+# the C struct it stands for, which is the point of it. The list itself
+# is kept in `check-prototypes`, which `check-constants` and this file
+# both load and which cannot load either of them back.
+CHECK_PROTOTYPES = sibling("check-prototypes")
+SPELLED_DIFFERENTLY = CHECK_PROTOTYPES.SPELLED_DIFFERENTLY
 
 # And the ones with nothing to compare against: opaque handles C never
 # finishes describing (`DIR`, `FILE` are only ever seen through a

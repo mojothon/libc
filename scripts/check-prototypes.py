@@ -53,7 +53,7 @@ HEADERS = [
     "glob.h", "grp.h", "iconv.h", "ifaddrs.h", "inttypes.h", "langinfo.h",
     "libgen.h",
     "locale.h", "math.h", "monetary.h", "mqueue.h", "netdb.h",
-    "netinet/in.h", "nl_types.h", "poll.h", "pthread.h", "pwd.h",
+    "net/if.h", "netinet/in.h", "nl_types.h", "poll.h", "pthread.h", "pwd.h",
     "regex.h", "sched.h", "search.h", "semaphore.h", "setjmp.h", "signal.h",
     "spawn.h", "stdarg.h", "stdbool.h", "stddef.h", "stdint.h", "stdio.h",
     "stdlib.h", "string.h", "strings.h", "sys/epoll.h", "sys/eventfd.h",
@@ -637,6 +637,25 @@ def declared_structs() -> set[str]:
     return names
 
 
+# The structs C spells differently from this package, which is the list
+# every script here reads: `Stat` stands for `struct stat`, and
+# `IfNameindex` for `struct if_nameindex`, a struct that had to give up
+# its name to the function C calls the same thing. It lives here because
+# both `check-constants` and `check-layouts` load this file and neither
+# can be loaded back from it.
+SPELLED_DIFFERENTLY = {
+    "Stat": "stat",
+    "Statvfs": "statvfs",
+    "Utsname": "utsname",
+    "Rlimit": "rlimit",
+    "Timeval": "timeval",
+    "socketaddr": "sockaddr",
+    "cdouble": "double _Complex",
+    "cfloat": "float _Complex",
+    "IfNameindex": "if_nameindex",
+}
+
+
 def struct_mismatch(
     c_pointed: str, mojo_pointed: str, structs: set[str]
 ) -> tuple[str, str] | None:
@@ -659,7 +678,8 @@ def struct_mismatch(
     if given.lower() not in structs:
         return None
     wanted = m.group(1)
-    return None if given.lower() == wanted.lower() else (wanted, given)
+    given_in_c = SPELLED_DIFFERENTLY.get(given, given)
+    return None if given_in_c.lower() == wanted.lower() else (wanted, given)
 
 
 def size_problem(
