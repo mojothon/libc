@@ -1663,3 +1663,45 @@ def setsid() -> c_int:
         session. Fork first and call this from the child.
     """
     return external_call["setsid", c_int]()
+
+
+def gethostname(name: c_ptr[UInt8], length: c_size_t) -> c_int:
+    """Libc POSIX `gethostname` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/gethostname.2.html
+
+    Description:
+        Asks the kernel for the name this host is known by, the same
+        `uname` reports in its `nodename` field, the same that
+        `/proc/sys/kernel/hostname` is here. What it is set to is set
+        at boot and not by a process.
+
+    Args:
+        name: Where the name is written, as a NUL-terminated C string
+            when the name fits and a C string of that length, NUL at
+            the end, when it does not. The same pointer, for either
+            result.
+        length: The room `name` has, in bytes. POSIX leaves a length
+            too small undefined; this package's own tests never hand
+            one that is too small.
+
+    Returns:
+        0 when the name is written, or -1 with `errno` set when it is
+        not — `ENAMETOOLONG` on glibc, which is what it calls a
+        buffer smaller than the name is. Darwin answers 0 in that case
+        and writes what fits.
+
+    Notes:
+        Fn signature: `int gethostname(char *name, size_t len)`.
+
+        The two platforms disagree about a short buffer: glibc answers
+        -1 with `ENAMETOOLONG` and writes nothing, Darwin answers 0
+        and truncates to the room it was given. There is no answer
+        that is right for both, and this binding does not pick one:
+        the tests use a buffer that holds the longest hostname there
+        is and ask for the call, not for what it does on overflow.
+    """
+    return external_call["gethostname", c_int, c_ptr[UInt8], c_size_t](
+        name, length
+    )

@@ -1097,6 +1097,7 @@ def bring_in_libc_unistd():
         getegid,
         geteuid,
         getgid,
+        gethostname,
         getopt,
         getpagesize,
         getpgid,

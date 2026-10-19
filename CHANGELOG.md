@@ -167,6 +167,14 @@ All notable changes to this project are documented here. The format follows
   called `IfNameindex` because `if_nameindex` the function wants the
   name C gives the struct, and the two cannot share one — the same
   reason `Stat` is not `stat`. `libc.netif` starts at 6.
+- **`gethostname` is bound, in `libc.unistd`.** The name a machine has,
+  which is the name `uname` reports under `nodename`; the test asks for
+  it both ways and compares one against the other, and writes neither
+  down, since the two runners are named different things. The platforms
+  part company over a buffer too small for the name — glibc answers -1
+  with `ENAMETOOLONG` and writes nothing, Darwin answers 0 and cuts the
+  name to the room it was given — so the binding says both and the tests
+  stay off that ground. `libc.unistd` is 185 → 186.
 
 ## [0.12.0] - 2026-10-19
 

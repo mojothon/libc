@@ -6,6 +6,7 @@ from std.testing import assert_equal, assert_true
 from libc.fcntl import O_CREAT, O_RDONLY, open as open_with_mode
 from libc.constant import AT_FDCWD, c_ptr, SEEK_END, SEEK_SET
 from libc.sys.stat import Stat, fchmod, fstat, stat
+from libc.sys.utsname import Utsname, uname
 from libc.unistd import (
     PC_ASYNC_IO,
     PC_CHOWN_RESTRICTED,
@@ -47,6 +48,7 @@ from libc.unistd import (
     getegid,
     geteuid,
     getgid,
+    gethostname,
     getopt,
     getpagesize,
     getpgid,
@@ -127,6 +129,35 @@ def test_swab() raises:
 def test_getpid() raises:
     """This process has an id, and it is not zero."""
     assert_true(getpid() > 0)
+
+
+def test_gethostname() raises:
+    """One name, asked for twice: through `gethostname` and through
+    `uname`'s `nodename`, which POSIX says are the same. Neither is
+    written down here — a machine is named by whoever set it up, and
+    both CI runners are named different things.
+
+    A buffer well over the longest hostname there is, so that the one
+    thing the platforms disagree about — what they do when the name
+    does not fit — is never reached.
+    """
+    var room = unsafe_alloc[UInt8](256)
+    for i in range(256):
+        room.unsafe_offset(i)[] = 0
+
+    assert_equal(Int(gethostname(room, 256)), 0, "the name is asked for")
+    var name = char_ptr_to_string(room)
+    assert_true(name.byte_length() > 0, "and it is not empty")
+    assert_true(name.byte_length() < 256, "and it fits, NUL and all")
+
+    var node = unsafe_alloc[Utsname](1)
+    assert_equal(Int(uname(node)), 0, "the kernel says about itself")
+    assert_equal(
+        name, node[].nodename(), "the same as `uname` says under `nodename`"
+    )
+
+    room.unsafe_free()
+    node.unsafe_free()
 
 
 def test_ids() raises:
@@ -729,6 +760,7 @@ def main() raises:
     test_getopt()
     test_swab()
     test_getpid()
+    test_gethostname()
     test_ids()
     test_alarm_and_sleep()
     test_nice_and_pagesize()
