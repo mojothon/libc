@@ -9,7 +9,7 @@ machine has.
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import AT_FDCWD, ENOTTY, O_RDONLY, c_ptr
+from libc.constant import AT_FDCWD, ENODEV, ENOTTY, O_RDONLY, c_ptr
 from libc.errno import get_errno, set_errno
 from libc.fcntl import openat
 from libc.termios import (
@@ -40,11 +40,23 @@ from libc.unistd import close
 from libc.utils import string_to_char_ptr
 
 
-def _a_settings_block() -> c_ptr[Termios]:
+def _a_settings_block() raises -> c_ptr[Termios]:
     """One zeroed `struct termios`, which is what `tcgetattr` overwrites."""
     var settings = unsafe_alloc[Termios](1)
-    settings[] = Termios()
+    settings.unsafe_offset(0)[] = Termios()
     return settings
+
+
+def _assert_it_is_not_a_terminal(what: String) raises:
+    """Says that `errno` is whatever this platform means by that.
+
+    glibc answers ENOTTY for a terminal call on something that is not
+    a terminal; Darwin's /dev/null answers ENODEV. Both are refusals.
+    That they differ is worth knowing rather than hiding, so the two
+    are named here side by side instead of one of them being picked.
+    """
+    var why = get_errno()
+    assert_true(why == ENOTTY or why == ENODEV, what)
 
 
 def test_cfsetospeed_then_cfgetospeed() raises:
@@ -116,8 +128,8 @@ def test_cfmakeraw_turns_the_line_off_and_stays_there() raises:
 
 def test_tcgetattr_refuses_what_is_not_a_terminal() raises:
     """`tcgetattr` on `/dev/null`, which is a file and not a
-    terminal. The answer is -1 and `errno` is `ENOTTY`, which is not
-    the same as an empty struct that looks plausible.
+    terminal. The answer is -1 and `errno` is set, which is not the
+    same as an empty struct that looks plausible.
     """
     var fd = openat(Int32(AT_FDCWD), string_to_char_ptr("/dev/null"), O_RDONLY)
     assert_true(fd >= 0, "/dev/null opens")
@@ -125,7 +137,7 @@ def test_tcgetattr_refuses_what_is_not_a_terminal() raises:
     var settings = _a_settings_block()
     set_errno(0)
     assert_equal(tcgetattr(fd, settings), -1, "it refuses")
-    assert_equal(get_errno(), ENOTTY, "and says why")
+    _assert_it_is_not_a_terminal("and says why")
 
     settings.unsafe_free()
     _ = close(fd)
@@ -142,27 +154,27 @@ def test_the_tc_calls_all_refuse_the_same_file() raises:
 
     set_errno(0)
     assert_equal(tcsetattr(fd, TCSANOW, settings), -1, "tcsetattr refuses")
-    assert_equal(get_errno(), ENOTTY, "with ENOTTY")
+    _assert_it_is_not_a_terminal("with that said")
 
     set_errno(0)
     assert_equal(tcdrain(fd), -1, "tcdrain refuses")
-    assert_equal(get_errno(), ENOTTY, "with ENOTTY")
+    _assert_it_is_not_a_terminal("with that said")
 
     set_errno(0)
     assert_equal(tcflow(fd, 0), -1, "tcflow refuses")
-    assert_equal(get_errno(), ENOTTY, "with ENOTTY")
+    _assert_it_is_not_a_terminal("with that said")
 
     set_errno(0)
     assert_equal(tcflush(fd, TCIFLUSH), -1, "tcflush refuses")
-    assert_equal(get_errno(), ENOTTY, "with ENOTTY")
+    _assert_it_is_not_a_terminal("with that said")
 
     set_errno(0)
     assert_equal(tcsendbreak(fd, 0), -1, "tcsendbreak refuses")
-    assert_equal(get_errno(), ENOTTY, "with ENOTTY")
+    _assert_it_is_not_a_terminal("with that said")
 
     set_errno(0)
     assert_equal(tcgetsid(fd), -1, "tcgetsid refuses")
-    assert_equal(get_errno(), ENOTTY, "with ENOTTY")
+    _assert_it_is_not_a_terminal("with that said")
 
     settings.unsafe_free()
     _ = close(fd)
