@@ -50,6 +50,7 @@ from test_regex import main as run_regex
 from test_resource import main as run_resource
 from test_search import main as run_search
 from test_stdio import main as run_stdio
+from test_spawn import main as run_spawn
 from test_stat import main as run_stat
 from test_sys import main as run_sys
 from test_stdlib import main as run_stdlib
@@ -106,6 +107,7 @@ def main() raises:
     run_resource()
     run_search()
     run_stdio()
+    run_spawn()
     run_stat()
     run_sys()
     run_stdlib()

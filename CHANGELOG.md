@@ -179,6 +179,23 @@ All notable changes to this project are documented here. The format follows
   waiting to run, averaged over the last minute, five minutes and
   fifteen minutes. Three is all there are, and asking for eight is
   answered with three. `libc.stdlib` is 45 → 46.
+- **`libc.spawn` is new: `posix_spawn`, `posix_spawnp`, and the handles
+  that go with them.** Starting a process without `fork` — everything
+  `fork` and `execve` do between them, asked for in one call. Fifteen
+  functions: the two that start a process, three file actions
+  (`addopen`/`addclose`/`adddup2`) with their `init`/`destroy`, and six
+  attributes — a process group, a mask, a set of defaults, and the flags
+  that say which to honour — with `get*` for the two a caller can read
+  back. The two handles are opaque and deliberately oversized: C names
+  what is inside them under a name of its own and the platforms do not
+  agree how much there is, eighty and three hundred thirty-six bytes on
+  glibc against sixteen and a hundred twenty-eight on Darwin. A block
+  larger than the truth is a block the truth fits in, since these are
+  only ever passed by address. The six `POSIX_SPAWN_*` happen to agree
+  across the platforms, which is worth noting only because the `_PC_*`,
+  `_SC_*` and `_CS_*` knobs do not. The tests ask `sh -c 'exit 7'` for
+  its code and hand a child a pipe to write into, which is what the
+  file actions are for. `libc.spawn` starts at 23.
 
 ## [0.12.0] - 2026-10-19
 
