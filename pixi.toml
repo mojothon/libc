@@ -1,6 +1,6 @@
 [workspace]
 name = "libc"
-version = "0.11.0"
+version = "0.12.0"
 description = "A standard C library binding for the Mojo programming language."
 authors = ["llango <rontomai@gmail.com>"]
 channels = ["https://conda.modular.com/max", "conda-forge"]

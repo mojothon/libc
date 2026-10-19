@@ -5,7 +5,7 @@ from libc import __version__
 
 def test_version_is_pinned() raises:
     var version = String(__version__)
-    assert_equal(version, "0.11.0")
+    assert_equal(version, "0.12.0")
 
 
 def main() raises:

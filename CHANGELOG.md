@@ -3,10 +3,20 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.12.0] - 2026-10-19
 
 ### Added
 
+- **The `_PC_*` knobs are bound in `libc.unistd`.** `pathconf` and
+  `fpathconf` take a knob number, and the numbers are not the same on
+  both sides: glibc numbers the list from 0 and XNU from 1, so the nine
+  POSIX ones are shifted one along on Darwin and the optional ones are
+  scattered further apart (`_PC_SYNC_IO` is 9 here and 25 there,
+  `_PC_SYMLINK_MAX` 19 and 24). Without them a caller has to write the
+  Linux number down and gets `EINVAL` and -1 on Darwin for every one of
+  them. C spells them with a leading underscore, which makes a name
+  private to a Mojo module, so they are `PC_LINK_MAX` and so on, the way
+  `SC_PAGESIZE` already is. `libc.unistd` goes from 65 to 79.
 - `libc.sys.wait` is exercised by `test_wait`: a forked child leaves
   with a status of its own choosing, and `waitpid` and `wait4` each
   take it back, the latter also saying what the child used. The
@@ -47,6 +57,15 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- **`struct timespec` has one definition again.** `libc.time`, `libc.sched`,
+  `libc.sys.stat` and `libc.sys.epoll` each declared their own, with the
+  same two 64-bit fields, so the bindings worked on both platforms — but
+  Mojo treats each as a distinct type, and a `c_ptr[libc.time.timespec]`
+  would not convert to a `c_ptr[libc.sched.timespec]` even though both
+  describe the same memory. `libc.time.timespec` is the one that stays;
+  the other three import it, the way `libc.poll` and `libc.sys.select`
+  already did. The counts in `docs/modules.md` drop by three, since only
+  the owner still declares the struct.
 - **Five Linux-only bindings are now in `KNOWN_MISSING`.** `epoll_create`,
   `epoll_create1`, `getrandom`, `mlock2` and `prctl` each have a
   man page that says it is Linux-specific on its first line, and
@@ -63,6 +82,19 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- **`Stat` reads its members from the wrong slots on Darwin.** Four
+  members came back wrong on the macOS runner — `nlink` and `mode`
+  answered zero, and `size`, `blocks` and `mtime` came from the
+  wrong place. The offsets had been written from the field order of
+  the pre-`_DARWIN_FEATURE_64_BIT_INODE` struct and only three
+  `timespec`, when what `stat()` fills on a 64-bit process has
+  `st_mode` and `st_nlink` ahead of a 64-bit `st_ino` and **four**
+  `timespec` — access, modify, status change, and birth. That
+  fourth one is what puts `st_size` at offset 96 rather than the 80
+  it was read from. The layout is read from XNU's `bsd/sys/stat.h`
+  with the widths from `bsd/sys/_types.h`, laid out in C to get the
+  offsets, and cross-checked against the `stat(2)` man page; every
+  member moves as a result.
 - `RLIMIT_NOFILE` and `RLIMIT_AS` are set per platform. They are
   7 and 9 on Linux and 8 and 5 on Darwin, and the bindings had
   been written with the Linux numbers, which on macOS a caller
@@ -71,10 +103,54 @@ All notable changes to this project are documented here. The format follows
 - `SYS_getpid` is 39 on Linux and 20 on Darwin. It was 39 on both
   sides, which on macOS would have been a number the kernel
   never uses.
+- `test_resource` asked `setpriority` for 25 and asserted the value
+  read back the same as what 19 left it — true on Linux, whose
+  nice ceiling is 19, false on Darwin's 20. It asks for a value
+  past either ceiling now and asserts only that the clamping kept
+  it where the previous setting left it.
+- `epoll_event.__init__(events, data)` had an `Args:` header one
+  level too deep and a `Notes:` block written twice.
 - `check-prototypes` had a wrong note about `sched_getcpucount`:
   glibc keeps it internal, neither declared nor exported, and
   the binding can be checked by the prototype alone, never by
   the symbol table.
+- **Three structs were too short for what Darwin writes into them.**
+  `check-layouts` had never run to completion on the macOS runner —
+  the test suite failed first, every time, so the step after it was
+  never reached. With the suite passing it ran for the first time and
+  found three. `dirent` was 280 bytes, glibc's size, where Darwin's is
+  1048; the comment already knew the record was the wider one and
+  argued that being short was safe because `readdir` hands back a
+  pointer into a record libc owns, which holds for reading through one
+  and not for anything that copies one. `sched_param` was one `int`
+  where Darwin's is two words, and `sched_getparam` writes both.
+  `mbstate_t` was 32 bytes where Darwin's is 128, and `mbrtowc`,
+  `wcrtomb` and `mbrlen` all write through the pointer they are handed.
+  Each now holds its platform's own size. `sched_param` takes the shape
+  `Stat` already has — one opaque block, the priority read off the
+  front — because a struct with two named fields has to be exactly C's
+  size, and one that is 8 on a platform and 4 on the other cannot be
+  two named fields. The priority moves from a field to a method for
+  that reason.
+- **A file created with `O_CREAT` on Darwin carries no permissions.**
+  `open`'s mode argument is variadic and does not arrive on arm64, so
+  the file it leaves behind has mode 0, and any later call that needs a
+  permission on the file by name answers `EACCES`. The Ubuntu runner is
+  root and cannot see it; the macOS one is not. `test_the_times` held
+  the descriptor it was created with instead of closing and reopening
+  it for `futimens`, and `test_truncate_takes_a_path` sets the
+  permissions with `fchmod` — which is not variadic, so the mode
+  arrives — before the path is used.
+- `test_fpathconf` asked `_PC_LINK_MAX` of a directory, which Linux
+  answers 65000 for and Darwin -1 for. That -1 is not a failure: the
+  Darwin man page allows an implementation to have no limit for a
+  variable it is asked about, and says so with -1 and `errno` untouched.
+  The test asks `PC_PIPE_BUF` of a pipe now, which is the one kind of
+  descriptor where the answer is not left to the filesystem — XNU
+  answers `PIPE_BUF` for a pipe without consulting anything else, and
+  glibc's is a constant too. The two differ, 512 there and 4096 here,
+  so what is asserted is that the call answers with a plausible block
+  size.
 
 ## [0.11.0] - 2026-10-13
 
