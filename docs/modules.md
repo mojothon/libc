@@ -36,6 +36,7 @@ the bottom.
 | `libc.glob` | `<glob.h>` pathname matching | 18 |
 | `libc.grp` | `<grp.h>` the group database | 6 |
 | `libc.iconv` | `<iconv.h>` character encoding conversion | 4 |
+| `libc.langinfo` | `<langinfo.h>` strings the locale decides | 56 |
 | `libc.fnmatch` | `<fnmatch.h>` matching a single name | 7 |
 | `libc.libgen` | `<libgen.h>` cutting a path in two | 2 |
 | `libc.logging` | `<syslog.h>` | 6 |

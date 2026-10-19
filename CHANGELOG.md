@@ -131,6 +131,19 @@ All notable changes to this project are documented here. The format follows
   wrong: an encoding libc does not know is `(iconv_t) -1` and *not*
   NULL, so `is_null` asks the wrong question of it, and `iconv` says it
   stopped short with `(size_t) -1`. `libc.iconv` starts at 4.
+- **`libc.langinfo` is new: `nl_langinfo` and the fifty-five `nl_item`s
+  both platforms name.** What the locale says about itself: day and
+  month names, time and date formats, the decimal point, the character
+  set. The two platforms **disagree about every single one of the
+  numbers** — not by a bit, by *scheme*: glibc packs the locale
+  category into the high bits and XNU numbers them flat from 0, and
+  neither orders the items the same way either, with `ABDAY` and `DAY`
+  swapped. `YESSTR` and `NOSTR` are XNU's but glibc keeps them behind
+  `_GNU_SOURCE` and `D_MD_ORDER` is a FreeBSD extension; none of the
+  three is here. Tests never write a number down and the empty string
+  is the one answer an undefined item gives on both, which is the only
+  safe test of `nl_langinfo` that does not depend on the locale.
+  `libc.langinfo` starts at 56.
 
 ## [0.12.0] - 2026-10-19
 

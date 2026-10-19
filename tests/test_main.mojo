@@ -35,6 +35,7 @@ from test_glob import main as run_glob
 from test_grp import main as run_grp
 from test_iconv import main as run_iconv
 from test_inttypes import main as run_inttypes
+from test_langinfo import main as run_langinfo
 from test_layout import main as run_layout
 from test_libgen import main as run_libgen
 from test_locale import main as run_locale
@@ -88,6 +89,7 @@ def main() raises:
     run_grp()
     run_iconv()
     run_inttypes()
+    run_langinfo()
     run_layout()
     run_libgen()
     run_locale()

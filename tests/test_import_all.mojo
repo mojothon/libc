@@ -384,6 +384,26 @@ def bring_in_libc_logging():
     )
 
 
+def bring_in_libc_langinfo():
+    from libc.langinfo import (
+        ABDAY_1,
+        ABMON_1,
+        AM_STR,
+        CODESET,
+        DAY_1,
+        D_FMT,
+        D_T_FMT,
+        MON_1,
+        NOEXPR,
+        PM_STR,
+        RADIXCHAR,
+        T_FMT,
+        THOUSEP,
+        YESEXPR,
+        nl_langinfo,
+    )
+
+
 def bring_in_libc_math():
     from libc.math import (
         abs,
@@ -1144,6 +1164,7 @@ def main() raises:
     bring_in_libc_grp()
     bring_in_libc_iconv()
     bring_in_libc_inttypes()
+    bring_in_libc_langinfo()
     bring_in_libc_libgen()
     bring_in_libc_locale()
     bring_in_libc_logging()
