@@ -21,6 +21,7 @@ from libc.unistd import (
     PC_SYMLINK_MAX,
     PC_SYNC_IO,
     PC_VDISABLE,
+    pathconf,
     SC_CLK_TCK,
     SC_NPROCESSORS_ONLN,
     SC_OPEN_MAX,
@@ -540,6 +541,28 @@ def test_fpathconf() raises:
     fds.unsafe_free()
 
 
+def test_pathconf_agrees_with_fpathconf() raises:
+    """`pathconf` asks of a path what `fpathconf` asks of a descriptor,
+    and the two have to answer the same for the same file.
+
+    The knob is named rather than written down, for the reason the
+    `_PC_*` constants were bound: `PC_PIPE_BUF` is 5 on Linux and 6 on
+    Darwin, so a number written into this test would have answered -1
+    with `EINVAL` on one of them.
+    """
+    var path = string_to_char_ptr("/tmp")
+    var fd = open(path, O_RDONLY)
+    assert_true(fd >= 0, "/tmp opens")
+
+    var by_fd = fpathconf(fd, PC_PIPE_BUF)
+    var by_path = pathconf(path, PC_PIPE_BUF)
+    assert_equal(by_path, by_fd, "and the path answers what the descriptor did")
+    assert_true(by_path > 0, "with a block size, not a refusal")
+
+    _ = close(fd)
+    path.unsafe_free()
+
+
 def test_the_pc_knobs_are_the_platforms_own_numbers() raises:
     """The `_PC_*` numbers are not the same on both sides, and a binding
     that hardcoded Linux's would answer EINVAL on Darwin for every one of
@@ -699,6 +722,7 @@ def main() raises:
     test_chdir_and_fchdir()
     test_the_ids_and_the_terminal()
     test_fpathconf()
+    test_pathconf_agrees_with_fpathconf()
     test_the_pc_knobs_are_the_platforms_own_numbers()
     test_sysconf_names_the_knobs_it_answers_for()
     test_confstr_answers_for_the_default_path()

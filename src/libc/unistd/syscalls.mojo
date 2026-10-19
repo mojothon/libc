@@ -1514,6 +1514,34 @@ comptime CS_XBS5_LPBIG_OFFBIG_LIBS: Int32 = (
 )
 
 
+def pathconf(path: c_ptr[UInt8], name: c_int) -> c_long:
+    """Libc POSIX `pathconf` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pathconf.3.html
+
+    Description:
+        The same question `fpathconf` asks, of a path instead of a
+        descriptor. Useful where a descriptor would have to be opened
+        first, and for asking about a directory that is about to be
+        written into rather than one already open.
+
+    Args:
+        path: The file or directory to ask about.
+        name: Which knob to ask about, as one of the `PC_*` above.
+
+    Returns:
+        The value, or -1 on error with `errno` set.
+
+    Notes:
+        Fn signature: `long pathconf(const char *path, int name)`.
+
+        -1 is both an answer and a failure here, and `errno` is what tells
+        them apart, exactly as with `fpathconf`.
+    """
+    return external_call["pathconf", c_long, c_ptr[UInt8], c_int](path, name)
+
+
 def confstr(name: c_int, buf: c_ptr[UInt8], length: c_size_t) -> c_size_t:
     """Libc POSIX `confstr` function.
 
