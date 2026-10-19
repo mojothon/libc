@@ -379,6 +379,39 @@ def bring_in_libc_termios():
     )
 
 
+def bring_in_libc_mutex():
+    from libc.pthread import (
+        PTHREAD_MUTEX_DEFAULT,
+        PTHREAD_MUTEX_ERRORCHECK,
+        PTHREAD_MUTEX_NORMAL,
+        PTHREAD_MUTEX_RECURSIVE,
+        PTHREAD_PRIO_INHERIT,
+        PTHREAD_PRIO_NONE,
+        PTHREAD_PRIO_PROTECT,
+        PTHREAD_PROCESS_PRIVATE,
+        PTHREAD_PROCESS_SHARED,
+        pthread_mutex_destroy,
+        pthread_mutex_getprioceiling,
+        pthread_mutex_init,
+        pthread_mutex_lock,
+        pthread_mutex_setprioceiling,
+        pthread_mutex_t,
+        pthread_mutex_trylock,
+        pthread_mutex_unlock,
+        pthread_mutexattr_destroy,
+        pthread_mutexattr_getprioceiling,
+        pthread_mutexattr_getprotocol,
+        pthread_mutexattr_getpshared,
+        pthread_mutexattr_gettype,
+        pthread_mutexattr_init,
+        pthread_mutexattr_setprioceiling,
+        pthread_mutexattr_setprotocol,
+        pthread_mutexattr_setpshared,
+        pthread_mutexattr_settype,
+        pthread_mutexattr_t,
+    )
+
+
 def bring_in_libc_grp():
     from libc.grp import (
         endgrent,
@@ -1283,6 +1316,7 @@ def main() raises:
     bring_in_libc_glob()
     bring_in_libc_getopt()
     bring_in_libc_termios()
+    bring_in_libc_mutex()
     bring_in_libc_grp()
     bring_in_libc_iconv()
     bring_in_libc_ifaddrs()

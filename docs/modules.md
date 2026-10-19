@@ -17,7 +17,7 @@ the bottom.
 | `libc.time` | `<time.h>` | 30 |
 | `libc.fenv` | `<fenv.h>` | 26 |
 | `libc.sys.mman` | `<sys/mman.h>` | 15 |
-| `libc.pthread` | `<pthread.h>` | 16 |
+| `libc.pthread` | `<pthread.h>` | 44 |
 | `libc.string` | `<string.h>` | 39 |
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 28 |
 | `libc.complex` | `<complex.h>` | 46 |

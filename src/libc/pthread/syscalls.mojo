@@ -315,3 +315,617 @@ def pthread_condattr_destroy(attr: c_ptr[pthread_condattr_t]) -> Int32:
 
 # ....
 # 后续补充
+
+
+# Mutex kinds. POSIX fixes no numbering for these, and the two libcs
+# number them the other way round from each other: glibc has RECURSIVE
+# at 1 and ERRORCHECK at 2, Darwin has ERRORCHECK at 1 and RECURSIVE
+# at 2. So two of the four are one another's values, which is the
+# sort of mix-up that costs nothing to make and a long time to find —
+# `pthread_mutex_init` answers 0 either way, and what comes back is a
+# lock of the other kind.
+comptime PTHREAD_MUTEX_NORMAL: Int32 = 0
+comptime PTHREAD_MUTEX_ERRORCHECK: Int32 = 1 if CompilationTarget.is_macos() else 2
+comptime PTHREAD_MUTEX_RECURSIVE: Int32 = 2 if CompilationTarget.is_macos() else 1
+comptime PTHREAD_MUTEX_DEFAULT = PTHREAD_MUTEX_NORMAL
+
+# Whether a lock may be shared between processes. SHARED is 1 on
+# both; PRIVATE is 0 on glibc and 2 here.
+comptime PTHREAD_PROCESS_SHARED: Int32 = 1
+comptime PTHREAD_PROCESS_PRIVATE: Int32 = 2 if CompilationTarget.is_macos() else 0
+
+# What a lock is to do about priority. These three happen to agree.
+comptime PTHREAD_PRIO_NONE: Int32 = 0
+comptime PTHREAD_PRIO_INHERIT: Int32 = 1
+comptime PTHREAD_PRIO_PROTECT: Int32 = 2
+
+
+struct pthread_mutex_t:
+    """An opaque `pthread_mutex_t` from `<pthread.h>`.
+
+    glibc's is 40 bytes and Darwin's is 64, so this holds the larger.
+    Every call takes it by pointer, so libc only ever writes into it,
+    and the members are not exposed: a binding cannot say what one of
+    them is without knowing which layout it is looking at.
+
+    Zeroing one is not initialising it. `pthread_mutex_init` is what
+    does that. A zeroed one happens to behave as a normal lock on both
+    of these libcs, which is a coincidence and not a promise.
+    """
+
+    var _opaque: Array[UInt64, 8]
+
+    def __init__(out self):
+        """Zeroes the object. `pthread_mutex_init` is what makes it usable."""
+        self._opaque = Array[UInt64, 8](fill=0)
+
+
+struct pthread_mutexattr_t:
+    """An opaque `pthread_mutexattr_t` from `<pthread.h>`.
+
+    glibc's is 4 bytes and Darwin's is 16, so this holds the larger;
+    see `pthread_mutex_t` for why the members are not exposed.
+    """
+
+    var _opaque: Array[UInt64, 2]
+
+    def __init__(out self):
+        """Zeroes the object. `pthread_mutexattr_init` is what makes it usable.
+        """
+        self._opaque = Array[UInt64, 2](fill=0)
+
+
+def pthread_mutex_init(
+    mutex: c_ptr[pthread_mutex_t], attr: c_ptr[pthread_mutexattr_t]
+) -> Int32:
+    """C library <pthread.h> function `pthread_mutex_init`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_mutex_init.3p.html
+
+    Prototype:
+        int pthread_mutex_init(pthread_mutex_t *restrict mutex,
+                               const pthread_mutexattr_t *restrict attr)
+
+    Description:
+        Makes `mutex` into a lock of the kind `attr` asks for.
+
+    Args:
+        mutex: The storage, which `pthread_mutex_destroy` gives back.
+        attr: The kind, built up with the `pthread_mutexattr_*` calls
+            below. `null_ptr[pthread_mutexattr_t]()` means the
+            default kind, which is what most callers want.
+
+    Returns:
+        0 on success, or the error number on failure.
+
+    Notes:
+        The answer is the error number and not -1. This package's
+        other bindings answer -1 and leave it in `errno`; these do
+        neither, and the difference is POSIX's rather than this
+        package's.
+    """
+    return external_call[
+        "pthread_mutex_init",
+        Int32,
+        c_ptr[pthread_mutex_t],
+        c_ptr[pthread_mutexattr_t],
+    ](mutex, attr)
+
+
+def pthread_mutex_destroy(mutex: c_ptr[pthread_mutex_t]) -> Int32:
+    """C library <pthread.h> function `pthread_mutex_destroy`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_mutex_destroy.3p.html
+
+    Prototype:
+        int pthread_mutex_destroy(pthread_mutex_t *mutex)
+
+    Description:
+        Gives back whatever `pthread_mutex_init` took for `mutex`.
+
+    Args:
+        mutex: The lock, which nobody is to be holding.
+
+    Returns:
+        0 on success, or the error number on failure.
+
+    Notes:
+        Destroying a lock somebody holds, or one that was never
+        initialised, is undefined.
+    """
+    return external_call[
+        "pthread_mutex_destroy", Int32, c_ptr[pthread_mutex_t]
+    ](mutex)
+
+
+def pthread_mutex_lock(mutex: c_ptr[pthread_mutex_t]) -> Int32:
+    """C library <pthread.h> function `pthread_mutex_lock`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_mutex_lock.3p.html
+
+    Prototype:
+        int pthread_mutex_lock(pthread_mutex_t *mutex)
+
+    Description:
+        Takes `mutex`, waiting until it comes free.
+
+    Args:
+        mutex: The lock.
+
+    Returns:
+        0 on success, or the error number on failure. `EDEADLK`
+        comes back for locking one this caller already holds where
+        the lock is not recursive.
+
+    Notes:
+        This waits. A test calling it on a lock somebody else holds
+        is a test that stops.
+    """
+    return external_call["pthread_mutex_lock", Int32, c_ptr[pthread_mutex_t]](
+        mutex
+    )
+
+
+def pthread_mutex_trylock(mutex: c_ptr[pthread_mutex_t]) -> Int32:
+    """C library <pthread.h> function `pthread_mutex_trylock`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_mutex_trylock.3p.html
+
+    Prototype:
+        int pthread_mutex_trylock(pthread_mutex_t *mutex)
+
+    Description:
+        Takes `mutex` if it is free, and says so without waiting if
+        it is not.
+
+    Args:
+        mutex: The lock.
+
+    Returns:
+        0 on success, `EBUSY` where somebody else holds it, or
+        another error number.
+
+    Notes:
+        This is the one to reach for in a test: it cannot hang.
+    """
+    return external_call[
+        "pthread_mutex_trylock", Int32, c_ptr[pthread_mutex_t]
+    ](mutex)
+
+
+def pthread_mutex_unlock(mutex: c_ptr[pthread_mutex_t]) -> Int32:
+    """C library <pthread.h> function `pthread_mutex_unlock`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_mutex_unlock.3p.html
+
+    Prototype:
+        int pthread_mutex_unlock(pthread_mutex_t *mutex)
+
+    Description:
+        Gives `mutex` up.
+
+    Args:
+        mutex: The lock, which this caller holds.
+
+    Returns:
+        0 on success, or the error number on failure.
+
+    Notes:
+        Unlocking a lock this caller does not hold is undefined on
+        most platforms and silently permitted on some.
+    """
+    return external_call["pthread_mutex_unlock", Int32, c_ptr[pthread_mutex_t]](
+        mutex
+    )
+
+
+def pthread_mutexattr_init(attr: c_ptr[pthread_mutexattr_t]) -> Int32:
+    """C library <pthread.h> function `pthread_mutexattr_init`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_mutexattr_init.3p.html
+
+    Prototype:
+        int pthread_mutexattr_init(pthread_mutexattr_t *attr)
+
+    Description:
+        Makes `attr` into the default lock attributes.
+
+    Args:
+        attr: The storage, which `pthread_mutexattr_destroy` gives
+            back.
+
+    Returns:
+        0 on success, or the error number on failure.
+
+    Notes:
+        `attr` says nothing until this has run. The zeroed object
+        `__init__` makes is not the same as this.
+    """
+    return external_call[
+        "pthread_mutexattr_init", Int32, c_ptr[pthread_mutexattr_t]
+    ](attr)
+
+
+def pthread_mutexattr_destroy(attr: c_ptr[pthread_mutexattr_t]) -> Int32:
+    """C library <pthread.h> function `pthread_mutexattr_destroy`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_mutexattr_destroy.3p.html
+
+    Prototype:
+        int pthread_mutexattr_destroy(pthread_mutexattr_t *attr)
+
+    Description:
+        Gives back whatever `pthread_mutexattr_init` took.
+
+    Args:
+        attr: The attributes.
+
+    Returns:
+        0 on success, or the error number on failure.
+
+    Notes:
+        Destroying the attributes once the lock is made — the usual
+        order — leaves the lock alone.
+    """
+    return external_call[
+        "pthread_mutexattr_destroy", Int32, c_ptr[pthread_mutexattr_t]
+    ](attr)
+
+
+def pthread_mutexattr_settype(
+    attr: c_ptr[pthread_mutexattr_t], kind: Int32
+) -> Int32:
+    """C library <pthread.h> function `pthread_mutexattr_settype`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_mutexattr_settype.3p.html
+
+    Prototype:
+        int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int type)
+
+    Description:
+        Says what kind of lock this is to be: whether taking one twice
+        is to be caught, allowed, or lose.
+
+    Args:
+        attr: The attributes, from `pthread_mutexattr_init`.
+        kind: `PTHREAD_MUTEX_NORMAL`, `PTHREAD_MUTEX_ERRORCHECK`,
+            `PTHREAD_MUTEX_RECURSIVE` or `PTHREAD_MUTEX_DEFAULT`.
+
+    Returns:
+        0 on success, or `EINVAL` where `kind` is none of them.
+
+    Notes:
+        **The kinds are not numbered the same on both platforms.**
+        ERRORCHECK and RECURSIVE are 1 and 2 here and 2 and 1 on
+        glibc, so the constants above, not bare integers, are what
+        to pass. A lock of the wrong kind works until it does not,
+        and `pthread_mutex_init` says nothing either time.
+    """
+    return external_call[
+        "pthread_mutexattr_settype",
+        Int32,
+        c_ptr[pthread_mutexattr_t],
+        Int32,
+    ](attr, kind)
+
+
+def pthread_mutexattr_gettype(
+    attr: c_ptr[pthread_mutexattr_t], kind: c_ptr[Int32]
+) -> Int32:
+    """C library <pthread.h> function `pthread_mutexattr_gettype`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_mutexattr_gettype.3p.html
+
+    Prototype:
+        int pthread_mutexattr_gettype(
+            const pthread_mutexattr_t *restrict attr, int *restrict type)
+
+    Description:
+        Says what kind of lock this is.
+
+    Args:
+        attr: The attributes.
+        kind: Where the answer is to be written. Compare what comes
+            back against `PTHREAD_MUTEX_NORMAL`,
+            `PTHREAD_MUTEX_RECURSIVE` and `PTHREAD_MUTEX_ERRORCHECK`
+            rather than against a number, the same as when setting it.
+
+    Returns:
+        0 on success, or the error number on failure.
+    """
+    return external_call[
+        "pthread_mutexattr_gettype",
+        Int32,
+        c_ptr[pthread_mutexattr_t],
+        c_ptr[Int32],
+    ](attr, kind)
+
+
+def pthread_mutexattr_setpshared(
+    attr: c_ptr[pthread_mutexattr_t], pshared: Int32
+) -> Int32:
+    """C library <pthread.h> function `pthread_mutexattr_setpshared`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_mutexattr_setpshared.3p.html
+
+    Prototype:
+        int pthread_mutexattr_setpshared(pthread_mutexattr_t *attr,
+                                         int pshared)
+
+    Description:
+        Says whether a lock made from `attr` may be shared between
+        processes.
+
+    Args:
+        attr: The attributes, from `pthread_mutexattr_init`.
+        pshared: `PTHREAD_PROCESS_SHARED` or
+            `PTHREAD_PROCESS_PRIVATE`.
+
+    Returns:
+        0 on success, or `EINVAL` where it is neither.
+
+    Notes:
+        PRIVATE is 0 on glibc and 2 here, while SHARED is 1 on both.
+        Pass the constants above.
+    """
+    return external_call[
+        "pthread_mutexattr_setpshared",
+        Int32,
+        c_ptr[pthread_mutexattr_t],
+        Int32,
+    ](attr, pshared)
+
+
+def pthread_mutexattr_getpshared(
+    attr: c_ptr[pthread_mutexattr_t], pshared: c_ptr[Int32]
+) -> Int32:
+    """C library <pthread.h> function `pthread_mutexattr_getpshared`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_mutexattr_getpshared.3p.html
+
+    Prototype:
+        int pthread_mutexattr_getpshared(
+            const pthread_mutexattr_t *restrict attr, int *restrict pshared)
+
+    Description:
+        Says whether a lock made from `attr` may be shared between
+    processes.
+
+    Args:
+        attr: The attributes.
+        pshared: Where the answer is to be written, as
+            `PTHREAD_PROCESS_SHARED` or `PTHREAD_PROCESS_PRIVATE`.
+
+    Returns:
+        0 on success, or the error number on failure.
+    """
+    return external_call[
+        "pthread_mutexattr_getpshared",
+        Int32,
+        c_ptr[pthread_mutexattr_t],
+        c_ptr[Int32],
+    ](attr, pshared)
+
+
+def pthread_mutexattr_setprotocol(
+    attr: c_ptr[pthread_mutexattr_t], protocol: Int32
+) -> Int32:
+    """C library <pthread.h> function `pthread_mutexattr_setprotocol`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_mutexattr_setprotocol.3p.html
+
+    Prototype:
+        int pthread_mutexattr_setprotocol(pthread_mutexattr_t *attr,
+                                          int protocol)
+
+    Description:
+        Says what a lock made from `attr` is to do about the priority
+        of whoever holds it.
+
+    Args:
+        attr: The attributes, from `pthread_mutexattr_init`.
+        protocol: `PTHREAD_PRIO_NONE`, `PTHREAD_PRIO_INHERIT` or
+            `PTHREAD_PRIO_PROTECT`.
+
+    Returns:
+        0 on success, or `EINVAL` where it is none of them.
+
+    Notes:
+        All three are optional in POSIX, and a libc asked for one it
+        does not carry answers `ENOTSUP`. These three are numbered
+        the same on both platforms, which is the exception here
+        rather than the rule.
+    """
+    return external_call[
+        "pthread_mutexattr_setprotocol",
+        Int32,
+        c_ptr[pthread_mutexattr_t],
+        Int32,
+    ](attr, protocol)
+
+
+def pthread_mutexattr_getprotocol(
+    attr: c_ptr[pthread_mutexattr_t], protocol: c_ptr[Int32]
+) -> Int32:
+    """C library <pthread.h> function `pthread_mutexattr_getprotocol`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_mutexattr_getprotocol.3p.html
+
+    Prototype:
+        int pthread_mutexattr_getprotocol(
+            const pthread_mutexattr_t *restrict attr, int *restrict protocol)
+
+    Description:
+        Says what a lock made from `attr` is to do about the priority
+        of whoever holds it.
+
+    Args:
+        attr: The attributes.
+        protocol: Where the answer is to be written, as
+            `PTHREAD_PRIO_NONE`, `PTHREAD_PRIO_INHERIT` or
+            `PTHREAD_PRIO_PROTECT`.
+
+    Returns:
+        0 on success, or the error number on failure.
+    """
+    return external_call[
+        "pthread_mutexattr_getprotocol",
+        Int32,
+        c_ptr[pthread_mutexattr_t],
+        c_ptr[Int32],
+    ](attr, protocol)
+
+
+def pthread_mutexattr_setprioceiling(
+    attr: c_ptr[pthread_mutexattr_t], prioceiling: Int32
+) -> Int32:
+    """C library <pthread.h> function `pthread_mutexattr_setprioceiling`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_mutexattr_setprioceiling.3p.html
+
+    Prototype:
+        int pthread_mutexattr_setprioceiling(pthread_mutexattr_t *attr,
+                                             int prioceiling)
+
+    Description:
+        Says the priority a thread is to run at while it holds a
+        lock made from `attr`.
+
+    Args:
+        attr: The attributes, from `pthread_mutexattr_init`.
+        prioceiling: The priority, which is what
+            `pthread_mutex_getprioceiling` reads back.
+
+    Returns:
+        0 on success, or `EINVAL` where no such priority is to be
+        had.
+
+    Notes:
+        Only means anything with `PTHREAD_PRIO_PROTECT`. Where what
+        is asked for is above anything this machine can give,
+        `EINVAL` comes back; the highest there is is what
+        `sched_get_priority_max` says.
+    """
+    return external_call[
+        "pthread_mutexattr_setprioceiling",
+        Int32,
+        c_ptr[pthread_mutexattr_t],
+        Int32,
+    ](attr, prioceiling)
+
+
+def pthread_mutexattr_getprioceiling(
+    attr: c_ptr[pthread_mutexattr_t], prioceiling: c_ptr[Int32]
+) -> Int32:
+    """C library <pthread.h> function `pthread_mutexattr_getprioceiling`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_mutexattr_getprioceiling.3p.html
+
+    Prototype:
+        int pthread_mutexattr_getprioceiling(
+            const pthread_mutexattr_t *restrict attr, int *restrict prioceiling)
+
+    Description:
+        Says the priority a thread is to run at while it holds a
+        lock made from `attr`.
+
+    Args:
+        attr: The attributes.
+        prioceiling: Where the answer is to be written.
+
+    Returns:
+        0 on success, or the error number on failure.
+    """
+    return external_call[
+        "pthread_mutexattr_getprioceiling",
+        Int32,
+        c_ptr[pthread_mutexattr_t],
+        c_ptr[Int32],
+    ](attr, prioceiling)
+
+
+def pthread_mutex_getprioceiling(
+    mutex: c_ptr[pthread_mutex_t], prioceiling: c_ptr[Int32]
+) -> Int32:
+    """C library <pthread.h> function `pthread_mutex_getprioceiling`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_mutex_getprioceiling.3p.html
+
+    Prototype:
+        int pthread_mutex_getprioceiling(
+            const pthread_mutex_t *restrict mutex, int *restrict prioceiling)
+
+    Description:
+        Says the priority a thread runs at while it holds `mutex`.
+
+    Args:
+        mutex: The lock.
+        prioceiling: Where the answer is to be written.
+
+    Returns:
+        0 on success, or the error number on failure.
+
+    Notes:
+        Optional in POSIX, so a libc that does not carry it answers
+        `ENOTSUP`.
+    """
+    return external_call[
+        "pthread_mutex_getprioceiling",
+        Int32,
+        c_ptr[pthread_mutex_t],
+        c_ptr[Int32],
+    ](mutex, prioceiling)
+
+
+def pthread_mutex_setprioceiling(
+    mutex: c_ptr[pthread_mutex_t], prioceiling: Int32, old: c_ptr[Int32]
+) -> Int32:
+    """C library <pthread.h> function `pthread_mutex_setprioceiling`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_mutex_setprioceiling.3p.html
+
+    Prototype:
+        int pthread_mutex_setprioceiling(pthread_mutex_t *restrict mutex,
+                                         int prioceiling, int *restrict old_ceiling)
+
+    Description:
+        Sets the priority a thread is to run at while it holds
+        `mutex`, and says what it was before.
+
+    Args:
+        mutex: The lock, which this caller holds.
+        prioceiling: The priority.
+        old: Where the one that was there before is to be written.
+            `null_ptr[Int32]()` means do not bother saying.
+
+    Returns:
+        0 on success, or the error number on failure.
+
+    Notes:
+        Optional in POSIX. Setting it is a no-op where the priority
+        asked for is above what this machine can give.
+    """
+    return external_call[
+        "pthread_mutex_setprioceiling",
+        Int32,
+        c_ptr[pthread_mutex_t],
+        Int32,
+        c_ptr[Int32],
+    ](mutex, prioceiling, old)

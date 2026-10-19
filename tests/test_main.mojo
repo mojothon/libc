@@ -14,6 +14,7 @@ from test_dirent import main as run_dirent
 from test_fcntl import main as run_fcntl
 from test_file import main as run_file
 from test_mman import main as run_mman
+from test_mutex import main as run_mutex
 from test_dlfcn import main as run_dlfcn
 from test_sched import main as run_sched
 from test_pthread import main as run_pthread
@@ -73,6 +74,7 @@ def main() raises:
     run_fcntl()
     run_file()
     run_mman()
+    run_mutex()
     run_dlfcn()
     run_sched()
     run_pthread()
