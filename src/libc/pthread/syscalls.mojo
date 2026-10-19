@@ -7,6 +7,7 @@ from std.memory import Pointer
 from std.ffi import external_call
 from std.sys import CompilationTarget
 from libc.constant import c_ptr
+from libc.time import timespec
 
 # POSIX leaves the values of these two up to the platform. glibc
 # says JOINABLE is 0 and DETACHED is 1; Darwin says 1 and 2. A test
@@ -929,3 +930,666 @@ def pthread_mutex_setprioceiling(
         Int32,
         c_ptr[Int32],
     ](mutex, prioceiling, old)
+
+
+struct pthread_cond_t:
+    """An opaque `pthread_cond_t` from `<pthread.h>`.
+
+    48 bytes here and on glibc, which is the one size these two agree
+    on among the synchronisation objects — the others differ by a
+    factor of two or more. Every call takes it by pointer and the
+    members are not exposed.
+
+    As with `pthread_mutex_t`, zeroing one is not initialising it.
+    """
+
+    var _opaque: Array[UInt64, 6]
+
+    def __init__(out self):
+        """Zeroes the object. `pthread_cond_init` is what makes it usable."""
+        self._opaque = Array[UInt64, 6](fill=0)
+
+
+struct pthread_rwlock_t:
+    """An opaque `pthread_rwlock_t` from `<pthread.h>`.
+
+    glibc's is 56 bytes and Darwin's is 200, so this holds the larger.
+    The gap is the widest in the header — Darwin carries the lock's
+    owner and its whole wait queue inside the object, while glibc
+    reaches for them through pointers.
+
+    Every call takes it by pointer and the members are not exposed.
+    Zeroing one is not initialising it.
+    """
+
+    var _opaque: Array[UInt64, 25]
+
+    def __init__(out self):
+        """Zeroes the object. `pthread_rwlock_init` is what makes it usable."""
+        self._opaque = Array[UInt64, 25](fill=0)
+
+
+struct pthread_rwlockattr_t:
+    """An opaque `pthread_rwlockattr_t` from `<pthread.h>`.
+
+    glibc's is 8 bytes and Darwin's is 24, so this holds the larger.
+    """
+
+    var _opaque: Array[UInt64, 3]
+
+    def __init__(out self):
+        """Zeroes the object. `pthread_rwlockattr_init` is what makes it
+        usable.
+        """
+        self._opaque = Array[UInt64, 3](fill=0)
+
+
+def pthread_cond_init(
+    cond: c_ptr[pthread_cond_t], attr: c_ptr[pthread_condattr_t]
+) -> Int32:
+    """C library <pthread.h> function `pthread_cond_init`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_cond_init.3p.html
+
+    Prototype:
+        int pthread_cond_init(pthread_cond_t *restrict cond,
+                              const pthread_condattr_t *restrict attr)
+
+    Description:
+        Makes `cond` into a thing a thread can wait on.
+
+    Args:
+        cond: The storage, which `pthread_cond_destroy` gives back.
+        attr: What it is to be, built up with `pthread_condattr_*`.
+            `null_ptr[pthread_condattr_t]()` means the default, which
+            is what most callers want.
+
+    Returns:
+        0 on success, or the error number on failure — the error
+        number, not -1, and `errno` is left alone.
+
+    Notes:
+        Only `pthread_condattr_init`, `_destroy`, `_setpshared` and
+        `_getpshared` are here. `pthread_condattr_setclock` and
+        `_getclock` are optional in POSIX, and Darwin declares
+        neither — it has no choice of clock to offer — so they are
+        left out rather than bound and found missing on one of the
+        two runs.
+    """
+    return external_call[
+        "pthread_cond_init",
+        Int32,
+        c_ptr[pthread_cond_t],
+        c_ptr[pthread_condattr_t],
+    ](cond, attr)
+
+
+def pthread_cond_destroy(cond: c_ptr[pthread_cond_t]) -> Int32:
+    """C library <pthread.h> function `pthread_cond_destroy`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_cond_destroy.3p.html
+
+    Prototype:
+        int pthread_cond_destroy(pthread_cond_t *cond)
+
+    Description:
+        Gives back whatever `pthread_cond_init` took for `cond`.
+
+    Args:
+        cond: The thing waited on, which nobody is to be waiting on.
+
+    Returns:
+        0 on success, or the error number on failure.
+
+    Notes:
+        Destroying one that still has waiters is undefined, and there
+        is no way to ask whether it has any.
+    """
+    return external_call["pthread_cond_destroy", Int32, c_ptr[pthread_cond_t]](
+        cond
+    )
+
+
+def pthread_cond_signal(cond: c_ptr[pthread_cond_t]) -> Int32:
+    """C library <pthread.h> function `pthread_cond_signal`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_cond_signal.3p.html
+
+    Prototype:
+        int pthread_cond_signal(pthread_cond_t *cond)
+
+    Description:
+        Wakes one of the threads waiting on `cond`.
+
+    Args:
+        cond: The thing waited on.
+
+    Returns:
+        0 on success, or the error number on failure.
+
+    Notes:
+        It does not say which one, and with nobody waiting it does
+        nothing and says 0. That it is a no-op rather than an error
+        is the ordinary way to use it.
+    """
+    return external_call["pthread_cond_signal", Int32, c_ptr[pthread_cond_t]](
+        cond
+    )
+
+
+def pthread_cond_broadcast(cond: c_ptr[pthread_cond_t]) -> Int32:
+    """C library <pthread.h> function `pthread_cond_broadcast`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_cond_broadcast.3p.html
+
+    Prototype:
+        int pthread_cond_broadcast(pthread_cond_t *cond)
+
+    Description:
+        Wakes every thread waiting on `cond`.
+
+    Args:
+        cond: The thing waited on.
+
+    Returns:
+        0 on success, or the error number on failure.
+
+    Notes:
+        Like `pthread_cond_signal`, with nobody waiting it says 0
+        having done nothing.
+    """
+    return external_call[
+        "pthread_cond_broadcast", Int32, c_ptr[pthread_cond_t]
+    ](cond)
+
+
+def pthread_cond_wait(
+    cond: c_ptr[pthread_cond_t], mutex: c_ptr[pthread_mutex_t]
+) -> Int32:
+    """C library <pthread.h> function `pthread_cond_wait`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_cond_wait.3p.html
+
+    Prototype:
+        int pthread_cond_wait(pthread_cond_t *restrict cond,
+                              pthread_mutex_t *restrict mutex)
+
+    Description:
+        Waits on `cond`, letting go of `mutex` while it does and
+        taking it again before it returns.
+
+    Args:
+        cond: The thing waited on.
+        mutex: The lock, which this caller holds and which guards
+            whatever it is waiting to be told about.
+
+    Returns:
+        0 on success, or the error number on failure.
+
+    Notes:
+        **This waits.** With nobody to wake it, it waits for good, so
+        the test file does not call it. `pthread_cond_timedwait`
+        below is the same call with a time on it, and is the one to
+        reach for.
+
+        It can answer having been woken for no reason at all — a
+        spurious wake-up — which is why what it guards is always
+        asked about again in a loop rather than taken on faith.
+    """
+    return external_call[
+        "pthread_cond_wait",
+        Int32,
+        c_ptr[pthread_cond_t],
+        c_ptr[pthread_mutex_t],
+    ](cond, mutex)
+
+
+def pthread_cond_timedwait(
+    cond: c_ptr[pthread_cond_t],
+    mutex: c_ptr[pthread_mutex_t],
+    abstime: c_ptr[timespec],
+) -> Int32:
+    """C library <pthread.h> function `pthread_cond_timedwait`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_cond_timedwait.3p.html
+
+    Prototype:
+        int pthread_cond_timedwait(pthread_cond_t *restrict cond,
+                                   pthread_mutex_t *restrict mutex,
+                                   const struct timespec *restrict abstime)
+
+    Description:
+        Waits on `cond` no later than `abstime`, letting go of
+        `mutex` while it does and taking it again before it returns.
+
+    Args:
+        cond: The thing waited on.
+        mutex: The lock, which this caller holds.
+        abstime: When to give up, as an absolute `CLOCK_REALTIME`
+            time — not a duration, which is the usual way to get
+            this wrong.
+
+    Returns:
+        0 on success, `ETIMEDOUT` where the time came and went, or
+        another error number.
+
+    Notes:
+        The clock is not a choice here: it is whichever the
+        condition variable was made with, and since Darwin does not
+        offer `pthread_condattr_setclock`, `CLOCK_REALTIME` is the
+        only one in practice on both.
+
+        A time already past is safe to hand it. That comes straight
+        back having timed out, which is what lets a test call it.
+    """
+    return external_call[
+        "pthread_cond_timedwait",
+        Int32,
+        c_ptr[pthread_cond_t],
+        c_ptr[pthread_mutex_t],
+        c_ptr[timespec],
+    ](cond, mutex, abstime)
+
+
+def pthread_condattr_init(attr: c_ptr[pthread_condattr_t]) -> Int32:
+    """C library <pthread.h> function `pthread_condattr_init`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_condattr_init.3p.html
+
+    Prototype:
+        int pthread_condattr_init(pthread_condattr_t *attr)
+
+    Description:
+        Makes `attr` into the default condition attributes.
+
+    Args:
+        attr: The storage, which `pthread_condattr_destroy` gives
+        back.
+
+    Returns:
+        0 on success, or the error number on failure.
+    """
+    return external_call[
+        "pthread_condattr_init", Int32, c_ptr[pthread_condattr_t]
+    ](attr)
+
+
+def pthread_condattr_getpshared(
+    attr: c_ptr[pthread_condattr_t], pshared: c_ptr[Int32]
+) -> Int32:
+    """C library <pthread.h> function `pthread_condattr_getpshared`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_condattr_getpshared.3p.html
+
+    Prototype:
+        int pthread_condattr_getpshared(
+            const pthread_condattr_t *restrict attr, int *restrict pshared)
+
+    Description:
+        Says whether a condition variable made from `attr` may be
+        shared between processes.
+
+    Args:
+        attr: The attributes.
+        pshared: Where the answer is to be written, as
+            `PTHREAD_PROCESS_SHARED` or `PTHREAD_PROCESS_PRIVATE`.
+
+    Returns:
+        0 on success, or the error number on failure.
+    """
+    return external_call[
+        "pthread_condattr_getpshared",
+        Int32,
+        c_ptr[pthread_condattr_t],
+        c_ptr[Int32],
+    ](attr, pshared)
+
+
+def pthread_condattr_setpshared(
+    attr: c_ptr[pthread_condattr_t], pshared: Int32
+) -> Int32:
+    """C library <pthread.h> function `pthread_condattr_setpshared`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_condattr_setpshared.3p.html
+
+    Prototype:
+        int pthread_condattr_setpshared(pthread_condattr_t *attr,
+                                        int pshared)
+
+    Description:
+        Says whether a condition variable made from `attr` may be
+        shared between processes.
+
+    Args:
+        attr: The attributes, from `pthread_condattr_init`.
+        pshared: `PTHREAD_PROCESS_SHARED` or
+            `PTHREAD_PROCESS_PRIVATE`.
+
+    Returns:
+        0 on success, or `EINVAL` where it is neither.
+
+    Notes:
+        PRIVATE is 0 on glibc and 2 here, so pass the constant
+        rather than a number. See `pthread_mutexattr_setpshared`.
+    """
+    return external_call[
+        "pthread_condattr_setpshared",
+        Int32,
+        c_ptr[pthread_condattr_t],
+        Int32,
+    ](attr, pshared)
+
+
+def pthread_rwlock_init(
+    rwlock: c_ptr[pthread_rwlock_t], attr: c_ptr[pthread_rwlockattr_t]
+) -> Int32:
+    """C library <pthread.h> function `pthread_rwlock_init`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_rwlock_init.3p.html
+
+    Prototype:
+        int pthread_rwlock_init(pthread_rwlock_t *restrict rwlock,
+                                const pthread_rwlockattr_t *restrict attr)
+
+    Description:
+        Makes `rwlock` into a lock that any number of readers or one
+        writer may hold.
+
+    Args:
+        rwlock: The storage, which `pthread_rwlock_destroy` gives back.
+        attr: What kind, built up with `pthread_rwlockattr_*`, or
+            `null_ptr[pthread_rwlockattr_t]()` for the default.
+
+    Returns:
+        0 on success, or the error number on failure.
+    """
+    return external_call[
+        "pthread_rwlock_init",
+        Int32,
+        c_ptr[pthread_rwlock_t],
+        c_ptr[pthread_rwlockattr_t],
+    ](rwlock, attr)
+
+
+def pthread_rwlock_destroy(rwlock: c_ptr[pthread_rwlock_t]) -> Int32:
+    """C library <pthread.h> function `pthread_rwlock_destroy`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_rwlock_destroy.3p.html
+
+    Prototype:
+        int pthread_rwlock_destroy(pthread_rwlock_t *rwlock)
+
+    Description:
+        Gives back whatever `pthread_rwlock_init` took.
+
+    Args:
+        rwlock: The lock, which nobody is to be holding.
+
+    Returns:
+        0 on success, or the error number on failure.
+    """
+    return external_call[
+        "pthread_rwlock_destroy", Int32, c_ptr[pthread_rwlock_t]
+    ](rwlock)
+
+
+def pthread_rwlock_rdlock(rwlock: c_ptr[pthread_rwlock_t]) -> Int32:
+    """C library <pthread.h> function `pthread_rwlock_rdlock`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_rwlock_rdlock.3p.html
+
+    Prototype:
+        int pthread_rwlock_rdlock(pthread_rwlock_t *rwlock)
+
+    Description:
+        Takes `rwlock` to read, waiting while somebody writes.
+
+    Args:
+        rwlock: The lock.
+
+    Returns:
+        0 on success, or the error number on failure.
+
+    Notes:
+        This waits. It is called here with nobody else holding the
+        lock, which is the only reason it is safe in a test.
+    """
+    return external_call[
+        "pthread_rwlock_rdlock", Int32, c_ptr[pthread_rwlock_t]
+    ](rwlock)
+
+
+def pthread_rwlock_tryrdlock(rwlock: c_ptr[pthread_rwlock_t]) -> Int32:
+    """C library <pthread.h> function `pthread_rwlock_tryrdlock`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_rwlock_tryrdlock.3p.html
+
+    Prototype:
+        int pthread_rwlock_tryrdlock(pthread_rwlock_t *rwlock)
+
+    Description:
+        Takes `rwlock` to read if it is free for reading, and says
+        so without waiting if it is not.
+
+    Args:
+        rwlock: The lock.
+
+    Returns:
+        0 on success, or `EBUSY` where a writer holds it.
+
+    Notes:
+        This is the one to reach for in a test: it cannot hang.
+    """
+    return external_call[
+        "pthread_rwlock_tryrdlock", Int32, c_ptr[pthread_rwlock_t]
+    ](rwlock)
+
+
+def pthread_rwlock_wrlock(rwlock: c_ptr[pthread_rwlock_t]) -> Int32:
+    """C library <pthread.h> function `pthread_rwlock_wrlock`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_rwlock_wrlock.3p.html
+
+    Prototype:
+        int pthread_rwlock_wrlock(pthread_rwlock_t *rwlock)
+
+    Description:
+        Takes `rwlock` to write, waiting until nobody holds it at
+        all.
+
+    Args:
+        rwlock: The lock.
+
+    Returns:
+        0 on success, or the error number on failure.
+
+    Notes:
+        This waits. Called with nobody else holding the lock, it
+        comes straight back.
+    """
+    return external_call[
+        "pthread_rwlock_wrlock", Int32, c_ptr[pthread_rwlock_t]
+    ](rwlock)
+
+
+def pthread_rwlock_trywrlock(rwlock: c_ptr[pthread_rwlock_t]) -> Int32:
+    """C library <pthread.h> function `pthread_rwlock_trywrlock`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_rwlock_trywrlock.3p.html
+
+    Prototype:
+        int pthread_rwlock_trywrlock(pthread_rwlock_t *rwlock)
+
+    Description:
+        Takes `rwlock` to write if it is free altogether, and says
+        so without waiting if it is not.
+
+    Args:
+        rwlock: The lock.
+
+    Returns:
+        0 on success, or `EBUSY` where anybody holds it.
+
+    Notes:
+        This is the one to reach for in a test: it cannot hang.
+    """
+    return external_call[
+        "pthread_rwlock_trywrlock", Int32, c_ptr[pthread_rwlock_t]
+    ](rwlock)
+
+
+def pthread_rwlock_unlock(rwlock: c_ptr[pthread_rwlock_t]) -> Int32:
+    """C library <pthread.h> function `pthread_rwlock_unlock`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_rwlock_unlock.3p.html
+
+    Prototype:
+        int pthread_rwlock_unlock(pthread_rwlock_t *rwlock)
+
+    Description:
+        Gives `rwlock` up, whether it was held to read or to write.
+
+    Args:
+        rwlock: The lock, which this caller holds.
+
+    Returns:
+        0 on success, or the error number on failure.
+
+    Notes:
+        Unlocking one this caller does not hold is undefined on most
+        platforms and silently permitted on some.
+    """
+    return external_call[
+        "pthread_rwlock_unlock", Int32, c_ptr[pthread_rwlock_t]
+    ](rwlock)
+
+
+def pthread_rwlockattr_init(attr: c_ptr[pthread_rwlockattr_t]) -> Int32:
+    """C library <pthread.h> function `pthread_rwlockattr_init`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_rwlockattr_init.3p.html
+
+    Prototype:
+        int pthread_rwlockattr_init(pthread_rwlockattr_t *attr)
+
+    Description:
+        Makes `attr` into the default read-write lock attributes.
+
+    Args:
+        attr: The storage, which `pthread_rwlockattr_destroy` gives
+            back.
+
+    Returns:
+        0 on success, or the error number on failure.
+    """
+    return external_call[
+        "pthread_rwlockattr_init", Int32, c_ptr[pthread_rwlockattr_t]
+    ](attr)
+
+
+def pthread_rwlockattr_destroy(attr: c_ptr[pthread_rwlockattr_t]) -> Int32:
+    """C library <pthread.h> function `pthread_rwlockattr_destroy`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_rwlockattr_destroy.3p.html
+
+    Prototype:
+        int pthread_rwlockattr_destroy(pthread_rwlockattr_t *attr)
+
+    Description:
+        Gives back whatever `pthread_rwlockattr_init` took.
+
+    Args:
+        attr: The attributes.
+
+    Returns:
+        0 on success, or the error number on failure.
+    """
+    return external_call[
+        "pthread_rwlockattr_destroy", Int32, c_ptr[pthread_rwlockattr_t]
+    ](attr)
+
+
+def pthread_rwlockattr_getpshared(
+    attr: c_ptr[pthread_rwlockattr_t], pshared: c_ptr[Int32]
+) -> Int32:
+    """C library <pthread.h> function `pthread_rwlockattr_getpshared`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_rwlockattr_getpshared.3p.html
+
+    Prototype:
+        int pthread_rwlockattr_getpshared(
+        const pthread_rwlockattr_t *restrict attr, int *restrict pshared)
+
+    Description:
+        Says whether a lock made from `attr` may be shared between
+    processes.
+
+    Args:
+        attr: The attributes.
+        pshared: Where the answer is to be written, as
+            `PTHREAD_PROCESS_SHARED` or `PTHREAD_PROCESS_PRIVATE`.
+
+    Returns:
+        0 on success, or the error number on failure.
+    """
+    return external_call[
+        "pthread_rwlockattr_getpshared",
+        Int32,
+        c_ptr[pthread_rwlockattr_t],
+        c_ptr[Int32],
+    ](attr, pshared)
+
+
+def pthread_rwlockattr_setpshared(
+    attr: c_ptr[pthread_rwlockattr_t], pshared: Int32
+) -> Int32:
+    """C library <pthread.h> function `pthread_rwlockattr_setpshared`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_rwlockattr_setpshared.3p.html
+
+    Prototype:
+        int pthread_rwlockattr_setpshared(pthread_rwlockattr_t *attr,
+                                          int pshared)
+
+    Description:
+        Says whether a lock made from `attr` may be shared between
+        processes.
+
+    Args:
+        attr: The attributes, from `pthread_rwlockattr_init`.
+        pshared: `PTHREAD_PROCESS_SHARED` or
+            `PTHREAD_PROCESS_PRIVATE`.
+
+    Returns:
+        0 on success, or `EINVAL` where it is neither.
+
+    Notes:
+        PRIVATE is 0 on glibc and 2 here, so pass the constant
+        rather than a number. See `pthread_mutexattr_setpshared`.
+    """
+    return external_call[
+        "pthread_rwlockattr_setpshared",
+        Int32,
+        c_ptr[pthread_rwlockattr_t],
+        Int32,
+    ](attr, pshared)

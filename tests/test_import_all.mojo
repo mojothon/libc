@@ -412,6 +412,35 @@ def bring_in_libc_mutex():
     )
 
 
+def bring_in_libc_sync():
+    from libc.pthread import (
+        pthread_cond_broadcast,
+        pthread_cond_destroy,
+        pthread_cond_init,
+        pthread_cond_signal,
+        pthread_cond_t,
+        pthread_cond_timedwait,
+        pthread_cond_wait,
+        pthread_condattr_destroy,
+        pthread_condattr_getpshared,
+        pthread_condattr_init,
+        pthread_condattr_setpshared,
+        pthread_rwlock_destroy,
+        pthread_rwlock_init,
+        pthread_rwlock_rdlock,
+        pthread_rwlock_t,
+        pthread_rwlock_tryrdlock,
+        pthread_rwlock_trywrlock,
+        pthread_rwlock_unlock,
+        pthread_rwlock_wrlock,
+        pthread_rwlockattr_destroy,
+        pthread_rwlockattr_getpshared,
+        pthread_rwlockattr_init,
+        pthread_rwlockattr_setpshared,
+        pthread_rwlockattr_t,
+    )
+
+
 def bring_in_libc_grp():
     from libc.grp import (
         endgrent,
@@ -1317,6 +1346,7 @@ def main() raises:
     bring_in_libc_getopt()
     bring_in_libc_termios()
     bring_in_libc_mutex()
+    bring_in_libc_sync()
     bring_in_libc_grp()
     bring_in_libc_iconv()
     bring_in_libc_ifaddrs()

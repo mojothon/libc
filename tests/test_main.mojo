@@ -26,6 +26,7 @@ from test_setjmp import main as run_setjmp
 from test_wait import main as run_wait
 from test_auxv import main as run_auxv
 from test_statvfs import main as run_statvfs
+from test_sync import main as run_sync
 from test_logging import main as run_logging
 from test_sendfile import main as run_sendfile
 from test_errno import main as run_errno
@@ -86,6 +87,7 @@ def main() raises:
     run_wait()
     run_auxv()
     run_statvfs()
+    run_sync()
     run_logging()
     run_sendfile()
     run_errno()
