@@ -175,6 +175,10 @@ All notable changes to this project are documented here. The format follows
   with `ENAMETOOLONG` and writes nothing, Darwin answers 0 and cuts the
   name to the room it was given — so the binding says both and the tests
   stay off that ground. `libc.unistd` is 185 → 186.
+- **`getloadavg` is bound, in `libc.stdlib`.** How many things were
+  waiting to run, averaged over the last minute, five minutes and
+  fifteen minutes. Three is all there are, and asking for eight is
+  answered with three. `libc.stdlib` is 45 → 46.
 
 ## [0.12.0] - 2026-10-19
 

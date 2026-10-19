@@ -1001,3 +1001,39 @@ def getsubopt(
         c_ptr[c_ptr[c_char]],
         c_ptr[c_ptr[c_char]],
     ](optionp, tokens, valuep)
+
+
+def getloadavg(loadavg: c_ptr[c_double], nelem: c_int) -> c_int:
+    """C library <stdlib.h> function `getloadavg`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/getloadavg.3.html
+
+    Prototype:
+        int getloadavg(double loadavg[], int nelem)
+
+    Description:
+        How busy the machine has been: how many things were waiting to
+        run, taken as an average over three periods of time — the last
+        minute, the last five and the last fifteen — and written into
+        `loadavg` in that order.
+
+    Args:
+        loadavg: Where the averages are written. Room for three
+            `double` is what they take; more room than that is filled
+            up to three and no further.
+        nelem: How many of them to write. Three is all there are, so
+            anything more is answered with three.
+
+    Returns:
+        How many were written: as many as were asked for, up to three,
+        or -1 with `errno` set when they could not be had.
+
+    Notes:
+        The averages are not integers. 0.0 is an idle machine, and one
+        with four cores running flat out reads about 4.0 — the number
+        counts things waiting to run, not cores.
+    """
+    return external_call["getloadavg", c_int, c_ptr[c_double], c_int](
+        loadavg, nelem
+    )

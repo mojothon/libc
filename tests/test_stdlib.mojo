@@ -2,7 +2,7 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
-from libc.constant import c_char, c_ptr, c_uint
+from libc.constant import c_char, c_double, c_ptr, c_uint
 from libc.file import close
 from libc.stdio import remove
 from libc.sys.wait import WIFSIGNALED, waitpid
@@ -18,6 +18,7 @@ from libc.stdlib import (
     exit,
     free,
     getenv,
+    getloadavg,
     getsubopt,
     initstate,
     malloc,
@@ -186,6 +187,32 @@ def test_getsubopt() raises:
     valuep.unsafe_free()
 
 
+def test_getloadavg() raises:
+    """Three averages over three periods of time, the first of them the
+    last minute. None is written down here — a machine is as busy as it
+    happens to be — but the three are, in order, the short one, the
+    middle one and the long one, and there is no fourth: asking for
+    eight gets three, and asking for none gets none.
+    """
+    var room = unsafe_alloc[c_double](8)
+    for i in range(8):
+        room.unsafe_offset(i)[] = -1.0
+
+    assert_equal(Int(getloadavg(room, 8)), 3, "three is all there are")
+    var one = room.unsafe_offset(0)[]
+    var five = room.unsafe_offset(1)[]
+    var fifteen = room.unsafe_offset(2)[]
+    assert_true(one >= 0.0, "counting things waiting to run")
+    assert_true(five >= 0.0, "over five minutes as well")
+    assert_true(fifteen >= 0.0, "and over fifteen")
+    assert_equal(room.unsafe_offset(3)[], -1.0, "the fourth is left alone")
+
+    assert_equal(Int(getloadavg(room, 1)), 1, "one is asked for, one is had")
+    assert_equal(Int(getloadavg(room, 0)), 0, "and none is asked for, none")
+
+    room.unsafe_free()
+
+
 def test_the_untried_calls() raises:
     """Eleven of these had never been called. Two of them take an alignment
     and a size, in that order and of that one type; three of them write
@@ -315,6 +342,7 @@ def main() raises:
     test_rand()
     test_random()
     test_getsubopt()
+    test_getloadavg()
     test_paths()
     test_abort_ends_the_child_and_not_us()
     print("test_stdlib: ok")

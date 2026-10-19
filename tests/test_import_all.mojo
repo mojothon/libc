@@ -767,6 +767,7 @@ def bring_in_libc_stdlib():
         exit,
         free,
         getenv,
+        getloadavg,
         getsubopt,
         initstate,
         malloc,
