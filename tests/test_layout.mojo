@@ -58,14 +58,18 @@ def test_sizes() raises:
     assert_equal(stride[tm](), 56, "struct tm is 56 bytes")
     assert_equal(stride[socketaddr](), 16, "struct sockaddr is 16 bytes")
     assert_equal(stride[msghdr](), 56, "struct msghdr is 56 bytes")
-    # 280 covers both: glibc's is 280 and Darwin's 272, and `d_name`
-    # sits at 19 in one and 12 in the other, so the struct holds the
-    # larger and reads each member at the offset that fits.
-    assert_equal(stride[dirent](), 280, "struct dirent is 280 bytes")
+    # 280 on glibc and 1048 on Darwin, and `d_name` sits at 19 in one and
+    # 21 in the other, so the block is the platform's own size and each
+    # member is read at the offset that fits.
+    assert_equal(
+        stride[dirent](),
+        1048 if CompilationTarget.is_macos() else 280,
+        "struct dirent is the platform's own size",
+    )
 
-    # Opaque: bigger than what either platform has, so libc cannot overrun it.
+    # Opaque: the platform's own size, so libc cannot overrun it.
     assert_true(
-        stride[mbstate_t]() >= 16, "mbstate_t holds at least the real state"
+        stride[mbstate_t]() >= 8, "mbstate_t holds at least the real state"
     )
     assert_true(
         stride[pthread_attr_t]() >= 56, "pthread_attr_t holds glibc's 56 bytes"
