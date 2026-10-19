@@ -302,6 +302,25 @@
   
   
     <li class="md-tabs__item">
+      <a href="../beyond-c/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Beyond C
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
       <a href="../version/" class="md-tabs__link">
         
   
@@ -604,6 +623,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../beyond-c/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beyond C
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../version/" class="md-nav__link">
         
   
@@ -837,9 +883,12 @@ returned by value:</p>
 </code></pre></div>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p><code>struct dirent.d_name</code> is modelled as <code>Array[UInt8, 256]</code>, not a pointer.
-Reading it as a pointer both yields a garbage address and shifts the field
-to the wrong offset.</p>
+<p><code>struct dirent</code> is held as raw bytes and read through <code>ino()</code>, <code>reclen()</code>,
+<code>type()</code> and <code>name()</code>. Its <code>d_name</code> is an inline character array, not a
+pointer, and the two platforms do not put it in the same place: it sits at
+offset 19 on glibc and 12 on Darwin, with <code>d_type</code> at 18 and 10. Reading it
+as a pointer, or guessing one offset for both, yields a garbage address or a
+name taken from the wrong bytes.</p>
 </div>
 <h2 id="constants">Constants<a class="headerlink" href="#constants" title="Permanent link">&para;</a></h2>
 <p><code>libc.constant</code> carries the C type aliases (<code>c_int</code>, <code>c_size_t</code>, ...) plus the

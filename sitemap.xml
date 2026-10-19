@@ -2,22 +2,26 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://mojothon.github.io/libc/</loc>
-         <lastmod>2026-10-13</lastmod>
+         <lastmod>2026-10-19</lastmod>
+    </url>
+    <url>
+         <loc>https://mojothon.github.io/libc/beyond-c/</loc>
+         <lastmod>2026-10-19</lastmod>
     </url>
     <url>
          <loc>https://mojothon.github.io/libc/install/</loc>
-         <lastmod>2026-10-13</lastmod>
+         <lastmod>2026-10-19</lastmod>
     </url>
     <url>
          <loc>https://mojothon.github.io/libc/modules/</loc>
-         <lastmod>2026-10-13</lastmod>
+         <lastmod>2026-10-19</lastmod>
     </url>
     <url>
          <loc>https://mojothon.github.io/libc/usage/</loc>
-         <lastmod>2026-10-13</lastmod>
+         <lastmod>2026-10-19</lastmod>
     </url>
     <url>
          <loc>https://mojothon.github.io/libc/version/</loc>
-         <lastmod>2026-10-13</lastmod>
+         <lastmod>2026-10-19</lastmod>
     </url>
 </urlset>
