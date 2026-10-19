@@ -1868,3 +1868,220 @@ def pthread_attr_setscope(attr: c_ptr[pthread_attr_t], scope: Int32) -> Int32:
     return external_call[
         "pthread_attr_setscope", Int32, c_ptr[pthread_attr_t], Int32
     ](attr, scope)
+
+
+# Whether a thread may be cancelled, and if so, when. POSIX fixes
+# neither pair of numbers, and the two platforms disagree on both:
+# ENABLE is 0 on glibc and 1 here, DEFERRED is 0 and 2. It is worth
+# knowing that on Darwin these are laid out as two bits — ENABLE is
+# 0x01 and DEFERRED is 0x02 — so 0 is not the neutral value there
+# that it is here.
+comptime PTHREAD_CANCEL_ENABLE: Int32 = 1 if CompilationTarget.is_macos() else 0
+comptime PTHREAD_CANCEL_DISABLE: Int32 = 0 if CompilationTarget.is_macos() else 1
+comptime PTHREAD_CANCEL_DEFERRED: Int32 = 2 if CompilationTarget.is_macos() else 0
+comptime PTHREAD_CANCEL_ASYNCHRONOUS: Int32 = (
+    0 if CompilationTarget.is_macos() else 1
+)
+
+
+# This one conforms to `TrivialRegisterPassable`, which no other
+# struct in the package does. The others are opaque blocks that go to
+# libc by pointer and are written into there; this is a handle that
+# `pthread_self` hands back by value and that `pthread_equal` takes
+# two of, and being copied around is the whole of what happens to it.
+# It is one machine word on both platforms, so it fits.
+struct pthread_t(TrivialRegisterPassable):
+    """An opaque `pthread_t` from `<pthread.h>`: which thread it is.
+
+    glibc's is the thread's `pid_t`; Darwin's a pointer to a struct
+    it keeps. Both are one word, and which of the two this is stays
+    private, there being nothing to do with one besides hand it back
+    to a call that asks, or put two of them to `pthread_equal`.
+    """
+
+    var _opaque: UInt64
+
+    def __init__(out self):
+        """A zeroed handle, which is no thread at all."""
+        self._opaque = 0
+
+
+def pthread_self() -> pthread_t:
+    """C library <pthread.h> function `pthread_self`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_self.3.html
+
+    Prototype:
+        pthread_t pthread_self(void)
+
+    Description:
+        Names the thread that asked.
+
+    Returns:
+        The calling thread's ID.
+
+    Notes:
+        Never fails, and the ID is not a number to be read: on Darwin
+        it is a pointer. `pthread_equal` is how two are compared.
+    """
+    return external_call["pthread_self", pthread_t]()
+
+
+def pthread_equal(t1: pthread_t, t2: pthread_t) -> Int32:
+    """C library <pthread.h> function `pthread_equal`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_equal.3.html
+
+    Prototype:
+        int pthread_equal(pthread_t t1, pthread_t t2)
+
+    Description:
+        Says whether two thread IDs are the same thread.
+
+    Args:
+        t1: One thread ID.
+        t2: The other.
+
+    Returns:
+        Nonzero if the two are the same thread, 0 if they are not.
+
+    Notes:
+        Thread IDs are not compared with `==` in portable code, this
+        being the call that does it. On Darwin the ID is a pointer.
+    """
+    return external_call["pthread_equal", Int32, pthread_t, pthread_t](t1, t2)
+
+
+def pthread_detach(thread: pthread_t) -> Int32:
+    """C library <pthread.h> function `pthread_detach`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_detach.3.html
+
+    Prototype:
+        int pthread_detach(pthread_t thread);
+
+    Description:
+        Tells the library that this thread's resources may be given
+        back when it finishes, no one being going to join it.
+
+    Args:
+        thread: The thread to be detached.
+
+    Returns:
+        0 on success, `EINVAL` where the thread is not joinable, or
+        `ESRCH` where no such thread was found.
+    """
+    return external_call["pthread_detach", Int32, pthread_t](thread)
+
+
+def pthread_cancel(thread: pthread_t) -> Int32:
+    """C library <pthread.h> function `pthread_cancel`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_cancel.3.html
+
+    Prototype:
+        int pthread_cancel(pthread_t thread);
+
+    Description:
+        Asks that a thread be cancelled.
+
+    Args:
+        thread: The thread to be cancelled.
+
+    Returns:
+        0 on success, or `ESRCH` where no such thread was found.
+
+    Notes:
+        A request rather than an act: it is held against the thread
+        and taken up at a cancellation point, of which
+        `pthread_testcancel` is one, unless the thread has cancelled
+        disabled. It is bound and not called here: what it asks for
+        cannot be taken back, and a test that asked it of itself
+        could not go on to check anything.
+    """
+    return external_call["pthread_cancel", Int32, pthread_t](thread)
+
+
+def pthread_setcancelstate(state: Int32, oldstate: c_ptr[Int32]) -> Int32:
+    """C library <pthread.h> function `pthread_setcancelstate`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_setcancelstate.3.html
+
+    Prototype:
+        int pthread_setcancelstate(int state, int *oldstate);
+
+    Description:
+        Says whether this thread is to be cancellable, and hands back
+        what it was.
+
+    Args:
+        state: `PTHREAD_CANCEL_ENABLE` or `PTHREAD_CANCEL_DISABLE`.
+        oldstate: Where the state it had before is written, or
+            `null_ptr[Int32]()` where that is not wanted.
+
+    Returns:
+        0 on success, or `EINVAL` where `state` is neither.
+    """
+    return external_call["pthread_setcancelstate", Int32, Int32, c_ptr[Int32]](
+        state, oldstate
+    )
+
+
+def pthread_setcanceltype(type: Int32, oldtype: c_ptr[Int32]) -> Int32:
+    """C library <pthread.h> function `pthread_setcanceltype`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_setcanceltype.3.html
+
+    Prototype:
+        int pthread_setcanceltype(int type, int *oldtype);
+
+    Description:
+        Says when a cancellation asked of this thread is to be taken
+        up, and hands back what it was.
+
+    Args:
+        type: `PTHREAD_CANCEL_DEFERRED` or
+            `PTHREAD_CANCEL_ASYNCHRONOUS`.
+        oldtype: Where the type it had before is written, or
+            `null_ptr[Int32]()` where that is not wanted.
+
+    Returns:
+        0 on success, or `EINVAL` where `type` is neither.
+
+    Notes:
+        ASYNCHRONOUS, which lets a thread be stopped anywhere it
+        happens to be rather than at a point it asked for, is not
+        something to ask of a thread whose cleanup one is not
+        certain of.
+    """
+    return external_call["pthread_setcanceltype", Int32, Int32, c_ptr[Int32]](
+        type, oldtype
+    )
+
+
+def pthread_testcancel() raises:
+    """C library <pthread.h> function `pthread_testcancel`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_testcancel.3.html
+
+    Prototype:
+        void pthread_testcancel(void);
+
+    Description:
+        Puts a cancellation point here: a cancellation asked of this
+        thread is taken up at this line if there is one waiting.
+
+    Notes:
+        Does nothing and comes back at once where nothing is waiting,
+        which is the case this is called under here. It is the
+        opposite of harmless where something is, the thread ending
+        at this line rather than carrying on.
+    """
+    external_call["pthread_testcancel", NoneType]()

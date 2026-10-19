@@ -9,6 +9,10 @@ from std.testing import assert_equal, assert_true
 from libc.constant import c_ptr
 from libc.pthread import (
     pthread_attr_destroy,
+    PTHREAD_CANCEL_ASYNCHRONOUS,
+    PTHREAD_CANCEL_DEFERRED,
+    PTHREAD_CANCEL_DISABLE,
+    PTHREAD_CANCEL_ENABLE,
     PTHREAD_CREATE_DETACHED,
     PTHREAD_CREATE_JOINABLE,
     PTHREAD_EXPLICIT_SCHED,
@@ -31,9 +35,17 @@ from libc.pthread import (
     pthread_attr_setschedpolicy,
     pthread_attr_setstack,
     pthread_attr_setstacksize,
+    pthread_cancel,
     pthread_condattr_destroy,
+    pthread_detach,
     pthread_attr_t,
     pthread_condattr_t,
+    pthread_equal,
+    pthread_self,
+    pthread_setcancelstate,
+    pthread_setcanceltype,
+    pthread_testcancel,
+    pthread_t,
 )
 from libc.sched import SCHED_OTHER, sched_param
 from libc.utils import null_ptr
@@ -226,6 +238,88 @@ def test_the_scheduling_settings() raises:
     attr.unsafe_free()
 
 
+def test_which_thread_and_whether_it_may_end() raises:
+    """`pthread_self` names the thread that asked, and `pthread_equal`
+    says whether two names are the same thread. Asking twice has to name
+    the same thread both times, and a zeroed handle is no thread at all,
+    so it has to answer no against that — which is the half that makes
+    the first answer worth anything, a test that asked only whether a
+    thing equals itself would pass whatever the call did.
+
+    The cancellation state and type are each asked for both of their
+    values in turn. Here again the constants are one another's numbers
+    across the two platforms — ENABLE is 0 on glibc and 1 here, while
+    DISABLE is 1 and 0, and DEFERRED is 0 against 2 — so naming one
+    value would pass just as well if the pair had been swapped. What is
+    checked is that each one comes back out again behind the other.
+
+    `pthread_testcancel` puts a cancellation point here, which is
+    nothing at all while no cancellation is waiting: it comes straight
+    back. Nothing here asks for one, that being a thing which cannot be
+    taken back once asked, and so a test that asked it of itself would
+    end at that line rather than go on to the next.
+
+    `pthread_cancel` and `pthread_detach` are bound and not called. The
+    first is a request that cannot be withdrawn, and the second, asked
+    of the thread that is running the tests, leaves nothing after it
+    for the rest of them to go on with.
+    """
+    var me = pthread_self()
+    var again = pthread_self()
+    assert_true(pthread_equal(me, again) != 0, "the same thread, asked twice")
+
+    var nobody = pthread_t()
+    assert_equal(
+        pthread_equal(me, nobody),
+        0,
+        "and a zeroed handle is no thread at all",
+    )
+
+    var old = unsafe_alloc[Int32](1)
+    assert_equal(
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, old),
+        0,
+        "not being cancellable is accepted",
+    )
+    assert_equal(
+        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, old),
+        0,
+        "and being cancellable is too, from which",
+    )
+    assert_equal(
+        old.unsafe_offset(0)[],
+        PTHREAD_CANCEL_DISABLE,
+        "the one that was there before comes back, the two told apart",
+    )
+
+    assert_equal(
+        pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, old),
+        0,
+        "ending at once is accepted",
+    )
+    assert_equal(
+        old.unsafe_offset(0)[],
+        PTHREAD_CANCEL_DEFERRED,
+        "and waiting for a point is what it was before",
+    )
+    assert_equal(
+        pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, old),
+        0,
+        "waiting for a point is accepted, from which",
+    )
+    assert_equal(
+        old.unsafe_offset(0)[],
+        PTHREAD_CANCEL_ASYNCHRONOUS,
+        "the other comes back, the two told apart",
+    )
+
+    # Comes back at once: no cancellation has been asked for here, and
+    # none is ever, for the reason given above.
+    pthread_testcancel()
+
+    old.unsafe_free()
+
+
 def test_the_one_that_is_left() raises:
     """`pthread_condattr_destroy` takes back a condition attribute
     object. One is filled with zeroes here rather than left as it was
@@ -250,5 +344,6 @@ def test_the_one_that_is_left() raises:
 def main() raises:
     test_the_attribute_object()
     test_the_scheduling_settings()
+    test_which_thread_and_whether_it_may_end()
     test_the_one_that_is_left()
     print("test_pthread: ok")

@@ -716,6 +716,10 @@ def bring_in_libc_poll():
 
 def bring_in_libc_pthread():
     from libc.pthread import (
+        PTHREAD_CANCEL_ASYNCHRONOUS,
+        PTHREAD_CANCEL_DEFERRED,
+        PTHREAD_CANCEL_DISABLE,
+        PTHREAD_CANCEL_ENABLE,
         PTHREAD_CREATE_DETACHED,
         PTHREAD_CREATE_JOINABLE,
         PTHREAD_EXPLICIT_SCHED,
@@ -746,8 +750,16 @@ def bring_in_libc_pthread():
         pthread_attr_setstack,
         pthread_attr_setstacksize,
         pthread_attr_t,
+        pthread_cancel,
         pthread_condattr_destroy,
         pthread_condattr_t,
+        pthread_detach,
+        pthread_equal,
+        pthread_self,
+        pthread_setcancelstate,
+        pthread_setcanceltype,
+        pthread_t,
+        pthread_testcancel,
     )
 
 
