@@ -3,6 +3,32 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- **The `_SC_*` knobs are bound in `libc.unistd`, eighty of them.**
+  `sysconf` took a knob number and this package named exactly one,
+  `SC_PAGESIZE`, so a caller asking about anything else had to write a
+  number down. The audit that found the `_PC_*` numbering was shifted
+  found a worse problem here: of the eighty knobs both platforms have,
+  **every one is numbered differently on each**. glibc counts them from
+  0 in POSIX order and XNU from 1 in an order of its own, so
+  `_SC_ARG_MAX` is 0 here and 1 there, `_SC_PAGESIZE` 30 and 29, and
+  `_SC_NPROCESSORS_ONLN` 84 and 58. All eighty are bound in the
+  `X if is_macos() else Y` form the other platform constants use, so
+  `check-constants` verifies the side that answers on each machine.
+  `_SC_AVPHYS_PAGES` is left out because glibc has it and XNU does not.
+  `libc.unistd` goes from 79 to 158.
+- **`confstr` is bound, with the twenty-five `_CS_*` variables both
+  platforms have.** The third of the three numbered-knob APIs and the
+  same finding as the other two: all twenty-five are numbered
+  differently, `_CS_PATH` being 0 here and 1 there. `confstr` itself was
+  not bound at all, which is why nothing named them. The variables only
+  one side answers are left out rather than faked — `_CS_GNU_LIBC_VERSION`,
+  `_CS_GNU_LIBPTHREAD_VERSION` and the `_CS_LFS_*` are glibc's,
+  `_CS_DARWIN_USER_*` are XNU's. `libc.unistd` goes to 184.
+
 ## [0.12.0] - 2026-10-19
 
 ### Added
