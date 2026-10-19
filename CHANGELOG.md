@@ -110,6 +110,16 @@ All notable changes to this project are documented here. The format follows
   What `scandir` allocates is the caller's to release, each entry and
   then the vector, and that is documented where it matters.
   `libc.dirent` goes from 15 to 17.
+- **`libc.grp` is new: `group`, and `getgrnam`, `getgrgid`, `getgrent`,
+  `setgrent`, `endgrent`.** The group database, the other half of what
+  `libc.pwd` covers, and the one place where the two platforms do not
+  disagree about a struct: `gr_name`, `gr_passwd`, `gr_gid` and `gr_mem`
+  sit at 0, 8, 16 and 24 either way, so unlike `passwd` — whose middle
+  Darwin pads with three members of its own — this one is a block of
+  thirty-two bytes with nothing to read at the offset of whoever is
+  compiling. What the tests do not assume is which groups exist: id 0 is
+  `root` on one and `wheel` on the other, so the round-trip asks for
+  whatever name the database hands out first. `libc.grp` starts at 6.
 
 ## [0.12.0] - 2026-10-19
 

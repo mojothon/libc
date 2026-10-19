@@ -32,6 +32,7 @@ from test_fenv import main as run_fenv
 from test_float import main as run_float
 from test_fnmatch import main as run_fnmatch
 from test_glob import main as run_glob
+from test_grp import main as run_grp
 from test_inttypes import main as run_inttypes
 from test_layout import main as run_layout
 from test_libgen import main as run_libgen
@@ -83,6 +84,7 @@ def main() raises:
     run_float()
     run_fnmatch()
     run_glob()
+    run_grp()
     run_inttypes()
     run_layout()
     run_libgen()

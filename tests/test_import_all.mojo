@@ -313,6 +313,17 @@ def bring_in_libc_glob():
     )
 
 
+def bring_in_libc_grp():
+    from libc.grp import (
+        endgrent,
+        getgrent,
+        getgrgid,
+        getgrnam,
+        group,
+        setgrent,
+    )
+
+
 def bring_in_libc_inttypes():
     from libc.inttypes import (
         imaxabs,
@@ -1121,6 +1132,7 @@ def main() raises:
     bring_in_libc_float()
     bring_in_libc_fnmatch()
     bring_in_libc_glob()
+    bring_in_libc_grp()
     bring_in_libc_inttypes()
     bring_in_libc_libgen()
     bring_in_libc_locale()
