@@ -21,6 +21,7 @@ from libc.termios import (
     TCIFLUSH,
     TCIOFLUSH,
     TCOFLUSH,
+    TCOOFF,
     Termios,
     cfgetispeed,
     cfgetospeed,
@@ -61,9 +62,7 @@ def _assert_it_is_not_a_terminal(what: String) raises:
     that answers -1 and leaves `errno` alone is a call that failed
     for a reason it is not saying, and that is worth failing over.
     """
-    var why = get_errno()
-    print("errno for a terminal call on /dev/null:", why)
-    assert_true(why != 0, what)
+    assert_true(get_errno() == ENOTTY or get_errno() == ENODEV, what)
 
 
 def test_cfsetospeed_then_cfgetospeed() raises:
@@ -168,7 +167,7 @@ def test_the_tc_calls_all_refuse_the_same_file() raises:
     _assert_it_is_not_a_terminal("with that said")
 
     set_errno(0)
-    assert_equal(tcflow(fd, 0), -1, "tcflow refuses")
+    assert_equal(tcflow(fd, TCOOFF), -1, "tcflow refuses")
     _assert_it_is_not_a_terminal("with that said")
 
     set_errno(0)
@@ -176,7 +175,9 @@ def test_the_tc_calls_all_refuse_the_same_file() raises:
     _assert_it_is_not_a_terminal("with that said")
 
     set_errno(0)
-    assert_equal(tcsendbreak(fd, 0), -1, "tcsendbreak refuses")
+    assert_equal(
+        tcsendbreak(fd, 0), -1, "tcsendbreak refuses a zero-length break"
+    )
     _assert_it_is_not_a_terminal("with that said")
 
     set_errno(0)
