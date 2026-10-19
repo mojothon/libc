@@ -14,10 +14,15 @@ from libc.netdb import (
     AI_NUMERICHOST,
     AI_NUMERICSERV,
     EAI_NONAME,
+    NI_MAXHOST,
+    NI_MAXSERV,
+    NI_NUMERICHOST,
+    NI_NUMERICSERV,
     addrinfo,
     freeaddrinfo,
     gai_strerror,
     getaddrinfo,
+    getnameinfo,
 )
 from libc.utils import char_ptr_to_string, string_to_char_ptr
 
@@ -118,7 +123,61 @@ def test_a_name_that_is_not_a_number_is_refused() raises:
     service.unsafe_free()
 
 
+def test_the_address_answers_with_the_host_it_came_from() raises:
+    """`getnameinfo` is the way back: given the address `getaddrinfo`
+    wrote, it says which host and which port that was.
+
+    Both directions are asked for numbers only, so the two calls meet in
+    the middle without a resolver in sight. The buffers are `NI_MAXHOST`
+    and `NI_MAXSERV`, which is the most either platform can write.
+    """
+    var hints = unsafe_alloc[addrinfo](1)
+    hints.unsafe_offset(0)[] = addrinfo()
+    hints.unsafe_offset(0)[].ai_family = AF_UNSPEC
+    hints.unsafe_offset(0)[].ai_socktype = SOCK_STREAM
+    hints.unsafe_offset(0)[].ai_flags = AI_NUMERICHOST | AI_NUMERICSERV
+
+    var res = unsafe_alloc[c_ptr[addrinfo]](1)
+    var node = string_to_char_ptr("127.0.0.1")
+    var service = string_to_char_ptr("80")
+
+    assert_equal(
+        getaddrinfo(node, service, hints, res), 0, "the address comes first"
+    )
+    var one = res[].unsafe_offset(0)
+
+    var host = unsafe_alloc[UInt8](Int(NI_MAXHOST))
+    var serv = unsafe_alloc[UInt8](Int(NI_MAXSERV))
+    host.unsafe_offset(0)[] = 0
+    serv.unsafe_offset(0)[] = 0
+
+    assert_equal(
+        getnameinfo(
+            one[].ai_addr(),
+            one[].ai_addrlen,
+            host,
+            UInt32(NI_MAXHOST),
+            serv,
+            UInt32(NI_MAXSERV),
+            NI_NUMERICHOST | NI_NUMERICSERV,
+        ),
+        0,
+        "and it goes back to the host and the port it was made from",
+    )
+    assert_equal(char_ptr_to_string(host), "127.0.0.1", "the host again")
+    assert_equal(char_ptr_to_string(serv), "80", "and the port again")
+
+    freeaddrinfo(res[])
+    hints.unsafe_free()
+    res.unsafe_free()
+    node.unsafe_free()
+    service.unsafe_free()
+    host.unsafe_free()
+    serv.unsafe_free()
+
+
 def main() raises:
     test_a_numeric_address_needs_no_name_service()
     test_a_name_that_is_not_a_number_is_refused()
+    test_the_address_answers_with_the_host_it_came_from()
     print("test_netdb: ok")

@@ -43,6 +43,16 @@ All notable changes to this project are documented here. The format follows
   method at the offset of whoever is compiling, while the five ints in
   front of them stay fields at the offsets both agree on. `libc.netdb`
   starts at 21.
+- **`getnameinfo` is bound, with the seven `NI_*` that go with it.** The
+  way back from `getaddrinfo`: given the socket address it wrote, this
+  says which host and which port that was. The four `NI_*` that decide
+  what to answer are numbered the opposite way round on the two
+  platforms — `NI_NUMERICHOST` is 1 on glibc and 2 on XNU, and the same
+  for `NI_NOFQDN`, `NI_NAMEREQD` and `NI_NUMERICSERV` — while `NI_DGRAM`
+  happens to be 16 on both and `NI_MAXHOST` and `NI_MAXSERV` agree. The
+  address is taken as bytes rather than as a `socketaddr`, because it is
+  the family in its first bytes that says which kind it is.
+  `libc.netdb` goes from 21 to 29.
 
 ## [0.12.0] - 2026-10-19
 

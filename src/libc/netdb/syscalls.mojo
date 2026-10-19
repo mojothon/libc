@@ -40,6 +40,20 @@ comptime EAI_SYSTEM: Int32 = 11 if CompilationTarget.is_macos() else -11
 comptime EAI_OVERFLOW: Int32 = 14 if CompilationTarget.is_macos() else -12
 
 
+# What `getnameinfo` is asked to do with the answer. `NI_DGRAM` is 16 on
+# both sides by luck and the two limits agree, but the other four are
+# numbered the opposite way round: glibc's `NI_NUMERICHOST` is 1 and
+# XNU's is 2, and so on down the list.
+comptime NI_NOFQDN: Int32 = 1 if CompilationTarget.is_macos() else 4
+comptime NI_NUMERICHOST: Int32 = 2 if CompilationTarget.is_macos() else 1
+comptime NI_NAMEREQD: Int32 = 4 if CompilationTarget.is_macos() else 8
+comptime NI_NUMERICSERV: Int32 = 8 if CompilationTarget.is_macos() else 2
+comptime NI_DGRAM: Int32 = 16
+# How long a buffer `getnameinfo` can fill. Both platforms say the same.
+comptime NI_MAXHOST: Int32 = 1025
+comptime NI_MAXSERV: Int32 = 32
+
+
 struct addrinfo:
     """A C `struct addrinfo`: one answer to `getaddrinfo`.
 
@@ -180,6 +194,68 @@ def freeaddrinfo(res: c_ptr[addrinfo]) -> None:
             just that member.
     """
     external_call["freeaddrinfo", NoneType, c_ptr[addrinfo]](res)
+
+
+def getnameinfo(
+    sa: c_ptr[UInt8],
+    salen: UInt32,
+    host: c_ptr[UInt8],
+    hostlen: UInt32,
+    serv: c_ptr[UInt8],
+    servlen: UInt32,
+    flags: Int32,
+) -> Int32:
+    """C library <netdb.h> function `getnameinfo`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/getnameinfo.3.html
+
+    Description:
+        The other direction from `getaddrinfo`: given a socket address,
+        it says which host and which service that is. What it answers
+        depends on the flags — a name where it can find one, or the
+        numbers, which is what `NI_NUMERICHOST` and `NI_NUMERICSERV`
+        ask for and what needs no lookup at all.
+
+    Args:
+        sa: The socket address to describe, `salen` bytes of it, as
+            `addrinfo.ai_addr` hands it out.
+        salen: How many bytes `sa` is, which is `addrinfo.ai_addrlen`.
+        host: Where the host name is written, a buffer of `NI_MAXHOST`.
+        hostlen: How many bytes `host` has.
+        serv: Where the service is written, a buffer of `NI_MAXSERV`.
+        servlen: How many bytes `serv` has.
+        flags: What to prefer, as the `NI_*` above, or 0 for the
+            defaults.
+
+    Returns:
+        0 on success, or one of the `EAI_*` on failure — the same list
+        `getaddrinfo` answers with, and not -1.
+
+    Notes:
+        Fn signature:
+        `int getnameinfo(const struct sockaddr *restrict sa, socklen_t salen, char *restrict host, socklen_t hostlen, char *restrict serv, socklen_t servlen, int flags)`.
+
+        `sa` is taken as bytes rather than as a `socketaddr`, because the
+        address may be a `sockaddr_in6` or anything else and it is the
+        family in its first bytes that says which; `ai_addr` is the
+        pointer to hand it.
+
+        The buffers are C strings when this returns 0, so read them with
+        `char_ptr_to_string` and give them `NI_MAXHOST` and `NI_MAXSERV`
+        to be sure there is room.
+    """
+    return external_call[
+        "getnameinfo",
+        Int32,
+        c_ptr[UInt8],
+        UInt32,
+        c_ptr[UInt8],
+        UInt32,
+        c_ptr[UInt8],
+        UInt32,
+        Int32,
+    ](sa, salen, host, hostlen, serv, servlen, flags)
 
 
 def gai_strerror(ecode: Int32) -> c_ptr[UInt8]:
