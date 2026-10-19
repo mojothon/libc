@@ -99,6 +99,17 @@ All notable changes to this project are documented here. The format follows
   An `external_call` has no macros, so glibc is asked for
   `__xpg_basename` by name and XNU for `basename`, whose one symbol is
   POSIX's. `libc.libgen` starts at 2.
+- **`scandir` and `alphasort` are bound, in `libc.dirent`.** A whole
+  directory in one call, as a vector of entries that are all readable at
+  once — the reason to want them sorted. Both take a comparator this
+  package cannot supply, there being no way to make a Mojo closure into a
+  C function pointer or to take the address of one libc already has, so
+  the two arguments are `NULL`: keep everything, in filesystem order.
+  `alphasort` is bound for asking about one pair at a time instead, and
+  the test checks its answer against `strcmp` on the same two names.
+  What `scandir` allocates is the caller's to release, each entry and
+  then the vector, and that is documented where it matters.
+  `libc.dirent` goes from 15 to 17.
 
 ## [0.12.0] - 2026-10-19
 

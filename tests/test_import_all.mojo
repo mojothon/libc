@@ -101,6 +101,7 @@ def bring_in_libc_dirent():
         DIRENT_RECLEN_OFFSET,
         DIRENT_SLOTS,
         DIRENT_TYPE_OFFSET,
+        alphasort,
         closedir,
         dirent,
         dirfd,
@@ -108,6 +109,7 @@ def bring_in_libc_dirent():
         opendir,
         readdir,
         rewinddir,
+        scandir,
         seekdir,
         telldir,
     )

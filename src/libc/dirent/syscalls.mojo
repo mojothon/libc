@@ -286,3 +286,107 @@ def telldir(dirp: c_ptr[DIR]) -> Int64:
         it came from.
     """
     return external_call["telldir", Int64, c_ptr[DIR]](dirp)
+
+
+def scandir(
+    dirp: c_ptr[c_char],
+    namelist: c_ptr[c_ptr[c_ptr[dirent]]],
+    selector: c_ptr[UInt8],
+    compar: c_ptr[UInt8],
+) -> Int32:
+    """C library <dirent.h> function `scandir`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/scandir.3.html
+
+    Description:
+        Reads a whole directory in one call and hands back a vector of
+        every entry in it: what `opendir` plus a loop of `readdir` would
+        give, already collected. Each entry is a `dirent` of its own,
+        allocated for the caller rather than reused between entries, so
+        all of them are readable at once — which is the whole reason to
+        want a sort over them.
+
+    Args:
+        dirp: The directory to read, NUL terminated.
+        namelist: Where the vector is written: room for one pointer, which
+            this call fills with the address of an array of `dirent`
+            pointers that many long. Zeroed before the call, untouched if
+            the answer is -1.
+        selector: Which entries to keep, called once for each, a non-zero
+            answer meaning keep. Give it `null_ptr[UInt8]()` to keep them
+            all, which is the only value this package can offer: a Mojo
+            closure cannot be made into the C function pointer this slot
+            wants.
+        compar: What order to put them in, called the way `qsort` would
+            call it. Give it `null_ptr[UInt8]()` for the order the
+            filesystem holds them, which is no order; `alphasort` below
+            cannot be passed here either, because there is no way to take
+            the address of a C function from Mojo. Sort the vector
+            yourself, or call `alphasort` on two of its entries.
+
+    Returns:
+        How many entries are in the vector, or -1 with `errno` set when
+        the directory could not be read: `ENOENT`, `ENOTDIR`, `EACCES`
+        and `ENOMEM` are the ones to expect. Zero is a directory with
+        nothing in it, which is not an error.
+
+    Notes:
+        Fn signature:
+        `int scandir(const char *restrict dirp, struct dirent ***restrict namelist, int (*selector)(const struct dirent *), int (*compar)(const struct dirent **, const struct dirent **))`.
+
+        What it allocates is the caller's to release and nothing else
+        will: `free` from `libc.stdlib` on each entry in the vector and
+        then on the vector itself. glibc's is documented that way and
+        XNU's behaves the same.
+
+        glibc redirects this to `scandir64` when the 64-bit file offsets
+        are in play, and the two are the same call on any 64-bit machine.
+    """
+    return external_call[
+        "scandir",
+        Int32,
+        c_ptr[c_char],
+        c_ptr[c_ptr[c_ptr[dirent]]],
+        c_ptr[UInt8],
+        c_ptr[UInt8],
+    ](dirp, namelist, selector, compar)
+
+
+def alphasort(a: c_ptr[c_ptr[dirent]], b: c_ptr[c_ptr[dirent]]) -> Int32:
+    """C library <dirent.h> function `alphasort`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/scandir.3.html
+
+    Description:
+        How `scandir` would have sorted its entries had it been given a
+        comparator: the two names compared as strings, `strcmp`'s answer
+        on a name against a name.
+
+    Args:
+        a: Where one entry's pointer lives — `namelist` plus an index,
+            not the entry itself.
+        b: Where the other one's does.
+
+    Returns:
+        Below 0 when the first name sorts before the second, above 0 when
+        it sorts after, and 0 when they are the same name.
+
+    Notes:
+        Fn signature:
+        `int alphasort(const struct dirent **a, const struct dirent **b)`.
+
+        It asks the name out of the record the way `readdir` wrote it,
+        which is why these are pointers to pointers: the argument is
+        where in the vector the entry sits, because that is what a
+        comparator for `scandir` is handed.
+
+        `alphasort` cannot be handed to `scandir` from Mojo, there being
+        no way to take the address of a C function here; it is bound for
+        sorting a vector that `scandir` already gave back, one pair at a
+        time.
+    """
+    return external_call[
+        "alphasort", Int32, c_ptr[c_ptr[dirent]], c_ptr[c_ptr[dirent]]
+    ](a, b)
