@@ -31,6 +31,7 @@ the bottom.
 | `libc.inttypes` | `<inttypes.h>` | 7 |
 | `libc.sys.resource` | `<sys/resource.h>` | 15 |
 | `libc.network` | `<arpa/inet.h>` byte order and address conversion | 6 |
+| `libc.netdb` | `<netdb.h>` name and service lookup | 21 |
 | `libc.logging` | `<syslog.h>` | 6 |
 | `libc.fcntl` | `<fcntl.h>` | 49 |
 | `libc.dlfcn` | `<dlfcn.h>` | 7 |

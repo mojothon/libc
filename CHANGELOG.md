@@ -28,6 +28,21 @@ All notable changes to this project are documented here. The format follows
   one side answers are left out rather than faked — `_CS_GNU_LIBC_VERSION`,
   `_CS_GNU_LIBPTHREAD_VERSION` and the `_CS_LFS_*` are glibc's,
   `_CS_DARWIN_USER_*` are XNU's. `libc.unistd` goes to 184.
+- **`libc.netdb` is new: `getaddrinfo`, `freeaddrinfo`, `gai_strerror`,
+  the `addrinfo` they fill in, and the `AI_*` and `EAI_*` that go with
+  them.** This is the call that turns a host and a service into the
+  addresses a socket could be pointed at, and the one gap left in the
+  audit that needed a name lookup rather than arithmetic. Two things
+  about it are worth knowing. The ten `EAI_*` are negative on glibc and
+  positive on XNU and **not one of them agrees across the platforms**,
+  `EAI_SYSTEM` included, which is -11 here and 11 there; they are named
+  rather than written down for that reason. And the two platforms
+  disagree about where `ai_addr` and `ai_canonname` sit: POSIX puts the
+  address first, glibc follows it, and Darwin does not, its canonical
+  name being at 24 and its address at 32. Those two are therefore read by
+  method at the offset of whoever is compiling, while the five ints in
+  front of them stay fields at the offsets both agree on. `libc.netdb`
+  starts at 21.
 
 ## [0.12.0] - 2026-10-19
 

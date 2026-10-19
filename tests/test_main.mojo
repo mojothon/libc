@@ -35,6 +35,7 @@ from test_layout import main as run_layout
 from test_locale import main as run_locale
 from test_math import main as run_math
 from test_network import main as run_network
+from test_netdb import main as run_netdb
 from test_poll import main as run_poll
 from test_pwd import main as run_pwd
 from test_resource import main as run_resource
@@ -81,6 +82,7 @@ def main() raises:
     run_locale()
     run_math()
     run_network()
+    run_netdb()
     run_poll()
     run_pwd()
     run_resource()
