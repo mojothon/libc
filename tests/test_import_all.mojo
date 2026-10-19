@@ -330,6 +330,55 @@ def bring_in_libc_getopt():
     )
 
 
+def bring_in_libc_termios():
+    from libc.termios import (
+        B0,
+        B110,
+        B115200,
+        B1200,
+        B134,
+        B150,
+        B1800,
+        B19200,
+        B200,
+        B230400,
+        B2400,
+        B300,
+        B38400,
+        B4800,
+        B50,
+        B57600,
+        B600,
+        B75,
+        B9600,
+        NCCS,
+        TCIFLUSH,
+        TCIOFLUSH,
+        TCOFLUSH,
+        TCSADRAIN,
+        TCSAFLUSH,
+        TCSANOW,
+        TCOOFF,
+        TCOON,
+        TCIOFF,
+        TCION,
+        Termios,
+        cfgetispeed,
+        cfgetospeed,
+        cfmakeraw,
+        cfsetspeed,
+        cfsetispeed,
+        cfsetospeed,
+        tcdrain,
+        tcflow,
+        tcflush,
+        tcgetattr,
+        tcgetsid,
+        tcsendbreak,
+        tcsetattr,
+    )
+
+
 def bring_in_libc_grp():
     from libc.grp import (
         endgrent,
@@ -1233,6 +1282,7 @@ def main() raises:
     bring_in_libc_fnmatch()
     bring_in_libc_glob()
     bring_in_libc_getopt()
+    bring_in_libc_termios()
     bring_in_libc_grp()
     bring_in_libc_iconv()
     bring_in_libc_ifaddrs()
