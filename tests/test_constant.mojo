@@ -121,8 +121,14 @@ def test_the_rest() raises:
     assert_equal(
         Int(SOCK_CLOEXEC), 16777216 if CompilationTarget.is_macos() else 524288
     )
-    assert_equal(SCHED_OTHER, 0)
-    assert_equal(SCHED_FIFO, 1)
+    # The scheduling policies are three numbers POSIX leaves to the
+    # platform. These two differ — OTHER is 1 here and 0 on glibc,
+    # FIFO is 4 and 1 — so each is named for the side it is on rather
+    # than written down as the digit that happens to be right here.
+    assert_equal(Int(SCHED_OTHER), 1 if CompilationTarget.is_macos() else 0)
+    assert_equal(Int(SCHED_FIFO), 4 if CompilationTarget.is_macos() else 1)
+    # RR alone happens to be 2 on both, which is a coincidence rather
+    # than something the other two could be counted on for.
     assert_equal(SCHED_RR, 2)
     assert_equal(GRND_INSECURE, 4)
     assert_equal(PR_SET_NAME, 15)
