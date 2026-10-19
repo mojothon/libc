@@ -21,13 +21,12 @@ from libc.constant import *
 # So the record is held as bytes and every member is read at the offset
 # that fits the platform, the way `Stat` does it.
 #
-# Darwin's record is the wider one and this does not cover all of it: 280
-# bytes takes in all of glibc's and the first 259 of Darwin's `d_name`,
-# which is 1024 long there. That is a limit on reading, not on storage —
-# `readdir` hands back a pointer into the record it owns and this is only
-# ever read through, so nothing is written past the end. A name longer
-# than 259 bytes comes back cut short.
-comptime DIRENT_BYTES = 280
+# The size is the platform's own, not the smaller of the two: `readdir`
+# hands back a pointer into a record libc owns, and holding less of it
+# than C writes means a copy made of one runs off the end. Darwin's
+# `d_name` is 1024 long where glibc's is 256, which is the whole of the
+# difference.
+comptime DIRENT_BYTES = 1048 if CompilationTarget.is_macos() else 280
 comptime DIRENT_SLOTS = DIRENT_BYTES // 8
 comptime DIRENT_NAME_OFFSET = 21 if CompilationTarget.is_macos() else 19
 comptime DIRENT_TYPE_OFFSET = 20 if CompilationTarget.is_macos() else 18

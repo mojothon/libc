@@ -16,8 +16,48 @@ comptime SCHED_FIFO: Int32 = 1
 comptime SCHED_RR: Int32 = 2
 
 
-struct sched_param(TrivialRegisterPassable):
-    var sched_priority: Int32
+struct sched_param:
+    """A C `struct sched_param`: the priority a scheduling call is asked for.
+
+    glibc's is the one `int` and nothing else, which is 4 bytes. Darwin's
+    carries a second word after the priority that the kernel writes and
+    that nothing reads, so it is 8 there. The priority sits at the front
+    on both, so it is the first word of the block either way.
+
+    The block is the platform's own size rather than the larger of the
+    two: `sched_getparam` writes the struct through the pointer it is
+    handed, and a block shorter than the one C writes runs off the end.
+    """
+
+    comptime INT_SLOTS = 2 if CompilationTarget.is_macos() else 1
+
+    var _slots: Array[Int32, Self.INT_SLOTS]
+
+    def __init__(out self, priority: Int32):
+        """Builds a param asking for `priority`.
+
+        Args:
+            priority: The scheduling priority, within the range the
+                policy allows.
+        """
+        self._slots = Array[Int32, Self.INT_SLOTS](fill=0)
+        self._slots[0] = priority
+
+    def __init__(out self):
+        """Zeroes the priority, which is what a fresh param is."""
+        self = Self(0)
+
+    def sched_priority(self) -> Int32:
+        """The priority, the first word of the struct on both platforms."""
+        return self._slots[0]
+
+    def set_sched_priority(mut self, priority: Int32):
+        """Sets the priority, leaving whatever else is in the block.
+
+        Args:
+            priority: The scheduling priority to ask for.
+        """
+        self._slots[0] = priority
 
 
 def sched_get_priority_max(policy: Int32) -> Int32:

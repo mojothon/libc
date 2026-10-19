@@ -59,7 +59,7 @@ def test_what_the_scheduler_says() raises:
         sched_getparam(0, param), 0, "sched_getparam fills in what it has"
     )
     assert_equal(
-        Int(param.unsafe_offset(0)[].sched_priority),
+        param.unsafe_offset(0)[].sched_priority(),
         0,
         "and the priority it says is the only one there is",
     )

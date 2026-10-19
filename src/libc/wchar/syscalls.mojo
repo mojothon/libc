@@ -5,6 +5,7 @@
 # ----------------------------------
 from std.ffi import external_call
 from std.memory import Pointer
+from std.sys import CompilationTarget
 
 from libc.constant import c_int, c_ptr, c_size_t, c_wchar, c_wint
 
@@ -13,16 +14,23 @@ struct mbstate_t:
     """An opaque C `mbstate_t`: the shift state a multibyte conversion
     carries between calls.
 
-    The real struct is 8 bytes on glibc and 16 on Darwin, so this one holds
-    twice the larger and only ever travels by pointer. Zero it and it is the
-    initial state, which is what `memset` gives you.
+    The real struct is 8 bytes on glibc and 128 on Darwin, so this one
+    holds the platform's own size and only ever travels by pointer. Zero
+    it and it is the initial state, which is what `memset` gives you.
+
+    The size is the platform's rather than the larger of the two because
+    the conversion calls write the state through the pointer they are
+    handed: `mbrtowc`, `wcrtomb` and `mbrlen` all take one, and handing
+    C a block shorter than the one it writes runs off the end of it.
     """
 
-    var _opaque: Array[UInt64, 4]
+    comptime MBSTATE_SLOTS = 16 if CompilationTarget.is_macos() else 4
+
+    var _opaque: Array[UInt64, Self.MBSTATE_SLOTS]
 
     def __init__(out self):
         """Zeroes the state, which is the initial state."""
-        self._opaque = Array[UInt64, 4](fill=0)
+        self._opaque = Array[UInt64, Self.MBSTATE_SLOTS](fill=0)
 
 
 def wcslen(s: c_ptr[c_wchar]) -> c_size_t:
