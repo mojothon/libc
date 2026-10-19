@@ -21,6 +21,9 @@ from libc.unistd import (
     PC_SYMLINK_MAX,
     PC_SYNC_IO,
     PC_VDISABLE,
+    SC_CLK_TCK,
+    SC_NPROCESSORS_ONLN,
+    SC_OPEN_MAX,
     SC_PAGESIZE,
     SYS_getpid,
     alarm,
@@ -79,6 +82,7 @@ from libc.unistd import (
     writev,
 )
 from libc.constant import O_RDWR, c_char, c_ptr
+from libc.errno import get_errno, set_errno
 from libc.file import close, fclose, fopen, open
 from libc.stdio import fwrite, remove
 from libc.sys.socket import iovec
@@ -216,6 +220,31 @@ def test_sysconf() raises:
     assert_true(page > 0, "sysconf knows how big a page is")
     assert_equal(
         Int(page), Int(getpagesize()), "and says the same as getpagesize"
+    )
+
+
+def test_sysconf_names_the_knobs_it_answers_for() raises:
+    """The `_SC_*` numbers differ on every one of the eighty, so a knob
+    asked by the other platform's number is a knob nothing answers for.
+
+    What is checked is that a handful of them answer at all, and that the
+    answer is the plausible one for what they are about: a page size, a
+    clock rate, and a count of processors. None of them is a number this
+    test could have written down, because none of them is the same on the
+    two sides.
+    """
+    set_errno(0)
+    var cpus = sysconf(SC_NPROCESSORS_ONLN)
+    assert_true(cpus > 0, "there is at least one processor online")
+    assert_true(get_errno() == 0, "and the count is an answer, not a failure")
+
+    var ticks = sysconf(SC_CLK_TCK)
+    assert_true(ticks > 0, "the clock ticks")
+
+    var open_max = sysconf(SC_OPEN_MAX)
+    assert_true(
+        open_max > 0 and open_max < 1 << 30,
+        "and there is a ceiling on open descriptors",
     )
 
 
@@ -635,6 +664,7 @@ def main() raises:
     test_the_ids_and_the_terminal()
     test_fpathconf()
     test_the_pc_knobs_are_the_platforms_own_numbers()
+    test_sysconf_names_the_knobs_it_answers_for()
     test_getopt()
     test_swab()
     test_getpid()

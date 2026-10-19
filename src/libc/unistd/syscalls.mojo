@@ -9,14 +9,104 @@ from std.memory import Pointer
 from libc.constant import c_int, c_long, c_ptr
 
 
-# Which knob `sysconf` is asked about: 30 here and 29 on Darwin. C spells
-# it `_SC_PAGESIZE`, and a leading underscore makes a name private to a Mojo
-# module, so it is `SC_PAGESIZE` here.
 # The number `syscall` takes for `getpid`. Linux numbers it 39 and
 # Darwin 20.
 comptime SYS_getpid: Int64 = 20 if CompilationTarget.is_macos() else 39
 
+
+# Which knob `sysconf` is asked about. Every one of the eighty both
+# platforms have is numbered differently on each: glibc counts them from
+# 0 in the order POSIX lists them, XNU from 1 in an order of its own, so
+# `_SC_ARG_MAX` is 0 here and 1 there, `_SC_PAGESIZE` 30 and 29, and
+# `_SC_NPROCESSORS_ONLN` 84 and 58. Nothing agrees, which is why a
+# caller asking `sysconf` about anything has to be given the name.
+#
+# C spells these with a leading underscore, which makes a name private to
+# a Mojo module, so it is `SC_ARG_MAX` here.
+#
+# `_SC_AVPHYS_PAGES` is left out: glibc has it and XNU does not, and a
+# knob that only one side answers is a knob this package would be
+# claiming to bind.
+comptime SC_2_CHAR_TERM: Int32 = 20 if CompilationTarget.is_macos() else 95
+comptime SC_2_C_BIND: Int32 = 18 if CompilationTarget.is_macos() else 47
+comptime SC_2_C_DEV: Int32 = 19 if CompilationTarget.is_macos() else 48
+comptime SC_2_FORT_DEV: Int32 = 21 if CompilationTarget.is_macos() else 49
+comptime SC_2_FORT_RUN: Int32 = 22 if CompilationTarget.is_macos() else 50
+comptime SC_2_LOCALEDEF: Int32 = 23 if CompilationTarget.is_macos() else 52
+comptime SC_2_SW_DEV: Int32 = 24 if CompilationTarget.is_macos() else 51
+comptime SC_2_UPE: Int32 = 25 if CompilationTarget.is_macos() else 97
+comptime SC_2_VERSION: Int32 = 17 if CompilationTarget.is_macos() else 46
+comptime SC_AIO_LISTIO_MAX: Int32 = 42 if CompilationTarget.is_macos() else 23
+comptime SC_AIO_MAX: Int32 = 43 if CompilationTarget.is_macos() else 24
+comptime SC_AIO_PRIO_DELTA_MAX: Int32 = 44 if CompilationTarget.is_macos() else 25
+comptime SC_ARG_MAX: Int32 = 1 if CompilationTarget.is_macos() else 0
+comptime SC_ASYNCHRONOUS_IO: Int32 = 28 if CompilationTarget.is_macos() else 12
+comptime SC_ATEXIT_MAX: Int32 = 107 if CompilationTarget.is_macos() else 87
+comptime SC_BC_BASE_MAX: Int32 = 9 if CompilationTarget.is_macos() else 36
+comptime SC_BC_DIM_MAX: Int32 = 10 if CompilationTarget.is_macos() else 37
+comptime SC_BC_SCALE_MAX: Int32 = 11 if CompilationTarget.is_macos() else 38
+comptime SC_BC_STRING_MAX: Int32 = 12 if CompilationTarget.is_macos() else 39
+comptime SC_CHILD_MAX: Int32 = 2 if CompilationTarget.is_macos() else 1
+comptime SC_CLK_TCK: Int32 = 3 if CompilationTarget.is_macos() else 2
+comptime SC_COLL_WEIGHTS_MAX: Int32 = 13 if CompilationTarget.is_macos() else 40
+comptime SC_DELAYTIMER_MAX: Int32 = 45 if CompilationTarget.is_macos() else 26
+comptime SC_EXPR_NEST_MAX: Int32 = 14 if CompilationTarget.is_macos() else 42
+comptime SC_FSYNC: Int32 = 38 if CompilationTarget.is_macos() else 15
+comptime SC_GETGR_R_SIZE_MAX: Int32 = 70 if CompilationTarget.is_macos() else 69
+comptime SC_GETPW_R_SIZE_MAX: Int32 = 71 if CompilationTarget.is_macos() else 70
+comptime SC_HOST_NAME_MAX: Int32 = 72 if CompilationTarget.is_macos() else 180
+comptime SC_IOV_MAX: Int32 = 56 if CompilationTarget.is_macos() else 60
+comptime SC_JOB_CONTROL: Int32 = 6 if CompilationTarget.is_macos() else 7
+comptime SC_LINE_MAX: Int32 = 15 if CompilationTarget.is_macos() else 43
+comptime SC_LOGIN_NAME_MAX: Int32 = 73 if CompilationTarget.is_macos() else 71
+comptime SC_MAPPED_FILES: Int32 = 47 if CompilationTarget.is_macos() else 16
+comptime SC_MEMLOCK: Int32 = 30 if CompilationTarget.is_macos() else 17
+comptime SC_MEMLOCK_RANGE: Int32 = 31 if CompilationTarget.is_macos() else 18
+comptime SC_MEMORY_PROTECTION: Int32 = 32 if CompilationTarget.is_macos() else 19
+comptime SC_MESSAGE_PASSING: Int32 = 33 if CompilationTarget.is_macos() else 20
+comptime SC_MQ_OPEN_MAX: Int32 = 46 if CompilationTarget.is_macos() else 27
+comptime SC_MQ_PRIO_MAX: Int32 = 75 if CompilationTarget.is_macos() else 28
+comptime SC_NGROUPS_MAX: Int32 = 4 if CompilationTarget.is_macos() else 3
+comptime SC_NPROCESSORS_CONF: Int32 = 57 if CompilationTarget.is_macos() else 83
+comptime SC_NPROCESSORS_ONLN: Int32 = 58 if CompilationTarget.is_macos() else 84
+comptime SC_OPEN_MAX: Int32 = 5 if CompilationTarget.is_macos() else 4
 comptime SC_PAGESIZE: Int32 = 29 if CompilationTarget.is_macos() else 30
+comptime SC_PHYS_PAGES: Int32 = 200 if CompilationTarget.is_macos() else 85
+comptime SC_PRIORITIZED_IO: Int32 = 34 if CompilationTarget.is_macos() else 13
+comptime SC_PRIORITY_SCHEDULING: Int32 = 35 if CompilationTarget.is_macos() else 10
+comptime SC_REALTIME_SIGNALS: Int32 = 36 if CompilationTarget.is_macos() else 9
+comptime SC_RE_DUP_MAX: Int32 = 16 if CompilationTarget.is_macos() else 44
+comptime SC_RTSIG_MAX: Int32 = 48 if CompilationTarget.is_macos() else 31
+comptime SC_SAVED_IDS: Int32 = 7 if CompilationTarget.is_macos() else 8
+comptime SC_SEMAPHORES: Int32 = 37 if CompilationTarget.is_macos() else 21
+comptime SC_SEM_NSEMS_MAX: Int32 = 49 if CompilationTarget.is_macos() else 32
+comptime SC_SEM_VALUE_MAX: Int32 = 50 if CompilationTarget.is_macos() else 33
+comptime SC_SHARED_MEMORY_OBJECTS: Int32 = 39 if CompilationTarget.is_macos() else 22
+comptime SC_SIGQUEUE_MAX: Int32 = 51 if CompilationTarget.is_macos() else 34
+comptime SC_STREAM_MAX: Int32 = 26 if CompilationTarget.is_macos() else 5
+comptime SC_SYMLOOP_MAX: Int32 = 120 if CompilationTarget.is_macos() else 173
+comptime SC_SYNCHRONIZED_IO: Int32 = 40 if CompilationTarget.is_macos() else 14
+comptime SC_THREAD_ATTR_STACKADDR: Int32 = 82 if CompilationTarget.is_macos() else 77
+comptime SC_THREAD_ATTR_STACKSIZE: Int32 = 83 if CompilationTarget.is_macos() else 78
+comptime SC_THREAD_DESTRUCTOR_ITERATIONS: Int32 = 85 if CompilationTarget.is_macos() else 73
+comptime SC_THREAD_KEYS_MAX: Int32 = 86 if CompilationTarget.is_macos() else 74
+comptime SC_THREAD_PRIORITY_SCHEDULING: Int32 = 89 if CompilationTarget.is_macos() else 79
+comptime SC_THREAD_PRIO_INHERIT: Int32 = 87 if CompilationTarget.is_macos() else 80
+comptime SC_THREAD_PRIO_PROTECT: Int32 = 88 if CompilationTarget.is_macos() else 81
+comptime SC_THREAD_PROCESS_SHARED: Int32 = 90 if CompilationTarget.is_macos() else 82
+comptime SC_THREAD_SAFE_FUNCTIONS: Int32 = 91 if CompilationTarget.is_macos() else 68
+comptime SC_THREAD_STACK_MIN: Int32 = 93 if CompilationTarget.is_macos() else 75
+comptime SC_THREAD_THREADS_MAX: Int32 = 94 if CompilationTarget.is_macos() else 76
+comptime SC_TIMERS: Int32 = 41 if CompilationTarget.is_macos() else 11
+comptime SC_TIMER_MAX: Int32 = 52 if CompilationTarget.is_macos() else 35
+comptime SC_TTY_NAME_MAX: Int32 = 101 if CompilationTarget.is_macos() else 72
+comptime SC_TZNAME_MAX: Int32 = 27 if CompilationTarget.is_macos() else 6
+comptime SC_VERSION: Int32 = 8 if CompilationTarget.is_macos() else 29
+comptime SC_XOPEN_CRYPT: Int32 = 108 if CompilationTarget.is_macos() else 92
+comptime SC_XOPEN_ENH_I18N: Int32 = 109 if CompilationTarget.is_macos() else 93
+comptime SC_XOPEN_SHM: Int32 = 113 if CompilationTarget.is_macos() else 94
+comptime SC_XOPEN_VERSION: Int32 = 116 if CompilationTarget.is_macos() else 89
+comptime SC_XOPEN_XCU_VERSION: Int32 = 121 if CompilationTarget.is_macos() else 90
 
 
 # Which knob `pathconf` and `fpathconf` are asked about. The numbers are
