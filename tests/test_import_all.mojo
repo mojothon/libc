@@ -529,6 +529,17 @@ def bring_in_libc_pwd():
     )
 
 
+def bring_in_libc_regex():
+    from libc.regex import (
+        regcomp,
+        regerror,
+        regex_t,
+        regexec,
+        regfree,
+        regmatch_t,
+    )
+
+
 def bring_in_libc_sched():
     from libc.sched import (
         SCHED_FIFO,
@@ -1094,6 +1105,7 @@ def main() raises:
     bring_in_libc_poll()
     bring_in_libc_pthread()
     bring_in_libc_pwd()
+    bring_in_libc_regex()
     bring_in_libc_sched()
     bring_in_libc_search()
     bring_in_libc_setjmp()

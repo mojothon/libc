@@ -53,6 +53,24 @@ All notable changes to this project are documented here. The format follows
   address is taken as bytes rather than as a `socketaddr`, because it is
   the family in its first bytes that says which kind it is.
   `libc.netdb` goes from 21 to 29.
+- **`libc.regex` is new: `regcomp`, `regexec`, `regerror`, `regfree`, and
+  the two structs and twenty `REG_*` that go with them.** Compiling a
+  pattern once and matching it many times, which nothing else here could
+  do. Two of the compile flags are numbered differently — glibc gave the
+  bit after `REG_ICASE` to `REG_NEWLINE` and XNU gave it to `REG_NOSUB`,
+  so they are named rather than written down — but the thirteen error
+  numbers are **the same on both platforms**, which is the opposite of
+  what `EAI_*` turned out to be. `regmatch_t` is not the same size on the
+  two: its members are a `regoff_t`, which is a thirty-two-bit int on
+  glibc and a sixty-four-bit `__darwin_off_t` on XNU, so it is eight
+  bytes here and sixteen there and read out at whichever width is in
+  play. `REG_NEWLINE` is tested by what it does to `^` rather than by
+  what number it is, because the number is the thing that differs.
+  `libc.regex` starts at 26.
+- **`libc.netdb` is listed in `test_import_all`.** Every sub-package is
+  imported there so the linker has to resolve each symbol, which is how
+  a name one platform does not export fails in a test rather than in a
+  caller; adding that package last round left it out of the list.
 
 ## [0.12.0] - 2026-10-19
 

@@ -32,6 +32,7 @@ the bottom.
 | `libc.sys.resource` | `<sys/resource.h>` | 15 |
 | `libc.network` | `<arpa/inet.h>` byte order and address conversion | 6 |
 | `libc.netdb` | `<netdb.h>` name and service lookup | 29 |
+| `libc.regex` | `<regex.h>` POSIX regular expressions | 26 |
 | `libc.logging` | `<syslog.h>` | 6 |
 | `libc.fcntl` | `<fcntl.h>` | 49 |
 | `libc.dlfcn` | `<dlfcn.h>` | 7 |

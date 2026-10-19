@@ -34,10 +34,11 @@ from test_inttypes import main as run_inttypes
 from test_layout import main as run_layout
 from test_locale import main as run_locale
 from test_math import main as run_math
-from test_network import main as run_network
 from test_netdb import main as run_netdb
+from test_network import main as run_network
 from test_poll import main as run_poll
 from test_pwd import main as run_pwd
+from test_regex import main as run_regex
 from test_resource import main as run_resource
 from test_search import main as run_search
 from test_stdio import main as run_stdio
@@ -81,10 +82,11 @@ def main() raises:
     run_layout()
     run_locale()
     run_math()
-    run_network()
     run_netdb()
+    run_network()
     run_poll()
     run_pwd()
+    run_regex()
     run_resource()
     run_search()
     run_stdio()
