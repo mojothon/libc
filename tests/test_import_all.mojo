@@ -297,6 +297,12 @@ def bring_in_libc_float():
     )
 
 
+def bring_in_libc_fnmatch():
+    from libc.fnmatch import (
+        fnmatch,
+    )
+
+
 def bring_in_libc_glob():
     from libc.glob import (
         glob,
@@ -314,6 +320,13 @@ def bring_in_libc_inttypes():
         strtoumax,
         wcstoimax,
         wcstoumax,
+    )
+
+
+def bring_in_libc_libgen():
+    from libc.libgen import (
+        basename,
+        dirname,
     )
 
 
@@ -1104,8 +1117,10 @@ def main() raises:
     bring_in_libc_fenv()
     bring_in_libc_file()
     bring_in_libc_float()
+    bring_in_libc_fnmatch()
     bring_in_libc_glob()
     bring_in_libc_inttypes()
+    bring_in_libc_libgen()
     bring_in_libc_locale()
     bring_in_libc_logging()
     bring_in_libc_math()

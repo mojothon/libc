@@ -83,6 +83,22 @@ All notable changes to this project are documented here. The format follows
   XNU's, and none of the four is bound rather than faked. In `glob_t` the
   vector of paths is at 8 on glibc and 32 on XNU, the other three members
   agree, so the four are read by method. `libc.glob` starts at 18.
+- **`libc.fnmatch` is new: `fnmatch` and the five `FNM_*` flags both
+  platforms have.** The question `glob` asks of every name, asked of one
+  name at a time. `FNM_NOESCAPE` and `FNM_PATHNAME` trade numbers between
+  glibc and XNU — 1 and 2 against 2 and 1 — while `FNM_PERIOD`,
+  `FNM_LEADING_DIR`, `FNM_CASEFOLD` and the `FNM_NOMATCH` answer happen
+  to agree; `FNM_EXTMATCH` is glibc's alone and is not here.
+  `libc.fnmatch` starts at 7.
+- **`libc.libgen` is new: `basename` and `dirname`, the two halves of
+  cutting a path in two.** The first binding in the package that had to
+  change which *symbol* it calls: glibc's `<libgen.h>` declares
+  `__xpg_basename` and renames it `basename` with a macro, because the
+  `basename` in its libc.so is the GNU one from `<string.h>`, and the two
+  differ on `/usr/lib/` — POSIX trims the trailing slash, GNU does not.
+  An `external_call` has no macros, so glibc is asked for
+  `__xpg_basename` by name and XNU for `basename`, whose one symbol is
+  POSIX's. `libc.libgen` starts at 2.
 
 ## [0.12.0] - 2026-10-19
 

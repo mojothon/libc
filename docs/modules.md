@@ -34,6 +34,8 @@ the bottom.
 | `libc.netdb` | `<netdb.h>` name and service lookup | 29 |
 | `libc.regex` | `<regex.h>` POSIX regular expressions | 26 |
 | `libc.glob` | `<glob.h>` pathname matching | 18 |
+| `libc.fnmatch` | `<fnmatch.h>` matching a single name | 7 |
+| `libc.libgen` | `<libgen.h>` cutting a path in two | 2 |
 | `libc.logging` | `<syslog.h>` | 6 |
 | `libc.fcntl` | `<fcntl.h>` | 49 |
 | `libc.dlfcn` | `<dlfcn.h>` | 7 |

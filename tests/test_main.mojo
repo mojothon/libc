@@ -30,9 +30,11 @@ from test_sendfile import main as run_sendfile
 from test_errno import main as run_errno
 from test_fenv import main as run_fenv
 from test_float import main as run_float
+from test_fnmatch import main as run_fnmatch
 from test_glob import main as run_glob
 from test_inttypes import main as run_inttypes
 from test_layout import main as run_layout
+from test_libgen import main as run_libgen
 from test_locale import main as run_locale
 from test_math import main as run_math
 from test_netdb import main as run_netdb
@@ -79,9 +81,11 @@ def main() raises:
     run_errno()
     run_fenv()
     run_float()
+    run_fnmatch()
     run_glob()
     run_inttypes()
     run_layout()
+    run_libgen()
     run_locale()
     run_math()
     run_netdb()
