@@ -297,6 +297,14 @@ def bring_in_libc_float():
     )
 
 
+def bring_in_libc_glob():
+    from libc.glob import (
+        glob,
+        glob_t,
+        globfree,
+    )
+
+
 def bring_in_libc_inttypes():
     from libc.inttypes import (
         imaxabs,
@@ -1096,6 +1104,7 @@ def main() raises:
     bring_in_libc_fenv()
     bring_in_libc_file()
     bring_in_libc_float()
+    bring_in_libc_glob()
     bring_in_libc_inttypes()
     bring_in_libc_locale()
     bring_in_libc_logging()

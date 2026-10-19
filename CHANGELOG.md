@@ -71,6 +71,18 @@ All notable changes to this project are documented here. The format follows
   imported there so the linker has to resolve each symbol, which is how
   a name one platform does not export fails in a test rather than in a
   caller; adding that package last round left it out of the list.
+- **`libc.glob` is new: `glob`, `globfree`, the `glob_t` they use, and
+  the twelve `GLOB_*` flags and three answers both platforms have.**
+  This is what a shell means by `*.txt`, available without a shell. It
+  is also the worst agreement between the platforms found so far: of the
+  twelve flags **only `GLOB_NOCHECK` and `GLOB_MAGCHAR` carry the same
+  number across**, `GLOB_NOESCAPE` being 64 on glibc and 8192 on XNU, and
+  the three answers are positive here and negative there, so
+  `GLOB_NOMATCH` is 3 on one and -3 on the other. `GLOB_PERIOD` and
+  `GLOB_ONLYDIR` are glibc's alone and `GLOB_QUOTE` and `GLOB_LIMIT` are
+  XNU's, and none of the four is bound rather than faked. In `glob_t` the
+  vector of paths is at 8 on glibc and 32 on XNU, the other three members
+  agree, so the four are read by method. `libc.glob` starts at 18.
 
 ## [0.12.0] - 2026-10-19
 
