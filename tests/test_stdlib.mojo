@@ -547,7 +547,7 @@ def test_one_character_at_a_time() raises:
 
     var empty = string_to_char_ptr("")
     assert_equal(
-        mblen(empty, 0), 0, "and nothing at all at the end of a string"
+        mblen(empty, 1), 0, "and nothing at all at the end of a string"
     )
 
     var out = unsafe_alloc[c_wchar](1)
@@ -556,9 +556,12 @@ def test_one_character_at_a_time() raises:
         Int(out.unsafe_load(0)), 97, "and this is the character it read"
     )
 
-    # A null string puts the state back at the beginning.
-    assert_equal(
-        mbtowc(out, null_ptr[c_char](), 0), 0, "a null string resets it"
+    # A null string puts the state back at the beginning. What comes
+    # back of that is the platform's own to say, so it is held only to
+    # not being an error: glibc hands back 0 for an encoding with no
+    # state, and Darwin does not have to agree.
+    assert_true(
+        mbtowc(out, null_ptr[c_char](), 0) >= 0, "a null string resets it"
     )
 
     var back = unsafe_alloc[UInt8](8)
@@ -567,8 +570,8 @@ def test_one_character_at_a_time() raises:
     assert_equal(
         char_ptr_to_string(back), "a", "and this is the character it wrote"
     )
-    assert_equal(
-        wctomb(null_ptr[c_char](), 97), 0, "and a null pointer resets it too"
+    assert_true(
+        wctomb(null_ptr[c_char](), 97) >= 0, "and a null pointer resets it too"
     )
 
     back.unsafe_free()
