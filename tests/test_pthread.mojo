@@ -41,14 +41,19 @@ from libc.pthread import (
     pthread_attr_t,
     pthread_condattr_t,
     pthread_equal,
+    pthread_getspecific,
+    pthread_key_create,
+    pthread_key_delete,
+    pthread_key_t,
     pthread_self,
     pthread_setcancelstate,
     pthread_setcanceltype,
+    pthread_setspecific,
     pthread_testcancel,
     pthread_t,
 )
 from libc.sched import SCHED_OTHER, sched_param
-from libc.utils import null_ptr
+from libc.utils import is_null, null_ptr
 
 # A megabyte of stack and one page in front of it: more than any of them
 # ask for, which is what keeps the numbers from being the thing tested.
@@ -320,6 +325,68 @@ def test_which_thread_and_whether_it_may_end() raises:
     old.unsafe_free()
 
 
+def test_a_slot_of_its_own() raises:
+    """`pthread_key_create` has the library set aside a slot this
+    thread may keep one thing in, `pthread_setspecific` puts a thing
+    there and `pthread_getspecific` reads it back, and
+    `pthread_key_delete` gives the slot away again.
+
+    What is asked of `pthread_getspecific` is not only that it hands
+    back what was put in but that a slot nobody has put anything in
+    answers nothing. That is the half that makes the first half worth
+    asking: a call that answered whatever it happened to find would
+    still hand back what was just written, since it is the same place
+    either way, and only the empty slot tells the two apart.
+
+    The destructor that `pthread_key_create` takes is `null_ptr` here,
+    which is to say that nothing is done with the value when the
+    thread ends. A Mojo closure cannot be made into a C function
+    pointer, so this is the only thing that can be given, and it is
+    what the binding says in its own notes.
+    """
+    var key = unsafe_alloc[pthread_key_t](1)
+    assert_equal(
+        pthread_key_create(key, null_ptr[UInt8]()),
+        0,
+        "pthread_key_create hands out a key",
+    )
+
+    assert_true(
+        is_null(pthread_getspecific(key.unsafe_offset(0)[])),
+        "and the slot it names starts out holding nothing",
+    )
+
+    var thing = unsafe_alloc[UInt8](1)
+    assert_equal(
+        pthread_setspecific(key.unsafe_offset(0)[], thing),
+        0,
+        "pthread_setspecific puts something in it, and",
+    )
+    assert_true(
+        pthread_getspecific(key.unsafe_offset(0)[]) == thing,
+        "pthread_getspecific hands back the very thing that went in",
+    )
+
+    assert_equal(
+        pthread_setspecific(key.unsafe_offset(0)[], null_ptr[UInt8]()),
+        0,
+        "pthread_setspecific takes it out again, and",
+    )
+    assert_true(
+        is_null(pthread_getspecific(key.unsafe_offset(0)[])),
+        "nothing is what is there after",
+    )
+
+    assert_equal(
+        pthread_key_delete(key.unsafe_offset(0)[]),
+        0,
+        "pthread_key_delete gives the slot back",
+    )
+
+    thing.unsafe_free()
+    key.unsafe_free()
+
+
 def test_the_one_that_is_left() raises:
     """`pthread_condattr_destroy` takes back a condition attribute
     object. One is filled with zeroes here rather than left as it was
@@ -345,5 +412,6 @@ def main() raises:
     test_the_attribute_object()
     test_the_scheduling_settings()
     test_which_thread_and_whether_it_may_end()
+    test_a_slot_of_its_own()
     test_the_one_that_is_left()
     print("test_pthread: ok")

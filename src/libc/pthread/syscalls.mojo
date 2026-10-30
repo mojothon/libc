@@ -2085,3 +2085,132 @@ def pthread_testcancel() raises:
         at this line rather than carrying on.
     """
     external_call["pthread_testcancel", NoneType]()
+
+
+# A key is a number the library hands out rather than a pointer to
+# anything, and it is a different width on the two platforms: an
+# `unsigned int` on glibc and an `unsigned long` here. It is called by
+# whichever of the two this one uses, that being what the calls take,
+# and it is not wrapped in anything, since there is nothing to hide:
+# a key is passed around and compared with nothing, and the only calls
+# it answers to are the four in this group.
+comptime pthread_key_t = UInt64 if CompilationTarget.is_macos() else UInt32
+
+
+def pthread_key_create(
+    key: c_ptr[pthread_key_t], destructor: c_ptr[UInt8]
+) -> Int32:
+    """C library <pthread.h> function `pthread_key_create`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_key_create.3.html
+
+    Prototype:
+        int pthread_key_create(pthread_key_t *key, void (*)(void *));
+
+    Description:
+        Has the library set aside a slot this thread may keep one
+        thing in, and hands back the key that names it.
+
+    Args:
+        key: Where the new key is written.
+        destructor: What is to be done with what is in the slot when
+            the thread ends. A Mojo closure cannot be made into a C
+            function pointer, so what goes here is
+            `null_ptr[UInt8]()`, which is to say nothing at all: the
+            value is left where it is when the thread ends.
+
+    Returns:
+        0 on success, `EAGAIN` where the library is out of keys, or
+        `ENOMEM` where it cannot make another.
+
+    Notes:
+        The slot starts out holding nothing, and every thread has its
+        own under the same key. `pthread_key_delete` gives it back.
+    """
+    return external_call[
+        "pthread_key_create", Int32, c_ptr[pthread_key_t], c_ptr[UInt8]
+    ](key, destructor)
+
+
+def pthread_getspecific(key: pthread_key_t) -> c_ptr[UInt8]:
+    """C library <pthread.h> function `pthread_getspecific`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_getspecific.3.html
+
+    Prototype:
+        void *pthread_getspecific(pthread_key_t key);
+
+    Description:
+        Reads what this thread has put in the slot `key` names.
+
+    Args:
+        key: The key `pthread_key_create` handed back.
+
+    Returns:
+        What was put there, or NULL where nothing was: every thread
+        starts with nothing in it. `is_null` is how it is asked.
+    """
+    return external_call["pthread_getspecific", c_ptr[UInt8], pthread_key_t](
+        key
+    )
+
+
+def pthread_setspecific(key: pthread_key_t, value: c_ptr[UInt8]) -> Int32:
+    """C library <pthread.h> function `pthread_setspecific`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_setspecific.3.html
+
+    Prototype:
+        int pthread_setspecific(pthread_key_t key, const void *value);
+
+    Description:
+        Puts one thing in the slot `key` names, for this thread.
+
+    Args:
+        key: The key `pthread_key_create` handed back.
+        value: What to put there, or `null_ptr[UInt8]()` for nothing.
+
+    Returns:
+        0 on success, or `ENOMEM` where the library has no room.
+
+    Notes:
+        What is in the slot is a pointer and is not copied, and
+        nothing happens to whatever was there before. Where a
+        destructor was given to `pthread_key_create`, the thread's
+        ending is what calls it; giving nothing there, as is the only
+        thing that can be done from Mojo, means the value is left
+        alone when the thread ends.
+    """
+    return external_call[
+        "pthread_setspecific", Int32, pthread_key_t, c_ptr[UInt8]
+    ](key, value)
+
+
+def pthread_key_delete(key: pthread_key_t) -> Int32:
+    """C library <pthread.h> function `pthread_key_delete`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_key_delete.3.html
+
+    Prototype:
+        int pthread_key_delete(pthread_key_t key);
+
+    Description:
+        Gives the slot `key` names back to the library.
+
+    Args:
+        key: The key `pthread_key_create` handed back.
+
+    Returns:
+        0 on success, or `EINVAL` where the key is not one that was
+        handed out.
+
+    Notes:
+        Whatever the thread had in the slot is not disposed of here,
+        and no destructor runs: a thread that kept something in it is
+        to see to that itself first.
+    """
+    return external_call["pthread_key_delete", Int32, pthread_key_t](key)
