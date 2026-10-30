@@ -649,3 +649,178 @@ def renameat(
     return external_call[
         "renameat", c_int, c_int, c_ptr[c_char], c_int, c_ptr[c_char]
     ](olddirfd, oldpath, newdirfd, newpath)
+
+
+def getc_unlocked(stream: c_ptr[FILE]) -> c_int:
+    """Libc POSIX `getc_unlocked` function.
+
+    Description:
+        Reads one byte from a stream without taking its lock.
+
+    Args:
+        stream: The stream to read from.
+
+    Returns:
+        The byte, or `EOF` at the end of it or on error.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getc_unlocked.3.html).
+        Fn signature: `int getc_unlocked(FILE *stream)`.
+
+        The lock is not taken, which is the point of it and also the
+        whole of what is asked of the caller: nothing else may be
+        using the stream at the time. `flockfile` and `funlockfile`
+        are what hold it around a run of these.
+    """
+    return external_call["getc_unlocked", c_int, c_ptr[FILE]](stream)
+
+
+def putc_unlocked(c: c_int, stream: c_ptr[FILE]) -> c_int:
+    """Libc POSIX `putc_unlocked` function.
+
+    Description:
+        Writes one byte to a stream without taking its lock.
+
+    Args:
+        c: The byte to write.
+        stream: The stream to write it to.
+
+    Returns:
+        The byte written, or `EOF` on error.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/putc_unlocked.3.html).
+        Fn signature: `int putc_unlocked(int c, FILE *stream)`.
+
+        The lock is not taken, so it is on the caller that nothing
+        else is using the stream.
+    """
+    return external_call["putc_unlocked", c_int, c_int, c_ptr[FILE]](c, stream)
+
+
+def getchar_unlocked() -> c_int:
+    """Libc POSIX `getchar_unlocked` function.
+
+    Description:
+        Reads one byte from standard input without taking its lock.
+
+    Returns:
+        The byte, or `EOF` at the end of it or on error.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getchar_unlocked.3.html).
+        Fn signature: `int getchar_unlocked(void)`.
+
+        Bound and not called: what comes in on standard input is not
+        a test's to say, and a test that asked would wait.
+    """
+    return external_call["getchar_unlocked", c_int]()
+
+
+def putchar_unlocked(c: c_int) -> c_int:
+    """Libc POSIX `putchar_unlocked` function.
+
+    Description:
+        Writes one byte to standard output without taking its lock.
+
+    Args:
+        c: The byte to write.
+
+    Returns:
+        The byte written, or `EOF` on error.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/putchar_unlocked.3.html).
+        Fn signature: `int putchar_unlocked(int c)`.
+
+        Bound and not called: a test that wrote to the terminal would
+        be writing to the terminal.
+    """
+    return external_call["putchar_unlocked", c_int, c_int](c)
+
+
+def clearerr_unlocked(stream: c_ptr[FILE]):
+    """Libc POSIX `clearerr_unlocked` function.
+
+    Description:
+        Clears the end-of-file and error marks on a stream, without
+        taking its lock.
+
+    Args:
+        stream: The stream to clear them on.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/clearerr_unlocked.3.html).
+        Fn signature: `void clearerr_unlocked(FILE *stream)`.
+    """
+    external_call["clearerr_unlocked", NoneType, c_ptr[FILE]](stream)
+
+
+def feof_unlocked(stream: c_ptr[FILE]) -> c_int:
+    """Libc POSIX `feof_unlocked` function.
+
+    Description:
+        Says whether the end of a stream has been read, without
+        taking its lock.
+
+    Args:
+        stream: The stream to ask about.
+
+    Returns:
+        Something other than 0 where the end has been read, and 0
+        where it has not.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/feof_unlocked.3.html).
+        Fn signature: `int feof_unlocked(FILE *stream)`.
+
+        The mark is set by a read that found nothing left, so this
+        says something about the read before it and nothing about
+        what is to come.
+    """
+    return external_call["feof_unlocked", c_int, c_ptr[FILE]](stream)
+
+
+def ferror_unlocked(stream: c_ptr[FILE]) -> c_int:
+    """Libc POSIX `ferror_unlocked` function.
+
+    Description:
+        Says whether a stream has been marked as having failed,
+        without taking its lock.
+
+    Args:
+        stream: The stream to ask about.
+
+    Returns:
+        Something other than 0 where it has, and 0 where it has not.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/ferror_unlocked.3.html).
+        Fn signature: `int ferror_unlocked(FILE *stream)`.
+
+        `clearerr_unlocked` is what takes the mark off again.
+    """
+    return external_call["ferror_unlocked", c_int, c_ptr[FILE]](stream)
+
+
+def fileno_unlocked(stream: c_ptr[FILE]) -> c_int:
+    """Libc POSIX `fileno_unlocked` function.
+
+    Description:
+        Says which descriptor a stream is reading from or writing to,
+        without taking its lock.
+
+    Args:
+        stream: The stream to ask about.
+
+    Returns:
+        The descriptor, or -1 on error, with `errno` saying why.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/fileno_unlocked.3.html).
+        Fn signature: `int fileno_unlocked(FILE *stream)`.
+
+        The descriptor is the stream's own, and closing it out from
+        under the stream is not a thing to do: `fclose` closes both.
+    """
+    return external_call["fileno_unlocked", c_int, c_ptr[FILE]](stream)

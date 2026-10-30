@@ -20,16 +20,22 @@ from libc.file import (
 )
 from libc.stdio import (
     IOFBF,
+    clearerr_unlocked,
+    feof_unlocked,
+    ferror_unlocked,
     fileno,
+    fileno_unlocked,
     flockfile,
     ftrylockfile,
     funlockfile,
     fwrite,
     getc,
+    getc_unlocked,
     getw,
     pclose,
     popen,
     putc,
+    putc_unlocked,
     putchar,
     putw,
     remove,
@@ -255,6 +261,58 @@ def test_setbuf_and_tmpnam() raises:
     name.unsafe_free()
 
 
+def test_the_unlocked_spellings() raises:
+    """`getc_unlocked` and `putc_unlocked` move one byte to and from
+    a stream without taking its lock, and `feof_unlocked`,
+    `ferror_unlocked`, `fileno_unlocked` and `clearerr_unlocked` ask
+    about one without taking it either.
+
+    The stream is one `tmpfile` makes. Two bytes are written, and the
+    stream is put back to its start before they are read, which is
+    what a round trip through a file needs: writing leaves the stream
+    at the end, and reading from there would find nothing.
+
+    The end mark is asked about before and after. It is 0 first and
+    something else once a read has hit the end, which is the one
+    thing here that could not be true of a call that asked some other
+    question — the error mark stays 0 the whole way through, and is
+    asked for to say that the end mark is not it.
+
+    `getchar_unlocked` and `putchar_unlocked` are bound and not
+    called, being the two that go to the terminal.
+    """
+    var stream = tmpfile()
+    assert_true(Int(UInt(stream)) != 0, "tmpfile hands back a stream")
+
+    assert_true(Int(fileno_unlocked(stream)) >= 0, "and it has a descriptor")
+
+    assert_equal(ferror_unlocked(stream), 0, "no error is marked on it yet")
+    assert_equal(feof_unlocked(stream), 0, "and neither is the end")
+
+    assert_equal(putc_unlocked(65, stream), 65, "A goes into the stream")
+    assert_equal(putc_unlocked(66, stream), 66, "and B after it")
+
+    _ = rewind(stream)
+    assert_equal(getc_unlocked(stream), 65, "A comes back out of it")
+    assert_equal(getc_unlocked(stream), 66, "and B after it")
+
+    assert_equal(feof_unlocked(stream), 0, "the end is not marked yet, and")
+    assert_equal(
+        getc_unlocked(stream), -1, "there is nothing after B, which is EOF"
+    )
+    assert_true(
+        Int(feof_unlocked(stream)) != 0, "and now the end is marked on it"
+    )
+    assert_equal(
+        ferror_unlocked(stream), 0, "the error mark is not the end mark"
+    )
+
+    clearerr_unlocked(stream)
+    assert_equal(feof_unlocked(stream), 0, "clearerr takes the end mark off")
+
+    assert_equal(fclose(stream), 0, "the stream is closed")
+
+
 def main() raises:
     test_tmpfile_roundtrip()
     test_rename_and_remove()
@@ -267,4 +325,5 @@ def main() raises:
     test_getdelim()
     test_the_two_that_write_one_character()
     test_setbuf_and_tmpnam()
+    test_the_unlocked_spellings()
     print("test_stdio: ok")

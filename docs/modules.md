@@ -19,7 +19,7 @@ the bottom.
 | `libc.sys.mman` | `<sys/mman.h>` | 15 |
 | `libc.pthread` | `<pthread.h>` | 96 |
 | `libc.string` | `<string.h>` | 45 |
-| `libc.stdio` | `<stdio.h>` output, buffering, pipes | 28 |
+| `libc.stdio` | `<stdio.h>` output, buffering, pipes | 36 |
 | `libc.complex` | `<complex.h>` | 46 |
 | `libc.sched` | `<sched.h>` | 15 |
 | `libc.signal` | `<signal.h>` | 40 |
