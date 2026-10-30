@@ -5,7 +5,7 @@
 # ----------------------------------
 from std.ffi import external_call
 from std.memory import Pointer
-from libc.constant import c_int, c_long, c_longlong, c_ptr, c_size_t
+from libc.constant import c_char, c_int, c_long, c_longlong, c_ptr, c_size_t
 
 
 @inline(.nodebug)
@@ -957,3 +957,165 @@ def ffsll(i: c_longlong) -> c_int:
         Fn signature: `int ffsll(long long i)`.
     """
     return external_call["ffsll", c_int, c_longlong](i)
+
+
+def bcmp(s1: c_ptr[UInt8], s2: c_ptr[UInt8], n: c_size_t) -> c_int:
+    """Libc BSD `bcmp` function.
+
+    Description:
+        Compares two blocks of bytes.
+
+    Args:
+        s1: The first block.
+        s2: The second block.
+        n: How many bytes to compare.
+
+    Returns:
+        0 where the blocks are the same over those bytes, and
+        something else where they are not.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/bcmp.3.html).
+        Fn signature: `int bcmp(const void *s1, const void *s2,
+            size_t n)`.
+
+        `memcmp` is this same comparison under a name the standard
+        keeps; this one is the BSD one and is declared in
+        `<strings.h>`, not `<string.h>`.
+    """
+    return external_call["bcmp", c_int, c_ptr[UInt8], c_ptr[UInt8], c_size_t](
+        s1, s2, n
+    )
+
+
+def bcopy(src: c_ptr[UInt8], dest: c_ptr[UInt8], n: c_size_t):
+    """Libc BSD `bcopy` function.
+
+    Description:
+        Copies `n` bytes from one block to another.
+
+    Args:
+        src: Where to copy from.
+        dest: Where to copy to.
+        n: How many bytes to copy.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/bcopy.3.html).
+        Fn signature: `void bcopy(const void *src, void *dest,
+            size_t n)`.
+
+        The two arguments are the other way round from `memcpy`'s,
+        which takes its destination first. Blocks that overlap come
+        out whole, which is what `memmove` promises and `memcpy`
+        does not.
+    """
+    external_call["bcopy", NoneType, c_ptr[UInt8], c_ptr[UInt8], c_size_t](
+        src, dest, n
+    )
+
+
+def bzero(s: c_ptr[UInt8], n: c_size_t):
+    """Libc BSD `bzero` function.
+
+    Description:
+        Sets `n` bytes of a block to zero.
+
+    Args:
+        s: The block.
+        n: How many bytes of it to set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/bzero.3.html).
+        Fn signature: `void bzero(void *s, size_t n)`.
+
+        `memset` with a zero is the same thing under a name the
+        standard keeps.
+    """
+    external_call["bzero", NoneType, c_ptr[UInt8], c_size_t](s, n)
+
+
+def index(s: c_ptr[c_char], c: c_int) -> c_ptr[c_char]:
+    """Libc BSD `index` function.
+
+    Description:
+        Finds the first occurrence of a byte in a string.
+
+    Args:
+        s: The string to look in.
+        c: The byte to look for.
+
+    Returns:
+        A pointer to that byte, or a null pointer where the string
+        has no such byte.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/index.3.html).
+        Fn signature: `char *index(const char *s, int c)`.
+
+        `strchr` is this same search under a name the standard keeps.
+        Looking for the terminator finds it, as both do.
+    """
+    return external_call["index", c_ptr[c_char], c_ptr[c_char], c_int](s, c)
+
+
+def rindex(s: c_ptr[c_char], c: c_int) -> c_ptr[c_char]:
+    """Libc BSD `rindex` function.
+
+    Description:
+        Finds the last occurrence of a byte in a string.
+
+    Args:
+        s: The string to look in.
+        c: The byte to look for.
+
+    Returns:
+        A pointer to that byte, or a null pointer where the string
+        has no such byte.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/rindex.3.html).
+        Fn signature: `char *rindex(const char *s, int c)`.
+
+        `strrchr` is this same search under a name the standard
+        keeps, and this is the one that finds the last of them and
+        not the first.
+    """
+    return external_call["rindex", c_ptr[c_char], c_ptr[c_char], c_int](s, c)
+
+
+def memccpy(
+    dest: c_ptr[UInt8], src: c_ptr[UInt8], c: c_int, n: c_size_t
+) -> c_ptr[UInt8]:
+    """Libc POSIX `memccpy` function.
+
+    Description:
+        Copies bytes from one block to another, stopping once a
+        given byte has been copied or once `n` of them have been,
+        whichever comes first.
+
+    Args:
+        dest: Where to copy to.
+        src: Where to copy from.
+        c: The byte to stop after, as an unsigned character.
+        n: The most bytes to copy.
+
+    Returns:
+        A pointer to the byte after the one that stopped it, or a
+        null pointer where `n` bytes were copied without that byte
+        coming up.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/memccpy.3.html).
+        Fn signature: `void *memccpy(void *dest, const void *src,
+            int c, size_t n)`.
+
+        The destination is what is handed first here, the way it is
+        to `memcpy`, and not the way it is to `bcopy`, which takes
+        it second. That the one stopping byte is copied too, and
+        that the pointer handed back points past it, is what makes
+        this worth having. Blocks that overlap are not a thing this
+        one says anything about.
+    """
+    return external_call[
+        "memccpy", c_ptr[UInt8], c_ptr[UInt8], c_ptr[UInt8], c_int, c_size_t
+    ](dest, src, c, n)

@@ -989,9 +989,14 @@ def bring_in_libc_stdlib():
 
 def bring_in_libc_string():
     from libc.string import (
+        bcmp,
+        bcopy,
+        bzero,
         ffs,
         ffsl,
         ffsll,
+        index,
+        memccpy,
         memchr,
         memcmp,
         memcpy,
@@ -999,6 +1004,7 @@ def bring_in_libc_string():
         memmove,
         mempcopy,
         memset,
+        rindex,
         stpcpy,
         stpncpy,
         strcasecmp,

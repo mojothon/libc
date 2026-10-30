@@ -3,15 +3,21 @@ from std.testing import assert_equal, assert_true
 
 from libc.stdlib import free
 from libc.string import (
+    bcmp,
+    bcopy,
+    bzero,
     ffs,
     ffsl,
     ffsll,
+    index,
+    memccpy,
     memchr,
     memcmp,
     memcpy,
     memmem,
     memmove,
     mempcopy,
+    rindex,
     stpcpy,
     stpncpy,
     strcasecmp,
@@ -45,6 +51,7 @@ from libc.string import (
 from libc.constant import c_ptr
 from libc.utils import (
     char_ptr_to_string,
+    is_null,
     null_ptr,
     string_to_char_ptr,
 )
@@ -385,6 +392,152 @@ def test_copying() raises:
     src.unsafe_free()
 
 
+def test_the_bsd_spellings() raises:
+    """`bcmp` says whether two blocks are the same, `bcopy` copies
+    one into another and `bzero` fills one with zeroes. Each is the
+    BSD spelling of a call the standard keeps under another name,
+    and each is what `<strings.h>` declares rather than `<string.h>`.
+
+    `bcopy` takes its source first and its destination second, the
+    other way round from `memcpy`, and that is the thing worth
+    proving here: the two blocks are made different, so a call that
+    took them in the wrong order would fill the wrong one and the
+    comparison after would say so.
+
+    `bcmp` is asked about blocks that agree and then about blocks
+    that differ in the last byte only, which is what keeps one that
+    compared a single byte from passing.
+    """
+    var left = string_to_char_ptr("abcdef")
+    var right = string_to_char_ptr("abcdef")
+    var other = string_to_char_ptr("abcdez")
+
+    assert_equal(bcmp(left, right, 6), 0, "the same six bytes compare equal")
+    assert_true(
+        bcmp(left, other, 6) != 0,
+        "and blocks that differ in the last byte do not",
+    )
+    assert_equal(bcmp(left, other, 5), 0, "though their first five do")
+
+    # Filled with zeroes, and left holding what it held.
+    var room = string_to_char_ptr("abcdef")
+    var zeroed = string_to_char_ptr("......")
+    bcopy(room, zeroed, 6)
+    assert_equal(char_ptr_to_string(zeroed), "abcdef", "bcopy fills its second")
+    assert_equal(
+        char_ptr_to_string(room), "abcdef", "and leaves its first alone"
+    )
+
+    bzero(zeroed, 6)
+    var all_zero = True
+    for i in range(6):
+        if Int(zeroed.unsafe_offset(i)[]) != 0:
+            all_zero = False
+    assert_true(all_zero, "bzero leaves six zero bytes behind it")
+    assert_equal(
+        char_ptr_to_string(room), "abcdef", "and bcopy's source is whole"
+    )
+
+    other.unsafe_free()
+    right.unsafe_free()
+    left.unsafe_free()
+    room.unsafe_free()
+    zeroed.unsafe_free()
+
+
+def test_finding_the_first_and_the_last() raises:
+    """`index` finds the first of a byte in a string and `rindex` the
+    last, which are `strchr` and `strrchr` under their BSD names.
+
+    The string has the byte in it three times, which is what makes
+    the two calls answerable: both find one, and where they land is
+    the whole difference between them. A string with the byte once
+    would have them land in the same place and prove nothing.
+
+    Each is asked for a byte that is not in the string either, and a
+    null pointer is what comes back of that.
+    """
+    var s = string_to_char_ptr("aXbXc")
+    var once = string_to_char_ptr("abXcd")
+
+    assert_equal(
+        char_ptr_to_string(index(s, 88)), "XbXc", "index finds the first X"
+    )
+    assert_equal(
+        char_ptr_to_string(rindex(s, 88)), "Xc", "and rindex the last one"
+    )
+    assert_equal(
+        char_ptr_to_string(index(once, 88)),
+        "Xcd",
+        "both land in the same place where there is only the one",
+    )
+    assert_equal(
+        char_ptr_to_string(rindex(once, 88)), "Xcd", "which is what they do"
+    )
+
+    assert_true(
+        is_null(index(s, 90)), "and a byte that is not there is a null pointer"
+    )
+    assert_true(is_null(rindex(s, 90)), "for either of them")
+
+    once.unsafe_free()
+    s.unsafe_free()
+
+
+def test_copying_up_to_a_byte() raises:
+    """`memccpy` copies until it has copied a given byte, or until it
+    has copied as many as it was allowed to, whichever comes first,
+    and hands back a pointer to the byte after the one that stopped
+    it — or a null pointer where that byte never came up.
+
+    Both of those are asked for. The first is asked with a room of
+    more than enough, so what stops the copy is the byte and not the
+    count; the second with a count that runs out before the byte does,
+    so what stops it is the count.
+
+    The destination is the first argument here, as it is to `memcpy`,
+    and not the second, as it is to `bcopy`: the source is left whole
+    and the destination is the one that ends up holding the bytes,
+    which is what a call that had them the other way round could not
+    manage.
+    """
+    var src = string_to_char_ptr("hello, world")
+    var room = string_to_char_ptr("............")
+
+    # Stops on the comma, and hands back the byte after it.
+    var stopped = memccpy(room, src, 44, 12)
+    assert_true(not is_null(stopped), "the comma stops it, so this is not null")
+    # It points into the destination, one past the byte that stopped
+    # it, and not into the source — which is where the rest of the
+    # string sits, and is what a call handing back the wrong pointer
+    # would have shown.
+    assert_equal(
+        char_ptr_to_string(stopped), "......", "and it points into the copy"
+    )
+    # Nothing is written past the comma: the rest of the room is as
+    # it was, and no terminator is put in, this being a copy of bytes.
+    assert_equal(
+        char_ptr_to_string(room), "hello,......", "which is what was copied"
+    )
+    assert_equal(
+        char_ptr_to_string(src), "hello, world", "and the source is left alone"
+    )
+
+    # Runs out of count before the byte comes up.
+    var short = string_to_char_ptr("...")
+    assert_true(
+        is_null(memccpy(short, src, 44, 3)),
+        "three bytes hold no comma, so this one is null",
+    )
+    assert_equal(
+        char_ptr_to_string(short), "hel", "and three bytes were copied"
+    )
+
+    short.unsafe_free()
+    room.unsafe_free()
+    src.unsafe_free()
+
+
 def main() raises:
     test_strlen()
     test_copying()
@@ -398,6 +551,9 @@ def main() raises:
     test_messages()
     test_strncat_and_stpcpy()
     test_memmem()
+    test_the_bsd_spellings()
+    test_finding_the_first_and_the_last()
+    test_copying_up_to_a_byte()
     test_strsep()
     test_ffs()
     print("test_string: ok")
