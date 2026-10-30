@@ -390,3 +390,50 @@ def alphasort(a: c_ptr[c_ptr[dirent]], b: c_ptr[c_ptr[dirent]]) -> Int32:
     return external_call[
         "alphasort", Int32, c_ptr[c_ptr[dirent]], c_ptr[c_ptr[dirent]]
     ](a, b)
+
+
+def readdir_r(
+    arg: c_ptr[DIR], entry: c_ptr[dirent], result: c_ptr[c_ptr[dirent]]
+) -> Int32:
+    """Libc POSIX `readdir_r` function.
+
+    Description:
+        Reads the next entry of a directory, putting it in room the
+        caller gives rather than in one of its own.
+
+    Args:
+        arg: The open directory, which `opendir` handed back.
+        entry: The `dirent` to fill in, which is written to.
+        result: Where to put a pointer to `entry` where there was an
+            entry to read and nothing at the end of the directory,
+            which is written to.
+
+    Returns:
+        0 where the reading was done, whether or not there was an
+        entry: what is in `result` is what says which. Anything else
+        is a number that says what went wrong, and is not in `errno`.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/readdir_r.3.html).
+        Fn signature: `int readdir_r(DIR *restrict dirp,
+            struct dirent *restrict entry,
+            struct dirent **restrict result)`.
+
+        This is `readdir` that puts what it finds in the caller's room
+        rather than in one of its own, which is what makes it the one
+        to call where a thread other than the first is reading.
+        `readdir` is the one that hands back the same object every
+        caller, and is the one to call now: this one cannot say how
+        much room a name needs before it is asked, and a name longer
+        than the room given is a name that does not fit.
+
+        The room has to be big enough for either platform's `dirent`,
+        which is not the same size on the two of them and is why
+        `DIRENT_BYTES` is what it is.
+
+        It is deprecated in POSIX as of its 2018 edition, `readdir`
+        being what is left.
+    """
+    return external_call[
+        "readdir_r", Int32, c_ptr[DIR], c_ptr[dirent], c_ptr[c_ptr[dirent]]
+    ](arg, entry, result)

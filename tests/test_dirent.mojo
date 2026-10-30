@@ -6,11 +6,12 @@ from libc.dirent import (
     DIRENT_NAME_OFFSET,
     alphasort,
     closedir,
-    dirfd,
     dirent,
+    dirfd,
     fdopendir,
     opendir,
     readdir,
+    readdir_r,
     rewinddir,
     scandir,
     seekdir,
@@ -19,7 +20,7 @@ from libc.dirent import (
 from libc.fcntl import open
 from libc.stdlib import free
 from libc.string import strcmp
-from libc.utils import null_ptr, string_to_char_ptr
+from libc.utils import is_null, null_ptr, string_to_char_ptr
 
 
 def test_opendir_readdir() raises:
@@ -167,6 +168,50 @@ def test_alphasort_puts_two_names_where_strcmp_puts_them() raises:
     path.unsafe_free()
 
 
+def test_readdir_r_reads_what_readdir_reads() raises:
+    """`readdir_r` reads the next entry of a directory into room the
+    caller gives, rather than into one of its own.
+
+    It is asked about the same directory `readdir` is asked about,
+    and what is asked of the two is that they name the same file:
+    two entries read one after the other from the top of a directory
+    that is not empty carry the same inode. A call that filled the
+    wrong room, or read the number out of the wrong place in it,
+    names a different file or none at all.
+
+    `/dev` is the directory, being one every machine has and one
+    that is never empty.
+    """
+    var path = string_to_char_ptr("/dev")
+
+    var plain = opendir(path)
+    assert_true(not is_null(plain), "/dev opens, and")
+    var first = readdir(plain)
+    assert_true(not is_null(first), "readdir reads an entry in it")
+
+    var again = opendir(path)
+    assert_true(not is_null(again), "and opened again, readdir_r reads one too")
+
+    var entry = unsafe_alloc[dirent](1)
+    var result = unsafe_alloc[c_ptr[dirent]](1)
+    assert_equal(
+        readdir_r(again, entry, result), 0, "without anything going wrong, and"
+    )
+    assert_true(
+        not is_null(result.unsafe_offset(0)[]),
+        "there was an entry to read, and",
+    )
+    assert_equal(
+        entry.unsafe_offset(0)[].ino(),
+        first.unsafe_offset(0)[].ino(),
+        "it is the same file readdir named",
+    )
+
+    path.unsafe_free()
+    entry.unsafe_free()
+    result.unsafe_free()
+
+
 def main() raises:
     test_opendir_readdir()
     test_dirfd()
@@ -175,4 +220,5 @@ def main() raises:
     test_scandir()
     test_scandir_on_something_that_is_not_a_directory()
     test_alphasort_puts_two_names_where_strcmp_puts_them()
+    test_readdir_r_reads_what_readdir_reads()
     print("test_dirent: ok")

@@ -28,7 +28,7 @@ the bottom.
 | `libc.locale` | `<locale.h>` | 16 |
 | `libc.sys.epoll` | `<sys/epoll.h>` | 7 |
 | `libc.search` | `<search.h>` | 9 |
-| `libc.dirent` | `<dirent.h>` | 17 |
+| `libc.dirent` | `<dirent.h>` | 18 |
 | `libc.sys.wait` | `<sys/wait.h>` | 15 |
 | `libc.inttypes` | `<inttypes.h>` | 7 |
 | `libc.sys.resource` | `<sys/resource.h>` | 15 |

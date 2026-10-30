@@ -108,6 +108,7 @@ def bring_in_libc_dirent():
         fdopendir,
         opendir,
         readdir,
+        readdir_r,
         rewinddir,
         scandir,
         seekdir,
