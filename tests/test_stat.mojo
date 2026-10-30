@@ -10,7 +10,9 @@ from libc.sys.stat import (
     fchmodat,
     fstat,
     futimens,
+    futimes,
     lstat,
+    lutimes,
     mkdir,
     mkdirat,
     mknod,
@@ -21,6 +23,7 @@ from libc.sys.stat import (
     utimbuf,
     utime,
     utimensat,
+    utimes,
 )
 from libc.unistd import close, rmdir, symlink, unlink
 from libc.utils import string_to_char_ptr
@@ -214,10 +217,76 @@ def test_the_times() raises:
     path.unsafe_free()
 
 
+def test_setting_times_in_microseconds() raises:
+    """`utimes`, `lutimes` and `futimes` set the two times on a file,
+    counting microseconds where `utime` counts only seconds.
+
+    Each is asked to set a time, and each is asked back through
+    `mtime`, which is what says the time was set and not merely that
+    the call came back 0. The two times are handed as an array of two,
+    the access one first, so the second slot is the one `mtime` reads
+    — a call that read only the first would set nothing that `mtime`
+    can see.
+
+    `lutimes` is `utimes` that does not follow a link, and `futimes` is
+    it taking a descriptor rather than a path. Neither difference
+    shows on a plain file, so what is asked of them is that they set
+    the time too, and the docstrings say what each is for.
+
+    The descriptor `futimes` is handed is the one the file was made
+    with, held open for the length of the test: reopening one on
+    Darwin answers EACCES, `open`'s mode being variadic and not
+    arriving there.
+    """
+    var path = string_to_char_ptr("/tmp/libc_times_us")
+    var fd = open(path, O_CREAT | O_RDWR, 0o644)
+    assert_true(fd >= 0, "the file is there to be dated")
+
+    var st = unsafe_alloc[Stat](1)
+
+    # Two of them: the access time, and then the modified one.
+    var tv = unsafe_alloc[timeval](2)
+    tv.unsafe_offset(0)[].tv_sec = 3000000
+    tv.unsafe_offset(0)[].tv_usec = 0
+    tv.unsafe_offset(1)[].tv_sec = 3000000
+    tv.unsafe_offset(1)[].tv_usec = 0
+
+    assert_equal(utimes(path, tv), 0, "utimes takes the two times")
+    assert_equal(stat(path, st), 0, "and the file can be asked")
+    assert_equal(
+        st.unsafe_offset(0)[].mtime(), 3000000, "mtime is the one that was set"
+    )
+
+    # The same two, given without a path.
+    tv.unsafe_offset(0)[].tv_sec = 4000000
+    tv.unsafe_offset(1)[].tv_sec = 4000000
+    assert_equal(lutimes(path, tv), 0, "lutimes sets them too")
+    assert_equal(stat(path, st), 0, "asked again")
+    assert_equal(
+        st.unsafe_offset(0)[].mtime(), 4000000, "and mtime moved again"
+    )
+
+    # And again, by descriptor.
+    tv.unsafe_offset(0)[].tv_sec = 5000000
+    tv.unsafe_offset(1)[].tv_sec = 5000000
+    assert_equal(futimes(fd, tv), 0, "futimes takes a descriptor")
+    assert_equal(stat(path, st), 0, "asked a third time")
+    assert_equal(
+        st.unsafe_offset(0)[].mtime(), 5000000, "and mtime moved a third time"
+    )
+
+    tv.unsafe_free()
+    st.unsafe_free()
+    _ = close(fd)
+    _ = unlink(path)
+    path.unsafe_free()
+
+
 def main() raises:
     test_mkdir_and_mkdirat()
     test_chmod_and_fchmodat()
     test_lstat_does_not_follow_a_link()
     test_mknod_makes_a_fifo()
     test_the_times()
+    test_setting_times_in_microseconds()
     print("test_stat: ok")

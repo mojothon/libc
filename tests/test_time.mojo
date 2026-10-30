@@ -4,10 +4,12 @@ from std.testing import assert_equal, assert_true
 
 from libc.constant import c_long, c_ptr
 from libc.unistd import geteuid
+from libc.sys.stat import timeval
 from libc.time import (
     CLOCK_MONOTONIC,
     CLOCK_REALTIME,
     TIME_UTC,
+    adjtime,
     asctime,
     asctime_r,
     clock,
@@ -255,6 +257,43 @@ def test_clock_settime_is_refused_to_an_ordinary_process() raises:
             "an ordinary process is refused the clock",
         )
         when.unsafe_free()
+
+
+def test_asking_the_clock_how_far_it_is_to_move() raises:
+    """`adjtime` asks the system clock to run a little fast or slow
+    until it has caught up, rather than to be put forward or back in
+    one step.
+
+    Moving the clock is the superuser's to do, and a test is not run
+    as one, so what is asked here is only the asking after: a `delta`
+    of nothing, which reads how far there is still to go without
+    moving anything. That is the one thing about this call that may be
+    asked without the right to move the clock, and it is asked twice
+    over — once for whether it came back at all, and once for whether
+    what it wrote is a time and not a happening.
+    """
+    var nothing = unsafe_alloc[timeval](1)
+    nothing.unsafe_offset(0)[].tv_sec = 0
+    nothing.unsafe_offset(0)[].tv_usec = 0
+
+    var left = unsafe_alloc[timeval](1)
+    left.unsafe_offset(0)[].tv_sec = 0
+    left.unsafe_offset(0)[].tv_usec = 0
+
+    var answered = adjtime(nothing, left)
+    # Without the right to move the clock this is -1 with EPERM, which
+    # is an answer too: the call was found and asked.
+    assert_true(
+        answered == 0 or answered == -1,
+        "adjtime answers, whether or not the clock may be moved",
+    )
+    assert_true(
+        left.unsafe_offset(0)[].tv_sec < 1000000,
+        "and what it wrote down is a time and not a happening",
+    )
+
+    left.unsafe_free()
+    nothing.unsafe_free()
 
 
 def main() raises:

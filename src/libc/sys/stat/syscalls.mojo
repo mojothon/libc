@@ -400,3 +400,98 @@ def mkfifo(path: c_ptr[UInt8], mode: c_int) -> c_int:
         like any other argument, so it arrives on both platforms.
     """
     return external_call["mkfifo", c_int, c_ptr[UInt8], c_int](path, mode)
+
+
+def utimes(path: c_ptr[UInt8], times: c_ptr[timeval]) -> Int32:
+    """Libc POSIX `utimes` function.
+
+    Description:
+        Sets the two times on a file: when it was last read and when
+        it was last written.
+
+    Args:
+        path: The file to set them on.
+        times: Two `timeval`s, the first for reading and the second
+            for writing, or a null pointer for both to be now.
+
+    Returns:
+        0 where they were set, and -1 where they were not, with
+        `errno` saying why.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/utimes.3.html).
+        Fn signature: `int utimes(const char *path,
+            const struct timeval times[2])`.
+
+        This is `utime` with microseconds on the end, which is what
+        the `s` at the end of the name is for. Unlike `utime` it takes
+        two of what it is given, and unlike `lutimes` it follows a
+        link at the end of the path rather than setting the times on
+        the link itself.
+
+        `timeval` is bound in this module, and its `tv_usec` is kept
+        in a full slot because the two platforms do not agree on how
+        wide that is.
+    """
+    return external_call["utimes", Int32, c_ptr[UInt8], c_ptr[timeval]](
+        path, times
+    )
+
+
+def lutimes(path: c_ptr[UInt8], times: c_ptr[timeval]) -> Int32:
+    """Libc BSD `lutimes` function.
+
+    Description:
+        Sets the two times on a file, and on a link itself rather than
+        on what it points at.
+
+    Args:
+        path: The file to set them on.
+        times: Two `timeval`s, the first for reading and the second
+            for writing, or a null pointer for both to be now.
+
+    Returns:
+        0 where they were set, and -1 where they were not, with
+        `errno` saying why.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/lutimes.3.html).
+        Fn signature: `int lutimes(const char *path,
+            const struct timeval times[2])`.
+
+        This is `utimes` that does not follow a link, which is the one
+        way it is not that, and is what makes it the one for a path
+        whose last step may be one: `utimes` would set the times on
+        what the link points at, and this sets them on the link.
+    """
+    return external_call["lutimes", Int32, c_ptr[UInt8], c_ptr[timeval]](
+        path, times
+    )
+
+
+def futimes(fd: Int32, times: c_ptr[timeval]) -> Int32:
+    """Libc BSD `futimes` function.
+
+    Description:
+        Sets the two times on a file already open, by its descriptor.
+
+    Args:
+        fd: The descriptor of the file to set them on.
+        times: Two `timeval`s, the first for reading and the second
+            for writing, or a null pointer for both to be now.
+
+    Returns:
+        0 where they were set, and -1 where they were not, with
+        `errno` saying why.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/futimes.3.html).
+        Fn signature: `int futimes(int fd,
+            const struct timeval times[2])`.
+
+        This is `utimes` taking a descriptor rather than a path, which
+        is what makes it the one where the file is already open: there
+        is no name to be changed out from under it between the looking
+        and the setting. `futimens` is the same thing in nanoseconds.
+    """
+    return external_call["futimes", Int32, Int32, c_ptr[timeval]](fd, times)

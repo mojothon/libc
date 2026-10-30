@@ -1214,7 +1214,9 @@ def bring_in_libc_sys_stat():
         fchmodat,
         fstat,
         futimens,
+        futimes,
         lstat,
+        lutimes,
         mkdir,
         mkdirat,
         mkfifo,
@@ -1227,6 +1229,7 @@ def bring_in_libc_sys_stat():
         utimbuf,
         utime,
         utimensat,
+        utimes,
     )
 
 
@@ -1270,6 +1273,7 @@ def bring_in_libc_time():
         CLOCK_MONOTONIC,
         CLOCK_REALTIME,
         TIME_UTC,
+        adjtime,
         asctime,
         asctime_r,
         clock,

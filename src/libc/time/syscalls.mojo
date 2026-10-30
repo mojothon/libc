@@ -9,6 +9,7 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 
 from libc.constant import c_int, c_long, c_ptr, c_size_t
+from libc.sys.stat import timeval
 from libc.utils import char_ptr_to_string
 
 
@@ -565,4 +566,44 @@ def gettimeofday(tv: c_ptr[Int64], tz: c_ptr[Int64]) -> c_int:
     """
     return external_call["gettimeofday", c_int, c_ptr[Int64], c_ptr[Int64]](
         tv, tz
+    )
+
+
+def adjtime(delta: c_ptr[timeval], olddelta: c_ptr[timeval]) -> c_int:
+    """Libc BSD `adjtime` function.
+
+    Description:
+        Speeds the system clock up or slows it down a little, so that
+        it comes to agree with a time it is behind or ahead of.
+
+    Args:
+        delta: How much to move it by, or a null pointer to ask only
+            how much is still to be moved.
+        olddelta: Where to put how much was still to be moved from
+            before this call, which is written to, or a null pointer
+            where that is not wanted.
+
+    Returns:
+        0 where the clock was asked to move, and -1 where it could not
+        be, with `errno` saying why — which is what comes back without
+        the right to do this.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/adjtime.3.html).
+        Fn signature: `int adjtime(const struct timeval *delta,
+            struct timeval *olddelta)`.
+
+        The clock is not put forward or back in one step, which is
+        what `settimeofday` does and what makes time go backwards;
+        it is run a little fast or a little slow until it has caught
+        up. Because of that, what is still to be moved is not nothing
+        the moment this hands anything back.
+
+        Moving the clock is the superuser's to do, and a call without
+        the right to comes back -1 with `errno` set to `EPERM`. Asking
+        with a `delta` of nothing is how this is read without being
+        moved.
+    """
+    return external_call["adjtime", c_int, c_ptr[timeval], c_ptr[timeval]](
+        delta, olddelta
     )
