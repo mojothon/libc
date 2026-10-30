@@ -60,6 +60,7 @@ from test_sys import main as run_sys
 from test_stdlib import main as run_stdlib
 from test_string import main as run_string
 from test_time import main as run_time
+from test_times import main as run_times
 from test_unistd import main as run_unistd
 from test_utils import main as run_utils
 from test_wchar import main as run_wchar
@@ -121,6 +122,7 @@ def main() raises:
     run_stdlib()
     run_string()
     run_time()
+    run_times()
     run_unistd()
     run_utils()
     run_wchar()

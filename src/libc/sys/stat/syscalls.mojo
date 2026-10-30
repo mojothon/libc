@@ -495,3 +495,48 @@ def futimes(fd: Int32, times: c_ptr[timeval]) -> Int32:
         and the setting. `futimens` is the same thing in nanoseconds.
     """
     return external_call["futimes", Int32, Int32, c_ptr[timeval]](fd, times)
+
+
+def fstatat(
+    dirfd: Int32, pathname: c_ptr[UInt8], statbuf: c_ptr[Stat], flags: Int32
+) -> Int32:
+    """Libc POSIX `fstatat` function.
+
+    Description:
+        Asks after a file the way `stat` does, but takes the file
+        relative to a directory that is open, rather than to this
+        process's own working directory.
+
+    Args:
+        dirfd: The open directory the path is relative to, which is
+            `AT_FDCWD` where it is relative to the working directory
+            instead.
+        pathname: The path to ask after.
+        statbuf: The `Stat` to fill in, which is written to.
+        flags: Which of the `AT_` names to ask by, or 0 for none.
+
+    Returns:
+        0 where the file was asked after, or -1 with `errno` saying
+        why.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man2/fstatat.2.html).
+        Fn signature: `int fstatat(int dirfd,
+            const char *restrict pathname, struct stat *restrict buf,
+            int flags)`.
+
+        With `AT_FDCWD` in `dirfd` this is `stat` itself, and the two
+        answer with the same row for the same file. Where a directory
+        is given instead, the path is read from that directory even
+        where the working directory is somewhere else, which is what
+        makes this the one to call in a process that walks trees:
+        `open` a directory once and ask after everything in it without
+        building a path to each.
+
+        `fstat` is the same question about a descriptor rather than
+        about a path, and `lstat` is the one that asks after a link
+        rather than after what it points at.
+    """
+    return external_call[
+        "fstatat", Int32, Int32, c_ptr[UInt8], c_ptr[Stat], Int32
+    ](dirfd, pathname, statbuf, flags)

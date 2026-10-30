@@ -1244,6 +1244,7 @@ def bring_in_libc_sys_stat():
         fchmod,
         fchmodat,
         fstat,
+        fstatat,
         futimens,
         futimes,
         lstat,
@@ -1261,6 +1262,11 @@ def bring_in_libc_sys_stat():
         utime,
         utimensat,
         utimes,
+    )
+
+    from libc.sys.times import (
+        times,
+        tms,
     )
 
 

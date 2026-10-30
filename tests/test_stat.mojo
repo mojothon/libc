@@ -9,6 +9,7 @@ from libc.sys.stat import (
     chmod,
     fchmodat,
     fstat,
+    fstatat,
     futimens,
     futimes,
     lstat,
@@ -282,6 +283,40 @@ def test_setting_times_in_microseconds() raises:
     path.unsafe_free()
 
 
+def test_stat_at_the_working_directory_agrees_with_stat() raises:
+    """`fstatat` asks after a file relative to a directory that is
+    open, and with `AT_FDCWD` there — which is what says the working
+    directory instead — it is `stat`.
+
+    Both are asked after the same file, and what is asked of them is
+    that they name the same one: two rows about the same file carry
+    the same inode. A call that took the path from the wrong place,
+    or read the row into the wrong room, names a different file or
+    none at all.
+
+    `/dev/null` is the file asked after, being the one that is on
+    every machine and cannot be moved.
+    """
+    var path = string_to_char_ptr("/dev/null")
+
+    var by_stat = unsafe_alloc[Stat](1)
+    assert_equal(stat(path, by_stat), 0, "/dev/null is there, and")
+
+    var by_at = unsafe_alloc[Stat](1)
+    assert_equal(
+        fstatat(AT_FDCWD, path, by_at, 0), 0, "fstatat asks after it too, and"
+    )
+    assert_equal(
+        by_at.unsafe_offset(0)[].ino(),
+        by_stat.unsafe_offset(0)[].ino(),
+        "the two of them name the same file",
+    )
+
+    path.unsafe_free()
+    by_stat.unsafe_free()
+    by_at.unsafe_free()
+
+
 def main() raises:
     test_mkdir_and_mkdirat()
     test_chmod_and_fchmodat()
@@ -289,4 +324,5 @@ def main() raises:
     test_mknod_makes_a_fifo()
     test_the_times()
     test_setting_times_in_microseconds()
+    test_stat_at_the_working_directory_agrees_with_stat()
     print("test_stat: ok")
