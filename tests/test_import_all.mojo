@@ -665,10 +665,20 @@ def bring_in_libc_math():
 def bring_in_libc_netdb():
     from libc.netdb import (
         addrinfo,
+        endprotoent,
+        endservent,
         freeaddrinfo,
         gai_strerror,
         getaddrinfo,
         getnameinfo,
+        getprotobyname,
+        getprotobynumber,
+        getservbyname,
+        getservbyport,
+        protoent,
+        servent,
+        setprotoent,
+        setservent,
     )
 
 

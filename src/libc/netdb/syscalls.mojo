@@ -6,7 +6,9 @@
 from std.ffi import external_call
 from std.sys import CompilationTarget
 
-from libc.constant import c_ptr
+from libc.constant import c_ptr, c_ushort
+from libc.network import htons, ntohs
+from libc.utils import char_ptr_to_string, is_null, null_ptr
 
 
 # What `getaddrinfo` is asked to prefer. The first three are the same on
@@ -276,3 +278,299 @@ def gai_strerror(ecode: Int32) -> c_ptr[UInt8]:
         Fn signature: `const char *gai_strerror(int ecode)`.
     """
     return external_call["gai_strerror", c_ptr[UInt8], Int32](ecode)
+
+
+struct protoent:
+    """A C `struct protoent`: one row of the protocol database.
+
+    Three members — a name, a list of aliases, and the number the
+    protocol is known by — at 0, 8 and 16 on glibc and on Darwin both,
+    twenty-four bytes and eight-aligned either way. This is one of the
+    few rows in `netdb.h` the two agree about all the way through.
+
+    libc owns the object this points at, and may hand every caller the
+    same one: two calls overwrite each other's answer, and nothing here
+    frees it. `p_aliases` is a `char **` the same allocator owns, a list
+    of other names ended by a null, and it comes with the row.
+
+    The number is the one that goes in an IP header, which is to say
+    the one `getprotobynumber` is asked by and the one `IPPROTO_TCP`
+    and its like are: 6 for TCP, 17 for UDP.
+    """
+
+    var p_name: c_ptr[UInt8]
+    var p_aliases: c_ptr[c_ptr[UInt8]]
+    var p_proto: Int32
+    var _pad: Int32
+
+    def __init__(out self):
+        """Zeroes every member, which is the state of one nothing has filled."""
+        self.p_name = null_ptr[UInt8]()
+        self.p_aliases = null_ptr[c_ptr[UInt8]]()
+        self.p_proto = 0
+        self._pad = 0
+
+    def aliased_as(self) raises -> String:
+        """The first other name the protocol goes by.
+
+        Notes:
+            The first entry of `p_aliases`, read as a string. A
+            protocol with no other name has an empty list, and what
+            comes back then is the empty string.
+        """
+        var first = self.p_aliases.unsafe_offset(0)[]
+        if is_null(first):
+            return String("")
+        return char_ptr_to_string(first)
+
+
+struct servent:
+    """A C `struct servent`: one row of the service database.
+
+    Four members — a name, a list of aliases, the port, and which
+    protocol the port is for — at 0, 8, 16 and 24 on glibc and on
+    Darwin both, thirty-two bytes and eight-aligned either way.
+
+    libc owns the object this points at, and may hand every caller the
+    same one: two calls overwrite each other's answer, and nothing here
+    frees it. `s_aliases` is a `char **` the same allocator owns, and
+    `s_proto` points into storage held the same way.
+
+    `s_port` is in network order, which is the order it goes on the
+    wire in and not the order this machine counts in: `ntohs` is what
+    makes it into a number worth reading, and `htons` what makes a
+    number into one worth asking `getservbyport` by.
+    """
+
+    var s_name: c_ptr[UInt8]
+    var s_aliases: c_ptr[c_ptr[UInt8]]
+    var s_port: Int32
+    var s_proto: c_ptr[UInt8]
+
+    def __init__(out self):
+        """Zeroes every member, which is the state of one nothing has filled."""
+        self.s_name = null_ptr[UInt8]()
+        self.s_aliases = null_ptr[c_ptr[UInt8]]()
+        self.s_port = 0
+        self.s_proto = null_ptr[UInt8]()
+
+    def port(self) -> Int32:
+        """The port in the order this machine counts in.
+
+        Notes:
+            `s_port` with `ntohs` over it. This is the number 80 and
+            not the number 20480 that 80 looks like on the wire.
+        """
+        return Int32(ntohs(c_ushort(self.s_port)))
+
+
+def getprotobyname(name: c_ptr[UInt8]) -> c_ptr[protoent]:
+    """Libc POSIX `getprotobyname` function.
+
+    Description:
+        Looks a protocol up by its name in the protocol database, the
+        one kept in `protocols` and read from `/etc/protocols`.
+
+    Args:
+        name: The name to look for, which is `tcp` and `udp` and the
+            rest of them.
+
+    Returns:
+        The row for that protocol, or a null pointer where there is no
+        such name.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getprotobyname.3.html).
+        Fn signature: `struct protoent *getprotobyname(const char *name)`.
+
+        What comes back points into storage libc keeps, and every
+        caller is handed the same one: two calls overwrite each
+        other's answer. `getprotobynumber` is the same row by number
+        rather than by name, and `endprotoent` shuts the database.
+
+        Which protocols are in it is the machine's own to say. TCP and
+        UDP are in every one of them, which is what makes them the two
+        worth asking after.
+    """
+    return external_call["getprotobyname", c_ptr[protoent], c_ptr[UInt8]](name)
+
+
+def getprotobynumber(proto: Int32) -> c_ptr[protoent]:
+    """Libc POSIX `getprotobynumber` function.
+
+    Description:
+        Looks a protocol up by its number in the protocol database.
+
+    Args:
+        proto: The number to look for, which is 6 for TCP and 17 for
+            UDP.
+
+    Returns:
+        The row for that protocol, or a null pointer where there is no
+        such number.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getprotobynumber.3.html).
+        Fn signature: `struct protoent *getprotobynumber(int proto)`.
+
+        This is `getprotobyname` asking by number rather than by name,
+        and what comes back is the same row in the same storage. The
+        number is the one that goes in an IP header, which is the one
+        `getaddrinfo` hands back in `ai_protocol` too.
+    """
+    return external_call["getprotobynumber", c_ptr[protoent], Int32](proto)
+
+
+def setprotoent(stayopen: Int32) -> None:
+    """Libc POSIX `setprotoent` function.
+
+    Description:
+        Opens the protocol database, or winds it back to the top where
+        it is already open.
+
+    Args:
+        stayopen: Non-zero to keep it open between calls rather than
+            shutting it after each one.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getprotoent.3.html).
+        Fn signature: `void setprotoent(int stayopen)`.
+
+        This is the one end of the walk over every protocol there is,
+        `getprotoent` being the middle and `endprotoent` the other
+        end. Asking after one protocol by name or by number opens and
+        shuts the database on its own, so this is only for where the
+        whole of it is wanted.
+    """
+    external_call["setprotoent", NoneType, Int32](stayopen)
+
+
+def endprotoent() -> None:
+    """Libc POSIX `endprotoent` function.
+
+    Description:
+        Shuts the protocol database.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getprotoent.3.html).
+        Fn signature: `void endprotoent(void)`.
+
+        What this gives back is whatever was opened to read the
+        database, and after it the next call starts from the top
+        again. Asking after one protocol by name or by number shuts
+        the database on its own, so this is called not because it is
+        wanted but because it is there.
+    """
+    external_call["endprotoent", NoneType]()
+
+
+def getservbyname(name: c_ptr[UInt8], proto: c_ptr[UInt8]) -> c_ptr[servent]:
+    """Libc POSIX `getservbyname` function.
+
+    Description:
+        Looks a service up by its name in the service database, the
+        one read from `/etc/services`.
+
+    Args:
+        name: The name to look for, which is `http` and `ssh` and the
+            rest of them.
+        proto: Which protocol the port has to be for, `tcp` or `udp`,
+            or a null pointer where any will do.
+
+    Returns:
+        The row for that service, or a null pointer where there is no
+        such name under that protocol.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getservbyname.3.html).
+        Fn signature: `struct servent *getservbyname(const char *name,
+            const char *proto)`.
+
+        What comes back points into storage libc keeps, and every
+        caller is handed the same one: two calls overwrite each
+        other's answer. The port in the row is in network order, and
+        `servent`'s `port` is what says what it is in this machine's.
+
+        Which services are in it is the machine's own to say, and a
+        port may be given more than one name. Passing a null `proto`
+        is how any protocol is allowed, and hands back the first row
+        by that name, whichever it is.
+    """
+    return external_call[
+        "getservbyname", c_ptr[servent], c_ptr[UInt8], c_ptr[UInt8]
+    ](name, proto)
+
+
+def getservbyport(port: Int32, proto: c_ptr[UInt8]) -> c_ptr[servent]:
+    """Libc POSIX `getservbyport` function.
+
+    Description:
+        Looks a service up by its port in the service database.
+
+    Args:
+        port: The port to look for, in network order — `htons` is what
+            makes a number into one of these.
+        proto: Which protocol the port has to be for, `tcp` or `udp`,
+            or a null pointer where any will do.
+
+    Returns:
+        The row for that service, or a null pointer where there is no
+        such port under that protocol.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getservbyport.3.html).
+        Fn signature: `struct servent *getservbyport(int port,
+            const char *proto)`.
+
+        The port is not the number 80 but the 80 that has been
+        through `htons`, which is the order the port goes on the wire
+        in. This is the one place in `netdb.h` where what is handed in
+        is not what a caller would plainly write down, and it is the
+        same order the row hands back: `servent`'s `port` undoes it.
+    """
+    return external_call["getservbyport", c_ptr[servent], Int32, c_ptr[UInt8]](
+        port, proto
+    )
+
+
+def setservent(stayopen: Int32) -> None:
+    """Libc POSIX `setservent` function.
+
+    Description:
+        Opens the service database, or winds it back to the top where
+        it is already open.
+
+    Args:
+        stayopen: Non-zero to keep it open between calls rather than
+            shutting it after each one.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getservent.3.html).
+        Fn signature: `void setservent(int stayopen)`.
+
+        This is the one end of the walk over every service there is,
+        `getservent` being the middle and `endservent` the other end.
+        Asking after one service by name or by port opens and shuts
+        the database on its own, so this is only for where the whole
+        of it is wanted.
+    """
+    external_call["setservent", NoneType, Int32](stayopen)
+
+
+def endservent() -> None:
+    """Libc POSIX `endservent` function.
+
+    Description:
+        Shuts the service database.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getservent.3.html).
+        Fn signature: `void endservent(void)`.
+
+        What this gives back is whatever was opened to read the
+        database, and after it the next call starts from the top
+        again. Asking after one service by name or by port shuts the
+        database on its own, so this is called not because it is
+        wanted but because it is there.
+    """
+    external_call["endservent", NoneType]()

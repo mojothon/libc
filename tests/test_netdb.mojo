@@ -9,7 +9,8 @@ waits on the network.
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import AF_INET, AF_UNSPEC, SOCK_STREAM, c_ptr
+from libc.constant import AF_INET, AF_UNSPEC, SOCK_STREAM, c_ptr, c_ushort
+from libc.network import htons
 from libc.netdb import (
     AI_NUMERICHOST,
     AI_NUMERICSERV,
@@ -19,12 +20,18 @@ from libc.netdb import (
     NI_NUMERICHOST,
     NI_NUMERICSERV,
     addrinfo,
+    endprotoent,
+    endservent,
     freeaddrinfo,
     gai_strerror,
     getaddrinfo,
     getnameinfo,
+    getprotobyname,
+    getprotobynumber,
+    getservbyname,
+    getservbyport,
 )
-from libc.utils import char_ptr_to_string, string_to_char_ptr
+from libc.utils import char_ptr_to_string, is_null, string_to_char_ptr
 
 
 def test_a_numeric_address_needs_no_name_service() raises:
@@ -176,8 +183,90 @@ def test_the_address_answers_with_the_host_it_came_from() raises:
     serv.unsafe_free()
 
 
+def test_the_protocol_database_by_name_and_by_number() raises:
+    """`getprotobyname` and `getprotobynumber` look a protocol up in
+    the protocol database, one by its name and one by its number.
+
+    Both are asked for TCP, which is in every machine's database and
+    is numbered 6 in every one of them. What is asked of them is that
+    they answer each other: the row found by name carries the number,
+    and the row found by that number carries the name back. A call
+    that read the number out of the wrong place in the row would not
+    say 6, and one that read the name out of it would not say tcp.
+
+    `endprotoent` shuts the database, and is called because it is
+    there rather than because it is wanted: the two that look one
+    protocol up open and shut it on their own.
+    """
+    var tcp = string_to_char_ptr("tcp")
+
+    var by_name = getprotobyname(tcp)
+    assert_true(not is_null(by_name), "tcp is in the protocol database, and")
+    assert_equal(
+        Int(by_name.unsafe_offset(0)[].p_proto),
+        6,
+        "the row found by name carries the number for TCP",
+    )
+
+    var by_number = getprotobynumber(6)
+    assert_true(not is_null(by_number), "and 6 is in it too, carrying")
+    assert_equal(
+        char_ptr_to_string(by_number.unsafe_offset(0)[].p_name),
+        "tcp",
+        "the name back again",
+    )
+
+    endprotoent()
+    tcp.unsafe_free()
+
+
+def test_the_service_database_by_name_and_by_port() raises:
+    """`getservbyname` and `getservbyport` look a service up in the
+    service database, one by its name and one by its port.
+
+    Both are asked for HTTP over TCP, which is on port 80 in every
+    machine's database. The port in the row is in network order, which
+    is the order it goes on the wire in and not the order this machine
+    counts in, so what is asked for is 80 after `ntohs` has been over
+    it — and what is handed to `getservbyport` is 80 after `htons`
+    has. A row read without undoing the order says 20480 instead.
+
+    `endservent` shuts the database, called because it is there rather
+    than because it is wanted.
+    """
+    var http = string_to_char_ptr("http")
+    var tcp = string_to_char_ptr("tcp")
+
+    var by_name = getservbyname(http, tcp)
+    assert_true(not is_null(by_name), "http over tcp is in the database, and")
+    assert_equal(
+        Int(by_name.unsafe_offset(0)[].port()),
+        80,
+        "the row found by name carries port 80",
+    )
+    assert_equal(
+        char_ptr_to_string(by_name.unsafe_offset(0)[].s_proto),
+        "tcp",
+        "and says which protocol the port is for",
+    )
+
+    var by_port = getservbyport(Int32(htons(c_ushort(80))), tcp)
+    assert_true(not is_null(by_port), "and 80 is in it too, carrying")
+    assert_equal(
+        char_ptr_to_string(by_port.unsafe_offset(0)[].s_name),
+        "http",
+        "the name back again",
+    )
+
+    endservent()
+    http.unsafe_free()
+    tcp.unsafe_free()
+
+
 def main() raises:
     test_a_numeric_address_needs_no_name_service()
     test_a_name_that_is_not_a_number_is_refused()
     test_the_address_answers_with_the_host_it_came_from()
+    test_the_protocol_database_by_name_and_by_number()
+    test_the_service_database_by_name_and_by_port()
     print("test_netdb: ok")
