@@ -46,7 +46,7 @@ the bottom.
 | `libc.fcntl` | `<fcntl.h>` | 49 |
 | `libc.getopt` | `<getopt.h>` taking a command line apart | 12 |
 | `libc.dlfcn` | `<dlfcn.h>` | 7 |
-| `libc.wchar` | `<wchar.h>` | 58 |
+| `libc.wchar` | `<wchar.h>` | 67 |
 | `libc.sys.statvfs` | `<sys/statvfs.h>` | 3 |
 | `libc.sys.select` | `<sys/select.h>` | 9 |
 | `libc.poll` | `<poll.h>` | 14 |

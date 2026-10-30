@@ -31,11 +31,14 @@ from libc.wchar import (
     iswspace,
     iswupper,
     iswxdigit,
+    mbsinit,
     putwc,
     ungetwc,
     wcstod,
     wcstof,
+    wcstok,
     wcstol,
+    wcstoll,
     wcstoul,
     WEOF,
     mbrlen,
@@ -64,10 +67,16 @@ from libc.wchar import (
     wcsrchr,
     wcsspn,
     wcsstr,
+    wcstoull,
     wcsxfrm,
     wcstombs,
     wcrtomb,
     wctob,
+    wmemchr,
+    wmemcmp,
+    wmemcpy,
+    wmemmove,
+    wmemset,
 )
 
 
@@ -604,6 +613,178 @@ def test_copying_wide_strings() raises:
     a.unsafe_free()
 
 
+def test_wide_memory() raises:
+    """`wmemchr`, `wmemcmp`, `wmemcpy`, `wmemmove` and `wmemset` work
+    on a number of wide characters rather than on a string, which is
+    what the `mem` in the name is for and what sets them apart from
+    the `wcs` calls.
+
+    `wmemchr` is asked about a character that is there and about one
+    that is not, and about one that is there but past the number it
+    was given to look at — which is the one thing here that a call
+    reading a string instead of a count could not answer, that being
+    a call that would find it.
+
+    `wmemmove` is asked to move characters onto a place that overlaps
+    where they came from. That is the whole of what it does that
+    `wmemcpy` does not, and the run has to come out whole, which it
+    would not if the move went the wrong way along it.
+
+    `wmemset` is asked to fill with a character and then asked how
+    much of the filling took, and `wmemcmp` is what says whether two
+    places hold the same characters.
+    """
+    var abc = wide("abc")
+    assert_equal(
+        wide_to_string(wmemchr(abc, 98, 3)),
+        "bc",
+        "wmemchr finds the b in abc",
+    )
+    assert_true(
+        Int(UInt(wmemchr(abc, 98, 1))) == 0,
+        "and not when it is told to look at only the first character",
+    )
+    assert_true(
+        Int(UInt(wmemchr(abc, 122, 3))) == 0,
+        "nor when what it is looking for is not there",
+    )
+
+    var two = wide("abc")
+    assert_equal(wmemcmp(abc, two, 3), 0, "wmemcmp says the same of the same")
+    assert_true(wmemcmp(abc, wide("abd"), 3) != 0, "and not of the different")
+
+    var room = unsafe_alloc[c_wchar](4)
+    _ = wmemcpy(room, abc, 3)
+    room.unsafe_store(3, 0)
+    assert_equal(wide_to_string(room), "abc", "wmemcpy copies three characters")
+
+    # Onto a place that overlaps where they came from.
+    var shifted = wide("abcd")
+    _ = wmemmove(shifted.unsafe_offset(1), shifted, 3)
+    shifted.unsafe_store(4, 0)
+    assert_equal(
+        wide_to_string(shifted),
+        "aabc",
+        "wmemmove brings a run over itself whole",
+    )
+
+    var filled = unsafe_alloc[c_wchar](4)
+    _ = wmemset(filled, 88, 3)
+    filled.unsafe_store(3, 0)
+    assert_equal(wide_to_string(filled), "XXX", "wmemset fills with X")
+
+    filled.unsafe_free()
+    shifted.unsafe_free()
+    room.unsafe_free()
+    two.unsafe_free()
+    abc.unsafe_free()
+
+
+def test_reading_the_widest_integers_off_the_front() raises:
+    """`wcstoll` reads a long long off the front of a wide string and
+    `wcstoull` an unsigned one.
+
+    Each is asked for a base of 10 and again for a base of 16, on a
+    string the two read as different numbers: `10` is ten in the one
+    and sixteen in the other. That is what keeps a call that ignored
+    its base from passing, and it is the same thing this package
+    holds `wcstol` to.
+
+    Each is asked about a string with something after the number, so
+    `endptr` has somewhere to point, and about a string with no
+    number in it, of which 0 is what comes back.
+
+    `wcstoull` is asked about a number too wide for a long long to
+    hold, which is the one thing the unsigned one can read that the
+    signed one cannot.
+    """
+    var end = unsafe_alloc[c_ptr[c_wchar]](1)
+
+    var ten = wide("10")
+    assert_equal(wcstoll(ten, end, 10), 10, "ten in base ten, and")
+    assert_equal(wcstoll(ten, end, 16), 16, "sixteen in base sixteen")
+    assert_equal(wcstoull(ten, end, 10), 10, "and unsigned says the same")
+
+    var rest = wide("42 and the rest")
+    assert_equal(wcstoll(rest, end, 10), 42, "forty-two is read off the front")
+    assert_equal(
+        wide_to_string(end.unsafe_offset(0)[]),
+        " and the rest",
+        "and what is left is where endptr points",
+    )
+
+    var none = wide("no number here")
+    assert_equal(wcstoll(none, end, 10), 0, "a string with none is 0")
+    assert_equal(wcstoull(none, end, 10), 0, "for either of them")
+
+    # Wider than a long long will hold, which is what the u is for.
+    var big = wide("18446744073709551615")
+    assert_equal(
+        wcstoull(big, end, 10),
+        18446744073709551615,
+        "and the widest unsigned one is read whole",
+    )
+
+    end.unsafe_free()
+
+
+def test_splitting_a_wide_string() raises:
+    """`wcstok` splits a wide string into pieces, one call to a piece,
+    keeping its place between the calls in a pointer the caller hands
+    it.
+
+    It is asked for three pieces out of a string with two delimiters
+    in it, and the three come back in the order they are in the
+    string — which is what a call that handed them back the other way
+    round could not manage. A fourth call finds nothing, and a null
+    pointer is what comes back of it.
+
+    The place it keeps between the calls is the caller's to hand it,
+    and it is what makes this one answerable in a test at all.
+    """
+    var s = wide("a,b,c")
+    var place = unsafe_alloc[c_ptr[c_wchar]](1)
+
+    assert_equal(
+        wide_to_string(wcstok(s, wide(","), place)), "a", "the first piece"
+    )
+    assert_equal(
+        wide_to_string(wcstok(null_ptr[c_wchar](), wide(","), place)),
+        "b",
+        "and the second, from a null string",
+    )
+    assert_equal(
+        wide_to_string(wcstok(null_ptr[c_wchar](), wide(","), place)),
+        "c",
+        "and the third",
+    )
+    assert_true(
+        Int(UInt(wcstok(null_ptr[c_wchar](), wide(","), place))) == 0,
+        "and there is no fourth",
+    )
+
+    place.unsafe_free()
+    s.unsafe_free()
+
+
+def test_asking_after_a_conversion_state() raises:
+    """`mbsinit` says whether a conversion state is at its beginning.
+
+    What is asked of it here is the state the library keeps for its
+    own, which is what a null pointer asks for, and which is at its
+    beginning at the start of a programme.
+
+    A state of one's own to hand it has to be zeroed first, and
+    `unsafe_alloc` does not zero — asking this about memory that has
+    only just been allocated is asking about whatever was in it
+    before, which is why none is handed here.
+    """
+    assert_true(
+        Int(mbsinit(null_ptr[mbstate_t]())) != 0,
+        "the state the library keeps is at its start",
+    )
+
+
 def main() raises:
     test_length_and_compare()
     test_search()
@@ -618,4 +799,8 @@ def main() raises:
     test_comparing_wide_strings_apart_from_case()
     test_the_order_the_locale_asks_for()
     test_copying_wide_strings()
+    test_wide_memory()
+    test_reading_the_widest_integers_off_the_front()
+    test_splitting_a_wide_string()
+    test_asking_after_a_conversion_state()
     print("test_wchar: ok")

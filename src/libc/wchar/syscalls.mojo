@@ -7,7 +7,15 @@ from std.ffi import external_call
 from std.memory import Pointer
 from std.sys import CompilationTarget
 
-from libc.constant import c_int, c_ptr, c_size_t, c_wchar, c_wint
+from libc.constant import (
+    c_int,
+    c_longlong,
+    c_ptr,
+    c_size_t,
+    c_ulonglong,
+    c_wchar,
+    c_wint,
+)
 from libc.file import FILE
 
 
@@ -1349,3 +1357,287 @@ def wcpncpy(
     return external_call[
         "wcpncpy", c_ptr[c_wchar], c_ptr[c_wchar], c_ptr[c_wchar], c_size_t
     ](dest, src, n)
+
+
+def wmemchr(s: c_ptr[c_wchar], c: c_wchar, n: c_size_t) -> c_ptr[c_wchar]:
+    """Libc C95 `wmemchr` function.
+
+    Description:
+        Looks for a wide character in the first so many of them.
+
+    Args:
+        s: Where to look.
+        c: The character to look for.
+        n: How many characters to look at.
+
+    Returns:
+        A pointer to the one found, or a null pointer where the first
+        that many do not hold it.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wmemchr.3.html).
+        Fn signature: `wchar_t *wmemchr(const wchar_t *s, wchar_t c,
+            size_t n)`.
+
+        This is `wcschr` with a stopping place, and unlike it, this
+        one keeps looking past a terminator: what it is given is a
+        number of characters and not a string.
+    """
+    return external_call[
+        "wmemchr", c_ptr[c_wchar], c_ptr[c_wchar], c_wchar, c_size_t
+    ](s, c, n)
+
+
+def wmemcmp(s1: c_ptr[c_wchar], s2: c_ptr[c_wchar], n: c_size_t) -> c_int:
+    """Libc C95 `wmemcmp` function.
+
+    Description:
+        Compares the first so many wide characters of two places.
+
+    Args:
+        s1: The first.
+        s2: The second.
+        n: How many characters to compare.
+
+    Returns:
+        0 where they are the same, and something else where they are
+        not, laid out the way `wcscmp` lays it out.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wmemcmp.3.html).
+        Fn signature: `int wmemcmp(const wchar_t *s1,
+            const wchar_t *s2, size_t n)`.
+
+        Plain comparison of the characters' numbers, and no regard for
+        the locale: that is `wcscoll`'s work and not this one's.
+    """
+    return external_call[
+        "wmemcmp", c_int, c_ptr[c_wchar], c_ptr[c_wchar], c_size_t
+    ](s1, s2, n)
+
+
+def wmemcpy(
+    dest: c_ptr[c_wchar], src: c_ptr[c_wchar], n: c_size_t
+) -> c_ptr[c_wchar]:
+    """Libc C95 `wmemcpy` function.
+
+    Description:
+        Copies so many wide characters from one place to another.
+
+    Args:
+        dest: Where to copy to, which is written to.
+        src: Where to copy from.
+        n: How many characters to copy.
+
+    Returns:
+        The first place.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wmemcpy.3.html).
+        Fn signature: `wchar_t *wmemcpy(wchar_t *dest,
+            const wchar_t *src, size_t n)`.
+
+        The two must not overlap. Where they may, `wmemmove` is the
+        one and not this. No terminator is put on: what is moved is a
+        number of characters and not a string.
+    """
+    return external_call[
+        "wmemcpy", c_ptr[c_wchar], c_ptr[c_wchar], c_ptr[c_wchar], c_size_t
+    ](dest, src, n)
+
+
+def wmemmove(
+    dest: c_ptr[c_wchar], src: c_ptr[c_wchar], n: c_size_t
+) -> c_ptr[c_wchar]:
+    """Libc C95 `wmemmove` function.
+
+    Description:
+        Copies so many wide characters from one place to another,
+        which may be the same place.
+
+    Args:
+        dest: Where to copy to, which is written to.
+        src: Where to copy from.
+        n: How many characters to copy.
+
+    Returns:
+        The first place.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wmemmove.3.html).
+        Fn signature: `wchar_t *wmemmove(wchar_t *dest,
+            const wchar_t *src, size_t n)`.
+
+        What makes it not `wmemcpy` is that the two may overlap: the
+        characters come out whole whichever way round they lie.
+    """
+    return external_call[
+        "wmemmove", c_ptr[c_wchar], c_ptr[c_wchar], c_ptr[c_wchar], c_size_t
+    ](dest, src, n)
+
+
+def wmemset(s: c_ptr[c_wchar], c: c_wchar, n: c_size_t) -> c_ptr[c_wchar]:
+    """Libc C95 `wmemset` function.
+
+    Description:
+        Sets so many wide characters to one value.
+
+    Args:
+        s: Where to set them, which is written to.
+        c: The character to set them to.
+        n: How many to set.
+
+    Returns:
+        The place.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wmemset.3.html).
+        Fn signature: `wchar_t *wmemset(wchar_t *s, wchar_t c,
+            size_t n)`.
+
+        Setting them to 0 puts an end on the string, which is the one
+        thing a terminator is.
+    """
+    return external_call[
+        "wmemset", c_ptr[c_wchar], c_ptr[c_wchar], c_wchar, c_size_t
+    ](s, c, n)
+
+
+def wcstoll(
+    nptr: c_ptr[c_wchar], endptr: c_ptr[c_ptr[c_wchar]], base: c_int
+) -> c_longlong:
+    """Libc C99 `wcstoll` function.
+
+    Description:
+        Reads a long long off the front of a wide string.
+
+    Args:
+        nptr: The string to read from.
+        endptr: Where to put a pointer to the first character that
+            was not part of the number, or a null pointer where that
+            is not wanted.
+        base: Which base to read it in, from 2 to 36, or 0 to let
+            the string say.
+
+    Returns:
+        The number, which is 0 where there was none to read. A number
+        too big for a long long comes back as its widest or
+        narrowest, with `errno` set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcstol.3.html).
+        Fn signature: `long long wcstoll(const wchar_t *nptr,
+            wchar_t **endptr, int base)`.
+
+        Under a base of 0 the string says which: a leading `0x` is
+        sixteen, a leading `0` is eight, and neither is ten. Under a
+        base of 16 the `0x` is read as part of the number rather than
+        as a say-so, which this package's `wcstol` notes too.
+
+        Take `LONG_LONG_MAX` and `LONG_LONG_MIN` from `libc.constant`
+        rather than writing the numbers out.
+    """
+    return external_call[
+        "wcstoll", c_longlong, c_ptr[c_wchar], c_ptr[c_ptr[c_wchar]], c_int
+    ](nptr, endptr, base)
+
+
+def wcstoull(
+    nptr: c_ptr[c_wchar], endptr: c_ptr[c_ptr[c_wchar]], base: c_int
+) -> c_ulonglong:
+    """Libc C99 `wcstoull` function.
+
+    Description:
+        Reads an unsigned long long off the front of a wide string.
+
+    Args:
+        nptr: The string to read from.
+        endptr: Where to put a pointer to the first character that
+            was not part of the number, or a null pointer where that
+            is not wanted.
+        base: Which base to read it in, from 2 to 36, or 0 to let
+            the string say.
+
+    Returns:
+        The number, which is 0 where there was none to read. A number
+        too big for an unsigned long long comes back as its widest,
+        with `errno` set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcstoul.3.html).
+        Fn signature: `unsigned long long wcstoull(const wchar_t *nptr,
+            wchar_t **endptr, int base)`.
+
+        A minus sign in front is read as part of the number, and what
+        comes out is the number taken away from nothing — which is to
+        say that this one does not refuse a negative the way `strtoul`
+        is sometimes thought to.
+    """
+    return external_call[
+        "wcstoull", c_ulonglong, c_ptr[c_wchar], c_ptr[c_ptr[c_wchar]], c_int
+    ](nptr, endptr, base)
+
+
+def wcstok(
+    s: c_ptr[c_wchar], delim: c_ptr[c_wchar], ptr: c_ptr[c_ptr[c_wchar]]
+) -> c_ptr[c_wchar]:
+    """Libc C95 `wcstok` function.
+
+    Description:
+        Splits a wide string into pieces, one call to a piece.
+
+    Args:
+        s: The string to split on the first call, and a null pointer
+            on every one after it.
+        delim: The characters to split on.
+        ptr: Where the call keeps its place between one call and the
+            next. The same one has to be handed to every call of a
+            run, and it is written to.
+
+    Returns:
+        A pointer to the piece, or a null pointer where there are no
+        more of them.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcstok.3.html).
+        Fn signature: `wchar_t *wcstok(wchar_t *s, const wchar_t *delim,
+            wchar_t **ptr)`.
+
+        The string is written to: a terminator goes in where a
+        delimiter was, so what is handed in is not what it was. Two
+        runs cannot be in hand at once on the same string, and this is
+        the one that may be — `strtok_r` is the narrow one that takes
+        its place from the caller and not from a static.
+    """
+    return external_call[
+        "wcstok",
+        c_ptr[c_wchar],
+        c_ptr[c_wchar],
+        c_ptr[c_wchar],
+        c_ptr[c_ptr[c_wchar]],
+    ](s, delim, ptr)
+
+
+def mbsinit(ps: c_ptr[mbstate_t]) -> c_int:
+    """Libc C95 `mbsinit` function.
+
+    Description:
+        Says whether a conversion state is at its beginning.
+
+    Args:
+        ps: The state to ask about, or a null pointer, which is taken
+            as the state the library keeps for its own.
+
+    Returns:
+        Something other than 0 where it is at its beginning, and 0
+        where it is part-way through a character.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/mbsinit.3.html).
+        Fn signature: `int mbsinit(const mbstate_t *ps)`.
+
+        `mbstate_t` is bound in this module and is opaque: make one
+        and hand it, and it is the same state the calls that read a
+        character at a time share.
+    """
+    return external_call["mbsinit", c_int, c_ptr[mbstate_t]](ps)
