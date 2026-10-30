@@ -2,7 +2,22 @@ from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
 from libc.constant import AF_INET, AF_INET6, c_size_t
-from libc.network import htonl, htons, inet_ntop, inet_pton, ntohl, ntohs
+from libc.network import (
+    htonl,
+    htons,
+    in_addr,
+    inet_addr,
+    inet_aton,
+    inet_lnaof,
+    inet_makeaddr,
+    inet_netof,
+    inet_network,
+    inet_ntoa,
+    inet_ntop,
+    inet_pton,
+    ntohl,
+    ntohs,
+)
 from libc.utils import char_ptr_to_string, string_to_char_ptr
 
 
@@ -116,6 +131,107 @@ def test_inet_pton_round_trips_an_ipv6() raises:
     out.unsafe_free()
 
 
+def test_an_address_written_down_and_read_back() raises:
+    """`inet_addr` makes a printable address into the four bytes that
+    go on the wire, and `inet_ntoa` makes them printable again.
+
+    The round trip is the strong part of this, and it is what says the
+    two of them agree: an address made printable and read back again
+    is the address it was. It asks nothing about which way round the
+    bytes are, which the next test does.
+
+    `inet_aton` is the same four bytes put where the caller says
+    rather than handed back, and it is asked for the same address:
+    what it puts down has to be what `inet_addr` handed back.
+
+    All three are asked for 127.0.0.1, which is an address with no
+    name service and no network behind it.
+    """
+    var written = string_to_char_ptr("127.0.0.1")
+
+    var as_bytes = inet_addr(written)
+    var address = in_addr()
+    address.s_addr = as_bytes
+
+    assert_equal(
+        char_ptr_to_string(inet_ntoa(address)),
+        "127.0.0.1",
+        "an address written down and read back is the address it was",
+    )
+
+    var put = unsafe_alloc[in_addr](1)
+    assert_true(inet_aton(written, put) != 0, "and it was read, putting down")
+    assert_equal(
+        put.unsafe_offset(0)[].s_addr,
+        as_bytes,
+        "the same four bytes inet_addr handed back",
+    )
+
+    written.unsafe_free()
+    put.unsafe_free()
+
+
+def test_the_bytes_go_on_the_wire_one_way_and_are_counted_the_other() raises:
+    """`inet_addr` and `inet_network` make the same address into two
+    numbers that are the same four bytes the two ways round.
+
+    127.0.0.1 is 16777343 by one and 2130706433 by the other, and
+    which is which is the whole of what they are for: one is the
+    bytes to hand to a socket, and one is a number to count with. A
+    call that handed back the wrong one would say the other's number,
+    which is why both are written down here rather than one.
+
+    This is the one place in the package where what is held to is a
+    machine's own byte order — these are small-endian numbers, and a
+    big-endian machine would read both the other way round.
+    """
+    var written = string_to_char_ptr("127.0.0.1")
+
+    assert_equal(
+        inet_addr(written),
+        16777343,
+        "127.0.0.1 as it goes on the wire is 16777343",
+    )
+    assert_equal(
+        inet_network(written),
+        2130706433,
+        "and as this machine counts it is 2130706433",
+    )
+
+    written.unsafe_free()
+
+
+def test_an_address_taken_apart_and_put_back_together() raises:
+    """`inet_netof` and `inet_lnaof` take an address apart into a
+    network number and a host number, and `inet_makeaddr` puts the
+    two back together.
+
+    What is asked is the round trip, which asks nothing about which
+    bits are which: an address taken apart and put back is the address
+    it was. That is as well, because how much of an address is network
+    and how much is host is told by its own first bits — 127.0.0.1 is
+    of class A, which gives up eight — so what these answer for one
+    address says nothing about what they answer for another.
+    """
+    var written = string_to_char_ptr("127.0.0.1")
+
+    var address = in_addr()
+    address.s_addr = inet_addr(written)
+
+    var net = inet_netof(address)
+    var host = inet_lnaof(address)
+
+    var together = inet_makeaddr(net, host)
+    assert_equal(
+        together.s_addr,
+        address.s_addr,
+        "an address taken apart and put back together is itself",
+    )
+    assert_true(net != host, "and the two parts of it are not the same number")
+
+    written.unsafe_free()
+
+
 def main() raises:
     test_htonl()
     test_htons()
@@ -124,4 +240,7 @@ def main() raises:
     test_inet_pton_round_trips_an_ipv4()
     test_inet_pton_refuses_what_is_not_an_address()
     test_inet_pton_round_trips_an_ipv6()
+    test_an_address_written_down_and_read_back()
+    test_the_bytes_go_on_the_wire_one_way_and_are_counted_the_other()
+    test_an_address_taken_apart_and_put_back_together()
     print("test_network: ok")

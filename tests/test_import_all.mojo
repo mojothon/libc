@@ -706,6 +706,14 @@ def bring_in_libc_network():
     from libc.network import (
         htonl,
         htons,
+        in_addr,
+        inet_addr,
+        inet_aton,
+        inet_lnaof,
+        inet_makeaddr,
+        inet_netof,
+        inet_network,
+        inet_ntoa,
         ntohl,
         ntohs,
     )
