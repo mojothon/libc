@@ -10,8 +10,10 @@ from libc.utils import (
 )
 from libc.file import fclose, rewind
 from libc.stdlib import free
+from libc.time import gmtime_r, time, tm
 from libc.stdio import tmpfile
 from libc.wchar import (
+    WEOF,
     btowc,
     fgetwc,
     fgetws,
@@ -31,46 +33,50 @@ from libc.wchar import (
     iswspace,
     iswupper,
     iswxdigit,
+    mbrlen,
+    mbrtowc,
     mbsinit,
+    mbsnrtowcs,
+    mbsrtowcs,
+    mbstate_t,
+    mbstowcs,
     putwc,
+    towlower,
+    towupper,
     ungetwc,
+    wcpcpy,
+    wcpncpy,
+    wcrtomb,
+    wcscasecmp,
+    wcscat,
+    wcschr,
+    wcscmp,
+    wcscoll,
+    wcscpy,
+    wcscspn,
+    wcsdup,
+    wcsftime,
+    wcslen,
+    wcsncasecmp,
+    wcsncat,
+    wcsncmp,
+    wcsncpy,
+    wcsnlen,
+    wcsnrtombs,
+    wcspbrk,
+    wcsrchr,
+    wcsrtombs,
+    wcsspn,
+    wcsstr,
     wcstod,
     wcstof,
     wcstok,
     wcstol,
     wcstoll,
+    wcstombs,
     wcstoul,
-    WEOF,
-    mbrlen,
-    mbrtowc,
-    mbstowcs,
-    mbstate_t,
-    towlower,
-    towupper,
-    wcscasecmp,
-    wcscat,
-    wcpcpy,
-    wcpncpy,
-    wcschr,
-    wcscmp,
-    wcscoll,
-    wcsdup,
-    wcscpy,
-    wcscspn,
-    wcsncat,
-    wcsnlen,
-    wcspbrk,
-    wcslen,
-    wcsncasecmp,
-    wcsncmp,
-    wcsncpy,
-    wcsrchr,
-    wcsspn,
-    wcsstr,
     wcstoull,
     wcsxfrm,
-    wcstombs,
-    wcrtomb,
     wctob,
     wmemchr,
     wmemcmp,
@@ -785,6 +791,128 @@ def test_asking_after_a_conversion_state() raises:
     )
 
 
+def test_the_stateful_conversions() raises:
+    """`mbsrtowcs` reads a multibyte string out into wide characters
+    and `wcsrtombs` writes them back, and `mbsnrtowcs` and
+    `wcsnrtombs` are the same two with a stopping place in the source
+    as well as in the room.
+
+    What sets these apart from `mbstowcs` and `wcstombs` is the state
+    they keep, which is what a character taking more than one byte
+    needs; what sets the `n` ones apart is that the source need not be
+    ended.
+
+    The round trip is what is asked of the first two: a narrow string
+    goes out into wide characters and comes back the same. Each is
+    asked how much it wrote, and each is asked about the pointer it
+    was handed — which is moved on past what was read, and that is the
+    thing here no other call would do.
+
+    The `n` ones are asked for fewer than there are: one byte of a
+    string of two, and one character of a string of two. Each is asked
+    to stop at that, which is what a call that kept reading to the end
+    would not do.
+    """
+    var narrow = string_to_char_ptr("hi")
+    var src = unsafe_alloc[c_ptr[UInt8]](1)
+    src.unsafe_offset(0)[] = narrow
+    var wide_room = unsafe_alloc[c_wchar](8)
+
+    assert_equal(
+        Int(mbsrtowcs(wide_room, src, 8, null_ptr[mbstate_t]())),
+        2,
+        "mbsrtowcs writes two wide characters",
+    )
+    wide_room.unsafe_store(2, 0)
+    assert_equal(wide_to_string(wide_room), "hi", "and they say hi")
+    assert_true(
+        Int(UInt(src.unsafe_offset(0)[])) == 0,
+        "and the pointer is left null, the end of the string having been read",
+    )
+
+    # Back again.
+    var wsrc = unsafe_alloc[c_ptr[c_wchar]](1)
+    wsrc.unsafe_offset(0)[] = wide_room
+    var bytes = unsafe_alloc[UInt8](8)
+    bytes.unsafe_store(0, 0)
+    assert_equal(
+        Int(wcsrtombs(bytes, wsrc, 8, null_ptr[mbstate_t]())),
+        2,
+        "wcsrtombs writes two bytes",
+    )
+    bytes.unsafe_store(2, 0)
+    assert_equal(char_ptr_to_string(bytes), "hi", "and they say hi")
+    assert_true(
+        Int(UInt(wsrc.unsafe_offset(0)[])) == 0,
+        "and that one is left null too",
+    )
+
+    # One byte of a string of two.
+    src.unsafe_offset(0)[] = narrow
+    var one = unsafe_alloc[c_wchar](8)
+    assert_equal(
+        Int(mbsnrtowcs(one, src, 1, 8, null_ptr[mbstate_t]())),
+        1,
+        "mbsnrtowcs reads one byte when it is given one",
+    )
+
+    # One character of a string of two.
+    wsrc.unsafe_offset(0)[] = wide_room
+    var short = unsafe_alloc[UInt8](8)
+    assert_equal(
+        Int(wcsnrtombs(short, wsrc, 1, 8, null_ptr[mbstate_t]())),
+        1,
+        "wcsnrtombs reads one character when it is given one",
+    )
+
+    short.unsafe_free()
+    one.unsafe_free()
+    bytes.unsafe_free()
+    wsrc.unsafe_free()
+    wide_room.unsafe_free()
+    src.unsafe_free()
+    narrow.unsafe_free()
+
+
+def test_writing_a_time_out_wide() raises:
+    """`wcsftime` writes a wide string from a broken-down time, in the
+    shape a format asks for. It is `strftime` writing wide characters.
+
+    It is asked for a year, and four characters is what comes back.
+    Which words come out for a month or a day is the locale's to say,
+    so a format of digits is what a test asks for, and the year is
+    four digits in every locale that has one.
+
+    The time is today's, got from `time` and `gmtime_r` rather than
+    written out, so nothing here holds to a year in particular.
+    """
+    var now = unsafe_alloc[Int64](1)
+    now.unsafe_offset(0)[] = time(null_ptr[Int64]())
+    var slot = unsafe_alloc[tm](1)
+    slot.unsafe_offset(0)[] = tm()
+    assert_true(
+        Int(UInt(gmtime_r(now, slot))) != 0, "gmtime_r handed back a time"
+    )
+
+    var buf = unsafe_alloc[c_wchar](64)
+    var written = wcsftime(buf, 64, wide("%Y"), slot)
+    assert_equal(Int(written), 4, "a year is four characters")
+    assert_equal(
+        wide_to_string(buf).byte_length(), 4, "and four is what is in the room"
+    )
+
+    # Asking for room too small to hold it writes nothing at all.
+    var tiny = unsafe_alloc[c_wchar](2)
+    assert_equal(
+        Int(wcsftime(tiny, 2, wide("%Y"), slot)), 0, "and too little room is 0"
+    )
+
+    tiny.unsafe_free()
+    buf.unsafe_free()
+    slot.unsafe_free()
+    now.unsafe_free()
+
+
 def main() raises:
     test_length_and_compare()
     test_search()
@@ -803,4 +931,6 @@ def main() raises:
     test_reading_the_widest_integers_off_the_front()
     test_splitting_a_wide_string()
     test_asking_after_a_conversion_state()
+    test_the_stateful_conversions()
+    test_writing_a_time_out_wide()
     print("test_wchar: ok")

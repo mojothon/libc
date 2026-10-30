@@ -17,6 +17,7 @@ from libc.constant import (
     c_wint,
 )
 from libc.file import FILE
+from libc.time import tm
 
 
 struct mbstate_t:
@@ -1641,3 +1642,233 @@ def mbsinit(ps: c_ptr[mbstate_t]) -> c_int:
         character at a time share.
     """
     return external_call["mbsinit", c_int, c_ptr[mbstate_t]](ps)
+
+
+def mbsrtowcs(
+    dest: c_ptr[c_wchar],
+    src: c_ptr[c_ptr[UInt8]],
+    length: c_size_t,
+    ps: c_ptr[mbstate_t],
+) -> c_size_t:
+    """Libc C95 `mbsrtowcs` function.
+
+    Description:
+        Reads a multibyte string out into wide characters, one whole
+        character at a time.
+
+    Args:
+        dest: Where to write them, or a null pointer where only how
+            many there are is wanted.
+        src: Where the string is. This is written to: it is moved on
+            past what was read, and set to a null pointer once the end
+            of the string has been read.
+        length: The most wide characters to write.
+        ps: The conversion state, or a null pointer for the one the
+            library keeps for its own.
+
+    Returns:
+        How many wide characters were written, or how many there would
+        have been where `dest` was a null pointer.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/mbsrtowcs.3.html).
+        Fn signature: `size_t mbsrtowcs(wchar_t *dest, const char **src,
+            size_t len, mbstate_t *ps)`.
+
+        This is `mbstowcs` that keeps a state between calls, which is
+        what a character taking more than one byte needs: it can be
+        handed the string a piece at a time. `mbsnrtowcs` is this with
+        a limit on how many bytes it will read as well as on how many
+        characters it will write.
+    """
+    return external_call[
+        "mbsrtowcs",
+        c_size_t,
+        c_ptr[c_wchar],
+        c_ptr[c_ptr[UInt8]],
+        c_size_t,
+        c_ptr[mbstate_t],
+    ](dest, src, length, ps)
+
+
+def wcsrtombs(
+    dest: c_ptr[UInt8],
+    src: c_ptr[c_ptr[c_wchar]],
+    length: c_size_t,
+    ps: c_ptr[mbstate_t],
+) -> c_size_t:
+    """Libc C95 `wcsrtombs` function.
+
+    Description:
+        Writes wide characters out as a multibyte string, one whole
+        character at a time.
+
+    Args:
+        dest: Where to write it, or a null pointer where only how many
+            bytes it would take is wanted.
+        src: Where the characters are. This is written to: it is moved
+            on past what was read, and set to a null pointer once the
+            end of them has been read.
+        length: The most bytes to write.
+        ps: The conversion state, or a null pointer for the one the
+            library keeps for its own.
+
+    Returns:
+        How many bytes were written, or how many it would have taken
+        where `dest` was a null pointer.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcsrtombs.3.html).
+        Fn signature: `size_t wcsrtombs(char *dest, const wchar_t **src,
+            size_t len, mbstate_t *ps)`.
+
+        This is `wcstombs` that keeps a state between calls. No
+        terminator is written where the characters run out before the
+        room does, so a byte of 0 goes in first where one is wanted.
+        `wcsnrtombs` is this with a limit on how many characters it
+        will read as well as on how many bytes it will write.
+    """
+    return external_call[
+        "wcsrtombs",
+        c_size_t,
+        c_ptr[UInt8],
+        c_ptr[c_ptr[c_wchar]],
+        c_size_t,
+        c_ptr[mbstate_t],
+    ](dest, src, length, ps)
+
+
+def mbsnrtowcs(
+    dest: c_ptr[c_wchar],
+    src: c_ptr[c_ptr[UInt8]],
+    nmc: c_size_t,
+    length: c_size_t,
+    ps: c_ptr[mbstate_t],
+) -> c_size_t:
+    """Libc GNU `mbsnrtowcs` function.
+
+    Description:
+        Reads no more than a given number of bytes of a multibyte
+        string out into wide characters.
+
+    Args:
+        dest: Where to write them, or a null pointer where only how
+            many there are is wanted.
+        src: Where the string is. This is written to: it is moved on
+            past what was read.
+        nmc: The most bytes of the string to read.
+        length: The most wide characters to write.
+        ps: The conversion state, or a null pointer for the one the
+            library keeps for its own.
+
+    Returns:
+        How many wide characters were written, or how many there would
+        have been where `dest` was a null pointer.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/mbsnrtowcs.3.html).
+        Fn signature: `size_t mbsnrtowcs(wchar_t *dest, const char **src,
+            size_t nmc, size_t len, mbstate_t *ps)`.
+
+        This is `mbsrtowcs` with a stopping place in the source as
+        well as in the destination, which is what makes it the one for
+        a string that has not been ended or that is being read in
+        pieces. Reading stops at a terminator, and at a character that
+        would take more bytes than are left to read.
+    """
+    return external_call[
+        "mbsnrtowcs",
+        c_size_t,
+        c_ptr[c_wchar],
+        c_ptr[c_ptr[UInt8]],
+        c_size_t,
+        c_size_t,
+        c_ptr[mbstate_t],
+    ](dest, src, nmc, length, ps)
+
+
+def wcsnrtombs(
+    dest: c_ptr[UInt8],
+    src: c_ptr[c_ptr[c_wchar]],
+    nwc: c_size_t,
+    length: c_size_t,
+    ps: c_ptr[mbstate_t],
+) -> c_size_t:
+    """Libc GNU `wcsnrtombs` function.
+
+    Description:
+        Writes no more than a given number of wide characters out as a
+        multibyte string.
+
+    Args:
+        dest: Where to write it, or a null pointer where only how many
+            bytes it would take is wanted.
+        src: Where the characters are. This is written to: it is moved
+            on past what was read.
+        nwc: The most characters to read.
+        length: The most bytes to write.
+        ps: The conversion state, or a null pointer for the one the
+            library keeps for its own.
+
+    Returns:
+        How many bytes were written, or how many it would have taken
+        where `dest` was a null pointer.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcsnrtombs.3.html).
+        Fn signature: `size_t wcsnrtombs(char *dest, const wchar_t **src,
+            size_t nwc, size_t len, mbstate_t *ps)`.
+
+        This is `wcsrtombs` with a stopping place in the source as
+        well as in the destination, so the source need not be ended.
+        No terminator is written, as with `wcsrtombs`.
+    """
+    return external_call[
+        "wcsnrtombs",
+        c_size_t,
+        c_ptr[UInt8],
+        c_ptr[c_ptr[c_wchar]],
+        c_size_t,
+        c_size_t,
+        c_ptr[mbstate_t],
+    ](dest, src, nwc, length, ps)
+
+
+def wcsftime(
+    s: c_ptr[c_wchar], max: c_size_t, format: c_ptr[c_wchar], timeptr: c_ptr[tm]
+) -> c_size_t:
+    """Libc C95 `wcsftime` function.
+
+    Description:
+        Writes a wide string from a broken-down time, in the shape a
+        format asks for.
+
+    Args:
+        s: Where to write it, which is written to.
+        max: The most characters to write, terminator and all.
+        format: The format, which is the same one `strftime` takes:
+            `%Y` for the year, `%m` for the month and so on.
+        timeptr: The time to write out.
+
+    Returns:
+        How many characters were written, terminator not counted, or 0
+        where they would not fit in `max`.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcsftime.3.html).
+        Fn signature: `size_t wcsftime(wchar_t *s, size_t max,
+            const wchar_t *format, const struct tm *timeptr)`.
+
+        This is `strftime` writing wide characters. Which words come
+        out for `%a` and `%B` is the locale's to say, so a format of
+        digits is what a test wants: `%Y` is the year in every locale
+        that has one.
+    """
+    return external_call[
+        "wcsftime",
+        c_size_t,
+        c_ptr[c_wchar],
+        c_size_t,
+        c_ptr[c_wchar],
+        c_ptr[tm],
+    ](s, max, format, timeptr)
