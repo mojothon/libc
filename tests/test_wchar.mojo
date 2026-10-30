@@ -1,7 +1,7 @@
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import c_ptr, c_wchar
+from libc.constant import c_ptr, c_void, c_wchar
 from libc.utils import (
     char_ptr_to_string,
     is_null,
@@ -9,6 +9,7 @@ from libc.utils import (
     string_to_char_ptr,
 )
 from libc.file import fclose, rewind
+from libc.stdlib import free
 from libc.stdio import tmpfile
 from libc.wchar import (
     btowc,
@@ -43,17 +44,27 @@ from libc.wchar import (
     mbstate_t,
     towlower,
     towupper,
+    wcscasecmp,
     wcscat,
+    wcpcpy,
+    wcpncpy,
     wcschr,
     wcscmp,
+    wcscoll,
+    wcsdup,
     wcscpy,
     wcscspn,
+    wcsncat,
+    wcsnlen,
+    wcspbrk,
     wcslen,
+    wcsncasecmp,
     wcsncmp,
     wcsncpy,
     wcsrchr,
     wcsspn,
     wcsstr,
+    wcsxfrm,
     wcstombs,
     wcrtomb,
     wctob,
@@ -405,6 +416,194 @@ def test_wcstof() raises:
     end.unsafe_free()
 
 
+def test_measuring_and_finding_in_wide_strings() raises:
+    """`wcsnlen` says how long a wide string is, stopping at a given
+    number of characters, and `wcspbrk` finds the first character of
+    one that is in a given set.
+
+    `wcsnlen` is asked about a string it reaches the end of, and then
+    about one it does not — the same string, asked for fewer
+    characters than there are, which is what makes it answer the
+    number it was given rather than the number there is. Asking only
+    of a string it finishes would not tell the two apart.
+
+    `wcspbrk` is asked about a string with the set's characters in it
+    twice over, and the first of them is what it finds. It is asked
+    about a string with none of them, of which a null pointer is what
+    comes back.
+    """
+    var five = wide("abcde")
+    assert_equal(Int(wcsnlen(five, 5)), 5, "five characters, asked for five")
+    assert_equal(
+        Int(wcsnlen(five, 3)), 3, "and three where three were asked for"
+    )
+    assert_equal(
+        Int(wcsnlen(five, 100)), 5, "and five where more than that were"
+    )
+
+    var some = wide("aXbXc")
+    assert_equal(
+        wide_to_string(wcspbrk(some, wide("X"))),
+        "XbXc",
+        "wcspbrk finds the first of them",
+    )
+    assert_equal(
+        wide_to_string(wcspbrk(some, wide("cX"))),
+        "XbXc",
+        "whichever of the set comes first",
+    )
+    assert_true(
+        Int(UInt(wcspbrk(some, wide("z")))) == 0,
+        "and none of them is a null pointer",
+    )
+
+    some.unsafe_free()
+    five.unsafe_free()
+
+
+def test_comparing_wide_strings_apart_from_case() raises:
+    """`wcscasecmp` compares two wide strings with no regard for the
+    case of their letters, and `wcsncasecmp` does it over no more
+    than so many characters.
+
+    Both are asked about two strings that are the same apart from
+    case, which is 0, and about two that are not, which is not. The
+    second is asked the one thing that sets it apart: two strings
+    that differ past a given number of characters, which is 0 for
+    that many and not 0 for more. A call that never looked at its
+    count would have to answer both questions the same way.
+
+    Under the C locale the ASCII letters are what count as the same,
+    and that is all this asks of it.
+    """
+    assert_equal(
+        wcscasecmp(wide("Hello"), wide("hello")),
+        0,
+        "the same letters apart from case are 0",
+    )
+    assert_true(
+        wcscasecmp(wide("Hello"), wide("hellp")) != 0,
+        "and different letters are not",
+    )
+
+    assert_equal(
+        wcsncasecmp(wide("Hello"), wide("help"), 3),
+        0,
+        "the first three agree, and",
+    )
+    assert_true(
+        wcsncasecmp(wide("Hello"), wide("help"), 4) != 0,
+        "the first four do not",
+    )
+
+
+def test_the_order_the_locale_asks_for() raises:
+    """`wcscoll` compares two wide strings in the order the locale
+    puts things in, and `wcsxfrm` writes one out in a form that
+    plain comparison may be done on instead.
+
+    Under the C locale the two agree, so what is asked here holds on
+    both platforms: a string against itself is 0, and two strings
+    that differ are not, whichever way round they are asked.
+
+    `wcsxfrm` is asked for the length first, with nowhere to write,
+    and then to write into room that big. That is what the count it
+    hands back is for, and asking it to write without asking first is
+    how one comes to write past the end of the room.
+
+    What is written out is not meant to be read, so what is asserted
+    of it is only that it is the length that was said.
+    """
+    var one = wide("abc")
+    var two = wide("abd")
+
+    assert_equal(wcscoll(one, one), 0, "a string against itself is 0")
+    assert_true(wcscoll(one, two) != 0, "two that differ are not")
+
+    var room = unsafe_alloc[c_wchar](16)
+    var needed = wcsxfrm(room, one, 16)
+    assert_true(
+        Int(needed) > 0 and Int(needed) <= 16,
+        "wcsxfrm says how much room the writing takes",
+    )
+    assert_equal(
+        Int(wcsnlen(room, 16)),
+        Int(needed),
+        "and that is how much it wrote",
+    )
+
+    room.unsafe_free()
+    two.unsafe_free()
+    one.unsafe_free()
+
+
+def test_copying_wide_strings() raises:
+    """`wcsdup` makes a copy in fresh memory, `wcsncat` puts no more
+    than so many characters onto the end of a string, and `wcpcpy`
+    and `wcpncpy` copy and say where they got to.
+
+    `wcsdup` is asked to copy, and what comes back says the same
+    thing as what went in and is not the same place — which is what
+    a copy is, and what a call handing the original back is not.
+
+    `wcsncat` is asked for fewer characters than the source has, and
+    the result is the destination with that many added to it and not
+    with all of them. That is the one thing here that a call which
+    ignored its count could not answer.
+
+    `wcpcpy` is asked where it got to, and it is the end of what was
+    written, which is what makes it the one for putting several
+    strings one after another. `wcpncpy` is asked the same, twice
+    over: once where the source runs out within the count, and once
+    where it does not, and what comes back is the terminator in the
+    first case and one past the last character in the second.
+    """
+    var a = wide("abc")
+    var copy = wcsdup(a)
+    assert_equal(wide_to_string(copy), "abc", "wcsdup says the same thing")
+    assert_true(Int(UInt(copy)) != Int(UInt(a)), "and it is not the same place")
+    # Its own memory, asked for by the library and not by Mojo, so
+    # `free` is what gives it back and not `unsafe_free`.
+    _ = free(copy.unsafe_bitcast[c_void]())
+
+    var dest = unsafe_alloc[c_wchar](16)
+    dest.unsafe_store(0, 88)
+    dest.unsafe_store(1, 0)
+    _ = wcsncat(dest, wide("defg"), 2)
+    assert_equal(
+        wide_to_string(dest), "Xde", "wcsncat adds two of the four it was given"
+    )
+
+    var again = unsafe_alloc[c_wchar](16)
+    var end = wcpcpy(again, wide("hi"))
+    assert_equal(wide_to_string(again), "hi", "wcpcpy copies")
+    assert_equal(wide_to_string(end), "", "and says where the end of it is")
+
+    # Ends within the count, so what comes back is a terminator.
+    var room = unsafe_alloc[c_wchar](8)
+    var stop = wcpncpy(room, wide("ab"), 8)
+    assert_equal(wide_to_string(room), "ab", "wcpncpy copies, and")
+    assert_equal(
+        wide_to_string(stop), "", "the source ran out, so this is the end"
+    )
+
+    # Does not end within the count, so nothing is terminated and what
+    # comes back is one past the last character written.
+    var tight = unsafe_alloc[c_wchar](4)
+    var past = wcpncpy(tight, wide("abcd"), 2)
+    assert_equal(
+        Int(UInt(past)) - Int(UInt(tight)),
+        8,
+        "two characters written, and this is one past them",
+    )
+
+    tight.unsafe_free()
+    room.unsafe_free()
+    again.unsafe_free()
+    dest.unsafe_free()
+    a.unsafe_free()
+
+
 def main() raises:
     test_length_and_compare()
     test_search()
@@ -415,4 +614,8 @@ def main() raises:
     test_wide_characters_through_a_stream()
     test_reading_numbers_off_the_front()
     test_wcstof()
+    test_measuring_and_finding_in_wide_strings()
+    test_comparing_wide_strings_apart_from_case()
+    test_the_order_the_locale_asks_for()
+    test_copying_wide_strings()
     print("test_wchar: ok")

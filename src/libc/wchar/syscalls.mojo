@@ -1042,3 +1042,310 @@ def wcstof(nptr: c_ptr[c_wchar], endptr: c_ptr[c_ptr[c_wchar]]) -> Float32:
     return external_call[
         "wcstof", Float32, c_ptr[c_wchar], c_ptr[c_ptr[c_wchar]]
     ](nptr, endptr)
+
+
+def wcsnlen(s: c_ptr[c_wchar], maxlen: c_size_t) -> c_size_t:
+    """Libc POSIX `wcsnlen` function.
+
+    Description:
+        Says how many wide characters there are in a string, looking
+        at no more than a given number of them.
+
+    Args:
+        s: The string to measure.
+        maxlen: The most characters to look at.
+
+    Returns:
+        How many there are before the end of the string, or `maxlen`
+        where there was no end within that many.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcsnlen.3.html).
+        Fn signature: `size_t wcsnlen(const wchar_t *s,
+            size_t maxlen)`.
+
+        This is `wcslen` with a stopping place, which is what makes
+        it the one to reach for where the string may not have been
+        ended: `wcslen` would walk off the end of one that has not.
+    """
+    return external_call["wcsnlen", c_size_t, c_ptr[c_wchar], c_size_t](
+        s, maxlen
+    )
+
+
+def wcspbrk(s: c_ptr[c_wchar], accept: c_ptr[c_wchar]) -> c_ptr[c_wchar]:
+    """Libc C95 `wcspbrk` function.
+
+    Description:
+        Finds the first character of a string that is one of a given
+        set.
+
+    Args:
+        s: The string to look in.
+        accept: The characters to look for.
+
+    Returns:
+        A pointer to that character, or a null pointer where none of
+        them is in the string.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcspbrk.3.html).
+        Fn signature: `wchar_t *wcspbrk(const wchar_t *s,
+            const wchar_t *accept)`.
+
+        `wcscspn` says the same thing as a count rather than as a
+        pointer, and `wcsspn` counts the run before it instead.
+    """
+    return external_call[
+        "wcspbrk", c_ptr[c_wchar], c_ptr[c_wchar], c_ptr[c_wchar]
+    ](s, accept)
+
+
+def wcscasecmp(s1: c_ptr[c_wchar], s2: c_ptr[c_wchar]) -> c_int:
+    """Libc POSIX `wcscasecmp` function.
+
+    Description:
+        Compares two wide strings, taking no account of the case of
+        the letters in them.
+
+    Args:
+        s1: The first string.
+        s2: The second string.
+
+    Returns:
+        0 where they are the same letters apart from case, and
+        something else where they are not, laid out the way `wcscmp`
+        lays it out.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcscasecmp.3.html).
+        Fn signature: `int wcscasecmp(const wchar_t *s1,
+            const wchar_t *s2)`.
+
+        Which letters count as the same is the locale's to say, and
+        under the C locale it is the ASCII letters and no others.
+        `wcsncasecmp` is this over no more than so many characters.
+    """
+    return external_call["wcscasecmp", c_int, c_ptr[c_wchar], c_ptr[c_wchar]](
+        s1, s2
+    )
+
+
+def wcsncasecmp(s1: c_ptr[c_wchar], s2: c_ptr[c_wchar], n: c_size_t) -> c_int:
+    """Libc POSIX `wcsncasecmp` function.
+
+    Description:
+        Compares no more than a given number of characters of two
+        wide strings, taking no account of the case of the letters
+        in them.
+
+    Args:
+        s1: The first string.
+        s2: The second string.
+        n: The most characters to compare.
+
+    Returns:
+        0 where the first that many are the same apart from case, and
+        something else where they are not.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcscasecmp.3.html).
+        Fn signature: `int wcsncasecmp(const wchar_t *s1,
+            const wchar_t *s2, size_t n)`.
+
+        This is `wcscasecmp` with a stopping place, and like it, what
+        counts as the same letter is the locale's to say.
+    """
+    return external_call[
+        "wcsncasecmp", c_int, c_ptr[c_wchar], c_ptr[c_wchar], c_size_t
+    ](s1, s2, n)
+
+
+def wcscoll(s1: c_ptr[c_wchar], s2: c_ptr[c_wchar]) -> c_int:
+    """Libc C95 `wcscoll` function.
+
+    Description:
+        Compares two wide strings in the order the locale puts
+        things in.
+
+    Args:
+        s1: The first string.
+        s2: The second string.
+
+    Returns:
+        0 where the two come to the same place in that order, below 0
+        where the first comes before the second and above 0 where it
+        comes after.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcscoll.3.html).
+        Fn signature: `int wcscoll(const wchar_t *s1,
+            const wchar_t *s2)`.
+
+        This is not `wcscmp`, which puts characters in the order
+        their numbers come: under the C locale the two agree, and
+        under another they need not. `strcoll` is this for narrow
+        strings, and `wcsxfrm` is what makes it cheaper where one
+        string is to be compared against many.
+    """
+    return external_call["wcscoll", c_int, c_ptr[c_wchar], c_ptr[c_wchar]](
+        s1, s2
+    )
+
+
+def wcsxfrm(dest: c_ptr[c_wchar], src: c_ptr[c_wchar], n: c_size_t) -> c_size_t:
+    """Libc C95 `wcsxfrm` function.
+
+    Description:
+        Writes a string out again in a form that `wcscmp` may compare
+        with the result the locale's own order would give.
+
+    Args:
+        dest: Where to write it, which may be a null pointer where
+            only the length is wanted.
+        src: The string to write out.
+        n: The most characters to write.
+
+    Returns:
+        How many characters the whole of it would take, which may be
+        more than were written.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcsxfrm.3.html).
+        Fn signature: `size_t wcsxfrm(wchar_t *dest,
+            const wchar_t *src, size_t n)`.
+
+        Where one string is to be compared against a great many, this
+        is the cheaper way to do it: the writing out is done once and
+        `wcscmp` is plain comparison after it, where `wcscoll` asks
+        the locale about every pair. What is written out is not meant
+        to be read, only compared.
+    """
+    return external_call[
+        "wcsxfrm", c_size_t, c_ptr[c_wchar], c_ptr[c_wchar], c_size_t
+    ](dest, src, n)
+
+
+def wcsdup(s: c_ptr[c_wchar]) -> c_ptr[c_wchar]:
+    """Libc POSIX `wcsdup` function.
+
+    Description:
+        Makes a copy of a wide string in fresh memory.
+
+    Args:
+        s: The string to copy.
+
+    Returns:
+        A pointer to the copy, or a null pointer where none could be
+        had.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcsdup.3.html).
+        Fn signature: `wchar_t *wcsdup(const wchar_t *s)`.
+
+        Fresh memory of its own asking for, which is to say the
+        caller's to hand to `free` — and not to hand to `free` twice,
+        nor after some other call has freed what was copied.
+    """
+    return external_call["wcsdup", c_ptr[c_wchar], c_ptr[c_wchar]](s)
+
+
+def wcsncat(
+    dest: c_ptr[c_wchar], src: c_ptr[c_wchar], n: c_size_t
+) -> c_ptr[c_wchar]:
+    """Libc C95 `wcsncat` function.
+
+    Description:
+        Puts no more than a given number of characters from one wide
+        string onto the end of another.
+
+    Args:
+        dest: The string to add to, which is written to.
+        src: What to add to it.
+        n: The most characters to add.
+
+    Returns:
+        The first string.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcsncat.3.html).
+        Fn signature: `wchar_t *wcsncat(wchar_t *dest,
+            const wchar_t *src, size_t n)`.
+
+        A terminator is put on the end whatever `n` is, so the room
+        has to be one wider than the two strings come to. This is
+        `wcscat` with a stopping place, and where the destination is
+        not known to have room for the whole of the source, this is
+        the one and not that.
+    """
+    return external_call[
+        "wcsncat", c_ptr[c_wchar], c_ptr[c_wchar], c_ptr[c_wchar], c_size_t
+    ](dest, src, n)
+
+
+def wcpcpy(dest: c_ptr[c_wchar], src: c_ptr[c_wchar]) -> c_ptr[c_wchar]:
+    """Libc GNU `wcpcpy` function.
+
+    Description:
+        Copies one wide string over another and hands back a pointer
+        to the end of what was written.
+
+    Args:
+        dest: Where to copy to, which is written to.
+        src: What to copy there.
+
+    Returns:
+        A pointer to the terminator at the end of the copy.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcpcpy.3.html).
+        Fn signature: `wchar_t *wcpcpy(wchar_t *dest,
+            const wchar_t *src)`.
+
+        This is `wcscpy` that says where it got to, which is what
+        makes it the one for putting several strings one after
+        another: there is no walking the string again to find the end
+        between one copy and the next. `stpcpy` is this for narrow
+        strings. The room has to be one wider than the source is
+        long, the terminator being copied too.
+    """
+    return external_call[
+        "wcpcpy", c_ptr[c_wchar], c_ptr[c_wchar], c_ptr[c_wchar]
+    ](dest, src)
+
+
+def wcpncpy(
+    dest: c_ptr[c_wchar], src: c_ptr[c_wchar], n: c_size_t
+) -> c_ptr[c_wchar]:
+    """Libc GNU `wcpncpy` function.
+
+    Description:
+        Copies no more than a given number of characters from one
+        wide string to another, and hands back a pointer to where it
+        got to.
+
+    Args:
+        dest: Where to copy to, which is written to.
+        src: What to copy there.
+        n: The most characters to write.
+
+    Returns:
+        A pointer to the terminator at the end of the copy, or to
+        one past the last character written where the source was
+        longer than that.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcpncpy.3.html).
+        Fn signature: `wchar_t *wcpncpy(wchar_t *dest,
+            const wchar_t *src, size_t n)`.
+
+        Where the source runs out first, the rest of the room is
+        filled with terminators — which is what makes this unlike
+        `wcsncpy`, and why what comes back points to a terminator
+        rather than to nothing in particular. Where it does not run
+        out, nothing is terminated at all, and what comes back is one
+        past the last character written.
+    """
+    return external_call[
+        "wcpncpy", c_ptr[c_wchar], c_ptr[c_wchar], c_ptr[c_wchar], c_size_t
+    ](dest, src, n)
