@@ -9,7 +9,7 @@ the bottom.
 | `libc.math` | `<math.h>` | 115 |
 | `libc.stdlib` | `<stdlib.h>` | 64 |
 | `libc.float` | `<float.h>` | 30 |
-| `libc.unistd` | `<unistd.h>` | 186 |
+| `libc.unistd` | `<unistd.h>` | 195 |
 | `libc.file` | `<stdio.h>` file operations | 40 |
 | `libc.ctype` | `<ctype.h>` | 29 |
 | `libc.sys.socket` | `<sys/socket.h>` | 23 |

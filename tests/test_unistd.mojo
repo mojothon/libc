@@ -4,10 +4,11 @@ from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.fcntl import O_CREAT, O_RDONLY, open as open_with_mode
-from libc.constant import AT_FDCWD, c_ptr, SEEK_END, SEEK_SET
+from libc.constant import AT_FDCWD, c_ptr, c_uint, SEEK_END, SEEK_SET
 from libc.sys.stat import Stat, fchmod, fstat, stat
 from libc.sys.utsname import Utsname, uname
 from libc.unistd import (
+    CS_PATH,
     PC_ASYNC_IO,
     PC_CHOWN_RESTRICTED,
     PC_FILESIZEBITS,
@@ -22,19 +23,18 @@ from libc.unistd import (
     PC_SYMLINK_MAX,
     PC_SYNC_IO,
     PC_VDISABLE,
-    pathconf,
     SC_CLK_TCK,
     SC_NPROCESSORS_ONLN,
     SC_OPEN_MAX,
     SC_PAGESIZE,
-    CS_PATH,
-    confstr,
     SYS_getpid,
     alarm,
     chdir,
     chown,
+    confstr,
     dup2,
     dup3,
+    endusershell,
     execv,
     execve,
     execvp,
@@ -45,23 +45,31 @@ from libc.unistd import (
     fsync,
     ftruncate,
     getcwd,
+    getdomainname,
+    getdtablesize,
     getegid,
     geteuid,
     getgid,
+    getgroups,
+    gethostid,
     gethostname,
     getopt,
     getpagesize,
     getpgid,
+    getpgrp,
     getpid,
     getppid,
     getsid,
     gettid,
     getuid,
+    getusershell,
+    getwd,
     isatty,
     lchown,
     linkat,
     lseek,
     nice,
+    pathconf,
     pipe,
     pread,
     pwrite,
@@ -74,6 +82,7 @@ from libc.unistd import (
     setgid,
     setpgid,
     setuid,
+    setusershell,
     sleep,
     swab,
     symlinkat,
@@ -745,6 +754,103 @@ def test_setuid_and_setgid_asked_for_what_we_already_are() raises:
         assert_equal(setuid(0), -1, "and an ordinary process is refused root")
 
 
+def test_asking_after_the_machine_and_the_process() raises:
+    """`getdtablesize` says how many descriptors may be open at once,
+    `getdomainname` the name of the NIS domain this machine is in,
+    `getgroups` which groups besides its own this process is in,
+    `gethostid` the number this machine is known by, `getpgrp` which
+    process group this one is in, and `getwd` the directory it is in.
+
+    Each is asked a thing that holds on both platforms, and none is
+    held to what the answer is. What a machine is called, what number
+    it is known by, which groups a process is in and where it is
+    standing are all for the machine to say; holding the two platforms
+    to agreeing on any of them would be asking for something they
+    need not agree on.
+
+    What each is held to instead is the shape of its answer. A number
+    of descriptors is more than none. A domain name is written, and
+    may be nothing at all. `getgroups` asked with no room says how
+    many there are and writes nothing, and asked again with that much
+    room says the same number and writes them. A process group is
+    never 0, being numbered for the process that leads it. And `getwd`
+    hands back the buffer it was given, with a path in it.
+    """
+    assert_true(
+        getdtablesize() > 0, "there is room for some descriptors, however few"
+    )
+
+    var domain = unsafe_alloc[UInt8](256)
+    assert_equal(
+        getdomainname(domain, 256), 0, "the domain name is written, and"
+    )
+    # Not what it says: a machine with no domain is one with none.
+    assert_true(
+        char_ptr_to_string(domain).byte_length() < 256,
+        "what is written fits the room it was given",
+    )
+    domain.unsafe_free()
+
+    # Asked with no room, it says how many there are.
+    var howmany = getgroups(0, null_ptr[c_uint]())
+    assert_true(howmany >= 0, "getgroups says how many groups there are")
+    if howmany > 0:
+        var list = unsafe_alloc[c_uint](Int(howmany))
+        assert_equal(
+            getgroups(howmany, list),
+            howmany,
+            "and asked again with room for them, it says the same",
+        )
+        list.unsafe_free()
+
+    # Asked twice, it says the same thing: it is this machine's number
+    # and not a happening.
+    assert_equal(
+        gethostid(), gethostid(), "gethostid says the same number twice"
+    )
+
+    assert_true(
+        getpgrp() > 0, "a process group is numbered for the process leading it"
+    )
+
+    var wd = unsafe_alloc[UInt8](4096)
+    var handed_back = getwd(wd)
+    assert_true(
+        Int(UInt(handed_back)) == Int(UInt(wd)),
+        "getwd hands back the room it was given",
+    )
+    assert_true(
+        char_ptr_to_string(wd).byte_length() > 0, "and there is a path in it"
+    )
+    wd.unsafe_free()
+
+
+def test_walking_the_shells_a_user_may_have() raises:
+    """`setusershell`, `getusershell` and `endusershell` walk the list
+    of shells a user may have, the first putting the walk back at its
+    beginning and the last shutting it.
+
+    The walk is one walk, and its place is kept between calls, so the
+    three are asked in that order: put back at the beginning, asked
+    for the first, then shut. What comes back points into storage the
+    library keeps, so it is read before the next call and not held.
+
+    Which shells are on the list is the machine's own to say, so it is
+    not held to any particular one — only to there being a first one,
+    and to its being a path rather than nothing.
+    """
+    setusershell()
+    var first = getusershell()
+    assert_true(
+        Int(UInt(first)) != 0, "there is a first shell on the list, and"
+    )
+    assert_true(
+        char_ptr_to_string(first).byte_length() > 0,
+        "it is a path and not nothing",
+    )
+    endusershell()
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -752,6 +858,8 @@ def main() raises:
     test_links()
     test_chdir_and_fchdir()
     test_the_ids_and_the_terminal()
+    test_asking_after_the_machine_and_the_process()
+    test_walking_the_shells_a_user_may_have()
     test_fpathconf()
     test_pathconf_agrees_with_fpathconf()
     test_the_pc_knobs_are_the_platforms_own_numbers()

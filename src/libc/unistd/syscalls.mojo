@@ -6,7 +6,7 @@
 from std.ffi import external_call
 from std.sys import CompilationTarget
 from std.memory import Pointer
-from libc.constant import c_int, c_long, c_ptr, c_size_t
+from libc.constant import c_int, c_long, c_ptr, c_size_t, c_uint
 
 
 # The number `syscall` takes for `getpid`. Linux numbers it 39 and
@@ -1710,3 +1710,223 @@ def gethostname(name: c_ptr[UInt8], length: c_size_t) -> c_int:
     return external_call["gethostname", c_int, c_ptr[UInt8], c_size_t](
         name, length
     )
+
+
+def getdtablesize() -> c_int:
+    """Libc BSD `getdtablesize` function.
+
+    Description:
+        Says how many descriptors this process may have open at once.
+
+    Returns:
+        That number, which is never fewer than a process may count
+        on being allowed.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getdtablesize.3.html).
+        Fn signature: `int getdtablesize(void)`.
+
+        This is the soft limit, which is to say the one that may be
+        raised: `getrlimit` with `RLIMIT_NOFILE` is what says what it
+        is and what it may be raised to, and is the one to reach for
+        where either is wanted. This one says only the one that is in
+        force now.
+    """
+    return external_call["getdtablesize", c_int]()
+
+
+def getdomainname(name: c_ptr[UInt8], length: c_size_t) -> c_int:
+    """Libc BSD `getdomainname` function.
+
+    Description:
+        Says the name of the NIS domain this machine is in.
+
+    Args:
+        name: Where to write it, which is written to.
+        length: How much room that is.
+
+    Returns:
+        0 where it was written, and -1 where it was not, with `errno`
+        saying why.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getdomainname.3.html).
+        Fn signature: `int getdomainname(char *name, size_t len)`.
+
+        This is `uname` asking for one field, and like it, what comes
+        back is the machine's own to say and is not to be held to any
+        particular characters: a machine with no domain name is a
+        machine with no domain name, and what is written may be
+        nothing at all.
+    """
+    return external_call["getdomainname", c_int, c_ptr[UInt8], c_size_t](
+        name, length
+    )
+
+
+def getgroups(size: c_int, list: c_ptr[c_uint]) -> c_int:
+    """Libc POSIX `getgroups` function.
+
+    Description:
+        Says which groups besides its own this process is in.
+
+    Args:
+        size: How many of them there is room for in `list`, or 0 to be
+            told only how many there are.
+        list: Where to put them, which is written to, or a null
+            pointer where only the count is wanted.
+
+    Returns:
+        How many there are, or -1 where that could not be said, with
+        `errno` saying why.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getgroups.3.html).
+        Fn signature: `int getgroups(int size, gid_t list[])`.
+
+        Asked with a `size` of 0 it says how many there are and writes
+        nothing, which is how the room is come by before it is asked
+        for — a call given too little room answers -1 with `errno` set
+        to `EINVAL` rather than writing as many as would fit.
+
+        The group this process is in of its own may or may not be
+        among them, which is another thing the two platforms need not
+        agree on.
+    """
+    return external_call["getgroups", c_int, c_int, c_ptr[c_uint]](size, list)
+
+
+def gethostid() -> c_long:
+    """Libc BSD `gethostid` function.
+
+    Description:
+        Says the number this machine is known by on its network.
+
+    Returns:
+        That number.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/gethostid.3.html).
+        Fn signature: `long gethostid(void)`.
+
+        Where it comes from is the platform's own to say: it is made
+        from the address the machine has on its network where there
+        is one, and where there is not, what comes back need not be
+        anything in particular. Nothing about the number is to be held
+        to, only that it can be asked for.
+    """
+    return external_call["gethostid", c_long]()
+
+
+def getpgrp() -> c_int:
+    """Libc POSIX `getpgrp` function.
+
+    Description:
+        Says which process group this one is in.
+
+    Returns:
+        The group's number, which is the number of the process that
+        leads it.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getpgrp.3.html).
+        Fn signature: `pid_t getpgrp(void)`.
+
+        This is `getpgid` asking about the calling process, and it
+        cannot fail. What it hands back is never 0: the number of a
+        process group is the number of the process leading it, and no
+        process is numbered 0.
+    """
+    return external_call["getpgrp", c_int]()
+
+
+def getusershell() -> c_ptr[UInt8]:
+    """Libc BSD `getusershell` function.
+
+    Description:
+        Hands back the next shell a user may have, walking the list of
+        them from the beginning.
+
+    Returns:
+        A pointer to the path of the next one, or a null pointer where
+        the list is at its end.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getusershell.3.html).
+        Fn signature: `char *getusershell(void)`.
+
+        `setusershell` puts the walk back at the beginning and
+        `endusershell` shuts it, and the three go together: what comes
+        back points into storage the library keeps, so it is read
+        before the next call rather than held.
+
+        Which shells are in the list is the machine's own to say, and
+        a machine with no list at all is one where the first call here
+        hands back nothing.
+    """
+    return external_call["getusershell", c_ptr[UInt8]]()
+
+
+def setusershell():
+    """Libc BSD `setusershell` function.
+
+    Description:
+        Puts the walk over the shells a user may have back at the
+        beginning.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getusershell.3.html).
+        Fn signature: `void setusershell(void)`.
+
+        This is what is called before `getusershell` is asked for the
+        first of them, there being only one walk and its place being
+        kept between calls.
+    """
+    external_call["setusershell", NoneType]()
+
+
+def endusershell():
+    """Libc BSD `endusershell` function.
+
+    Description:
+        Shuts the walk over the shells a user may have.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getusershell.3.html).
+        Fn signature: `void endusershell(void)`.
+
+        What this gives back is whatever was opened to read the list,
+        and after it the walk is at its beginning again.
+    """
+    external_call["endusershell", NoneType]()
+
+
+def getwd(buf: c_ptr[UInt8]) -> c_ptr[UInt8]:
+    """Libc BSD `getwd` function.
+
+    Description:
+        Says the directory this process is in, as a path all the way
+        from the root.
+
+    Args:
+        buf: Where to write it, which has to hold `PATH_MAX`
+        characters and is written to.
+
+    Returns:
+        `buf` where it was written, or a null pointer where it could
+        not be, with `errno` saying why.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getwd.3.html).
+        Fn signature: `char *getwd(char *buf)`.
+
+        This is `getcwd` that cannot be told how much room there is,
+        which is why it is the one to leave alone: it will write past
+        the end of a buffer shorter than the longest path there can
+        be. `getcwd` is the one that takes the room as an argument,
+        and is the one to reach for.
+
+        The room has to be `PATH_MAX` long, and that is not a number
+        this package hands out.
+    """
+    return external_call["getwd", c_ptr[UInt8], c_ptr[UInt8]](buf)
