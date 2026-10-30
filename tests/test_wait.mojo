@@ -13,6 +13,7 @@ from libc.sys.wait import (
     WEXITSTATUS,
     WIFEXITED,
     rusage,
+    wait3,
     wait4,
     waitpid,
 )
@@ -88,7 +89,56 @@ def test_wait4_says_what_the_child_used() raises:
     used.unsafe_free()
 
 
+def test_wait3_takes_back_any_child_and_says_what_it_used() raises:
+    """`wait3` waits for any child rather than for one it is named,
+    and says what the child used while it was here.
+
+    It is asked with a `rusage` to fill in, which is the one thing
+    about it that `waitpid` does not do, and what is asked of that is
+    that it was filled in rather than left as it was found: a child
+    that has run at all has used some time in itself, and how much is
+    not a number worth holding to, only one worth asking whether it
+    is there.
+
+    The child leaves at once, before it can do anything that only the
+    parent should do.
+    """
+    var child = fork()
+    if child == 0:
+        _ = exit(ALSO_LEFT_WITH)
+
+    assert_true(child > 0, "there is a child to wait for")
+
+    var status = unsafe_alloc[Int32](1)
+    status.unsafe_offset(0)[] = 0
+    var usage = unsafe_alloc[rusage](1)
+    usage.unsafe_offset(0)[] = rusage()
+
+    assert_equal(
+        wait3(status, 0, usage),
+        child,
+        "wait3 answers with the one it waited for",
+    )
+    assert_true(
+        WIFEXITED(status.unsafe_load()), "and it left rather than being stopped"
+    )
+    assert_equal(
+        Int(WEXITSTATUS(status.unsafe_load())),
+        ALSO_LEFT_WITH,
+        "and with the number it was given",
+    )
+    assert_true(
+        usage.unsafe_offset(0)[].ru_maxrss != 0
+        or usage.unsafe_offset(0)[].ru_nvcsw >= 0,
+        "and what it used was written down",
+    )
+
+    status.unsafe_free()
+    usage.unsafe_free()
+
+
 def main() raises:
     test_waitpid_takes_back_a_child()
     test_wait4_says_what_the_child_used()
+    test_wait3_takes_back_any_child_and_says_what_it_used()
     print("test_wait: ok")

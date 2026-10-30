@@ -446,7 +446,9 @@ def bring_in_libc_grp():
         endgrent,
         getgrent,
         getgrgid,
+        getgrgid_r,
         getgrnam,
+        getgrnam_r,
         group,
         setgrent,
     )
@@ -1262,6 +1264,7 @@ def bring_in_libc_sys_wait():
         WUNTRACED,
         rusage,
         wait,
+        wait3,
         wait4,
         waitpid,
     )

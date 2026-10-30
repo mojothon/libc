@@ -5,7 +5,7 @@
 # ----------------------------------
 from std.ffi import external_call
 
-from libc.constant import c_ptr
+from libc.constant import c_ptr, c_size_t
 from libc.utils import char_ptr_to_string
 
 
@@ -179,3 +179,111 @@ def getgrgid(gid: UInt32) -> c_ptr[group]:
         `struct group *getgrgid(gid_t gid)`.
     """
     return external_call["getgrgid", c_ptr[group], UInt32](gid)
+
+
+def getgrgid_r(
+    gid: UInt32,
+    resultbuf: c_ptr[group],
+    buffer: c_ptr[UInt8],
+    buflen: c_size_t,
+    result: c_ptr[c_ptr[group]],
+) -> Int32:
+    """Libc POSIX `getgrgid_r` function.
+
+    Description:
+        Looks a group up by its number in the group database, putting
+        what it finds in room the caller gives it.
+
+    Args:
+        gid: The number to look for.
+        resultbuf: The `group` to fill in, which is written to.
+        buffer: Room for the strings the row is made of, which is
+            written to and has to outlive the row.
+        buflen: How much room that is.
+        result: Where to put a pointer to `resultbuf` where the group
+            was found and nothing where it was not, which is written
+            to.
+
+    Returns:
+        0 where the group was looked for, whether or not it was found:
+        what is in `result` is what says which. Anything else is a
+        number that says what went wrong, and is not in `errno`.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getgrgid_r.3.html).
+        Fn signature: `int getgrgid_r(gid_t gid,
+            struct group *restrict resultbuf, char *restrict buffer,
+            size_t buflen, struct group **restrict result)`.
+
+        This is `getgrgid` that puts what it finds in the caller's
+        room rather than in one of its own, which is what makes it the
+        one to call where more than one group is wanted or where a
+        thread other than the first is asking. `getgrgid` is the one
+        that hands back the same object every caller.
+
+        Where the room is too small this answers `ERANGE` and writes
+        nothing, and it is asked again with more room.
+    """
+    return external_call[
+        "getgrgid_r",
+        Int32,
+        UInt32,
+        c_ptr[group],
+        c_ptr[UInt8],
+        c_size_t,
+        c_ptr[c_ptr[group]],
+    ](gid, resultbuf, buffer, buflen, result)
+
+
+def getgrnam_r(
+    name: c_ptr[UInt8],
+    resultbuf: c_ptr[group],
+    buffer: c_ptr[UInt8],
+    buflen: c_size_t,
+    result: c_ptr[c_ptr[group]],
+) -> Int32:
+    """Libc POSIX `getgrnam_r` function.
+
+    Description:
+        Looks a group up by its name in the group database, putting
+        what it finds in room the caller gives it.
+
+    Args:
+        name: The name to look for.
+        resultbuf: The `group` to fill in, which is written to.
+        buffer: Room for the strings the row is made of, which is
+            written to and has to outlive the row.
+        buflen: How much room that is.
+        result: Where to put a pointer to `resultbuf` where the group
+            was found and nothing where it was not, which is written
+            to.
+
+    Returns:
+        0 where the group was looked for, whether or not it was found:
+        what is in `result` is what says which. Anything else is a
+        number that says what went wrong, and is not in `errno`.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getgrnam_r.3.html).
+        Fn signature: `int getgrnam_r(const char *restrict name,
+            struct group *restrict resultbuf, char *restrict buffer,
+            size_t buflen, struct group **restrict result)`.
+
+        This is `getgrnam` that puts what it finds in the caller's
+        room rather than in one of its own, which is what makes it the
+        one to call where more than one group is wanted or where a
+        thread other than the first is asking. `getgrnam` is the one
+        that hands back the same object every caller.
+
+        Where the room is too small this answers `ERANGE` and writes
+        nothing, and it is asked again with more room.
+    """
+    return external_call[
+        "getgrnam_r",
+        Int32,
+        c_ptr[UInt8],
+        c_ptr[group],
+        c_ptr[UInt8],
+        c_size_t,
+        c_ptr[c_ptr[group]],
+    ](name, resultbuf, buffer, buflen, result)

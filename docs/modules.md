@@ -28,7 +28,7 @@ the bottom.
 | `libc.sys.epoll` | `<sys/epoll.h>` | 7 |
 | `libc.search` | `<search.h>` | 9 |
 | `libc.dirent` | `<dirent.h>` | 17 |
-| `libc.sys.wait` | `<sys/wait.h>` | 14 |
+| `libc.sys.wait` | `<sys/wait.h>` | 15 |
 | `libc.inttypes` | `<inttypes.h>` | 7 |
 | `libc.sys.resource` | `<sys/resource.h>` | 15 |
 | `libc.network` | `<arpa/inet.h>` byte order and address conversion | 6 |
@@ -36,7 +36,7 @@ the bottom.
 | `libc.netif` | `<net/if.h>` interface names and numbers | 6 |
 | `libc.regex` | `<regex.h>` POSIX regular expressions | 26 |
 | `libc.glob` | `<glob.h>` pathname matching | 18 |
-| `libc.grp` | `<grp.h>` the group database | 6 |
+| `libc.grp` | `<grp.h>` the group database | 8 |
 | `libc.iconv` | `<iconv.h>` character encoding conversion | 4 |
 | `libc.ifaddrs` | `<ifaddrs.h>` network interfaces | 8 |
 | `libc.langinfo` | `<langinfo.h>` strings the locale decides | 56 |

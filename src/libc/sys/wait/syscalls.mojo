@@ -244,3 +244,40 @@ def WCOREDUMP(status: Int32) -> Bool:
         of a signal that would otherwise have written one.
     """
     return (status & 0x80) != 0
+
+
+def wait3(status: c_ptr[Int32], options: Int32, usage: c_ptr[rusage]) -> Int32:
+    """Libc BSD `wait3` function.
+
+    Description:
+        Waits for any child to leave, and says what it used while it
+        was here.
+
+    Args:
+        status: Where to write how it left, which is written to, or a
+            null pointer where that is not wanted.
+        options: Which of the `W` names to wait by — `WNOHANG` to come
+            back at once where none has left, and 0 to wait.
+        usage: Where to write what the child used, which is written
+            to, or a null pointer where that is not wanted.
+
+    Returns:
+        The number of the child that left, or -1 where there was none
+        to wait for, with `errno` saying why.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wait3.3.html).
+        Fn signature: `pid_t wait3(int *stat_loc, int options,
+            struct rusage *rusage)`.
+
+        This is `wait4` without the pid, which is to say it waits for
+        any child rather than for one it is named: `wait4` takes the
+        pid as its first argument and is otherwise this. Both are the
+        ones that say what the child used, which `waitpid` does not.
+
+        `rusage` is bound in this module, and is what `usage` points
+        at.
+    """
+    return external_call["wait3", Int32, c_ptr[Int32], Int32, c_ptr[rusage]](
+        status, options, usage
+    )
