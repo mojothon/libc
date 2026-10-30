@@ -7,6 +7,7 @@ from libc.file import close
 from libc.stdio import remove
 from libc.sys.wait import WIFSIGNALED, waitpid
 from libc.unistd import fork, rmdir
+from libc.signal import SIGABRT, signal
 from libc.stdlib import (
     abort,
     aligned_alloc,
@@ -318,6 +319,13 @@ def test_abort_ends_the_child_and_not_us() raises:
     """
     var child = fork()
     if child == 0:
+        # The default is put back on SIGABRT before `abort` is asked
+        # for. The run time has a handler of its own on that signal,
+        # which writes out a stack and a report, and it is the report
+        # that is the trouble: it is what leaves a job waiting on a
+        # child that has already ended. SIG_DFL is a null handler, so
+        # this is `signal(SIGABRT, SIG_DFL)`.
+        _ = signal(SIGABRT, null_ptr[UInt8]())
         _ = abort()
         _ = exit(0)  # `abort` does not come back, but if it did the
         # child should still not carry on into the rest of the tests.
