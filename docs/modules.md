@@ -7,7 +7,7 @@ the bottom.
 | Module | C header | Symbols |
 | --- | --- | --- |
 | `libc.math` | `<math.h>` | 115 |
-| `libc.stdlib` | `<stdlib.h>` | 61 |
+| `libc.stdlib` | `<stdlib.h>` | 64 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.unistd` | `<unistd.h>` | 186 |
 | `libc.file` | `<stdio.h>` file operations | 40 |
@@ -19,7 +19,7 @@ the bottom.
 | `libc.sys.mman` | `<sys/mman.h>` | 15 |
 | `libc.pthread` | `<pthread.h>` | 96 |
 | `libc.string` | `<string.h>` | 45 |
-| `libc.stdio` | `<stdio.h>` output, buffering, pipes | 42 |
+| `libc.stdio` | `<stdio.h>` output, buffering, pipes | 44 |
 | `libc.complex` | `<complex.h>` | 46 |
 | `libc.sched` | `<sched.h>` | 15 |
 | `libc.signal` | `<signal.h>` | 40 |

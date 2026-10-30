@@ -2,19 +2,19 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
-from libc.constant import c_char, c_double, c_ptr, c_uint, c_ushort
+from libc.constant import c_char, c_double, c_ptr, c_uint, c_ushort, c_wchar
 from libc.file import close
 from libc.stdio import remove
 from libc.sys.wait import WIFSIGNALED, waitpid
 from libc.unistd import fork, rmdir
 from libc.signal import SIGABRT, signal
 from libc.stdlib import (
+    a64l,
     abort,
     aligned_alloc,
     atof,
     atoi,
     atol,
-    a64l,
     atoll,
     calloc,
     div,
@@ -24,17 +24,19 @@ from libc.stdlib import (
     free,
     getenv,
     getloadavg,
+    getsubopt,
+    initstate,
     l64a,
     lcong48,
     ldiv,
     lldiv,
     lrand48,
-    mrand48,
-    getsubopt,
-    initstate,
     malloc,
+    mblen,
+    mbtowc,
     mkdtemp,
     mkstemp,
+    mrand48,
     posix_memalign,
     putenv,
     rand,
@@ -56,6 +58,7 @@ from libc.stdlib import (
     strtoul,
     strtoull,
     unsetenv,
+    wctomb,
 )
 from libc.utils import char_ptr_to_string, null_ptr, string_to_char_ptr
 
@@ -518,6 +521,62 @@ def test_writing_a_number_in_sixty_four_characters() raises:
     assert_equal(a64l(l64a(1)), 1, "and so does one with only the one")
 
 
+def test_one_character_at_a_time() raises:
+    """`mblen` says how many bytes the next multibyte character takes,
+    `mbtowc` reads one out into a wide character, and `wctomb` writes
+    one back out again.
+
+    Under the C locale every character takes one byte, and that is the
+    whole of what is asked of them here — which characters take more
+    than one is the locale's to say, and a test that said otherwise
+    would be holding the two platforms to agreeing on something they
+    need not agree on.
+
+    `mblen` is asked about a byte that is there and about the end of
+    the string, of which 0 is what comes back. `mbtowc` is asked to
+    read one out, and the character it read is what is looked at.
+    `wctomb` is asked to write it back, and what comes out is what
+    went in.
+
+    Each of the two that keep a state is asked with a null pointer,
+    which is how that state is put back at the beginning — the state
+    being the library's own and there being one of it.
+    """
+    var a = string_to_char_ptr("a")
+    assert_equal(mblen(a, 1), 1, "one byte for the a under the C locale")
+
+    var empty = string_to_char_ptr("")
+    assert_equal(
+        mblen(empty, 0), 0, "and nothing at all at the end of a string"
+    )
+
+    var out = unsafe_alloc[c_wchar](1)
+    assert_equal(mbtowc(out, a, 1), 1, "mbtowc read one byte")
+    assert_equal(
+        Int(out.unsafe_load(0)), 97, "and this is the character it read"
+    )
+
+    # A null string puts the state back at the beginning.
+    assert_equal(
+        mbtowc(out, null_ptr[c_char](), 0), 0, "a null string resets it"
+    )
+
+    var back = unsafe_alloc[UInt8](8)
+    assert_equal(wctomb(back, 97), 1, "wctomb wrote one byte")
+    back.unsafe_store(1, 0)
+    assert_equal(
+        char_ptr_to_string(back), "a", "and this is the character it wrote"
+    )
+    assert_equal(
+        wctomb(null_ptr[c_char](), 97), 0, "and a null pointer resets it too"
+    )
+
+    back.unsafe_free()
+    out.unsafe_free()
+    empty.unsafe_free()
+    a.unsafe_free()
+
+
 def main() raises:
     test_malloc()
     test_the_untried_calls()
@@ -532,6 +591,7 @@ def main() raises:
     test_paths()
     test_abort_ends_the_child_and_not_us()
     test_dividing_and_keeping_the_remainder()
+    test_one_character_at_a_time()
     test_the_forty_eight_bit_sequence()
     test_writing_a_number_in_sixty_four_characters()
     print("test_stdlib: ok")

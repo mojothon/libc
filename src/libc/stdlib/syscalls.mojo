@@ -27,6 +27,7 @@ from libc.constant import (
     c_ulonglong,
     c_ushort,
     c_void,
+    c_wchar,
 )
 
 # `rand`'s ceiling, and the widest values the `strto*` family saturate at.
@@ -1360,3 +1361,101 @@ def a64l(s: c_ptr[c_char]) -> c_long:
         many as are worth handing it.
     """
     return external_call["a64l", c_long, c_ptr[c_char]](s)
+
+
+def mblen(s: c_ptr[c_char], n: c_size_t) -> c_int:
+    """Libc C89 `mblen` function.
+
+    Description:
+        Says how many bytes the next multibyte character takes.
+
+    Args:
+        s: The bytes to look at, or a null pointer to ask whether the
+            encoding has state.
+        n: The most bytes to look at. More than a whole
+            character's worth is not read.
+
+    Returns:
+        How many bytes it takes, or 0 where `s` points at the end of
+        the string, or -1 where what is there is not a whole
+        character.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/mblen.3.html).
+        Fn signature: `int mblen(const char *s, size_t n)`.
+
+        Which characters take more than one byte, and how many they
+        take, is the locale's to say; under the C locale every one
+        takes one. This is `mbtowc` without the converting, and it
+        shares the conversion state that one keeps — so the two are
+        not to be used on the same string turn about.
+    """
+    return external_call["mblen", c_int, c_ptr[c_char], c_size_t](s, n)
+
+
+def mbtowc(pwc: c_ptr[c_wchar], s: c_ptr[c_char], n: c_size_t) -> c_int:
+    """Libc C89 `mbtowc` function.
+
+    Description:
+        Reads the next multibyte character out into a wide character.
+
+    Args:
+        pwc: Where to put it, or a null pointer where the converting
+            is not wanted.
+        s: The bytes to read, or a null pointer to put the state back
+            at its beginning.
+        n: The most bytes to read. More than a whole
+            character's worth is not read.
+
+    Returns:
+        How many bytes it took, or 0 where `s` points at the end of
+        the string, or -1 where what is there is not a whole
+        character.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/mbtowc.3.html).
+        Fn signature: `int mbtowc(wchar_t *pwc, const char *s,
+            size_t n)`.
+
+        The state this keeps is the library's own and there is one of
+        it, so two strings cannot be read turn about, and a null `s`
+        is how it is put back at the beginning. `mbrtowc` is the one
+        that takes the state from the caller, and is the one to
+        reach for where that matters.
+
+        Which characters take more than one byte is the locale's to
+        say, and under the C locale every one takes one.
+    """
+    return external_call[
+        "mbtowc", c_int, c_ptr[c_wchar], c_ptr[c_char], c_size_t
+    ](pwc, s, n)
+
+
+def wctomb(s: c_ptr[c_char], wc: c_wchar) -> c_int:
+    """Libc C89 `wctomb` function.
+
+    Description:
+        Writes a wide character out as bytes.
+
+    Args:
+        s: Where to write them, or a null pointer to ask whether the
+            encoding has state.
+        wc: The character to write.
+
+    Returns:
+        How many bytes it took, or -1 where the character cannot be
+        written out at all.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wctomb.3.html).
+        Fn signature: `int wctomb(char *s, wchar_t wc)`.
+
+        Like `mbtowc` it keeps one state of its own, and a null `s` is
+        how that is put back at the beginning. `wcrtomb` is the one
+        that takes the state from the caller.
+
+        No terminator is written. Which characters take more than one
+        byte is the locale's to say, and under the C locale every one
+        takes one.
+    """
+    return external_call["wctomb", c_int, c_ptr[c_char], c_wchar](s, wc)

@@ -1000,3 +1000,57 @@ def fileno_unlocked(stream: c_ptr[FILE]) -> c_int:
         under the stream is not a thing to do: `fclose` closes both.
     """
     return external_call["fileno_unlocked", c_int, c_ptr[FILE]](stream)
+
+
+def setbuffer(stream: c_ptr[FILE], buf: c_ptr[c_char], size: c_size_t):
+    """Libc BSD `setbuffer` function.
+
+    Description:
+        Says what a stream is to do its buffering in, and how much
+        room it has to do it in.
+
+    Args:
+        stream: The stream, which is written to.
+        buf: The room to buffer in, or a null pointer to have no
+            buffering at all.
+        size: How much room that is.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/setbuf.3.html).
+        Fn signature: `void setbuffer(FILE *stream, char *buf,
+            size_t size)`.
+
+        This has to be said before anything is read or written on the
+        stream, as with `setvbuf`, and unlike that one it cannot say
+        whether the buffering is to be full or line by line — a room
+        of no size is the only way to say none at all.
+
+        The room is the caller's, and it has to outlive the stream:
+        nothing here copies it, and `fclose` does not give it back.
+        `BUFSIZ` is the size the two platforms agree on.
+    """
+    external_call["setbuffer", NoneType, c_ptr[FILE], c_ptr[c_char], c_size_t](
+        stream, buf, size
+    )
+
+
+def setlinebuf(stream: c_ptr[FILE]):
+    """Libc BSD `setlinebuf` function.
+
+    Description:
+        Says that a stream is to write out a whole line at a time.
+
+    Args:
+        stream: The stream, which is written to.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/setbuf.3.html).
+        Fn signature: `void setlinebuf(FILE *stream)`.
+
+        This is `setvbuf` asking for line buffering and nothing else,
+        and as with that one it has to be said before anything is
+        written on the stream. Where a stream's output is to be
+        watched as it goes, this is what makes it come out a line at a
+        time rather than a full buffer at a time.
+    """
+    external_call["setlinebuf", NoneType, c_ptr[FILE]](stream)

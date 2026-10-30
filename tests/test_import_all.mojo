@@ -939,6 +939,8 @@ def bring_in_libc_stdio():
         rename,
         renameat,
         setbuf,
+        setbuffer,
+        setlinebuf,
         setvbuf,
         tempnam,
         tmpfile,
@@ -983,6 +985,8 @@ def bring_in_libc_stdlib():
         lldiv_t,
         lrand48,
         malloc,
+        mblen,
+        mbtowc,
         mkdtemp,
         mkstemp,
         mrand48,
@@ -1008,6 +1012,7 @@ def bring_in_libc_stdlib():
         strtoull,
         system,
         unsetenv,
+        wctomb,
     )
 
 

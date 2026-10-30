@@ -21,34 +21,37 @@ from libc.file import (
     rewind,
 )
 from libc.stdio import (
+    BUFSIZ,
     IOFBF,
-    ctermid,
     clearerr_unlocked,
+    ctermid,
     feof_unlocked,
     ferror_unlocked,
+    fgetpos,
     fileno,
     fileno_unlocked,
     flockfile,
-    ftrylockfile,
-    funlockfile,
-    fgetpos,
     fpos_t,
     fsetpos,
+    ftrylockfile,
+    funlockfile,
     fwrite,
     getc,
     getc_unlocked,
     getw,
+    open_memstream,
     pclose,
     popen,
     putc,
     putc_unlocked,
     putchar,
-    open_memstream,
     putw,
     remove,
     rename,
     renameat,
     setbuf,
+    setbuffer,
+    setlinebuf,
     setvbuf,
     tempnam,
     tmpfile,
@@ -438,6 +441,59 @@ def test_writing_a_stream_into_memory() raises:
     bufloc.unsafe_free()
 
 
+def test_saying_how_a_stream_buffers() raises:
+    """`setbuffer` says what room a stream is to buffer in and
+    `setlinebuf` says that it is to write out a line at a time.
+
+    Neither hands anything back, so what is asked of them is that the
+    stream still works after they have been said: something is written
+    on it and read back, and it is what went in.
+
+    `setbuffer` is asked with room of its own, and again with no room
+    at all, which is what a null pointer asks for and is the only way
+    this one can say that nothing is to be buffered.
+
+    Each is said before anything is written on the stream, as both
+    require, and the room is given back only after the stream is shut.
+    """
+    var room = unsafe_alloc[UInt8](BUFSIZ)
+    var f = tmpfile()
+    setbuffer(f, room, BUFSIZ)
+    _ = fputs(string_to_char_ptr("hello"), f)
+    _ = rewind(f)
+    var got = unsafe_alloc[UInt8](8)
+    _ = fgets(got, 8, f)
+    assert_equal(
+        char_ptr_to_string(got), "hello", "the stream still writes and reads"
+    )
+    _ = fclose(f)
+    room.unsafe_free()
+    got.unsafe_free()
+
+    # No room at all, which is what a null pointer asks for.
+    var g = tmpfile()
+    setbuffer(g, null_ptr[c_char](), 0)
+    _ = fputs(string_to_char_ptr("hi"), g)
+    _ = rewind(g)
+    var got2 = unsafe_alloc[UInt8](8)
+    _ = fgets(got2, 8, g)
+    assert_equal(
+        char_ptr_to_string(got2), "hi", "and so does one with nothing buffered"
+    )
+    _ = fclose(g)
+    got2.unsafe_free()
+
+    var h = tmpfile()
+    setlinebuf(h)
+    _ = fputs(string_to_char_ptr("line"), h)
+    _ = rewind(h)
+    var got3 = unsafe_alloc[UInt8](8)
+    _ = fgets(got3, 8, h)
+    assert_equal(char_ptr_to_string(got3), "line", "and one set to lines")
+    _ = fclose(h)
+    got3.unsafe_free()
+
+
 def main() raises:
     test_tmpfile_roundtrip()
     test_rename_and_remove()
@@ -454,4 +510,5 @@ def main() raises:
     test_where_a_stream_is()
     test_naming_a_terminal_and_a_temporary()
     test_writing_a_stream_into_memory()
+    test_saying_how_a_stream_buffers()
     print("test_stdio: ok")
