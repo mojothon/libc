@@ -9,7 +9,14 @@ waits on the network.
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import AF_INET, AF_UNSPEC, SOCK_STREAM, c_ptr, c_ushort
+from libc.constant import (
+    AF_INET,
+    AF_UNSPEC,
+    SOCK_STREAM,
+    c_ptr,
+    c_size_t,
+    c_ushort,
+)
 from libc.network import htons
 from libc.netdb import (
     AI_NUMERICHOST,
@@ -20,16 +27,25 @@ from libc.netdb import (
     NI_NUMERICHOST,
     NI_NUMERICSERV,
     addrinfo,
+    endhostent,
     endprotoent,
     endservent,
     freeaddrinfo,
     gai_strerror,
     getaddrinfo,
+    gethostbyaddr,
+    gethostbyname,
+    gethostbyname2,
+    gethostent,
     getnameinfo,
     getprotobyname,
     getprotobynumber,
     getservbyname,
     getservbyport,
+    herror,
+    hostent,
+    hstrerror,
+    sethostent,
 )
 from libc.utils import char_ptr_to_string, is_null, string_to_char_ptr
 
@@ -263,10 +279,133 @@ def test_the_service_database_by_name_and_by_port() raises:
     tcp.unsafe_free()
 
 
+def test_the_host_database_read_row_by_row() raises:
+    """`sethostent`, `gethostent` and `endhostent` walk the host
+    database, which is the one read from `hosts`.
+
+    What is asked of the first row is only that it is a row: a name,
+    an address kind of four or sixteen bytes, and an address. Those
+    three are read out of five members that sit eight bytes apart, so
+    a row read at the wrong offset says a length that is neither four
+    nor sixteen, or a name that is not there.
+
+    Which host is first is the machine's own to say, so none of this
+    asks which one it is.
+    """
+    sethostent(1)
+    var row = gethostent()
+    assert_true(
+        not is_null(row), "the host database has a first row in it, and"
+    )
+
+    var name = char_ptr_to_string(row.unsafe_offset(0)[].h_name)
+    assert_true(name.byte_length() > 0, "it has a name, and")
+
+    var length = Int(row.unsafe_offset(0)[].h_length)
+    assert_true(
+        length == 4 or length == 16,
+        "an address four or sixteen bytes long, and",
+    )
+    assert_true(
+        not is_null(row.unsafe_offset(0)[].first_address()),
+        "an address to go with it",
+    )
+
+    endhostent()
+
+
+def test_a_host_asked_for_by_name_answers_with_the_kind_it_was_asked_by() raises:
+    """`gethostbyname` and `gethostbyname2` look a host up by name,
+    and the second is the one told which kind of address to bring
+    back.
+
+    `localhost` is the one name a machine knows before it is told any
+    other, and it is in `hosts` rather than anywhere further away, so
+    nothing here waits on a name server.
+
+    What is asked of `gethostbyname` is only that it answers with a
+    row. What is asked of `gethostbyname2` is more: it was asked for
+    `AF_INET`, and a row that says it carries four-byte addresses is
+    one that did what it was asked. A row read at the wrong offset
+    says neither.
+
+    `gethostbyaddr` is then handed the address the row came back with,
+    which is the same raw bytes going backwards. Whether a machine
+    knows a name for an address is its own to say, and a good many
+    addresses have none, so what is asked is only that where it does
+    answer, it answers with an address the same length.
+    """
+    var localhost = string_to_char_ptr("localhost")
+
+    var by_name = gethostbyname(localhost)
+    assert_true(not is_null(by_name), "localhost is in the host database")
+
+    var by_inet = gethostbyname2(localhost, AF_INET)
+    assert_true(
+        not is_null(by_inet), "and asking for it by AF_INET finds it too, with"
+    )
+    assert_equal(
+        Int(by_inet.unsafe_offset(0)[].h_addrtype),
+        Int(AF_INET),
+        "the kind it was asked for",
+    )
+    assert_equal(
+        Int(by_inet.unsafe_offset(0)[].h_length),
+        4,
+        "and the length that kind of address is",
+    )
+
+    var back = gethostbyaddr(
+        by_inet.unsafe_offset(0)[].first_address(),
+        c_size_t(4),
+        AF_INET,
+    )
+    if not is_null(back):
+        assert_equal(
+            Int(back.unsafe_offset(0)[].h_length),
+            4,
+            "and an address is a name's by the same length going back",
+        )
+
+    localhost.unsafe_free()
+
+
+def test_the_resolver_says_what_a_number_meant() raises:
+    """`hstrerror` says in words what a number the resolver answered
+    with means.
+
+    The numbers are not `errno` numbers and the two platforms do not
+    number them alike, so none is bound here and none is written down
+    in this test. What is asked instead is the one thing that holds
+    either way: there are words for a number that means something and
+    words for one that does not, and neither is empty.
+
+    `herror` writes the same words rather than handing them back, and
+    is called because it is there: it says nothing back and so cannot
+    be asked anything.
+    """
+    for err in range(5):
+        var words = hstrerror(Int32(err))
+        assert_true(
+            not is_null(words), "there are words for the number " + String(err)
+        )
+        assert_true(
+            char_ptr_to_string(words).byte_length() > 0,
+            "and they are not empty",
+        )
+
+    var doing = string_to_char_ptr("nothing to report")
+    herror(doing)
+    doing.unsafe_free()
+
+
 def main() raises:
     test_a_numeric_address_needs_no_name_service()
     test_a_name_that_is_not_a_number_is_refused()
     test_the_address_answers_with_the_host_it_came_from()
     test_the_protocol_database_by_name_and_by_number()
     test_the_service_database_by_name_and_by_port()
+    test_the_host_database_read_row_by_row()
+    test_a_host_asked_for_by_name_answers_with_the_kind_it_was_asked_by()
+    test_the_resolver_says_what_a_number_meant()
     print("test_netdb: ok")

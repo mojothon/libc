@@ -6,7 +6,7 @@
 from std.ffi import external_call
 from std.sys import CompilationTarget
 
-from libc.constant import c_ptr, c_ushort
+from libc.constant import c_ptr, c_size_t, c_ushort
 from libc.network import htons, ntohs
 from libc.utils import char_ptr_to_string, is_null, null_ptr
 
@@ -574,3 +574,275 @@ def endservent() -> None:
         wanted but because it is there.
     """
     external_call["endservent", NoneType]()
+
+
+struct hostent:
+    """A C `struct hostent`: one row of the host database.
+
+    Five members — a name, a list of aliases, which kind of address it
+    is, how long one is, and the addresses themselves — at 0, 8, 16,
+    20 and 24 on glibc and on Darwin both, thirty-two bytes and
+    eight-aligned either way.
+
+    libc owns the object this points at, and may hand every caller the
+    same one: two calls overwrite each other's answer, and nothing here
+    frees it. The two lists are `char **` the same allocator owns, each
+    ended by a null, and they come with the row.
+
+    `h_addr_list` is not a list of strings but a list of addresses:
+    what each entry points at is `h_length` raw bytes, which is four
+    for `AF_INET` and sixteen for `AF_INET6`, in network order. It is
+    what `gethostbyaddr` is handed back.
+    """
+
+    var h_name: c_ptr[UInt8]
+    var h_aliases: c_ptr[c_ptr[UInt8]]
+    var h_addrtype: Int32
+    var h_length: Int32
+    var h_addr_list: c_ptr[c_ptr[UInt8]]
+
+    def __init__(out self):
+        """Zeroes every member, which is the state of one nothing has filled."""
+        self.h_name = null_ptr[UInt8]()
+        self.h_aliases = null_ptr[c_ptr[UInt8]]()
+        self.h_addrtype = 0
+        self.h_length = 0
+        self.h_addr_list = null_ptr[c_ptr[UInt8]]()
+
+    def first_address(self) -> c_ptr[UInt8]:
+        """The first address in the list, `h_length` raw bytes of it.
+
+        Notes:
+            What `h_addr_list` points at, which is the one address
+            nearly every caller wants. It is in network order, and it
+            is not a string: `inet_ntop` is what makes it printable.
+            NULL where the row has no address in it.
+        """
+        return self.h_addr_list.unsafe_offset(0)[]
+
+
+def sethostent(stayopen: Int32) -> None:
+    """Libc POSIX `sethostent` function.
+
+    Description:
+        Opens the host database, or winds it back to the top where it
+        is already open.
+
+    Args:
+        stayopen: Non-zero to keep it open between calls rather than
+            shutting it after each one.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getipnodebyname.3.html).
+        Fn signature: `void sethostent(int stayopen)`.
+
+        This is the one end of the walk over every host in the
+        database, `gethostent` being the middle and `endhostent` the
+        other end. The database is the one kept in `hosts` and read
+        from `/etc/hosts`, which is where `localhost` comes from on a
+        machine that has been told no other names.
+    """
+    external_call["sethostent", NoneType, Int32](stayopen)
+
+
+def gethostent() -> c_ptr[hostent]:
+    """Libc POSIX `gethostent` function.
+
+    Description:
+        Reads the next row of the host database, which is to say the
+        first where none has been read yet.
+
+    Returns:
+        The next row, or a null pointer at the end of the database.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getipnodebyname.3.html).
+        Fn signature: `struct hostent *gethostent(void)`.
+
+        `sethostent` winds this back to the top and `endhostent` shuts
+        the database, and it is the first of those that a caller who
+        wants the whole of it begins with. What comes back points into
+        storage libc keeps, and every caller is handed the same one:
+        two calls overwrite each other's answer.
+    """
+    return external_call["gethostent", c_ptr[hostent]]()
+
+
+def endhostent() -> None:
+    """Libc POSIX `endhostent` function.
+
+    Description:
+        Shuts the host database.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getipnodebyname.3.html).
+        Fn signature: `void endhostent(void)`.
+
+        What this gives back is whatever was opened to read the
+        database, and after it the next read starts from the top
+        again. It is the other end of the walk `sethostent` began.
+    """
+    external_call["endhostent", NoneType]()
+
+
+def gethostbyname(name: c_ptr[UInt8]) -> c_ptr[hostent]:
+    """Libc POSIX `gethostbyname` function.
+
+    Description:
+        Looks a host up by its name, asking the name service, which
+        reads `hosts` — and so `/etc/hosts` — before it asks anyone
+        further away.
+
+    Args:
+        name: The name to look for, or a null pointer for this machine.
+
+    Returns:
+        The row for that host, or a null pointer where no such name is
+        known.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/gethostbyname.3.html).
+        Fn signature: `struct hostent *gethostbyname(const char *name)`.
+
+        This is the one of the family that every machine has, but it
+        is not the one to reach for now: it speaks only `AF_INET`, and
+        `getaddrinfo` is what speaks both that and `AF_INET6` and is
+        what new code is written with. `gethostbyname2` is this with
+        the address family asked for.
+
+        What comes back points into storage libc keeps, and every
+        caller is handed the same one. Which kind of address the row
+        carries is libc's own to say, and it is `h_addrtype` and
+        `h_length` that say it, not the caller's asking.
+    """
+    return external_call["gethostbyname", c_ptr[hostent], c_ptr[UInt8]](name)
+
+
+def gethostbyname2(name: c_ptr[UInt8], af: Int32) -> c_ptr[hostent]:
+    """Libc BSD `gethostbyname2` function.
+
+    Description:
+        Looks a host up by its name, asking for addresses of one kind.
+
+    Args:
+        name: The name to look for.
+        af: Which kind of address to come back with, `AF_INET` or
+            `AF_INET6`.
+
+    Returns:
+        The row for that host, or a null pointer where no such name is
+        known under that kind.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/gethostbyname.3.html).
+        Fn signature: `struct hostent *gethostbyname2(const char *name,
+            int af)`.
+
+        This is `gethostbyname` that is told which kind of address it
+        wants, which is the one thing `gethostbyname` decides for
+        itself. Asking for `AF_INET` and being given a row whose
+        `h_addrtype` is anything else is a call that has not done
+        what it was asked, and `h_length` says four when it has.
+
+        It is on both platforms, though not in POSIX: `getaddrinfo` is
+        the portable way to ask the same thing.
+    """
+    return external_call["gethostbyname2", c_ptr[hostent], c_ptr[UInt8], Int32](
+        name, af
+    )
+
+
+def gethostbyaddr(
+    addr: c_ptr[UInt8], length: c_size_t, kind: Int32
+) -> c_ptr[hostent]:
+    """Libc POSIX `gethostbyaddr` function.
+
+    Description:
+        Looks a host up by its address, asking the name service the
+        other way round from `gethostbyname`.
+
+    Args:
+        addr: The address itself, raw bytes in network order and not a
+            string, `length` of them.
+        length: How long one address is, which is four for `AF_INET`
+            and sixteen for `AF_INET6`.
+        kind: Which kind of address it is, `AF_INET` or `AF_INET6`.
+
+    Returns:
+        The row for that host, or a null pointer where no name is
+        known for that address.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/gethostbyname.3.html).
+        Fn signature: `struct hostent *gethostbyaddr(const void *addr,
+            socklen_t len, int type)`.
+
+        This is the one that goes backwards: `gethostbyname` is given
+        a name and answers with addresses, this is given an address
+        and answers with a name. What is handed in is the same raw
+        bytes the other one handed back, which is what
+        `hostent`'s `first_address` is.
+
+        Whether a machine knows a name for an address is its own to
+        say, and a good many addresses have none, so a null pointer
+        here is an answer and not a failure.
+    """
+    return external_call[
+        "gethostbyaddr", c_ptr[hostent], c_ptr[UInt8], c_size_t, Int32
+    ](addr, length, kind)
+
+
+def hstrerror(err: Int32) -> c_ptr[UInt8]:
+    """Libc BSD `hstrerror` function.
+
+    Description:
+        Says in words what a number the resolver answered with means.
+
+    Args:
+        err: The number, which is one the resolver handed back rather
+            than one in `errno`.
+
+    Returns:
+        The words, as a string libc owns, which is not freed and is
+        overwritten by the next call.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/hstrerror.3.html).
+        Fn signature: `const char *hstrerror(int err)`.
+
+        `herror` is the same words written to standard error, and this
+        is the one for a caller that wants them for itself. The
+        numbers are not `errno` numbers and are not bound here: which
+        number means what is the resolver's own to say, and the two
+        platforms do not number them alike, so a caller that has one
+        is a caller that was handed it.
+
+        What comes back is never empty, even for a number that means
+        nothing: there are words for that too.
+    """
+    return external_call["hstrerror", c_ptr[UInt8], Int32](err)
+
+
+def herror(text: c_ptr[UInt8]) -> None:
+    """Libc BSD `herror` function.
+
+    Description:
+        Writes what the resolver last said went wrong to standard
+        error, under a line of the caller's own.
+
+    Args:
+        text: What to write in front of it, which is what the caller
+            was doing when it went wrong.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/hstrerror.3.html).
+        Fn signature: `void herror(const char *s)`.
+
+        This writes and says nothing back, so a caller cannot ask what
+        went wrong and cannot tell whether anything did: `hstrerror`
+        is the same words handed back rather than written, and
+        `getaddrinfo` is what answers with a number a caller can act
+        on. Nothing here reads `errno`, which is untouched by the
+        resolver and so says nothing about this.
+    """
+    external_call["herror", NoneType, c_ptr[UInt8]](text)
