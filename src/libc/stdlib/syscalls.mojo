@@ -44,6 +44,37 @@ comptime HUGE_VALF: Float32 = Float32(1e400)
 comptime PATH_MAX: Int32 = 1024 if CompilationTarget.is_macos() else 4096
 
 
+struct div_t(TrivialRegisterPassable):
+    """The quotient and the remainder of one `int` divided by another.
+
+    Two `int`s, and nothing else: eight bytes, on both platforms.
+    """
+
+    var quot: Int32
+    var rem: Int32
+
+
+struct ldiv_t(TrivialRegisterPassable):
+    """The quotient and the remainder of one `long` divided by another.
+
+    A `long` is eight bytes on both platforms, so this is sixteen.
+    """
+
+    var quot: c_long
+    var rem: c_long
+
+
+struct lldiv_t(TrivialRegisterPassable):
+    """The quotient and the remainder of one `long long` divided by
+    another.
+
+    Sixteen bytes, on both platforms.
+    """
+
+    var quot: c_longlong
+    var rem: c_longlong
+
+
 # -------------------------------------------------------
 #  memory allocation
 # -------------------------------------------------------
@@ -1037,3 +1068,77 @@ def getloadavg(loadavg: c_ptr[c_double], nelem: c_int) -> c_int:
     return external_call["getloadavg", c_int, c_ptr[c_double], c_int](
         loadavg, nelem
     )
+
+
+def div(numer: c_int, denom: c_int) -> div_t:
+    """Libc C89 `div` function.
+
+    Description:
+        Divides one int by another and hands back the quotient and
+        the remainder of it together.
+
+    Args:
+        numer: The number to divide.
+        denom: What to divide it by.
+
+    Returns:
+        The quotient in `quot` and the remainder in `rem`.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/div.3.html).
+        Fn signature: `div_t div(int numer, int denom)`.
+
+        The quotient is rounded towards zero and the remainder takes
+        the sign of the numerator, which is what C asks of `/` and
+        `%` too. `imaxdiv` is this same call for the widest integer
+        there is.
+    """
+    return external_call["div", div_t, c_int, c_int](numer, denom)
+
+
+def ldiv(numer: c_long, denom: c_long) -> ldiv_t:
+    """Libc C89 `ldiv` function.
+
+    Description:
+        Divides one long by another and hands back the quotient and
+        the remainder of it together.
+
+    Args:
+        numer: The number to divide.
+        denom: What to divide it by.
+
+    Returns:
+        The quotient in `quot` and the remainder in `rem`.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/ldiv.3.html).
+        Fn signature: `ldiv_t ldiv(long numer, long denom)`.
+
+        Rounded towards zero, with the remainder taking the sign of
+        the numerator, as `div` does.
+    """
+    return external_call["ldiv", ldiv_t, c_long, c_long](numer, denom)
+
+
+def lldiv(numer: c_longlong, denom: c_longlong) -> lldiv_t:
+    """Libc C99 `lldiv` function.
+
+    Description:
+        Divides one long long by another and hands back the quotient
+        and the remainder of it together.
+
+    Args:
+        numer: The number to divide.
+        denom: What to divide it by.
+
+    Returns:
+        The quotient in `quot` and the remainder in `rem`.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/lldiv.3.html).
+        Fn signature: `lldiv_t lldiv(long long numer, long long denom)`.
+
+        Rounded towards zero, with the remainder taking the sign of
+        the numerator, as `div` does.
+    """
+    return external_call["lldiv", lldiv_t, c_longlong, c_longlong](numer, denom)

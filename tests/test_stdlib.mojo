@@ -16,10 +16,13 @@ from libc.stdlib import (
     atol,
     atoll,
     calloc,
+    div,
     exit,
     free,
     getenv,
     getloadavg,
+    ldiv,
+    lldiv,
     getsubopt,
     initstate,
     malloc,
@@ -340,6 +343,55 @@ def test_abort_ends_the_child_and_not_us() raises:
     status.unsafe_free()
 
 
+def test_dividing_and_keeping_the_remainder() raises:
+    """`div`, `ldiv` and `lldiv` each divide one number by another
+    and hand back the quotient and the remainder together, which is
+    what C makes awkward to ask for in two goes.
+
+    Ten divided by three is the one asked of all three, and it is
+    asked because the two halves are not the same: a quotient of 3
+    and a remainder of 1, where three divided by ten would be 0 and
+    3. That is what keeps a call that had its arguments the wrong way
+    round from passing.
+
+    Each is asked the same of a negative numerator, which is where
+    the rounding shows: the quotient goes towards zero and the
+    remainder takes the sign of the numerator, so -10 over 3 is -3
+    with -1 left over, and not -4 with 2. Both platforms are asked to
+    agree on that, C having said it rather than left it.
+    """
+    var d = div(10, 3)
+    assert_equal(Int(d.quot), 3, "ten over three is three")
+    assert_equal(Int(d.rem), 1, "with one left over")
+
+    var l = ldiv(10, 3)
+    assert_equal(Int(l.quot), 3, "and ldiv says the same")
+    assert_equal(Int(l.rem), 1, "with one left over")
+
+    var ll = lldiv(10, 3)
+    assert_equal(Int(ll.quot), 3, "and so does lldiv")
+    assert_equal(Int(ll.rem), 1, "with one left over")
+
+    # Rounded towards zero, and the remainder follows the numerator.
+    var minus = div(-10, 3)
+    assert_equal(Int(minus.quot), -3, "minus ten over three is minus three")
+    assert_equal(Int(minus.rem), -1, "with minus one left over")
+
+    var lminus = ldiv(-10, 3)
+    assert_equal(Int(lminus.quot), -3, "and ldiv says the same")
+    assert_equal(Int(lminus.rem), -1, "with minus one left over")
+
+    var llminus = lldiv(-10, 3)
+    assert_equal(Int(llminus.quot), -3, "and so does lldiv")
+    assert_equal(Int(llminus.rem), -1, "with minus one left over")
+
+    # The other way round, which is a different answer and not the
+    # same one with a sign in front of it.
+    var other = div(3, 10)
+    assert_equal(Int(other.quot), 0, "three over ten is nothing")
+    assert_equal(Int(other.rem), 3, "with three left over")
+
+
 def main() raises:
     test_malloc()
     test_the_untried_calls()
@@ -353,4 +405,5 @@ def main() raises:
     test_getloadavg()
     test_paths()
     test_abort_ends_the_child_and_not_us()
+    test_dividing_and_keeping_the_remainder()
     print("test_stdlib: ok")
