@@ -30,23 +30,26 @@ requirements:
 
 tests:
   - script:
-      # The suite is run against the sources, the way it is run in the
-      # repository, and not against the precompiled package, which is
-      # what used to be done here.
+      # The whole suite is not run here, and it is not run against the
+      # sources either, which is what was tried first. It cannot be.
       #
-      # It cannot be done that way any more. This package binds `write`,
-      # and so does the standard library — twice, in fact, and not with
-      # the same signature: `std.sys._libc` has it returning a `c_int`
-      # and `std.io.file_descriptor` a `c_ssize_t`. Where a programme
-      # reaches both, the compiler objects to there being two and throws
-      # one out, and a suite that writes to the terminal reaches both.
-      # That is the standard library's own doing, and there is nothing a
-      # binding can change about it.
+      # This package binds `write`. So does the standard library, twice
+      # over, and the two do not agree: one has it returning a `c_int`
+      # and the other a `c_ssize_t`. Where a programme reaches both, the
+      # compiler objects to there being two and throws one of them out,
+      # and anything that writes to the terminal reaches both, since
+      # `print` is what gets there. The suite writes to the terminal
+      # all the way through.
       #
-      # The package is still checked, by the second command below: it is
-      # a programme small enough not to reach either of those two, which
-      # is to say one that does not write to the terminal.
-      - mojo run -I . -I tests tests/test_main.mojo
+      # Whether it does depends on which build of the compiler is
+      # installed, which is why this passes here and not on the mojo
+      # that conda resolves — but it is not this package's to fix, and
+      # not something that can be worked on where it cannot be seen.
+      #
+      # So the built package is checked with a programme that says
+      # nothing: found, loaded and called is what is worth knowing
+      # here. The suite itself is run, against the sources, by the two
+      # test jobs above.
       - mojo run -I ${PREFIX}/lib/mojo -I tests tests/test_smoke.mojo
     files:
       source:
