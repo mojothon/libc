@@ -8,7 +8,6 @@ from std.testing import assert_equal, assert_true
 
 from libc.constant import c_ptr
 from libc.pthread import (
-    pthread_attr_destroy,
     PTHREAD_CANCEL_ASYNCHRONOUS,
     PTHREAD_CANCEL_DEFERRED,
     PTHREAD_CANCEL_DISABLE,
@@ -18,40 +17,44 @@ from libc.pthread import (
     PTHREAD_EXPLICIT_SCHED,
     PTHREAD_INHERIT_SCHED,
     PTHREAD_SCOPE_SYSTEM,
+    pthread_attr_destroy,
     pthread_attr_getdetachstate,
     pthread_attr_getguardsize,
     pthread_attr_getinheritsched,
-    pthread_attr_getscope,
     pthread_attr_getschedparam,
     pthread_attr_getschedpolicy,
+    pthread_attr_getscope,
     pthread_attr_getstack,
     pthread_attr_getstacksize,
     pthread_attr_init,
     pthread_attr_setdetachstate,
     pthread_attr_setguardsize,
     pthread_attr_setinheritsched,
-    pthread_attr_setscope,
     pthread_attr_setschedparam,
     pthread_attr_setschedpolicy,
+    pthread_attr_setscope,
     pthread_attr_setstack,
     pthread_attr_setstacksize,
+    pthread_attr_t,
     pthread_cancel,
     pthread_condattr_destroy,
-    pthread_detach,
-    pthread_attr_t,
     pthread_condattr_t,
+    pthread_detach,
     pthread_equal,
     pthread_getspecific,
     pthread_key_create,
     pthread_key_delete,
     pthread_key_t,
+    pthread_kill,
     pthread_self,
     pthread_setcancelstate,
     pthread_setcanceltype,
     pthread_setspecific,
-    pthread_testcancel,
+    pthread_sigmask,
     pthread_t,
+    pthread_testcancel,
 )
+from libc.signal import SIG_BLOCK, sigemptyset
 from libc.sched import SCHED_OTHER, sched_param
 from libc.utils import is_null, null_ptr
 
@@ -408,10 +411,69 @@ def test_the_one_that_is_left() raises:
     cond.unsafe_free()
 
 
+def empty_set() -> c_ptr[UInt8]:
+    """A zeroed block big enough for either platform's `sigset_t`."""
+    var mask = unsafe_alloc[UInt8](128)
+    for i in range(128):
+        mask.unsafe_store(i, UInt8(0))
+    _ = sigemptyset(mask)
+    return mask
+
+
+def test_a_thread_can_be_asked_for_and_keeps_its_own_mask() raises:
+    """`pthread_kill` sends a signal to one thread, and
+    `pthread_sigmask` says which signals a thread is to be handed.
+
+    `pthread_kill` is asked with signal 0, which sends nothing and
+    only asks whether the thread is there — and it is, being the one
+    doing the asking. Nothing is sent, so nothing is disturbed.
+
+    `pthread_sigmask` is given `SIG_BLOCK` and a set with nothing in
+    it, which blocks nothing and so changes nothing, meaning it can
+    be asked twice and the mask it hands back — which is the mask as
+    it was before — is the same both times. That is what is asked
+    here, and it is the same thing `sigprocmask` is asked.
+
+    The set is a block of zeroes big enough for either platform's
+    `sigset_t`, filled by `sigemptyset`, which is how this package
+    keeps from having to lay that struct out.
+    """
+    assert_equal(
+        pthread_kill(pthread_self(), 0),
+        0,
+        "this thread is there to be asked for",
+    )
+
+    var empty = empty_set()
+    var before = empty_set()
+    var also_before = empty_set()
+
+    assert_equal(
+        pthread_sigmask(SIG_BLOCK, empty, before),
+        0,
+        "pthread_sigmask blocks nothing and says so",
+    )
+    assert_equal(
+        pthread_sigmask(SIG_BLOCK, empty, also_before),
+        0,
+        "and asked again, hands back",
+    )
+    assert_equal(
+        before.unsafe_load(0),
+        also_before.unsafe_load(0),
+        "the same mask it handed back the first time",
+    )
+
+    empty.unsafe_free()
+    before.unsafe_free()
+    also_before.unsafe_free()
+
+
 def main() raises:
     test_the_attribute_object()
     test_the_scheduling_settings()
     test_which_thread_and_whether_it_may_end()
     test_a_slot_of_its_own()
     test_the_one_that_is_left()
+    test_a_thread_can_be_asked_for_and_keeps_its_own_mask()
     print("test_pthread: ok")

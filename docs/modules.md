@@ -18,12 +18,12 @@ the bottom.
 | `libc.time` | `<time.h>` | 31 |
 | `libc.fenv` | `<fenv.h>` | 26 |
 | `libc.sys.mman` | `<sys/mman.h>` | 15 |
-| `libc.pthread` | `<pthread.h>` | 96 |
+| `libc.pthread` | `<pthread.h>` | 98 |
 | `libc.string` | `<string.h>` | 45 |
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 44 |
 | `libc.complex` | `<complex.h>` | 46 |
 | `libc.sched` | `<sched.h>` | 15 |
-| `libc.signal` | `<signal.h>` | 40 |
+| `libc.signal` | `<signal.h>` | 43 |
 | `libc.spawn` | `<spawn.h>` start a process without fork | 23 |
 | `libc.locale` | `<locale.h>` | 16 |
 | `libc.sys.epoll` | `<sys/epoll.h>` | 7 |

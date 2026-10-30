@@ -2214,3 +2214,88 @@ def pthread_key_delete(key: pthread_key_t) -> Int32:
         to see to that itself first.
     """
     return external_call["pthread_key_delete", Int32, pthread_key_t](key)
+
+
+def pthread_sigmask(
+    how: Int32, set: c_ptr[UInt8], oldset: c_ptr[UInt8]
+) -> Int32:
+    """Libc POSIX `pthread_sigmask` function.
+
+    Description:
+        Says which signals this thread is to be handed, which is a
+        thing each thread keeps for itself and not one the process
+        keeps.
+
+    Args:
+        how: Which of the `SIG_` names to do it by — `SIG_BLOCK` to
+            add to what is blocked, `SIG_UNBLOCK` to take away, and
+            `SIG_SETMASK` to say the whole of it.
+        set: The set of signals `how` is about, which is read, or a
+            null pointer where nothing is to be changed.
+        oldset: Where to put the mask as it was before, which is
+            written to, or a null pointer where that is not wanted.
+
+    Returns:
+        0 where it was said, or a number that says what went wrong,
+        which is not in `errno`.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/pthread_sigmask.3.html).
+        Fn signature: `int pthread_sigmask(int how,
+            const sigset_t *restrict set, sigset_t *restrict oldset)`.
+
+        This is `sigprocmask` for one thread rather than for the
+        process, and in a process of one thread the two are the same
+        call; POSIX does not say which `sigprocmask` does in a
+        process of many, which is why this is the one to call there.
+
+        Which signals are blocked is kept per thread, but what a
+        signal does when it is delivered is kept for the whole
+        process, so blocking one in one thread does not stop another
+        thread from being given it.
+
+        `set` and `oldset` are `sigset_t`, which is not laid out the
+        same on the two platforms and is not bound here: a block of
+        zeroes big enough for either, filled by `sigemptyset`, is
+        what is handed in.
+    """
+    return external_call[
+        "pthread_sigmask", Int32, Int32, c_ptr[UInt8], c_ptr[UInt8]
+    ](how, set, oldset)
+
+
+def pthread_kill(thread: pthread_t, sig: Int32) -> Int32:
+    """Libc POSIX `pthread_kill` function.
+
+    Description:
+        Sends a signal to one thread.
+
+    Args:
+        thread: The thread to send it to, which is `pthread_self`
+            for this one.
+        sig: Which signal to send, or 0 to send none and only ask
+            whether the thread is there.
+
+    Returns:
+        0 where it was sent, or a number that says what went wrong,
+        which is not in `errno`.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/pthread_kill.3.html).
+        Fn signature: `int pthread_kill(pthread_t thread, int sig)`.
+
+        This is `kill` for a thread rather than for a process, and it
+        is the only one that can send to one: `kill` sends to a
+        process and whichever of its threads takes it is not a thing
+        a caller can say.
+
+        Signal 0 is the one that sends nothing. What it does instead
+        is the check, which is what makes it the only signal worth
+        sending in a test: whether the thread is there is answered
+        without disturbing it.
+
+        What the signal does when it arrives is whatever the whole
+        process has been told for that number, which is `sigaction`'s
+        to say and not this call's.
+    """
+    return external_call["pthread_kill", Int32, pthread_t, Int32](thread, sig)

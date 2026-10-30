@@ -390,6 +390,7 @@ def bring_in_libc_mutex():
         PTHREAD_PRIO_PROTECT,
         PTHREAD_PROCESS_PRIVATE,
         PTHREAD_PROCESS_SHARED,
+        pthread_kill,
         pthread_mutex_destroy,
         pthread_mutex_getprioceiling,
         pthread_mutex_init,
@@ -409,6 +410,7 @@ def bring_in_libc_mutex():
         pthread_mutexattr_setpshared,
         pthread_mutexattr_settype,
         pthread_mutexattr_t,
+        pthread_sigmask,
     )
 
 
@@ -888,12 +890,15 @@ def bring_in_libc_signal():
         SIG_UNBLOCK,
         craise,
         kill,
+        killpg,
+        psignal,
         sigaction,
         sigaddset,
         sigaltstack,
         sigdelset,
         sigemptyset,
         sigfillset,
+        siginterrupt,
         sigismember,
         signal,
         sigpending,

@@ -8,18 +8,21 @@ from libc.signal import (
     SIG_BLOCK,
     craise,
     kill,
+    killpg,
+    psignal,
     sigaction,
     sigaddset,
     sigaltstack,
     sigdelset,
     sigemptyset,
     sigfillset,
+    siginterrupt,
     sigismember,
     sigpending,
     sigprocmask,
 )
-from libc.unistd import getpid
-from libc.utils import null_ptr
+from libc.unistd import getpgrp, getpid
+from libc.utils import null_ptr, string_to_char_ptr
 
 
 def empty_set() -> c_ptr[UInt8]:
@@ -191,6 +194,43 @@ def test_craise_with_nothing_to_send() raises:
     test cannot say what it would do.
     """
     assert_equal(craise(0), 0, "craise with signal 0 sends nothing and says so")
+
+
+def test_signal_zero_asks_whether_a_group_is_there() raises:
+    """`killpg` sends a signal to a process group. It is asked with
+    signal 0, which sends nothing at all and only asks whether the
+    group is there.
+
+    What is asked is that this process's own group is there and that
+    a group which cannot be is not: the first answers 0 and the
+    second -1.
+
+    The second of those is what pins the two arguments apart. A
+    group of 0 means this process's own group as well, so asked the
+    wrong way round `killpg(-1, 0)` would be `killpg(0, -1)` — a
+    group that is there being sent a signal that is not one — which
+    answers -1 for the wrong reason.
+
+    `psignal` and `siginterrupt` are called because they are there
+    and not because either can be asked anything: the first writes
+    what a signal's number means and says nothing back, and the
+    second says whether a slow call is to be woken by a signal or
+    carry on after it. What `psignal` writes is each platform's own
+    to say, so it is not written down here.
+
+    Nothing is sent, so the process these tests run in is not
+    disturbed by any of this.
+    """
+    assert_equal(
+        killpg(Int32(getpgrp()), 0), 0, "this process's own group is there"
+    )
+    assert_equal(killpg(-1, 0), -1, "and a group that cannot be is not")
+
+    var doing = string_to_char_ptr("nothing to report")
+    psignal(SIGINT, doing)
+    assert_equal(siginterrupt(SIGINT, 0), 0, "and siginterrupt is there too")
+
+    doing.unsafe_free()
 
 
 def main() raises:

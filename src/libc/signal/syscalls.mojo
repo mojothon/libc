@@ -484,3 +484,97 @@ def sigwait(set: c_ptr[UInt8], signo: c_ptr[Int32]) -> Int32:
     return external_call["sigwait", Int32, c_ptr[UInt8], c_ptr[Int32]](
         set, signo
     )
+
+
+def killpg(pgrp: Int32, sig: Int32) -> Int32:
+    """Libc POSIX `killpg` function.
+
+    Description:
+        Sends a signal to every process in a process group.
+
+    Args:
+        pgrp: The group to send it to, which is 0 for this process's
+            own group.
+        sig: Which signal to send, or 0 to send none and only ask
+            whether the group is there.
+
+    Returns:
+        0 where it was sent, or -1 with `errno` saying why.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/killpg.3.html).
+        Fn signature: `int killpg(pid_t pgrp, int sig)`.
+
+        This is `kill` with the number negated — `killpg(p, s)` being
+        `kill(-p, s)` — which is the whole of what a negative pid has
+        meant since forever. The two differ in that `killpg` will not
+        take 0 to mean a group, and `kill` will not take -1 to mean
+        one; `killpg` with -1 is a group that is not there.
+
+        Signal 0 is the one that sends nothing. What it does instead
+        is the check, which is what makes it the only signal worth
+        sending in a test: whether the group exists is answered
+        without disturbing anyone in it.
+    """
+    return external_call["killpg", Int32, Int32, Int32](pgrp, sig)
+
+
+def psignal(sig: Int32, text: c_ptr[UInt8]) -> None:
+    """Libc BSD `psignal` function.
+
+    Description:
+        Writes to standard error what a signal's number means, under a
+        line of the caller's own.
+
+    Args:
+        sig: The signal whose name is wanted.
+        text: What to write in front of it, which is what the caller
+            was doing when the signal came.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/psignal.3.html).
+        Fn signature: `void psignal(int sig, const char *s)`.
+
+        This writes and says nothing back, so a caller cannot ask what
+        a signal means, only have it written down. `strsignal` is the
+        same words handed back rather than written, which is the one
+        to call where anything is to be done with them.
+
+        It is on both platforms, though not in POSIX. What it writes
+        is not the same on the two of them — which words go with which
+        number is each platform's own to say — so it is a thing to
+        show a person and not a thing to test against.
+    """
+    external_call["psignal", NoneType, Int32, c_ptr[UInt8]](sig, text)
+
+
+def siginterrupt(sig: Int32, interrupt: Int32) -> Int32:
+    """Libc BSD `siginterrupt` function.
+
+    Description:
+        Says whether a slow call is to be woken up by this signal or
+        to carry on after it.
+
+    Args:
+        sig: The signal being decided about.
+        interrupt: Non-zero where the call is to be woken up and
+            answer `EINTR`, zero where it is to carry on.
+
+    Returns:
+        0 where it was said, or -1 with `errno` saying why.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/siginterrupt.3.html).
+        Fn signature: `int siginterrupt(int sig, int flag)`.
+
+        This is a way of setting, or clearing, the one flag in a
+        signal's `sigaction` that says which of those happens, and
+        `sigaction` is the one that says it now: it takes the whole
+        of the flags at once, and is portable where this is not.
+
+        It is on both platforms, though not in POSIX, and it is of the
+        time before `sigaction`: what it does to a signal is done to
+        whichever handler that signal has, so it is called after one
+        is set and not before.
+    """
+    return external_call["siginterrupt", Int32, Int32, Int32](sig, interrupt)
