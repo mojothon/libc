@@ -36,6 +36,7 @@ from libc.stdlib import (
     mbtowc,
     mkdtemp,
     mkstemp,
+    mktemp,
     mrand48,
     posix_memalign,
     putenv,
@@ -44,6 +45,7 @@ from libc.stdlib import (
     random,
     realloc,
     realpath,
+    rpmatch,
     secure_getenv,
     seed48,
     setenv,
@@ -55,12 +57,15 @@ from libc.stdlib import (
     strtof,
     strtol,
     strtoll,
+    strtoq,
     strtoul,
     strtoull,
+    strtouq,
     unsetenv,
+    valloc,
     wctomb,
 )
-from libc.utils import char_ptr_to_string, null_ptr, string_to_char_ptr
+from libc.utils import char_ptr_to_string, is_null, null_ptr, string_to_char_ptr
 
 
 def test_malloc() raises:
@@ -580,6 +585,88 @@ def test_one_character_at_a_time() raises:
     a.unsafe_free()
 
 
+def test_yes_no_and_neither() raises:
+    """`rpmatch` says whether what was written in answer to a
+    question was yes or was no.
+
+    It is asked about `y`, about `n`, and about a word that is
+    neither, and what it answers is 1, 0 and -1. Those three are
+    what it is asked for because they are the three it has: a
+    question answered is one of them, and there is no fourth.
+
+    What counts as yes and what counts as no is the current
+    locale's to say, so what is handed in is the shortest thing
+    there is and not a word.
+
+    `valloc` is asked for room on a page boundary, and is asked for
+    it the way `malloc` is asked, which is to say what is asked is
+    that the room is there and that a number can be put in it and
+    read back out. That the room begins where a page begins is what
+    this call is for, and is not a thing a test can say without
+    turning a pointer into a number.
+    """
+    assert_equal(rpmatch(string_to_char_ptr("y")), 1, "y is yes")
+    assert_equal(rpmatch(string_to_char_ptr("n")), 0, "n is no")
+    assert_equal(
+        rpmatch(string_to_char_ptr("maybe")),
+        -1,
+        "and a word that is neither is neither",
+    )
+
+    var room = valloc(4096)
+    assert_true(not is_null(room), "valloc gives room, and")
+    var words = room.unsafe_bitcast[UInt8]()
+    words.unsafe_store(0, 42)
+    assert_equal(words.unsafe_load(0), 42, "a number put in it comes back out")
+    free(room.unsafe_bitcast[UInt8]())
+
+
+def test_a_name_is_made_and_a_number_is_read() raises:
+    """`mktemp` finishes a name, and `strtoq` with `strtouq` read a
+    number out of a string.
+
+    `mktemp` is handed a name ending in six `X`s and is asked to
+    write over them. What is asked of it is that the six characters
+    it was given are no longer all `X`: a name that is still six
+    `X`s is one no name was made for. The name it makes is not
+    looked at, being each machine's own to pick.
+
+    `strtoq` and `strtouq` are the older names for `strtoll` and
+    `strtoull`, and are asked the same thing they are: that the
+    number written in the string is the number they hand back. A
+    call that read from the wrong place, or took the base the wrong
+    way, hands back a number that is not the one written.
+    """
+    var template = string_to_char_ptr("mojoXXXXXX")
+    assert_true(not is_null(mktemp(template)), "mktemp finishes the name, and")
+
+    var still_x = 0
+    for i in range(4, 10):
+        if template.unsafe_load(i) == UInt8(ord("X")):
+            still_x += 1
+    assert_true(still_x < 6, "the six Xs are not six Xs any more")
+    template.unsafe_free()
+
+    var text = string_to_char_ptr("12345")
+    var rest = unsafe_alloc[c_ptr[UInt8]](1)
+    assert_equal(
+        strtoq(text, rest, 10), 12345, "strtoq reads the number written"
+    )
+    assert_equal(
+        strtouq(text, rest, 10),
+        12345,
+        "and so does strtouq under its old name",
+    )
+    assert_equal(
+        strtoq(string_to_char_ptr("ff"), rest, 16),
+        255,
+        "and sixteen is asked for and is given",
+    )
+
+    text.unsafe_free()
+    rest.unsafe_free()
+
+
 def main() raises:
     test_malloc()
     test_the_untried_calls()
@@ -597,4 +684,6 @@ def main() raises:
     test_one_character_at_a_time()
     test_the_forty_eight_bit_sequence()
     test_writing_a_number_in_sixty_four_characters()
+    test_yes_no_and_neither()
+    test_a_name_is_made_and_a_number_is_read()
     print("test_stdlib: ok")

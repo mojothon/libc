@@ -1459,3 +1459,185 @@ def wctomb(s: c_ptr[c_char], wc: c_wchar) -> c_int:
         takes one.
     """
     return external_call["wctomb", c_int, c_ptr[c_char], c_wchar](s, wc)
+
+
+def rpmatch(response: c_ptr[c_char]) -> c_int:
+    """C library <stdlib.h> function `rpmatch`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/rpmatch.3.html
+
+    Prototype:
+        int rpmatch(const char *response)
+
+    Description:
+        Says whether what was written in answer to a question was
+        yes or was no.
+
+    Args:
+        response: The answer to be read.
+
+    Returns:
+        1 where the answer was yes, 0 where it was no, and -1 where
+        it was neither.
+
+    Notes:
+        What counts as yes and what counts as no is the current
+        locale's to say, being the regular expressions its `YESEXPR`
+        and `NOEXPR` hold, and a caller that wants the same answer
+        everywhere is a caller that hands in `y` or `n` and nothing
+        longer.
+
+        It is a GNU function, and is on Darwin too, but not in POSIX.
+    """
+    return external_call["rpmatch", c_int, c_ptr[c_char]](response)
+
+
+def valloc(size: c_size_t) -> c_ptr[c_void]:
+    """C library <stdlib.h> function `valloc`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/valloc.3.html
+
+    Prototype:
+        void *valloc(size_t size)
+
+    Description:
+        Gives room for `size` bytes on a page boundary.
+
+    Args:
+        size: How many bytes of room are wanted.
+
+    Returns:
+        A pointer to the room, or a null pointer with `errno` set to
+        `ENOMEM` where there is none to give.
+
+    Notes:
+        This is `malloc` that hands back an address a whole page is
+        the start of, which is what some old code wanted and is not
+        what anything wants now: `posix_memalign` is the one to call,
+        being the one in POSIX and the one that says which alignment
+        it is asked for.
+
+        The room is given back with `free`, the same as `malloc`'s is,
+        and is not zeroed.
+
+        It is on both platforms, though not in POSIX, and its
+        prototype lives in `<stdlib.h>` on Darwin and in `<malloc.h>`
+        on glibc.
+    """
+    return external_call["valloc", c_ptr[c_void], c_size_t](size)
+
+
+def mktemp(template: c_ptr[c_char]) -> c_ptr[c_char]:
+    """C library <stdlib.h> function `mktemp`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/mktemp.3.html
+
+    Prototype:
+        char *mktemp(char *template)
+
+    Description:
+        Makes a name that is not taken by writing over the last six
+        characters of what was handed in, which have to be `XXXXXX`.
+
+    Args:
+        template: The name to be finished, ending in six `X`s, which
+            is written to.
+
+    Returns:
+        `template` where a name was made, or an empty string where
+        one could not be.
+
+    Notes:
+        This makes a name and not a file, and the gap between the
+        two is the whole of what is wrong with it: another process
+        can make the same name and get there first. `mkstemp` is the
+        one to call, being the one that makes the file on the way
+        and so leaves no gap.
+
+        The six `X`s are the last six characters and not any six:
+        a name with `XXXXXX` in the middle is handed back untouched.
+
+        It is on both platforms, though not in POSIX, and it is
+        deprecated in POSIX as of its 2008 edition.
+    """
+    return external_call["mktemp", c_ptr[c_char], c_ptr[c_char]](template)
+
+
+def strtoq(
+    nptr: c_ptr[c_char], endptr: c_ptr[c_ptr[c_char]], base: c_int
+) -> c_longlong:
+    """C library <stdlib.h> function `strtoq`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/strtol.3.html
+
+    Prototype:
+        long long strtoq(const char *nptr, char **endptr, int base)
+
+    Description:
+        Converts the leading integer of `nptr` to a `long long`.
+
+    Args:
+        nptr: The string to convert.
+        endptr: Receives the address of the first unconverted
+            character.
+        base: 0 for autodetection, or 2 through 36.
+
+    Returns:
+        The converted value, or the closest it could come with
+        `errno` set to `ERANGE` where it does not fit.
+
+    Notes:
+        This is `strtoll` under its older name, the `q` being for
+        quad, and `strtouq` is `strtoull` the same way. The newer
+        names are the ones in C99 and the ones to call; these are
+        kept in the header so that code written to the old names
+        still builds.
+    """
+    return external_call[
+        "strtoq", c_longlong, c_ptr[c_char], c_ptr[c_ptr[c_char]], c_int
+    ](nptr, endptr, base)
+
+
+def strtouq(
+    nptr: c_ptr[c_char], endptr: c_ptr[c_ptr[c_char]], base: c_int
+) -> c_ulonglong:
+    """C library <stdlib.h> function `strtouq`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/strtol.3.html
+
+    Prototype:
+        unsigned long long strtouq(const char *nptr,
+            char **endptr, int base)
+
+    Description:
+        Converts the leading integer of `nptr` to an `unsigned long
+        long`.
+
+    Args:
+        nptr: The string to convert.
+        endptr: Receives the address of the first unconverted
+            character.
+        base: 0 for autodetection, or 2 through 36.
+
+    Returns:
+        The converted value, or the closest it could come with
+        `errno` set to `ERANGE` where it does not fit.
+
+    Notes:
+        This is `strtoull` under its older name, the `q` being for
+        quad, and `strtoq` is `strtoll` the same way. The newer
+        names are the ones in C99 and the ones to call; these are
+        kept in the header so that code written to the old names
+        still builds.
+
+        A leading minus is not refused: it is negated into the
+        unsigned, so `-1` comes back as the largest it can hold.
+    """
+    return external_call[
+        "strtouq", c_ulonglong, c_ptr[c_char], c_ptr[c_ptr[c_char]], c_int
+    ](nptr, endptr, base)
