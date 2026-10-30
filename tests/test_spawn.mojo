@@ -7,8 +7,9 @@ exit code back, or write into a pipe whose other end is held here.
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import c_ptr, c_short
+from libc.constant import c_int, c_ptr, c_short
 from libc.file import close, read
+from libc.sched import SCHED_OTHER, sched_param
 from libc.spawn import (
     POSIX_SPAWN_SETPGROUP,
     posix_spawn,
@@ -20,9 +21,13 @@ from libc.spawn import (
     posix_spawnattr_destroy,
     posix_spawnattr_getflags,
     posix_spawnattr_getpgroup,
+    posix_spawnattr_getschedparam,
+    posix_spawnattr_getschedpolicy,
     posix_spawnattr_init,
     posix_spawnattr_setflags,
     posix_spawnattr_setpgroup,
+    posix_spawnattr_setschedparam,
+    posix_spawnattr_setschedpolicy,
     posix_spawnattr_t,
     posix_spawnp,
 )
@@ -227,9 +232,76 @@ def test_the_attributes_hold_the_group_and_the_flags_they_are_given() raises:
     flags.unsafe_free()
 
 
+def test_the_attributes_hold_the_scheduling_they_are_given() raises:
+    """The priority and the policy the new process is to start under,
+    put in and read back the way the group is.
+
+    The priority is the one that pins these down. Five goes in and
+    five comes back, and five is not what a fresh handle holds, so a
+    getter that had been given nothing to read would not have
+    answered five. What is more, the block is written over with
+    something else between the putting in and the reading back, so
+    the five that comes back is the one the getter wrote and not one
+    the setter left lying there.
+
+    The policy is asked the same way, except that what is asked for
+    has to be a `SCHED_*` from `libc.sched` and not a number written
+    down: `SCHED_OTHER` is 0 on glibc and 1 on Darwin, so the two are
+    named here rather than counted.
+    """
+    var attr = unsafe_alloc[posix_spawnattr_t](1)
+    assert_equal(Int(posix_spawnattr_init(attr)), 0, "the handle is ready")
+
+    var param = unsafe_alloc[sched_param](1)
+    var policy = unsafe_alloc[c_int](1)
+
+    assert_equal(
+        Int(posix_spawnattr_getschedparam(attr, param)), 0, "a fresh one reads"
+    )
+    assert_equal(
+        Int(posix_spawnattr_getschedpolicy(attr, policy)), 0, "and so does this"
+    )
+
+    param.unsafe_offset(0)[].set_sched_priority(5)
+    assert_equal(
+        Int(posix_spawnattr_setschedparam(attr, param)), 0, "five goes in"
+    )
+    param.unsafe_offset(0)[].set_sched_priority(-1)
+    assert_equal(
+        Int(posix_spawnattr_getschedparam(attr, param)), 0, "and is read back"
+    )
+    assert_equal(
+        param.unsafe_offset(0)[].sched_priority(),
+        5,
+        "five, and not the -1 the block was written over with",
+    )
+
+    assert_equal(
+        Int(posix_spawnattr_setschedpolicy(attr, SCHED_OTHER)),
+        0,
+        "the policy this platform calls the default one",
+    )
+    policy.unsafe_offset(0)[] = -1
+    assert_equal(
+        Int(posix_spawnattr_getschedpolicy(attr, policy)), 0, "and is read back"
+    )
+    assert_equal(
+        Int(policy.unsafe_offset(0)[]),
+        Int(SCHED_OTHER),
+        "the one it was given, named rather than counted",
+    )
+
+    assert_equal(Int(posix_spawnattr_destroy(attr)), 0, "and released")
+
+    attr.unsafe_free()
+    param.unsafe_free()
+    policy.unsafe_free()
+
+
 def main() raises:
     test_posix_spawnp_runs_the_program_its_arguments_name()
     test_posix_spawn_answers_for_a_path_that_is_not_there()
     test_the_file_actions_hand_the_child_a_pipe_for_its_output()
     test_the_attributes_hold_the_group_and_the_flags_they_are_given()
+    test_the_attributes_hold_the_scheduling_they_are_given()
     print("test_spawn: ok")
