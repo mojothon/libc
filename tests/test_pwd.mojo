@@ -1,7 +1,18 @@
+from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_false, assert_true
 
-from libc.pwd import endpwent, getpwent, getpwnam, getpwuid, setpwent
+from libc.pwd import (
+    endpwent,
+    getpwent,
+    getpwnam,
+    getpwnam_r,
+    getpwuid,
+    getpwuid_r,
+    passwd,
+    setpwent,
+)
 from libc.unistd import getuid
+from libc.constant import c_ptr
 from libc.utils import is_null, string_to_char_ptr
 
 
@@ -87,9 +98,60 @@ def test_whoever_is_running_is_in_the_database() raises:
     )
 
 
+def test_the_reentrant_pair_puts_the_user_in_the_caller_s_room() raises:
+    """`getpwuid_r` and `getpwnam_r` look a user up and put what they
+    find in room the caller gives them.
+
+    Both are asked for user 0, which is the one user every machine
+    has, called one thing here and another there. What is asked of
+    them is that the number comes back the same: a row found by number
+    carries that number, and the same row found by the name it gave
+    carries it too.
+
+    What says it was found is not the 0 these hand back — that says
+    only that the looking was done — but the pointer written into
+    `result`. A name that is not in the database hands back 0 as well,
+    and writes nothing there at all.
+    """
+    var row = unsafe_alloc[passwd](1)
+    var room = unsafe_alloc[UInt8](4096)
+    var found = unsafe_alloc[c_ptr[passwd]](1)
+
+    assert_equal(
+        getpwuid_r(0, row, room, 4096, found), 0, "user 0 was looked for"
+    )
+    assert_true(
+        not is_null(found.unsafe_offset(0)[]), "and they are there, under"
+    )
+    assert_equal(
+        Int(row.unsafe_offset(0)[].pw_uid()), 0, "the number it was asked by"
+    )
+
+    # The name it gave, asked back again.
+    var name = string_to_char_ptr(row.unsafe_offset(0)[].pw_name())
+    assert_equal(
+        getpwnam_r(name, row, room, 4096, found),
+        0,
+        "and the name was looked up",
+    )
+    assert_true(
+        not is_null(found.unsafe_offset(0)[]),
+        "and the row came back by name too, with",
+    )
+    assert_equal(
+        Int(row.unsafe_offset(0)[].pw_uid()), 0, "the same number in it"
+    )
+
+    name.unsafe_free()
+    found.unsafe_free()
+    room.unsafe_free()
+    row.unsafe_free()
+
+
 def main() raises:
     test_root_is_user_zero_whichever_way_it_is_asked()
     test_asking_for_a_user_that_is_not_there_answers_null()
     test_the_whole_database_can_be_walked()
     test_whoever_is_running_is_in_the_database()
+    test_the_reentrant_pair_puts_the_user_in_the_caller_s_room()
     print("pwd ok")

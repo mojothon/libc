@@ -6,7 +6,7 @@
 from std.ffi import external_call
 from std.sys import CompilationTarget
 
-from libc.constant import c_ptr
+from libc.constant import c_ptr, c_size_t
 from libc.utils import char_ptr_to_string
 
 
@@ -224,3 +224,109 @@ def getpwuid(uid: UInt32) -> c_ptr[passwd]:
         alone either way, so nothing here explains why.
     """
     return external_call["getpwuid", c_ptr[passwd], UInt32](uid)
+
+
+def getpwnam_r(
+    name: c_ptr[UInt8],
+    pwd: c_ptr[passwd],
+    buffer: c_ptr[UInt8],
+    buflen: c_size_t,
+    result: c_ptr[c_ptr[passwd]],
+) -> Int32:
+    """Libc POSIX `getpwnam_r` function.
+
+    Description:
+        Looks a user up by login name in the password database, putting
+        what it finds in room the caller gives it.
+
+    Args:
+        name: The login name to look for.
+        pwd: The `passwd` to fill in, which is written to.
+        buffer: Room for the strings the row is made of, which is
+            written to and has to outlive the row.
+        buflen: How much room that is.
+        result: Where to put a pointer to `pwd` where the user was
+            found and nothing where they were not, which is written to.
+
+    Returns:
+        0 where the user was looked for, whether or not they were
+        found: what is in `result` is what says which. Anything else is
+        a number that says what went wrong, and is not in `errno`.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getpwnam.3.html).
+        Fn signature: `int getpwnam_r(const char *restrict name,
+            struct passwd *restrict pwd, char *restrict buffer,
+            size_t buflen, struct passwd **restrict result)`.
+
+        This is `getpwnam` that puts what it finds in the caller's room
+        rather than in one of its own, which is what makes it the one
+        to call where more than one user is wanted or where a thread
+        other than the first is asking. `getpwnam` is the one that
+        hands back the same object every caller.
+
+        Where the room is too small this answers `ERANGE` and writes
+        nothing, and it is asked again with more room.
+    """
+    return external_call[
+        "getpwnam_r",
+        Int32,
+        c_ptr[UInt8],
+        c_ptr[passwd],
+        c_ptr[UInt8],
+        c_size_t,
+        c_ptr[c_ptr[passwd]],
+    ](name, pwd, buffer, buflen, result)
+
+
+def getpwuid_r(
+    uid: UInt32,
+    pwd: c_ptr[passwd],
+    buffer: c_ptr[UInt8],
+    buflen: c_size_t,
+    result: c_ptr[c_ptr[passwd]],
+) -> Int32:
+    """Libc POSIX `getpwuid_r` function.
+
+    Description:
+        Looks a user up by number in the password database, putting
+        what it finds in room the caller gives it.
+
+    Args:
+        uid: The number to look for.
+        pwd: The `passwd` to fill in, which is written to.
+        buffer: Room for the strings the row is made of, which is
+            written to and has to outlive the row.
+        buflen: How much room that is.
+        result: Where to put a pointer to `pwd` where the user was
+            found and nothing where they were not, which is written to.
+
+    Returns:
+        0 where the user was looked for, whether or not they were
+        found: what is in `result` is what says which. Anything else is
+        a number that says what went wrong, and is not in `errno`.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getpwnam.3.html).
+        Fn signature: `int getpwuid_r(uid_t uid,
+            struct passwd *restrict pwd, char *restrict buffer,
+            size_t buflen, struct passwd **restrict result)`.
+
+        This is `getpwuid` that puts what it finds in the caller's room
+        rather than in one of its own, which is what makes it the one
+        to call where more than one user is wanted or where a thread
+        other than the first is asking. `getpwuid` is the one that
+        hands back the same object every caller.
+
+        Where the room is too small this answers `ERANGE` and writes
+        nothing, and it is asked again with more room.
+    """
+    return external_call[
+        "getpwuid_r",
+        Int32,
+        UInt32,
+        c_ptr[passwd],
+        c_ptr[UInt8],
+        c_size_t,
+        c_ptr[c_ptr[passwd]],
+    ](uid, pwd, buffer, buflen, result)

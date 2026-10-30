@@ -797,7 +797,9 @@ def bring_in_libc_pwd():
         endpwent,
         getpwent,
         getpwnam,
+        getpwnam_r,
         getpwuid,
+        getpwuid_r,
         passwd,
         setpwent,
     )
