@@ -2,9 +2,22 @@ from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
 from libc.constant import c_ptr, c_wchar
-from libc.utils import char_ptr_to_string, null_ptr, string_to_char_ptr
+from libc.utils import (
+    char_ptr_to_string,
+    is_null,
+    null_ptr,
+    string_to_char_ptr,
+)
+from libc.file import fclose, rewind
+from libc.stdio import tmpfile
 from libc.wchar import (
     btowc,
+    fgetwc,
+    fgetws,
+    fputwc,
+    fputws,
+    fwide,
+    getwc,
     iswalnum,
     iswalpha,
     iswblank,
@@ -17,6 +30,12 @@ from libc.wchar import (
     iswspace,
     iswupper,
     iswxdigit,
+    putwc,
+    ungetwc,
+    wcstod,
+    wcstol,
+    wcstoul,
+    WEOF,
     mbrlen,
     mbrtowc,
     mbstowcs,
@@ -222,6 +241,117 @@ def test_single_byte() raises:
     assert_equal(Int(wctob(65)), 65)
 
 
+def test_wide_characters_through_a_stream() raises:
+    """`fputwc` writes one wide character to a stream and `fgetwc`
+    reads it back, `fputws` and `fgetws` do the same for a string, and
+    `ungetwc` hands one back so that the next read is it again.
+
+    The stream is one `tmpfile` makes, which is to say a file nobody
+    has to name and nobody has to clean up.
+
+    `fwide` is asked with a mode of 0, which asks without turning the
+    stream: a stream nothing has been written to is not turned either
+    way, and 0 is what comes back. That is asked before anything is
+    written, since writing a wide character is what turns it.
+
+    `getwc` and `putwc` are the same pair under another name and are
+    asked the same things. `getwchar` and `putwchar` are bound and not
+    called, being the ones that go to the terminal.
+    """
+    var stream = tmpfile()
+    assert_true(not is_null(stream), "tmpfile hands back a stream")
+
+    # Asked before anything is written, since writing is what turns it.
+    assert_equal(fwide(stream, 0), 0, "and it is not turned either way yet")
+
+    assert_equal(Int(fputwc(65, stream)), 65, "A goes into the stream")
+    assert_equal(Int(putwc(66, stream)), 66, "and B after it")
+
+    _ = rewind(stream)
+    assert_equal(
+        Int(fwide(stream, 0)) > 0, True, "and the stream is turned wide now"
+    )
+    assert_equal(Int(fgetwc(stream)), 65, "A comes back out of it")
+    assert_equal(Int(getwc(stream)), 66, "and B after it")
+
+    # Handed back, and so read again.
+    assert_equal(Int(ungetwc(66, stream)), 66, "B is handed back to the stream")
+    assert_equal(Int(fgetwc(stream)), 66, "and so it is what comes out next")
+    assert_equal(
+        Int(fgetwc(stream)), Int(WEOF), "and after that there is nothing"
+    )
+
+    # Back to the start first. The reads above went as far as the end,
+    # and writing from there would put this after what is there
+    # already rather than over it.
+    _ = rewind(stream)
+    var line = wide("written")
+    assert_true(Int(fputws(line, stream)) >= 0, "a string goes into the stream")
+    _ = rewind(stream)
+    var back = unsafe_alloc[c_wchar](8)
+    assert_true(
+        not is_null(fgetws(back, 8, stream)), "and comes back out of it"
+    )
+    assert_equal(wide_to_string(back), "written")
+
+    assert_equal(fclose(stream), 0, "the stream is closed")
+
+    back.unsafe_free()
+    line.unsafe_free()
+
+
+def test_reading_numbers_off_the_front() raises:
+    """`wcstol`, `wcstoul` and `wcstod` each read a number off the
+    front of a wide string, and each is asked about a string with
+    something after the number: `endptr` is where the rest is left,
+    and it is the one thing here that a call which read nothing at all
+    could not answer.
+
+    Each is asked for a base of 10 and again for a base of 0, which
+    lets the string say what base it is in. `0x` in front of a number
+    is sixteen under 0 and is nothing at all under 10, so the same
+    string reads as two different numbers, and asking both is what
+    keeps a call that ignored its base from passing.
+
+    A string with no number in it is asked for too, and 0 is what
+    comes back.
+    """
+    var end = unsafe_alloc[c_ptr[c_wchar]](1)
+
+    var sixteen = wide("0x10")
+    assert_equal(wcstol(sixteen, end, 10), 0, "0x10 is no number in base 10")
+    assert_equal(wcstol(sixteen, end, 0), 16, "and is sixteen when it says")
+    assert_equal(wcstoul(sixteen, end, 0), 16, "and unsigned agrees")
+
+    var dozen = wide("12")
+    assert_equal(wcstol(dozen, end, 10), 12, "twelve in base ten")
+    assert_equal(wcstoul(dozen, end, 0), 12, "and unsigned agrees")
+
+    var rest = wide("7 and the rest")
+    assert_equal(wcstol(rest, end, 10), 7, "seven is read off the front, and")
+    assert_equal(
+        wide_to_string(end.unsafe_offset(0)[]),
+        " and the rest",
+        "what is left is where endptr points",
+    )
+
+    var none = wide("no number here")
+    assert_equal(wcstol(none, end, 10), 0, "and a string with none is 0")
+
+    var half = wide("1.5")
+    assert_true(wcstod(half, end) == 1.5, "one and a half is read")
+    assert_equal(
+        wide_to_string(end.unsafe_offset(0)[]), "", "and nothing is left of it"
+    )
+
+    none.unsafe_free()
+    rest.unsafe_free()
+    dozen.unsafe_free()
+    sixteen.unsafe_free()
+    half.unsafe_free()
+    end.unsafe_free()
+
+
 def main() raises:
     test_length_and_compare()
     test_search()
@@ -229,4 +359,6 @@ def main() raises:
     test_multibyte()
     test_classify()
     test_single_byte()
+    test_wide_characters_through_a_stream()
+    test_reading_numbers_off_the_front()
     print("test_wchar: ok")

@@ -8,6 +8,7 @@ from std.memory import Pointer
 from std.sys import CompilationTarget
 
 from libc.constant import c_int, c_ptr, c_size_t, c_wchar, c_wint
+from libc.file import FILE
 
 
 struct mbstate_t:
@@ -670,3 +671,340 @@ def iswxdigit(wc: c_wint) -> c_int:
         `g` is what tells this one from `iswdigit`.
     """
     return external_call["iswxdigit", c_int, c_wint](wc)
+
+
+# `WEOF` is the wide character that is not one: what a read hands back
+# when there is nothing left to read. It is `(wint_t)-1` on both
+# platforms, which is the one thing about it that is not left to them.
+comptime WEOF: Int32 = -1
+
+
+def fgetwc(stream: c_ptr[FILE]) -> c_wint:
+    """Libc C95 `fgetwc` function.
+
+    Description:
+        Reads one wide character from a stream.
+
+    Args:
+        stream: The stream to read from.
+
+    Returns:
+        The character, or `WEOF` at the end of it or on error.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/fgetwc.3.html).
+        Fn signature: `wint_t fgetwc(FILE *stream)`.
+
+        Which of the two it was — the end or a mistake — is what
+        `ferror` and `feof` are for asking about.
+    """
+    return external_call["fgetwc", c_wint, c_ptr[FILE]](stream)
+
+
+def getwc(stream: c_ptr[FILE]) -> c_wint:
+    """Libc C95 `getwc` function.
+
+    Description:
+        Reads one wide character from a stream.
+
+    Args:
+        stream: The stream to read from.
+
+    Returns:
+        The character, or `WEOF` at the end of it or on error.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getwc.3.html).
+        Fn signature: `wint_t getwc(FILE *stream)`.
+
+        The same call as `fgetwc`, kept because C has it as a macro
+        that may take its argument more than once, where this one
+        does not. A stream with something to say about it either way.
+    """
+    return external_call["getwc", c_wint, c_ptr[FILE]](stream)
+
+
+def getwchar() -> c_wint:
+    """Libc C95 `getwchar` function.
+
+    Description:
+        Reads one wide character from standard input.
+
+    Returns:
+        The character, or `WEOF` at the end of it or on error.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getwchar.3.html).
+        Fn signature: `wint_t getwchar(void)`.
+
+        Bound and not called: what comes in on standard input is not
+        a test's to say, and a test that asked would wait.
+    """
+    return external_call["getwchar", c_wint]()
+
+
+def fputwc(wc: c_wchar, stream: c_ptr[FILE]) -> c_wint:
+    """Libc C95 `fputwc` function.
+
+    Description:
+        Writes one wide character to a stream.
+
+    Args:
+        wc: The character to write.
+        stream: The stream to write it to.
+
+    Returns:
+        The character written, or `WEOF` on error.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/fputwc.3.html).
+        Fn signature: `wint_t fputwc(wchar_t wc, FILE *stream)`.
+    """
+    return external_call["fputwc", c_wint, c_wchar, c_ptr[FILE]](wc, stream)
+
+
+def putwc(wc: c_wchar, stream: c_ptr[FILE]) -> c_wint:
+    """Libc C95 `putwc` function.
+
+    Description:
+        Writes one wide character to a stream.
+
+    Args:
+        wc: The character to write.
+        stream: The stream to write it to.
+
+    Returns:
+        The character written, or `WEOF` on error.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/putwc.3.html).
+        Fn signature: `wint_t putwc(wchar_t wc, FILE *stream)`.
+
+        The same call as `fputwc`, and kept for the same reason
+        `getwc` is.
+    """
+    return external_call["putwc", c_wint, c_wchar, c_ptr[FILE]](wc, stream)
+
+
+def putwchar(wc: c_wchar) -> c_wint:
+    """Libc C95 `putwchar` function.
+
+    Description:
+        Writes one wide character to standard output.
+
+    Args:
+        wc: The character to write.
+
+    Returns:
+        The character written, or `WEOF` on error.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/putwchar.3.html).
+        Fn signature: `wint_t putwchar(wchar_t wc)`.
+
+        Bound and not called: a test that wrote to the terminal would
+        be writing to the terminal, and what comes back from it is
+        not a thing a test can hold to.
+    """
+    return external_call["putwchar", c_wint, c_wchar](wc)
+
+
+def ungetwc(wc: c_wint, stream: c_ptr[FILE]) -> c_wint:
+    """Libc C95 `ungetwc` function.
+
+    Description:
+        Hands one wide character back to a stream, so that the next
+        thing read from it is that character again.
+
+    Args:
+        wc: The character to hand back.
+        stream: The stream to hand it back to.
+
+    Returns:
+        The character handed back, or `WEOF` on error.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/ungetwc.3.html).
+        Fn signature: `wint_t ungetwc(wint_t wc, FILE *stream)`.
+
+        One character is what a stream is asked to take back. Asking
+        for a second without reading in between is not a thing C
+        promises anything about.
+    """
+    return external_call["ungetwc", c_wint, c_wint, c_ptr[FILE]](wc, stream)
+
+
+def fgetws(ws: c_ptr[c_wchar], n: Int32, stream: c_ptr[FILE]) -> c_ptr[c_wchar]:
+    """Libc C95 `fgetws` function.
+
+    Description:
+        Reads wide characters from a stream into a buffer, stopping
+        at a newline, at the end of the stream, or when the buffer
+        is one short of full.
+
+    Args:
+        ws: Where to put them.
+        n: How many it will hold, the terminator included.
+        stream: The stream to read from.
+
+    Returns:
+        `ws` on success, or a null pointer at the end or on error.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/fgetws.3.html).
+        Fn signature: `wchar_t *fgetws(wchar_t *ws, int n,
+            FILE *stream)`.
+
+        The newline is kept, which is how this one differs from
+        `fgets`' narrow cousin in nothing and from `getline` in
+        everything. A terminator is written, and it is one of the
+        `n`.
+    """
+    return external_call[
+        "fgetws", c_ptr[c_wchar], c_ptr[c_wchar], Int32, c_ptr[FILE]
+    ](ws, n, stream)
+
+
+def fputws(ws: c_ptr[c_wchar], stream: c_ptr[FILE]) -> c_int:
+    """Libc C95 `fputws` function.
+
+    Description:
+        Writes a null terminated wide string to a stream. No newline
+        is added, and the terminator is not written.
+
+    Args:
+        ws: The string to write.
+        stream: The stream to write it to.
+
+    Returns:
+        A non-negative number on success, or -1 on error.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/fputws.3.html).
+        Fn signature: `int fputws(const wchar_t *ws, FILE *stream)`.
+    """
+    return external_call["fputws", c_int, c_ptr[c_wchar], c_ptr[FILE]](
+        ws, stream
+    )
+
+
+def fwide(stream: c_ptr[FILE], mode: Int32) -> Int32:
+    """Libc C95 `fwide` function.
+
+    Description:
+        Says which way a stream is turned: toward wide characters,
+        toward bytes, or not yet either way. With `mode` at zero it
+        only asks; with `mode` other than zero it asks the stream to
+        turn that way, if it has not been turned already.
+
+    Args:
+        stream: The stream to ask about.
+        mode: 0 to ask, positive for wide, negative for bytes.
+
+    Returns:
+        Positive if the stream is turned wide, negative if it is
+        turned to bytes, and 0 if it is not turned either way.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/fwide.3.html).
+        Fn signature: `int fwide(FILE *stream, int mode)`.
+
+        A stream turns once and stays turned: asking it to turn the
+        other way after it has does nothing, and this is what would
+        say so.
+    """
+    return external_call["fwide", Int32, c_ptr[FILE], Int32](stream, mode)
+
+
+def wcstol(
+    nptr: c_ptr[c_wchar], endptr: c_ptr[c_ptr[c_wchar]], base: Int32
+) -> Int:
+    """Libc C95 `wcstol` function.
+
+    Description:
+        Reads a long integer off the front of a wide string.
+
+    Args:
+        nptr: The string to read from.
+        endptr: Where to put a pointer to the first character that
+            was not part of the number, or a null pointer where that
+            is not wanted.
+        base: The base to read it in, or 0 to let the string say —
+            a leading `0x` for sixteen, a leading `0` for eight, and
+            ten otherwise.
+
+    Returns:
+        The number, which is 0 where there was none to read.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcstol.3.html).
+        Fn signature: `long wcstol(const wchar_t *nptr,
+            wchar_t **endptr, int base)`.
+
+        Reading a number too big for a long is not a failure this
+        call reports as one: it hands back the largest long there is
+        and leaves `errno` to say the rest.
+    """
+    return external_call[
+        "wcstol", Int, c_ptr[c_wchar], c_ptr[c_ptr[c_wchar]], Int32
+    ](nptr, endptr, base)
+
+
+def wcstoul(
+    nptr: c_ptr[c_wchar], endptr: c_ptr[c_ptr[c_wchar]], base: Int32
+) -> UInt:
+    """Libc C95 `wcstoul` function.
+
+    Description:
+        Reads an unsigned long integer off the front of a wide
+        string.
+
+    Args:
+        nptr: The string to read from.
+        endptr: Where to put a pointer to the first character that
+            was not part of the number, or a null pointer where that
+            is not wanted.
+        base: The base to read it in, or 0 to let the string say.
+
+    Returns:
+        The number, which is 0 where there was none to read.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcstoul.3.html).
+        Fn signature: `unsigned long wcstoul(const wchar_t *nptr,
+            wchar_t **endptr, int base)`.
+
+        A minus sign in front is not a mistake to this one, being
+        negated into an unsigned long rather than refused.
+    """
+    return external_call[
+        "wcstoul", UInt, c_ptr[c_wchar], c_ptr[c_ptr[c_wchar]], Int32
+    ](nptr, endptr, base)
+
+
+def wcstod(nptr: c_ptr[c_wchar], endptr: c_ptr[c_ptr[c_wchar]]) -> Float64:
+    """Libc C95 `wcstod` function.
+
+    Description:
+        Reads a double off the front of a wide string.
+
+    Args:
+        nptr: The string to read from.
+        endptr: Where to put a pointer to the first character that
+            was not part of the number, or a null pointer where that
+            is not wanted.
+
+    Returns:
+        The number, which is 0 where there was none to read.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcstod.3.html).
+        Fn signature: `double wcstod(const wchar_t *nptr,
+            wchar_t **endptr)`.
+
+        Whatever the locale says a decimal point is, that is what
+        this one reads, which under the C locale is a full stop.
+    """
+    return external_call[
+        "wcstod", Float64, c_ptr[c_wchar], c_ptr[c_ptr[c_wchar]]
+    ](nptr, endptr)
