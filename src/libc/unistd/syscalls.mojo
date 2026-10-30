@@ -745,8 +745,13 @@ def read(fd: Int32, buf: c_ptr[UInt8], count: UInt32) -> Int:
         of a line, so asking for 4096 and getting 11 is a read that
         worked. Zero is the end of the file, and -1 is the only failure.
     """
-    return external_call["read", Int, Int, c_ptr[NoneType], Int](
-        Int(fd), buf.unsafe_bitcast[NoneType](), Int(count)
+    # Handed over as the `c_ptr[UInt8]` it is, and not bitcast to
+    # `NoneType` first. An untyped pointer is one the compiler will
+    # not lower, and `read` is bound in the standard library as well
+    # as here, so where the two are compiled together the untyped one
+    # is what gets thrown out.
+    return external_call["read", Int, Int, c_ptr[UInt8], Int](
+        Int(fd), buf, Int(count)
     )
 
 
@@ -1006,8 +1011,8 @@ def write(fd: Int32, buf: c_ptr[UInt8], count: UInt32) -> Int:
         send again. Testing this against -1 and not against how much was
         handed over is how the tail gets quietly lost.
     """
-    return external_call["write", Int, Int, c_ptr[NoneType], Int](
-        Int(fd), buf.unsafe_bitcast[NoneType](), Int(count)
+    return external_call["write", Int, Int, c_ptr[UInt8], Int](
+        Int(fd), buf, Int(count)
     )
 
 

@@ -802,8 +802,14 @@ def read(fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint) -> Int:
         [Reference](https://man7.org/linux/man-pages/man3/read.3p.html).
         Fn signature: `sssize_t read(int fildes, void *buf, size_t nbyte)`.
     """
-    return external_call["read", Int, Int, c_ptr[NoneType], Int](
-        Int(fildes), buf.unsafe_bitcast[NoneType](), Int(nbyte)
+    # `buf` is a `c_ptr[UInt8]` and is handed over as one. It was once
+    # bitcast to `NoneType` first, which makes the call a pointer with
+    # no type at all, and a call like that is one the compiler will
+    # not lower: `write` is bound in the standard library too, and
+    # where the two are compiled together the untyped one is the one
+    # that is thrown out. A pointer to bytes is what it is.
+    return external_call["read", Int, Int, c_ptr[UInt8], Int](
+        Int(fildes), buf, Int(nbyte)
     )
 
 
@@ -850,8 +856,8 @@ def write(fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint) -> Int:
         Fn signature: `ssize_t write(int fildes, const void *buf,
             size_t nbyte)`.
     """
-    return external_call["write", Int, Int, c_ptr[NoneType], Int](
-        Int(fildes), buf.unsafe_bitcast[NoneType](), Int(nbyte)
+    return external_call["write", Int, Int, c_ptr[UInt8], Int](
+        Int(fildes), buf, Int(nbyte)
     )
 
 
