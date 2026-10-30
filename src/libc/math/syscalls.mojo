@@ -2632,3 +2632,122 @@ def llrint(x: Float64) -> Int64:
         one that does not ask, and always takes them away from zero.
     """
     return external_call["llrint", Int64, Float64](x)
+
+
+def lrintf(x: Float32) -> Int64:
+    """C library <math.h> function `lrintf`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/lrint.3.html
+
+    Prototype:
+        long lrintf(float x)
+
+    Description:
+        Rounds x to the nearest integer, in whichever direction the
+        rounding mode currently says, and hands it back as a long.
+
+    Arguments:
+        x: The number to be rounded.
+
+    Return value:
+        x rounded to the nearest integer as a long, or an unspecified
+        value where it does not fit in one.
+
+    Notes:
+        The float form of `lrint`. Which way halfway cases go is not
+        fixed here: it follows the rounding mode, which is to-nearest
+        until something changes it. `lroundf` is the one that does
+        not ask, and always takes them away from zero.
+    """
+    return external_call["lrintf", Int64, Float32](x)
+
+
+def llrintf(x: Float32) -> Int64:
+    """C library <math.h> function `llrintf`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/llrint.3.html
+
+    Prototype:
+        long long llrintf(float x)
+
+    Description:
+        Rounds x to the nearest integer, in whichever direction the
+        rounding mode currently says, and hands it back as a long
+        long.
+
+    Arguments:
+        x: The number to be rounded.
+
+    Return value:
+        x rounded to the nearest integer as a long long, or an
+        unspecified value where it does not fit in one.
+
+    Notes:
+        The float form of `llrint`. Which way halfway cases go is not
+        fixed here: it follows the rounding mode, which is to-nearest
+        until something changes it. `llroundf` is the one that does
+        not ask, and always takes them away from zero.
+    """
+    return external_call["llrintf", Int64, Float32](x)
+
+
+def lroundf(x: Float32) -> Int64:
+    """C library <math.h> function `lroundf`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/lround.3.html
+
+    Prototype:
+        long lroundf(float x)
+
+    Description:
+        Rounds x to the nearest integer, rounding halfway cases away
+        from zero, and hands it back as a long.
+
+    Arguments:
+        x: The number to be rounded.
+
+    Return value:
+        x rounded to the nearest integer as a long, or an unspecified
+        value where it does not fit in one.
+
+    Notes:
+        The float form of `lround`. Unlike `lrintf` this does not ask
+        which way the rounding currently goes: halfway cases always go
+        away from zero, so the same number is rounded the same way
+        whatever the state of the floating point environment. `lrintf`
+        is the one that asks.
+    """
+    return external_call["lroundf", Int64, Float32](x)
+
+
+def llroundf(x: Float32) -> Int64:
+    """C library <math.h> function `llroundf`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/lround.3.html
+
+    Prototype:
+        long long llroundf(float x)
+
+    Description:
+        Rounds x to the nearest integer, rounding halfway cases away
+        from zero, and hands it back as a long long.
+
+    Arguments:
+        x: The number to be rounded.
+
+    Return value:
+        x rounded to the nearest integer as a long long, or an
+        unspecified value where it does not fit in one.
+
+    Notes:
+        The float form of `llround`. Unlike `llrintf` this does not
+        ask which way the rounding currently goes: halfway cases
+        always go away from zero, so the same number is rounded the
+        same way whatever the state of the floating point
+        environment. `llrintf` is the one that asks.
+    """
+    return external_call["llroundf", Int64, Float32](x)

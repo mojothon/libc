@@ -66,7 +66,9 @@ from libc.math import (
     llabs,
     lldiv,
     llrint,
+    llrintf,
     llround,
+    llroundf,
     log,
     log10,
     log10f,
@@ -78,7 +80,9 @@ from libc.math import (
     logbf,
     logf,
     lrint,
+    lrintf,
     lround,
+    lroundf,
     modf,
     modff,
     nan,
@@ -452,6 +456,45 @@ def test_the_four_that_round_a_double_to_a_whole_number() raises:
     assert_equal(llrint(-2.6), -3, "and so it does asked for a long long")
 
 
+def test_the_four_that_round_a_float_to_a_whole_number() raises:
+    """`lrintf`, `llrintf`, `lroundf` and `llroundf` do what `lrint`,
+    `llrint`, `lround` and `llround` do, on a float instead of a
+    double.
+
+    The first thing asked of them is a number that is not halfway
+    between two, for the same reason as before: two and a bit rounds
+    down whatever the rule for halfway cases is, so the four agree
+    without being asked which way they would have gone.
+
+    The halfway cases are then asked of `lroundf` and `llroundf`
+    alone, and this is the part that pins down which symbol is behind
+    the name. Two and a half goes to three, and minus two and a half
+    to minus three, because that is the rule these two keep whatever
+    the rounding mode says. `lrintf` and `llrintf` answer two to the
+    same question, so a binding that had reached either of them would
+    be caught here, and by nothing else.
+    """
+    assert_equal(lrintf(2.4), 2, "two and a bit rounds to two")
+    assert_equal(llrintf(2.4), 2, "and so it does asked for a long long")
+    assert_equal(lroundf(2.4), 2, "and asked without the rounding mode")
+    assert_equal(llroundf(2.4), 2, "and so it does asked for a long long")
+
+    assert_equal(lrintf(2.6), 3, "two and most of a bit rounds to three")
+    assert_equal(llrintf(2.6), 3, "and so it does asked for a long long")
+    assert_equal(lroundf(2.6), 3, "and asked without the rounding mode")
+    assert_equal(llroundf(2.6), 3, "and so it does asked for a long long")
+
+    assert_equal(lrintf(-2.6), -3, "and minus two and most of a bit likewise")
+    assert_equal(llrintf(-2.6), -3, "and so it does asked for a long long")
+    assert_equal(lroundf(-2.6), -3, "and asked without the rounding mode")
+    assert_equal(llroundf(-2.6), -3, "and so it does asked for a long long")
+
+    assert_equal(lroundf(2.5), 3, "two and a half goes away from zero")
+    assert_equal(llroundf(2.5), 3, "and so it does asked for a long long")
+    assert_equal(lroundf(-2.5), -3, "and minus two and a half the other way")
+    assert_equal(llroundf(-2.5), -3, "and so it does asked for a long long")
+
+
 def main() raises:
     test_abs()
     test_sqrt_and_rounding()
@@ -470,4 +513,5 @@ def main() raises:
     test_trunc_takes_the_fraction_towards_zero()
     test_remquof_keeps_the_quotient()
     test_the_four_that_round_a_double_to_a_whole_number()
+    test_the_four_that_round_a_float_to_a_whole_number()
     print("test_math: ok")
