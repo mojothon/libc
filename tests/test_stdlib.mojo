@@ -26,6 +26,7 @@ from libc.stdlib import (
     getloadavg,
     getsubopt,
     initstate,
+    jrand48,
     l64a,
     lcong48,
     ldiv,
@@ -38,6 +39,7 @@ from libc.stdlib import (
     mkstemp,
     mktemp,
     mrand48,
+    nrand48,
     posix_memalign,
     putenv,
     rand,
@@ -667,6 +669,94 @@ def test_a_name_is_made_and_a_number_is_read() raises:
     rest.unsafe_free()
 
 
+def _seven_shorts() -> c_ptr[c_ushort]:
+    """Seven shorts in a row, to hand `lcong48`."""
+    return unsafe_alloc[c_ushort](7)
+
+
+def _three_shorts(a: Int, b: Int, c: Int) -> c_ptr[c_ushort]:
+    """Three shorts in a row, for the rand48s to walk."""
+    var seeds = unsafe_alloc[c_ushort](3)
+    seeds.unsafe_store(0, UInt16(a))
+    seeds.unsafe_store(1, UInt16(b))
+    seeds.unsafe_store(2, UInt16(c))
+    return seeds
+
+
+def _put_back_the_numbers_posix_says() raises:
+    """`lcong48` with the numbers POSIX says are the default ones.
+
+    The forty-eight family works its sequence out from a multiplier
+    and an addend, and on Linux those two are kept in one place for
+    the whole programme: `lcong48` writes them, and `jrand48` reads
+    them. So a test somewhere else that has been at `lcong48` has
+    moved the numbers for this one too, and `jrand48` hands back a
+    number that is not the one POSIX wrote down.
+
+    Handing the default ones back first makes this test answer the
+    same wherever it is put and whatever ran before it. Where they
+    are not shared, as on Darwin, this sets what was already there
+    and changes nothing.
+    """
+    var param = _seven_shorts()
+    param.unsafe_store(0, UInt16(0x330E))
+    param.unsafe_store(1, UInt16(0xABCD))
+    param.unsafe_store(2, UInt16(0x1234))
+    param.unsafe_store(3, UInt16(0xE66D))
+    param.unsafe_store(4, UInt16(0xDEEC))
+    param.unsafe_store(5, UInt16(0x0005))
+    param.unsafe_store(6, UInt16(0x000B))
+    lcong48(param)
+    param.unsafe_free()
+
+
+def test_the_number_the_rand48s_have_next() raises:
+    """`jrand48` and `nrand48` each hand back the next number of a
+    sequence they keep in three shorts.
+
+    Both are handed the same three shorts, and each is asked for the
+    number that comes next. What they answer is not a surprise: the
+    sequence is written down in POSIX, all the way to which number
+    follows which, so the same three shorts are the same number on
+    every machine. That is the whole of why a test can be written
+    for these at all, where most of the rest of the forty-eight
+    family cannot be — `mrand48` shares one sequence with whatever
+    else has moved it on, so what it answers is anyone's guess.
+
+    `jrand48` is also asked to walk the sequence twice from the same
+    three shorts. Two steps that are not the same number are two
+    steps, and a call that forgot to move the shorts on would hand
+    back the first number both times.
+
+    The two are asked for the same step of the same sequence and
+    differ in how they read it: `jrand48` reads the top bit as a
+    sign and `nrand48` does not. So the one that reads a sign
+    answers twice the other, and a test that has asked both can say
+    so.
+
+    Three shorts of nothing are left alone. That seed is a fixed
+    point of the step and hands back nothing, which is a number any
+    broken call hands back too.
+    """
+    _put_back_the_numbers_posix_says()
+
+    var seeds = _three_shorts(1, 2, 3)
+    assert_equal(jrand48(seeds), 1898359750, "jrand48 walks the sequence")
+
+    seeds = _three_shorts(1, 2, 3)
+    assert_equal(nrand48(seeds), 949179875, "and nrand48 reads the same step")
+    assert_equal(
+        1898359750,
+        2 * 949179875,
+        "one reads a sign where the other does not",
+    )
+
+    seeds = _three_shorts(0x1234, 0xABCD, 0x330E)
+    assert_equal(jrand48(seeds), 2104706203, "and a step is one number, then")
+    assert_equal(jrand48(seeds), 1680765312, "the next step is another")
+    seeds.unsafe_free()
+
+
 def main() raises:
     test_malloc()
     test_the_untried_calls()
@@ -686,4 +776,5 @@ def main() raises:
     test_writing_a_number_in_sixty_four_characters()
     test_yes_no_and_neither()
     test_a_name_is_made_and_a_number_is_read()
+    test_the_number_the_rand48s_have_next()
     print("test_stdlib: ok")

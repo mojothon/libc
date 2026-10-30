@@ -1641,3 +1641,78 @@ def strtouq(
     return external_call[
         "strtouq", c_ulonglong, c_ptr[c_char], c_ptr[c_ptr[c_char]], c_int
     ](nptr, endptr, base)
+
+
+def jrand48(xsubi: c_ptr[c_ushort]) -> c_long:
+    """Libc POSIX `jrand48` function.
+
+    Description:
+        Hands back the next number of a sequence of signed longs,
+        keeping the state of that sequence in an array the caller
+        owns.
+
+    Args:
+        xsubi: Three shorts holding where in the sequence this is.
+            They are moved on before this hands anything back.
+
+    Returns:
+        A long no less than -2^31 and less than 2^31.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/erand48.3.html).
+        Fn signature: `long jrand48(unsigned short xsubi[3])`.
+
+        The three shorts are written to, and the array has to be
+        three long and to outlive the calling.
+
+        `nrand48` is the same step of the same sequence read as a
+        number that is never negative, and `mrand48` is the same
+        step of the one sequence the whole programme shares. Which
+        of the three is wanted is a question about how the number
+        is to be read, not about which sequence it comes from:
+        given the same three shorts, the three hand back the same
+        bits, and differ only in whether the top one is read as a
+        sign.
+
+        What a given three shorts hand back is fixed by POSIX and
+        so is the same on every machine, which is the whole of why
+        a test can be written for it at all.
+    """
+    return external_call["jrand48", c_long, c_ptr[c_ushort]](xsubi)
+
+
+def nrand48(xsubi: c_ptr[c_ushort]) -> c_long:
+    """Libc POSIX `nrand48` function.
+
+    Description:
+        Hands back the next number of a sequence of non-negative
+        longs, keeping the state of that sequence in an array the
+        caller owns.
+
+    Args:
+        xsubi: Three shorts holding where in the sequence this is.
+            They are moved on before this hands anything back.
+
+    Returns:
+        A long no less than 0 and less than 2^31.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/erand48.3.html).
+        Fn signature: `long nrand48(unsigned short xsubi[3])`.
+
+        The three shorts are written to, and the array has to be
+        three long and to outlive the calling.
+
+        `jrand48` is the same step of the same sequence read as a
+        number that may be negative, and `mrand48` is the same step
+        of the one sequence the whole programme shares. Which of the
+        three is wanted is a question about how the number is to be
+        read, not about which sequence it comes from: given the same
+        three shorts, the three hand back the same bits, and differ
+        only in whether the top one is read as a sign.
+
+        What a given three shorts hand back is fixed by POSIX and
+        so is the same on every machine, which is the whole of why
+        a test can be written for it at all.
+    """
+    return external_call["nrand48", c_long, c_ptr[c_ushort]](xsubi)
