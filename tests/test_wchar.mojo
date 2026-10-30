@@ -7,10 +7,16 @@ from libc.wchar import (
     btowc,
     iswalnum,
     iswalpha,
+    iswblank,
+    iswcntrl,
     iswdigit,
+    iswgraph,
     iswlower,
+    iswprint,
+    iswpunct,
     iswspace,
     iswupper,
+    iswxdigit,
     mbrlen,
     mbrtowc,
     mbstowcs,
@@ -175,6 +181,40 @@ def test_classify() raises:
     assert_equal(Int(towupper(97)), 65)
     assert_equal(Int(towlower(65)), 97)
     assert_equal(Int(towupper(48)), 48)
+
+    # Each of these is asked about one character that is what it asks
+    # after and one that is not, the second being the half that keeps
+    # the first from being a thing any of them would answer.
+
+    # Blank is the narrower of the two: a space is both, a newline is
+    # space and is not blank.
+    assert_true(Int(iswblank(32)) != 0, "space is blank")
+    assert_true(Int(iswblank(65)) == 0, "A is not")
+    assert_true(
+        Int(iswblank(10)) == 0, "and a newline is not, being space only"
+    )
+
+    assert_true(Int(iswcntrl(9)) != 0, "tab is a control character")
+    assert_true(Int(iswcntrl(65)) == 0, "A is not")
+    assert_true(Int(iswcntrl(32)) == 0, "and space is not, being printable")
+
+    assert_true(Int(iswgraph(65)) != 0, "A has a glyph")
+    assert_true(
+        Int(iswgraph(32)) == 0, "and space is the one printable that has none"
+    )
+    assert_true(
+        Int(iswprint(32)) != 0, "where iswprint does call space printable"
+    )
+    assert_true(Int(iswprint(9)) == 0, "but not a tab")
+
+    assert_true(Int(iswpunct(46)) != 0, ". is punctuation")
+    assert_true(Int(iswpunct(65)) == 0, "A is not")
+
+    # Six letters wider than a decimal digit, so g is the one that
+    # tells this from iswdigit.
+    assert_true(Int(iswxdigit(102)) != 0, "f is a hexadecimal digit")
+    assert_true(Int(iswxdigit(103)) == 0, "g is not")
+    assert_true(Int(iswxdigit(48)) != 0, "and 0 is both")
 
 
 def test_single_byte() raises:

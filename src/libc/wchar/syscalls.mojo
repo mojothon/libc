@@ -532,3 +532,141 @@ def wctob(wc: Int32) -> Int32:
         An integer representing a single byte character.
     """
     return external_call["wctob", Int32, Int32](wc)
+
+
+def iswblank(wc: c_wint) -> c_int:
+    """Libc C99 `iswblank` function.
+
+    Description:
+        Says whether `wc` is a blank — a space or a tab, the two that
+        separate words within a line.
+
+    Args:
+        wc: A wide character.
+
+    Returns:
+        Non-zero if it is one, else 0.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/iswblank.3.html).
+        Fn signature: `int iswblank(wint_t wc)`.
+
+        Blank is not the same as space: a newline and a form feed are
+        space and are not blank, which is the pair this one is for.
+        It is C99, and the older `iswspace` is the one to ask about
+        any of the lot.
+    """
+    return external_call["iswblank", c_int, c_wint](wc)
+
+
+def iswcntrl(wc: c_wint) -> c_int:
+    """Libc C95 `iswcntrl` function.
+
+    Description:
+        Says whether `wc` is a control character, which is to say one
+        that is not printed but does something to the output.
+
+    Args:
+        wc: A wide character.
+
+    Returns:
+        Non-zero if it is one, else 0.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/iswcntrl.3.html).
+        Fn signature: `int iswcntrl(wint_t wc)`.
+
+        A tab and a newline are control characters. A space is not,
+        being printable; it is `iswblank` and `iswspace` that say so
+        of it.
+    """
+    return external_call["iswcntrl", c_int, c_wint](wc)
+
+
+def iswgraph(wc: c_wint) -> c_int:
+    """Libc C95 `iswgraph` function.
+
+    Description:
+        Says whether `wc` has a glyph, a space being the one printable
+        character that does not.
+
+    Args:
+        wc: A wide character.
+
+    Returns:
+        Non-zero if it has one, else 0.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/iswgraph.3.html).
+        Fn signature: `int iswgraph(wint_t wc)`.
+
+        Graph and print differ in this one character: every printable
+        character but the space is a graph, and asking the two about
+        a space is how the pair is told apart.
+    """
+    return external_call["iswgraph", c_int, c_wint](wc)
+
+
+def iswprint(wc: c_wint) -> c_int:
+    """Libc C95 `iswprint` function.
+
+    Description:
+        Says whether `wc` is printable, the space included.
+
+    Args:
+        wc: A wide character.
+
+    Returns:
+        Non-zero if it is, else 0.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/iswprint.3.html).
+        Fn signature: `int iswprint(wint_t wc)`.
+
+        Printable here is the opposite of control, and the two do not
+        quite divide everything between them on every locale.
+    """
+    return external_call["iswprint", c_int, c_wint](wc)
+
+
+def iswpunct(wc: c_wint) -> c_int:
+    """Libc C95 `iswpunct` function.
+
+    Description:
+        Says whether `wc` is punctuation: printable, and neither a
+        letter, a digit nor a space.
+
+    Args:
+        wc: A wide character.
+
+    Returns:
+        Non-zero if it is, else 0.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/iswpunct.3.html).
+        Fn signature: `int iswpunct(wint_t wc)`.
+    """
+    return external_call["iswpunct", c_int, c_wint](wc)
+
+
+def iswxdigit(wc: c_wint) -> c_int:
+    """Libc C95 `iswxdigit` function.
+
+    Description:
+        Says whether `wc` is a hexadecimal digit.
+
+    Args:
+        wc: A wide character.
+
+    Returns:
+        Non-zero if it is one, else 0.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/iswxdigit.3.html).
+        Fn signature: `int iswxdigit(wint_t wc)`.
+
+        A hexadecimal digit is wider than a decimal one by six
+        letters, `a` through `f` and `A` through `F`, so asking about
+        `g` is what tells this one from `iswdigit`.
+    """
+    return external_call["iswxdigit", c_int, c_wint](wc)
