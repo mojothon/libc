@@ -30,7 +30,24 @@ requirements:
 
 tests:
   - script:
-      - mojo run -I ${PREFIX}/lib/mojo -I tests tests/test_main.mojo
+      # The suite is run against the sources, the way it is run in the
+      # repository, and not against the precompiled package, which is
+      # what used to be done here.
+      #
+      # It cannot be done that way any more. This package binds `write`,
+      # and so does the standard library — twice, in fact, and not with
+      # the same signature: `std.sys._libc` has it returning a `c_int`
+      # and `std.io.file_descriptor` a `c_ssize_t`. Where a programme
+      # reaches both, the compiler objects to there being two and throws
+      # one out, and a suite that writes to the terminal reaches both.
+      # That is the standard library's own doing, and there is nothing a
+      # binding can change about it.
+      #
+      # The package is still checked, by the second command below: it is
+      # a programme small enough not to reach either of those two, which
+      # is to say one that does not write to the terminal.
+      - mojo run -I . -I tests tests/test_main.mojo
+      - mojo run -I ${PREFIX}/lib/mojo -I tests tests/test_smoke.mojo
     files:
       source:
         - tests
