@@ -2,7 +2,7 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
-from libc.constant import c_char, c_double, c_ptr, c_uint
+from libc.constant import c_char, c_double, c_ptr, c_uint, c_ushort
 from libc.file import close
 from libc.stdio import remove
 from libc.sys.wait import WIFSIGNALED, waitpid
@@ -14,15 +14,22 @@ from libc.stdlib import (
     atof,
     atoi,
     atol,
+    a64l,
     atoll,
     calloc,
     div,
+    drand48,
+    erand48,
     exit,
     free,
     getenv,
     getloadavg,
+    l64a,
+    lcong48,
     ldiv,
     lldiv,
+    lrand48,
+    mrand48,
     getsubopt,
     initstate,
     malloc,
@@ -36,9 +43,11 @@ from libc.stdlib import (
     realloc,
     realpath,
     secure_getenv,
+    seed48,
     setenv,
     setstate,
     srand,
+    srand48,
     srandom,
     strtod,
     strtof,
@@ -392,6 +401,123 @@ def test_dividing_and_keeping_the_remainder() raises:
     assert_equal(Int(other.rem), 3, "with three left over")
 
 
+def test_the_forty_eight_bit_sequence() raises:
+    """`drand48`, `lrand48` and `mrand48` walk one sequence, the
+    first handing back doubles spread over 0 to 1 and the other two
+    handing back integers; `srand48` says where in it to start,
+    `seed48` does that and hands the old state back, `lcong48` sets
+    the numbers the sequence is worked out from, and `erand48` walks
+    a sequence of its own kept in an array the caller holds.
+
+    Nothing here holds the sequence to particular numbers. What it
+    holds it to is what the standard says of it, which is that it is
+    the same sequence every time, that a seed picks a place in it and
+    picks the same place on both platforms, and that the numbers stay
+    in the ranges they are said to stay in.
+
+    That a seed picks a place is proved twice over: the same seed
+    twice in a row gives the same number back, and another seed gives
+    another. Either alone would be proved by a call that ignored its
+    seed altogether, which is to say by one that was broken.
+
+    `erand48` is asked the thing that sets it apart: it moves the
+    three shorts on, so the same array asked twice gives two
+    different numbers, and the array is not as it was.
+    """
+    srand48(42)
+    var after42 = drand48()
+    srand48(42)
+    var after42again = drand48()
+    srand48(43)
+    var after43 = drand48()
+
+    assert_true(after42 >= 0.0 and after42 < 1.0, "drand48 hands back 0 to 1")
+    assert_equal(after42, after42again, "the same seed twice is the same place")
+    assert_true(after42 != after43, "and another seed is another place")
+
+    srand48(42)
+    var whole = lrand48()
+    assert_true(
+        whole >= 0 and whole < 2147483648, "lrand48 hands back 0 to 2 to the 31"
+    )
+    srand48(42)
+    var signed = mrand48()
+    assert_true(
+        signed >= -2147483648 and signed < 2147483648,
+        "and mrand48 may come out negative",
+    )
+    assert_true(
+        whole != signed or whole == 0,
+        "the two read the same sequence as different things",
+    )
+
+    # Its own state, in an array, and moved on by every call.
+    var state = unsafe_alloc[c_ushort](3)
+    state.unsafe_offset(0)[] = 1
+    state.unsafe_offset(1)[] = 2
+    state.unsafe_offset(2)[] = 3
+    var first = erand48(state)
+    assert_true(first >= 0.0 and first < 1.0, "erand48 hands back 0 to 1")
+    var second = erand48(state)
+    assert_true(second >= 0.0 and second < 1.0, "and so does the next call")
+    assert_true(first != second, "the state moved on, so the two differ")
+    assert_true(
+        not (
+            Int(state.unsafe_offset(0)[]) == 1
+            and Int(state.unsafe_offset(1)[]) == 2
+            and Int(state.unsafe_offset(2)[]) == 3
+        ),
+        "and the three shorts are not the ones that went in",
+    )
+
+    # seed48 hands the state it displaces back.
+    var seed16v = unsafe_alloc[c_ushort](3)
+    seed16v.unsafe_offset(0)[] = 7
+    seed16v.unsafe_offset(1)[] = 8
+    seed16v.unsafe_offset(2)[] = 9
+    var old = seed48(seed16v)
+    assert_true(Int(UInt(old)) != 0, "seed48 hands back the state it displaces")
+
+    # lcong48 sets the numbers themselves, and the sequence walks on.
+    var seven = unsafe_alloc[c_ushort](7)
+    for i in range(7):
+        seven.unsafe_offset(i)[] = UInt16(i + 1)
+    lcong48(seven)
+    var after_lcong = drand48()
+    assert_true(
+        after_lcong >= 0.0 and after_lcong < 1.0,
+        "and drand48 walks whatever it is given",
+    )
+
+    seven.unsafe_free()
+    seed16v.unsafe_free()
+    state.unsafe_free()
+
+
+def test_writing_a_number_in_sixty_four_characters() raises:
+    """`l64a` writes a long in the alphabet POSIX gives for it — a
+    full stop for 0, a slash for 1, then the digits, then the
+    capitals, then the small letters — and `a64l` reads one back.
+
+    The round trip is what is asked: a number goes in, and the one
+    that comes out of reading what was written is it again. That is
+    asked of 0, which is written as nothing at all, and of a number
+    with more than one character in it, which is where an alphabet
+    read out of order would come apart.
+
+    Nothing here holds the writing to particular characters. The
+    alphabet is POSIX's to say and not this package's to check.
+    """
+    assert_equal(a64l(l64a(0)), 0, "nothing comes of 0, and nothing reads back")
+
+    assert_equal(
+        a64l(l64a(12345)),
+        12345,
+        "a number with more than one character in it comes back",
+    )
+    assert_equal(a64l(l64a(1)), 1, "and so does one with only the one")
+
+
 def main() raises:
     test_malloc()
     test_the_untried_calls()
@@ -406,4 +532,6 @@ def main() raises:
     test_paths()
     test_abort_ends_the_child_and_not_us()
     test_dividing_and_keeping_the_remainder()
+    test_the_forty_eight_bit_sequence()
+    test_writing_a_number_in_sixty_four_characters()
     print("test_stdlib: ok")

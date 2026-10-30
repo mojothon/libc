@@ -25,6 +25,7 @@ from libc.constant import (
     c_uint,
     c_ulong,
     c_ulonglong,
+    c_ushort,
     c_void,
 )
 
@@ -1142,3 +1143,220 @@ def lldiv(numer: c_longlong, denom: c_longlong) -> lldiv_t:
         the numerator, as `div` does.
     """
     return external_call["lldiv", lldiv_t, c_longlong, c_longlong](numer, denom)
+
+
+def drand48() -> Float64:
+    """Libc POSIX `drand48` function.
+
+    Description:
+        Hands back the next number of a sequence of doubles spread
+        evenly over the half-open range from 0 to 1.
+
+    Returns:
+        A double no less than 0 and less than 1.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/drand48.3.html).
+        Fn signature: `double drand48(void)`.
+
+        The sequence is the same one every time a programme starts,
+        `srand48` being what picks a different place in it, and it is
+        one the standard says how to work out — so what comes out is
+        the same on both platforms. What a test may hold it to is
+        that, and not the numbers themselves.
+
+        `lrand48` and `mrand48` go over the same sequence and hand
+        back integers instead, and `erand48` takes its own state
+        rather than the one this keeps.
+    """
+    return external_call["drand48", Float64]()
+
+
+def erand48(xsubi: c_ptr[c_ushort]) -> Float64:
+    """Libc POSIX `erand48` function.
+
+    Description:
+        Hands back the next number of a sequence of doubles, keeping
+        the state of that sequence in an array the caller owns.
+
+    Args:
+        xsubi: Three shorts holding where in the sequence this is.
+            They are moved on before this hands anything back.
+
+    Returns:
+        A double no less than 0 and less than 1.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/erand48.3.html).
+        Fn signature: `double erand48(unsigned short xsubi[3])`.
+
+        This is the one to reach for where a sequence is wanted that
+        nothing else can move on: `drand48` keeps one state for the
+        whole programme, and `erand48` keeps as many as there are
+        arrays to keep them in. The three shorts are written to, and
+        the array has to be three long and to outlive the calling.
+    """
+    return external_call["erand48", Float64, c_ptr[c_ushort]](xsubi)
+
+
+def lrand48() -> c_long:
+    """Libc POSIX `lrand48` function.
+
+    Description:
+        Hands back the next number of a sequence of integers, spread
+        evenly over the half-open range from 0 to 2 to the 31.
+
+    Returns:
+        A long no less than 0 and less than 2147483648.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/lrand48.3.html).
+        Fn signature: `long lrand48(void)`.
+
+        The same sequence `drand48` walks, read as integers.
+    """
+    return external_call["lrand48", c_long]()
+
+
+def mrand48() -> c_long:
+    """Libc POSIX `mrand48` function.
+
+    Description:
+        Hands back the next number of a sequence of integers, spread
+        evenly over the signed range of a 32-bit number.
+
+    Returns:
+        A long no less than -2147483648 and less than 2147483648.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/mrand48.3.html).
+        Fn signature: `long mrand48(void)`.
+
+        The same sequence `drand48` walks, read as integers that may
+        come out negative, which is the one way it is not `lrand48`.
+    """
+    return external_call["mrand48", c_long]()
+
+
+def srand48(seedval: c_long):
+    """Libc POSIX `srand48` function.
+
+    Description:
+        Says where in the sequence `drand48` and the rest are to
+        start.
+
+    Args:
+        seedval: The seed. The bottom 32 bits of it are used and the
+            rest are not.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/srand48.3.html).
+        Fn signature: `void srand48(long seedval)`.
+
+        There is one state for the whole programme and this sets it,
+        so one call here moves every one of the others. `seed48` and
+        `lcong48` set it too, the first of them handing the old state
+        back and the second taking the numbers the sequence is worked
+        out from.
+    """
+    external_call["srand48", NoneType, c_long](seedval)
+
+
+def seed48(seed16v: c_ptr[c_ushort]) -> c_ptr[c_ushort]:
+    """Libc POSIX `seed48` function.
+
+    Description:
+        Says where in the sequence `drand48` and the rest are to
+        start, taking three shorts to do it and handing the state
+        they displace back.
+
+    Args:
+        seed16v: Three shorts to start from. The top one is set to a
+            fixed value before it is used.
+
+    Returns:
+        A pointer to three shorts holding the state that was in use
+        before this call, kept somewhere that is not to be freed.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/seed48.3.html).
+        Fn signature: `unsigned short *seed48(unsigned short seed16v[3])`.
+
+        What is handed back points into the library's own storage, so
+        it is copied out before the next call here rather than kept.
+    """
+    return external_call["seed48", c_ptr[c_ushort], c_ptr[c_ushort]](seed16v)
+
+
+def lcong48(param: c_ptr[c_ushort]):
+    """Libc POSIX `lcong48` function.
+
+    Description:
+        Sets the numbers the sequence `drand48` and the rest are
+        worked out from, rather than where in it to start.
+
+    Args:
+        param: Seven shorts: the three the state is kept in, then
+            the multiplier, then the amount added, then the modulus.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/lcong48.3.html).
+        Fn signature: `void lcong48(unsigned short param[7])`.
+
+        Seven shorts it has to be, and this one is not for the
+        ordinary wanting of a different sequence: `srand48` is that.
+    """
+    external_call["lcong48", NoneType, c_ptr[c_ushort]](param)
+
+
+def l64a(value: c_long) -> c_ptr[c_char]:
+    """Libc POSIX `l64a` function.
+
+    Description:
+        Writes a long in the 64-character alphabet the `a64l` family
+        uses.
+
+    Args:
+        value: The number to write. Whether it is taken as signed is
+            not something the standard settles, and 32 bits is as
+            much as is read of it.
+
+    Returns:
+        A pointer to the characters, kept somewhere that is not to be
+        freed and that the next call here writes over.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/a64l.3.html).
+        Fn signature: `char *l64a(long value)`.
+
+        The alphabet is the one POSIX gives: a full stop for 0, a
+        slash for 1, then the digits, then the capitals, then the
+        small letters. What comes back is not to be kept past the
+        next call, and `a64l` is what reads it back.
+    """
+    return external_call["l64a", c_ptr[c_char], c_long](value)
+
+
+def a64l(s: c_ptr[c_char]) -> c_long:
+    """Libc POSIX `a64l` function.
+
+    Description:
+        Reads a long written in the 64-character alphabet the `l64a`
+        function writes.
+
+    Args:
+        s: The characters to read. Reading stops at one that is not
+            in the alphabet.
+
+    Returns:
+        The number, as a long.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/a64l.3.html).
+        Fn signature: `long a64l(const char *s)`.
+
+        `l64a` is what writes these. Reading past six characters is
+        not a thing the standard says anything about, so six is as
+        many as are worth handing it.
+    """
+    return external_call["a64l", c_long, c_ptr[c_char]](s)
