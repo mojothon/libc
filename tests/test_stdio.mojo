@@ -12,14 +12,17 @@ from libc.file import (
     FILE,
     close,
     fclose,
+    fgetc,
     fgets,
     fopen,
+    fputs,
     fread,
     getdelim,
     rewind,
 )
 from libc.stdio import (
     IOFBF,
+    ctermid,
     clearerr_unlocked,
     feof_unlocked,
     ferror_unlocked,
@@ -28,6 +31,9 @@ from libc.stdio import (
     flockfile,
     ftrylockfile,
     funlockfile,
+    fgetpos,
+    fpos_t,
+    fsetpos,
     fwrite,
     getc,
     getc_unlocked,
@@ -37,12 +43,14 @@ from libc.stdio import (
     putc,
     putc_unlocked,
     putchar,
+    open_memstream,
     putw,
     remove,
     rename,
     renameat,
     setbuf,
     setvbuf,
+    tempnam,
     tmpfile,
     tmpnam,
     ungetc,
@@ -313,6 +321,123 @@ def test_the_unlocked_spellings() raises:
     assert_equal(fclose(stream), 0, "the stream is closed")
 
 
+def test_where_a_stream_is() raises:
+    """`fgetpos` writes down where a stream is and `fsetpos` puts it
+    back there, which is `ftell` and `fseek` done with an opaque value
+    instead of a long.
+
+    A stream is read partway, the place is written down, and the rest
+    is read; then the stream is put back and read again. The second
+    read has to come out the same as the first, which is what a call
+    that wrote nothing down, or one that put the stream anywhere else,
+    could not manage.
+
+    The place itself is not looked into. What is in it is the
+    library's own to say, and it is not the same on the two platforms.
+    """
+    var f = tmpfile()
+    assert_true(Int(UInt(f)) != 0, "a temporary file to work on")
+    _ = fputs(string_to_char_ptr("abcdefghij"), f)
+    _ = rewind(f)
+
+    var pos = unsafe_alloc[fpos_t](1)
+    pos.unsafe_offset(0)[] = fpos_t()
+
+    assert_equal(fgetpos(f, pos), 0, "fgetpos writes the place down")
+    assert_equal(fgetc(f), 97, "the a at the start")
+    assert_equal(fgetc(f), 98, "and the b after it")
+
+    assert_equal(fsetpos(f, pos), 0, "and fsetpos puts the stream back")
+    assert_equal(fgetc(f), 97, "so the a is read again")
+    assert_equal(fgetc(f), 98, "and so is the b")
+
+    pos.unsafe_free()
+    _ = fclose(f)
+
+
+def test_naming_a_terminal_and_a_temporary() raises:
+    """`ctermid` says the name of the terminal this process is on, and
+    `tempnam` makes up the name of a file that no file has yet.
+
+    Neither is held to particular characters. What a terminal is
+    called, and where files of no account are made, is for the
+    platform to say; what is asked here is that each says something.
+
+    `ctermid` is asked with nowhere to write, which is what a null
+    pointer asks for, and what comes back is not to be freed. What it
+    says is not a promise that there is a terminal, which is `isatty`'s
+    to answer and not this one's.
+
+    `tempnam` is asked for a name beginning with a prefix, and the
+    prefix is in what comes back — which is the one thing here a call
+    that made up any name at all would not answer. Its memory is its
+    own asking for, so `free` is what gives it back.
+    """
+    var name = ctermid(null_ptr[c_char]())
+    assert_true(Int(UInt(name)) != 0, "ctermid says something")
+    assert_true(
+        char_ptr_to_string(name).byte_length() > 0,
+        "and what it says is not empty",
+    )
+
+    var pfx = string_to_char_ptr("mytmp")
+    var made = tempnam(null_ptr[c_char](), pfx)
+    assert_true(Int(UInt(made)) != 0, "tempnam makes up a name")
+    var whole = char_ptr_to_string(made)
+    assert_true(whole.find("mytmp") >= 0, "and the prefix asked for is in it")
+    assert_true(
+        whole.byte_length() > 5, "and there is more to it than the prefix"
+    )
+
+    _ = free(made.unsafe_bitcast[c_void]())
+    pfx.unsafe_free()
+
+
+def test_writing_a_stream_into_memory() raises:
+    """`open_memstream` opens a stream that writes into memory, growing
+    the room as it goes.
+
+    Writing comes out when the stream is shut, so that is when the two
+    things it was handed are asked: the address of what was written,
+    and how many bytes of it there are. Both are asked here, and what
+    is at the address is asked too.
+
+    The size is held to six and not to seven, the terminator not being
+    counted in it, which is the one thing about the size a call that
+    counted the terminator would get wrong. What was written is held to
+    be exactly what was put in and no more, which is what says the
+    room was grown to fit and not left to overrun.
+
+    The room is the library's own asking for, so `free` gives it back
+    once the stream is shut.
+    """
+    var bufloc = unsafe_alloc[c_ptr[c_char]](1)
+    var sizeloc = unsafe_alloc[c_size_t](1)
+    bufloc.unsafe_offset(0)[] = null_ptr[c_char]()
+    sizeloc.unsafe_offset(0)[] = 0
+
+    var f = open_memstream(bufloc, sizeloc)
+    assert_true(Int(UInt(f)) != 0, "open_memstream hands back a stream")
+
+    _ = fputs(string_to_char_ptr("hello!"), f)
+    assert_equal(fclose(f), 0, "and shutting it lets the writing come out")
+
+    assert_equal(
+        Int(sizeloc.unsafe_offset(0)[]),
+        6,
+        "six bytes written, terminator and all",
+    )
+    assert_equal(
+        char_ptr_to_string(bufloc.unsafe_offset(0)[]),
+        "hello!",
+        "and this is what was written",
+    )
+
+    _ = free(bufloc.unsafe_offset(0)[].unsafe_bitcast[c_void]())
+    sizeloc.unsafe_free()
+    bufloc.unsafe_free()
+
+
 def main() raises:
     test_tmpfile_roundtrip()
     test_rename_and_remove()
@@ -326,4 +451,7 @@ def main() raises:
     test_the_two_that_write_one_character()
     test_setbuf_and_tmpnam()
     test_the_unlocked_spellings()
+    test_where_a_stream_is()
+    test_naming_a_terminal_and_a_temporary()
+    test_writing_a_stream_into_memory()
     print("test_stdio: ok")

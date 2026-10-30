@@ -18,9 +18,185 @@ from std.ffi import external_call
 from libc.constant import c_char, c_int, c_ptr, c_size_t, c_void
 from libc.file import FILE
 
+
 # How big the buffer is that `setvbuf` and `setbuf` are handed. Every C
 # library on these two platforms says 8192, which is why nothing here has
 # to ask which one it is on.
+struct fpos_t:
+    """An opaque C `fpos_t`: where a stream is, as `fgetpos` writes it
+    and `fsetpos` reads it back.
+
+    What is inside one is the library's own to say, and it is not the
+    same on the two platforms: glibc keeps a position and a conversion
+    state in it, and Darwin keeps no more than a position. So this one
+    is a block of the larger size and never anything but a place for
+    the library to write, and it is only ever handed over by pointer.
+
+    Sixteen bytes is glibc's, which is the wider of the two, and a
+    block bigger than what C writes into is safe where one smaller
+    would not be. Zero it and it is the state `fgetpos` may fill.
+    """
+
+    comptime FPOS_SLOTS = 2
+
+    var _opaque: Array[UInt64, Self.FPOS_SLOTS]
+
+    def __init__(out self):
+        """Zeroes the position, which is a state `fgetpos` may fill."""
+        self._opaque = Array[UInt64, Self.FPOS_SLOTS](fill=0)
+
+
+def fgetpos(stream: c_ptr[FILE], pos: c_ptr[fpos_t]) -> c_int:
+    """Libc C89 `fgetpos` function.
+
+    Description:
+        Asks where a stream is and writes it down, so that `fsetpos`
+        may put the stream back there.
+
+    Args:
+        stream: The stream to ask.
+        pos: Where to write it down, which is written to.
+
+    Returns:
+        0 where it was written down, and not 0 where it could not be.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/fgetpos.3.html).
+        Fn signature: `int fgetpos(FILE *stream, fpos_t *pos)`.
+
+        This is `ftell` writing into an opaque value rather than into a
+        long, which is what makes it the one for a stream whose
+        position a long will not hold. What is written down is not to
+        be read: `fsetpos` is the only thing it is for.
+    """
+    return external_call["fgetpos", c_int, c_ptr[FILE], c_ptr[fpos_t]](
+        stream, pos
+    )
+
+
+def fsetpos(stream: c_ptr[FILE], pos: c_ptr[fpos_t]) -> c_int:
+    """Libc C89 `fsetpos` function.
+
+    Description:
+        Puts a stream back where `fgetpos` wrote down that it was.
+
+    Args:
+        stream: The stream to move.
+        pos: Where to put it, as `fgetpos` wrote it down.
+
+    Returns:
+        0 where the stream was moved, and not 0 where it could not be.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/fsetpos.3.html).
+        Fn signature: `int fsetpos(FILE *stream, const fpos_t *pos)`.
+
+        This is `fseek` taking an opaque value rather than a long and a
+        whence, and like it, it clears whatever end-of-stream was on
+        the stream and lets the next read go on from there.
+    """
+    return external_call["fsetpos", c_int, c_ptr[FILE], c_ptr[fpos_t]](
+        stream, pos
+    )
+
+
+def ctermid(s: c_ptr[c_char]) -> c_ptr[c_char]:
+    """Libc POSIX `ctermid` function.
+
+    Description:
+        Says the name of the terminal this process is on.
+
+    Args:
+        s: Where to write the name, or a null pointer to have it come
+            back in storage the library keeps.
+
+    Returns:
+        A pointer to the name. Where `s` was given, that is `s`; where
+        it was not, it is storage that is not to be freed and that the
+        next call here writes over.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/ctermid.3.html).
+        Fn signature: `char *ctermid(char *s)`.
+
+        On a process with no terminal this still says something, and
+        what it says is not a promise that there is one: `isatty` is
+        what answers that. `/dev/tty` is what glibc says, and what
+        comes back is not to be held to any particular characters.
+    """
+    return external_call["ctermid", c_ptr[c_char], c_ptr[c_char]](s)
+
+
+def tempnam(dir: c_ptr[c_char], pfx: c_ptr[c_char]) -> c_ptr[c_char]:
+    """Libc POSIX `tempnam` function.
+
+    Description:
+        Makes up the name of a file that no file has yet, in a
+        directory chosen for the purpose.
+
+    Args:
+        dir: A directory to make it up in, or a null pointer to let
+            the library choose.
+        pfx: The first characters of the file's own name, or a null
+            pointer to go without.
+
+    Returns:
+        A pointer to the name, in fresh memory, or a null pointer
+        where one could not be made up.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/tempnam.3.html).
+        Fn signature: `char *tempnam(const char *dir, const char *pfx)`.
+
+        Fresh memory of its own asking for, which is to say the
+        caller's to hand to `free`.
+
+        The name is made up and handed back, and the file is not made:
+        what there is between the two, another process may take. That
+        is what `mkstemp` is for, and why this one is not to be
+        reached for where the making of the file matters.
+    """
+    return external_call[
+        "tempnam", c_ptr[c_char], c_ptr[c_char], c_ptr[c_char]
+    ](dir, pfx)
+
+
+def open_memstream(
+    bufloc: c_ptr[c_ptr[c_char]], sizeloc: c_ptr[c_size_t]
+) -> c_ptr[FILE]:
+    """Libc POSIX `open_memstream` function.
+
+    Description:
+        Opens a stream that writes into memory rather than to a file,
+        growing the room as it goes.
+
+    Args:
+        bufloc: Where to put the address of what was written, which is
+            written to.
+        sizeloc: Where to put how many bytes were written, which is
+            written to.
+
+    Returns:
+        The stream, or a null pointer where one could not be had.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/open_memstream.3.html).
+        Fn signature: `FILE *open_memstream(char **bufloc,
+            size_t *sizeloc)`.
+
+        Both are written to as the stream is used, and neither is to
+        be read until the stream has been flushed or closed — which is
+        what makes the writing come out. The room is the library's own
+        asking for and the caller's to hand to `free` once it is shut.
+
+        A terminator goes on the end of what was written, and it is
+        not counted in the size.
+    """
+    return external_call[
+        "open_memstream", c_ptr[FILE], c_ptr[c_ptr[c_char]], c_ptr[c_size_t]
+    ](bufloc, sizeloc)
+
+
 comptime BUFSIZ = 8192
 
 
