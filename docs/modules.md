@@ -6,7 +6,7 @@ the bottom.
 
 | Module | C header | Symbols |
 | --- | --- | --- |
-| `libc.math` | `<math.h>` | 115 |
+| `libc.math` | `<math.h>` | 119 |
 | `libc.stdlib` | `<stdlib.h>` | 64 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.unistd` | `<unistd.h>` | 195 |

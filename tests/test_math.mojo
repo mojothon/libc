@@ -35,7 +35,6 @@ from libc.math import (
     expm1f,
     fabs,
     fabsf,
-    fabs,
     fdim,
     fdimf,
     floor,
@@ -66,6 +65,8 @@ from libc.math import (
     lgammaf_r,
     llabs,
     lldiv,
+    llrint,
+    llround,
     log,
     log10,
     log10f,
@@ -76,6 +77,8 @@ from libc.math import (
     logb,
     logbf,
     logf,
+    lrint,
+    lround,
     modf,
     modff,
     nan,
@@ -413,6 +416,42 @@ def test_remquof_keeps_the_quotient() raises:
     quotient.unsafe_free()
 
 
+def test_the_four_that_round_a_double_to_a_whole_number() raises:
+    """`lround`, `llround`, `lrint` and `llrint` each take a double
+    and hand back a whole number.
+
+    What is asked of them is a number that is not halfway between
+    two: two and a bit rounds down whatever the rule for halfway
+    cases is, so the four of them agree, and agree with two. A
+    number just short of three rounds up the same way, and a
+    negative one comes back negative.
+
+    Halfway cases are left alone on purpose. `lround` takes 2.5 to
+    3 and `lrint` takes it to 2, neither being wrong, and which of
+    them a test can expect of the other is not a thing worth
+    writing down.
+
+    What these four answer with is a whole number, so what is asked
+    of them can be asked exactly, with no room for nearly.
+    """
+    assert_equal(lround(2.4), 2, "two and a bit rounds to two")
+    assert_equal(llround(2.4), 2, "and so it does asked for a long long")
+    assert_equal(lrint(2.4), 2, "and asked by the way rounding is set")
+    assert_equal(llrint(2.4), 2, "and so it does asked for a long long")
+
+    assert_equal(lround(2.6), 3, "two and most of a bit rounds to three")
+    assert_equal(llround(2.6), 3, "and so it does asked for a long long")
+    assert_equal(lrint(2.6), 3, "and asked by the way rounding is set")
+    assert_equal(llrint(2.6), 3, "and so it does asked for a long long")
+
+    assert_equal(
+        lround(-2.6), -3, "and minus two and most of a bit to minus three"
+    )
+    assert_equal(llround(-2.6), -3, "and so it does asked for a long long")
+    assert_equal(lrint(-2.6), -3, "and asked by the way rounding is set")
+    assert_equal(llrint(-2.6), -3, "and so it does asked for a long long")
+
+
 def main() raises:
     test_abs()
     test_sqrt_and_rounding()
@@ -430,4 +469,5 @@ def main() raises:
     test_nan()
     test_trunc_takes_the_fraction_towards_zero()
     test_remquof_keeps_the_quotient()
+    test_the_four_that_round_a_double_to_a_whole_number()
     print("test_math: ok")

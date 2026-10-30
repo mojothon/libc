@@ -2516,3 +2516,119 @@ def copysignf(x: Float32, y: Float32) -> Float32:
 # classification
 # 后续补充
 # ---------------------------------------------------
+
+
+def lround(x: Float64) -> Int64:
+    """C library <math.h> function `lround`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/lround.3.html
+
+    Prototype:
+        long lround(double x)
+
+    Description:
+        Rounds x to the nearest integer, rounding halfway cases away
+        from zero, and hands it back as a long.
+
+    Arguments:
+        x: The number to be rounded.
+
+    Return value:
+        x rounded to the nearest integer as a long, or an unspecified
+        value where it does not fit in one.
+
+    Notes:
+        Unlike `lrint` this does not ask which way the rounding
+        currently goes: halfway cases always go away from zero, so
+        the same number is rounded the same way whatever the state of
+        the floating point environment. `lrint` is the one that asks.
+    """
+    return external_call["lround", Int64, Float64](x)
+
+
+def llround(x: Float64) -> Int64:
+    """C library <math.h> function `llround`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/lround.3.html
+
+    Prototype:
+        long long llround(double x)
+
+    Description:
+        Rounds x to the nearest integer, rounding halfway cases away
+        from zero, and hands it back as a long long.
+
+    Arguments:
+        x: The number to be rounded.
+
+    Return value:
+        x rounded to the nearest integer as a long long, or an
+        unspecified value where it does not fit in one.
+
+    Notes:
+        Unlike `llrint` this does not ask which way the rounding
+        currently goes: halfway cases always go away from zero, so
+        the same number is rounded the same way whatever the state of
+        the floating point environment. `llrint` is the one that asks.
+    """
+    return external_call["llround", Int64, Float64](x)
+
+
+def lrint(x: Float64) -> Int64:
+    """C library <math.h> function `lrint`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/lrint.3.html
+
+    Prototype:
+        long lrint(double x)
+
+    Description:
+        Rounds x to the nearest integer by the way rounding is
+        currently set to go, and hands it back as a long.
+
+    Arguments:
+        x: The number to be rounded.
+
+    Return value:
+        x rounded to an integer as a long, or an unspecified value
+        where it does not fit in one.
+
+    Notes:
+        Which way halfway cases go is not this call's to say: it asks
+        the floating point environment, which by default takes them
+        to whichever of the two neighbours is even. `lround` is the
+        one that does not ask, and always takes them away from zero.
+    """
+    return external_call["lrint", Int64, Float64](x)
+
+
+def llrint(x: Float64) -> Int64:
+    """C library <math.h> function `llrint`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/lrint.3.html
+
+    Prototype:
+        long long llrint(double x)
+
+    Description:
+        Rounds x to the nearest integer by the way rounding is
+        currently set to go, and hands it back as a long long.
+
+    Arguments:
+        x: The number to be rounded.
+
+    Return value:
+        x rounded to an integer as a long long, or an unspecified
+        value where it does not fit in one.
+
+    Notes:
+        Which way halfway cases go is not this call's to say: it asks
+        the floating point environment, which by default takes them
+        to whichever of the two neighbours is even. `llround` is the
+        one that does not ask, and always takes them away from zero.
+    """
+    return external_call["llrint", Int64, Float64](x)
