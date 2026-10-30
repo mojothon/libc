@@ -1008,3 +1008,37 @@ def wcstod(nptr: c_ptr[c_wchar], endptr: c_ptr[c_ptr[c_wchar]]) -> Float64:
     return external_call[
         "wcstod", Float64, c_ptr[c_wchar], c_ptr[c_ptr[c_wchar]]
     ](nptr, endptr)
+
+
+def wcstof(nptr: c_ptr[c_wchar], endptr: c_ptr[c_ptr[c_wchar]]) -> Float32:
+    """Libc C99 `wcstof` function.
+
+    Description:
+        Reads a float off the front of a wide string.
+
+    Args:
+        nptr: The string to read from.
+        endptr: Where to put a pointer to the first character that
+            was not part of the number, or a null pointer where that
+            is not wanted.
+
+    Returns:
+        The number, which is 0 where there was none to read.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcstod.3.html).
+        Fn signature: `float wcstof(const wchar_t *nptr,
+            wchar_t **endptr)`.
+
+        This is `wcstod` for the narrower of the two, which is what
+        the `f` at the end of the name is for. A float holds fewer
+        digits than a double does, so a number long enough to read
+        comes out different from the two: what they agree on is the
+        short ones.
+
+        Whatever the locale says a decimal point is, that is what
+        this one reads, which under the C locale is a full stop.
+    """
+    return external_call[
+        "wcstof", Float32, c_ptr[c_wchar], c_ptr[c_ptr[c_wchar]]
+    ](nptr, endptr)

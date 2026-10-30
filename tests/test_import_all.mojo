@@ -1390,6 +1390,7 @@ def bring_in_libc_wchar():
         putwchar,
         ungetwc,
         wcstod,
+        wcstof,
         wcstol,
         wcstoul,
         WEOF,

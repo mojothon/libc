@@ -33,6 +33,7 @@ from libc.wchar import (
     putwc,
     ungetwc,
     wcstod,
+    wcstof,
     wcstol,
     wcstoul,
     WEOF,
@@ -352,6 +353,58 @@ def test_reading_numbers_off_the_front() raises:
     end.unsafe_free()
 
 
+def test_wcstof() raises:
+    """`wcstof` reads a float off the front of a wide string, which
+    is what `wcstod` does for the wider of the two.
+
+    It is asked about a string with something after the number, so
+    `endptr` has somewhere to point, and about a string with no
+    number in it at all, of which 0 is what comes back.
+
+    It is asked about a third of one, which no float can hold exactly
+    and no double can either, so what is asserted is that it is near
+    and not that it is equal — a test that said equal would be asking
+    the two platforms to agree on the last bit of a number neither of
+    them holds.
+
+    A short number is one the two do agree on, and that is the one
+    they are put side by side over: what `wcstof` reads of it is what
+    `wcstod` reads of it, which is what says the `f` at the end of the
+    name is the width and nothing else.
+    """
+    var end = unsafe_alloc[c_ptr[c_wchar]](1)
+
+    var rest = wide("3.5 and the rest")
+    assert_equal(
+        wcstof(rest, end), 3.5, "three and a half is read off the front"
+    )
+    assert_equal(
+        wide_to_string(end.unsafe_offset(0)[]),
+        " and the rest",
+        "and what is left is where endptr points",
+    )
+
+    var none = wide("no number here")
+    assert_equal(wcstof(none, end), 0.0, "and a string with none is 0")
+
+    var third = wide("0.333333")
+    var f = Float64(wcstof(third, end))
+    assert_true(
+        f > 0.33332 and f < 0.33334,
+        "a third, which neither a float nor a double holds exactly",
+    )
+
+    # The same string read both ways comes out the same, the width
+    # being all there is between them.
+    assert_equal(
+        Float64(wcstof(wide("2.5"), end)),
+        wcstod(wide("2.5"), end),
+        "what wcstof reads of a short number is what wcstod reads",
+    )
+
+    end.unsafe_free()
+
+
 def main() raises:
     test_length_and_compare()
     test_search()
@@ -361,4 +414,5 @@ def main() raises:
     test_single_byte()
     test_wide_characters_through_a_stream()
     test_reading_numbers_off_the_front()
+    test_wcstof()
     print("test_wchar: ok")
