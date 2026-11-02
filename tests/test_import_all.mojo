@@ -183,6 +183,7 @@ def bring_in_libc_fcntl():
         O_WRONLY,
         creat,
         fcntl,
+        flock,
         lockf,
         open,
         openat,

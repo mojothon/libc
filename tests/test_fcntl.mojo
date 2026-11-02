@@ -5,13 +5,18 @@ from libc.constant import AT_FDCWD, EEXIST
 from libc.errno import errno_message, get_errno, set_errno
 from libc.sys.stat import Stat, fchmod, fstat
 from libc.fcntl import (
+    LOCK_EX,
+    LOCK_NB,
+    LOCK_UN,
     O_APPEND,
     O_CLOEXEC,
     O_CREAT,
     O_EXCL,
     O_RDONLY,
+    O_RDWR,
     O_TRUNC,
     O_WRONLY,
+    flock,
     lockf,
     open,
     openat,
@@ -113,8 +118,58 @@ def test_openat_opens_by_way_of_a_directory() raises:
     path.unsafe_free()
 
 
+def test_flock_is_taken_on_the_open_file() raises:
+    """The lock `flock` takes belongs to the open file and not to the
+    process, which is the one part of this that a test can show: two
+    descriptors opened separately on the same path are two open files,
+    so the second one is refused by the first while `LOCK_NB` keeps it
+    from waiting.
+
+    Asking the same descriptor for the same lock twice is the other
+    half. It answers 0 and it is not a second lock — it is the one that
+    is already there — so a binding that took a new lock every time
+    would still answer 0 here and would be caught by the refusal, not by
+    this.
+
+    The file is in `/tmp` and removed at the end, and the path is not
+    used by anything else, so a run that is cut short cannot leave a
+    lock that another run would trip over: the lock goes when the
+    descriptor is closed.
+    """
+    var path = string_to_char_ptr("/tmp/libc-flock-test")
+    _ = unlink(path)
+
+    var first = open(path, O_RDWR | O_CREAT | O_TRUNC, 0o644)
+    assert_true(first >= 0, "a file to lock, opened")
+    var second = open(path, O_RDWR)
+    assert_true(second >= 0, "and opened a second time, as a second open of it")
+
+    assert_equal(flock(first, LOCK_EX), 0, "the first open takes the lock")
+    assert_equal(
+        flock(first, LOCK_EX),
+        0,
+        "and asking it again is the same lock, not a new one",
+    )
+    assert_equal(
+        flock(second, LOCK_EX | LOCK_NB),
+        -1,
+        "which the second open cannot take, because it is a different open",
+    )
+    assert_equal(flock(first, LOCK_UN), 0, "the first gives it up")
+    assert_equal(
+        flock(second, LOCK_EX | LOCK_NB), 0, "and then the second one takes it"
+    )
+
+    assert_equal(close(second), 0, "closed, which is the other way to let go")
+    assert_equal(close(first), 0, "both of them")
+    assert_equal(unlink(path), 0, "and the file goes with them")
+
+    path.unsafe_free()
+
+
 def main() raises:
     test_lockf_on_what_is_not_open()
     test_open_with_the_flags()
     test_openat_opens_by_way_of_a_directory()
+    test_flock_is_taken_on_the_open_file()
     print("test_fcntl: ok")

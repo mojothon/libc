@@ -269,3 +269,35 @@ def lockf(fd: Int32, cmd: Int32, len: Int64) -> Int32:
         every lock this process holds on it.
     """
     return external_call["lockf", Int32, Int32, Int32, Int64](fd, cmd, len)
+
+
+def flock(fd: Int32, operation: Int32) -> Int32:
+    """Libc BSD `flock` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/flock.2.html
+
+    Args:
+        fd: A descriptor for the file to lock, which only has to be open.
+        operation: `LOCK_SH` for a lock shared with other readers,
+            `LOCK_EX` for one nobody else may hold, `LOCK_UN` to give it
+            up, and `LOCK_NB` added to either of the first two to fail
+            rather than wait.
+
+    Returns:
+        0 where the lock was taken or given up, or -1 with `errno` set —
+        `EWOULDBLOCK` for `LOCK_NB` when somebody else has it.
+
+    Notes:
+        A whole-file lock, and a different thing from `lockf` even
+        though both are advisory: this one is taken on the open file and
+        not on a range of it, and it is given up by closing the
+        descriptor or by asking for `LOCK_UN`.
+
+        It belongs to the open file rather than to the process, which is
+        where it differs from `lockf` in the other direction: two
+        descriptors opened separately on the same path are two things
+        that can refuse each other, while two descriptors for the same
+        open file share the lock they have.
+    """
+    return external_call["flock", Int32, Int32, Int32](fd, operation)

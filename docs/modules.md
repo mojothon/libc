@@ -44,7 +44,7 @@ the bottom.
 | `libc.fnmatch` | `<fnmatch.h>` matching a single name | 7 |
 | `libc.libgen` | `<libgen.h>` cutting a path in two | 2 |
 | `libc.logging` | `<syslog.h>` | 6 |
-| `libc.fcntl` | `<fcntl.h>` | 49 |
+| `libc.fcntl` | `<fcntl.h>` | 50 |
 | `libc.getopt` | `<getopt.h>` taking a command line apart | 12 |
 | `libc.dlfcn` | `<dlfcn.h>` | 7 |
 | `libc.wchar` | `<wchar.h>` | 72 |
