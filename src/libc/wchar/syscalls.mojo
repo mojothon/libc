@@ -17,6 +17,7 @@ from libc.constant import (
     c_wint,
 )
 from libc.file import FILE
+from libc.locale import locale_t
 from libc.time import tm
 
 
@@ -1140,6 +1141,30 @@ def wcscasecmp(s1: c_ptr[c_wchar], s2: c_ptr[c_wchar]) -> c_int:
     )
 
 
+def wcscasecmp_l(
+    s1: c_ptr[c_wchar], s2: c_ptr[c_wchar], loc: locale_t
+) -> c_int:
+    """Libc POSIX `wcscasecmp_l` function.
+
+    Args:
+        s1: The first wide string.
+        s2: The second wide string.
+        loc: The locale to fold case in, rather than the one the thread is in.
+            It is a `locale_t` from `newlocale`.
+
+    Returns:
+        A negative, zero or positive value as `s1` sorts before, the same as,
+        or after `s2` once case is folded away in `loc`.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcscasecmp.3.html).
+        Fn signature: `int wcscasecmp_l(const wchar_t *s1, const wchar_t *s2, locale_t loc)`.
+    """
+    return external_call[
+        "wcscasecmp_l", c_int, c_ptr[c_wchar], c_ptr[c_wchar], locale_t
+    ](s1, s2, loc)
+
+
 def wcsncasecmp(s1: c_ptr[c_wchar], s2: c_ptr[c_wchar], n: c_size_t) -> c_int:
     """Libc POSIX `wcsncasecmp` function.
 
@@ -1168,6 +1193,37 @@ def wcsncasecmp(s1: c_ptr[c_wchar], s2: c_ptr[c_wchar], n: c_size_t) -> c_int:
     return external_call[
         "wcsncasecmp", c_int, c_ptr[c_wchar], c_ptr[c_wchar], c_size_t
     ](s1, s2, n)
+
+
+def wcsncasecmp_l(
+    s1: c_ptr[c_wchar], s2: c_ptr[c_wchar], n: c_size_t, loc: locale_t
+) -> c_int:
+    """Libc POSIX `wcsncasecmp_l` function.
+
+    Args:
+        s1: The first wide string.
+        s2: The second wide string.
+        n: How many wide characters at most to compare.
+        loc: The locale to fold case in, rather than the one the thread is in.
+            It is a `locale_t` from `newlocale`.
+
+    Returns:
+        A negative, zero or positive value as the first `n` wide characters of
+        `s1` sort before, the same as, or after those of `s2` with case folded
+        away in `loc`.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcsncasecmp.3.html).
+        Fn signature: `int wcsncasecmp_l(const wchar_t *s1, const wchar_t *s2, size_t n, locale_t loc)`.
+    """
+    return external_call[
+        "wcsncasecmp_l",
+        c_int,
+        c_ptr[c_wchar],
+        c_ptr[c_wchar],
+        c_size_t,
+        locale_t,
+    ](s1, s2, n, loc)
 
 
 def wcscoll(s1: c_ptr[c_wchar], s2: c_ptr[c_wchar]) -> c_int:
@@ -1202,6 +1258,28 @@ def wcscoll(s1: c_ptr[c_wchar], s2: c_ptr[c_wchar]) -> c_int:
     )
 
 
+def wcscoll_l(s1: c_ptr[c_wchar], s2: c_ptr[c_wchar], loc: locale_t) -> c_int:
+    """Libc POSIX `wcscoll_l` function.
+
+    Args:
+        s1: The first wide string.
+        s2: The second wide string.
+        loc: The locale to order them by, rather than the one the thread is in.
+            It is a `locale_t` from `newlocale`.
+
+    Returns:
+        A negative, zero or positive value under the `LC_COLLATE` ordering of
+        `loc`.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcscoll.3.html).
+        Fn signature: `int wcscoll_l(const wchar_t *s1, const wchar_t *s2, locale_t loc)`.
+    """
+    return external_call[
+        "wcscoll_l", c_int, c_ptr[c_wchar], c_ptr[c_wchar], locale_t
+    ](s1, s2, loc)
+
+
 def wcsxfrm(dest: c_ptr[c_wchar], src: c_ptr[c_wchar], n: c_size_t) -> c_size_t:
     """Libc C95 `wcsxfrm` function.
 
@@ -1233,6 +1311,36 @@ def wcsxfrm(dest: c_ptr[c_wchar], src: c_ptr[c_wchar], n: c_size_t) -> c_size_t:
     return external_call[
         "wcsxfrm", c_size_t, c_ptr[c_wchar], c_ptr[c_wchar], c_size_t
     ](dest, src, n)
+
+
+def wcsxfrm_l(
+    dest: c_ptr[c_wchar], src: c_ptr[c_wchar], n: c_size_t, loc: locale_t
+) -> c_size_t:
+    """Libc POSIX `wcsxfrm_l` function.
+
+    Args:
+        dest: Where to put the transformed wide string.
+        src: The wide string to transform, NUL terminated.
+        n: How many wide characters `dest` can hold, terminator included.
+        loc: The locale to transform for, rather than the one the thread is in.
+            It is a `locale_t` from `newlocale`.
+
+    Returns:
+        The length of the transformed wide string, terminator excluded, which
+        is what a buffer would have to hold to take all of it.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcsxfrm.3.html).
+        Fn signature: `size_t wcsxfrm_l(wchar_t *dest, const wchar_t *src, size_t n, locale_t loc)`.
+    """
+    return external_call[
+        "wcsxfrm_l",
+        c_size_t,
+        c_ptr[c_wchar],
+        c_ptr[c_wchar],
+        c_size_t,
+        locale_t,
+    ](dest, src, n, loc)
 
 
 def wcsdup(s: c_ptr[c_wchar]) -> c_ptr[c_wchar]:

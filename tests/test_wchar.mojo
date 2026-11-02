@@ -9,6 +9,7 @@ from libc.utils import (
     string_to_char_ptr,
 )
 from libc.file import fclose, rewind
+from libc.locale import LC_ALL, Locale, freelocale, newlocale
 from libc.stdlib import free
 from libc.time import gmtime_r, time, tm
 from libc.stdio import tmpfile
@@ -48,16 +49,19 @@ from libc.wchar import (
     wcpncpy,
     wcrtomb,
     wcscasecmp,
+    wcscasecmp_l,
     wcscat,
     wcschr,
     wcscmp,
     wcscoll,
+    wcscoll_l,
     wcscpy,
     wcscspn,
     wcsdup,
     wcsftime,
     wcslen,
     wcsncasecmp,
+    wcsncasecmp_l,
     wcsncat,
     wcsncmp,
     wcsncpy,
@@ -77,6 +81,7 @@ from libc.wchar import (
     wcstoul,
     wcstoull,
     wcsxfrm,
+    wcsxfrm_l,
     wctob,
     wmemchr,
     wmemcmp,
@@ -913,6 +918,49 @@ def test_writing_a_time_out_wide() raises:
     now.unsafe_free()
 
 
+def test_the_l_variants_ask_a_locale_object() raises:
+    """The wide `_l` calls, asked of a C locale object: `wcscoll_l` orders,
+    `wcscasecmp_l` and `wcsncasecmp_l` fold case away, and `wcsxfrm_l`
+    transforms — and in a C locale the transform is the identity, so what
+    comes out can be compared with what went in.
+
+    Case folding is the pair's whole job and the `n` is what tells the two
+    apart: `abcX` and `ABCY` are the same string for three wide characters
+    and not the same one for four.
+    """
+    var c_locale = string_to_char_ptr("C")
+    var loc = newlocale(LC_ALL, c_locale, null_ptr[Locale]())
+    assert_true(Int(loc) != 0, "a C locale object was made to ask")
+    c_locale.unsafe_free()
+
+    var apple = wide("apple")
+    var banana = wide("banana")
+    assert_true(wcscoll_l(apple, banana, loc) < 0, "apple sorts before banana")
+    assert_true(wcscoll_l(banana, apple, loc) > 0, "and after it the other way")
+
+    var hello = wide("Hello")
+    var shout = wide("hELLO")
+    assert_equal(wcscasecmp_l(hello, shout, loc), 0, "case is folded away")
+
+    var abc_x = wide("abcX")
+    var abc_y = wide("ABCY")
+    assert_equal(
+        wcsncasecmp_l(abc_x, abc_y, 3, loc), 0, "three characters agree"
+    )
+    assert_true(wcsncasecmp_l(abc_x, abc_y, 4, loc) != 0, "the fourth does not")
+
+    var roomy = unsafe_alloc[c_wchar](16)
+    var src = wide("abc")
+    assert_equal(
+        Int(wcsxfrm_l(roomy, src, 16, loc)),
+        3,
+        "the C locale leaves abc three characters long",
+    )
+    assert_equal(wide_to_string(roomy), "abc", "and writes it out unchanged")
+
+    freelocale(loc)
+
+
 def main() raises:
     test_length_and_compare()
     test_search()
@@ -933,4 +981,5 @@ def main() raises:
     test_asking_after_a_conversion_state()
     test_the_stateful_conversions()
     test_writing_a_time_out_wide()
+    test_the_l_variants_ask_a_locale_object()
     print("test_wchar: ok")

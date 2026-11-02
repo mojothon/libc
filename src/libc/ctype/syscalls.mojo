@@ -119,6 +119,29 @@ def isalpha(c: Int32) -> Int32:
     return external_call["isalpha", Int32, Int32](c)
 
 
+def isalpha_l(c: Int32, loc: locale_t) -> Int32:
+    """Libc POSIX `isalpha_l` function.
+
+    Args:
+        c: The character to ask about. It has to be either what an `unsigned
+            char` holds or `EOF`: anything else, a negative number in
+            particular, is not something C promises to answer for.
+        loc: The locale to answer for, rather than the one the thread is in. It
+            is a `locale_t` from `newlocale`; `uselocale` is how the thread's
+            own is changed.
+
+    Returns:
+        Not 0 when it is a letter in `loc`, and 0 when it is not. It is 1 on
+            some systems and other numbers on others, so ask whether it is 0
+            and not whether it is 1.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/isalpha.3.html).
+        Fn signature: `int isalpha_l(int c, locale_t loc)`.
+    """
+    return external_call["isalpha_l", Int32, Int32, locale_t](c, loc)
+
+
 @inline(.nodebug)
 def isdigit(c: Int32) -> Int32:
     """Libc POSIX `isdigit` function.
@@ -277,6 +300,30 @@ def isspace(c: Int32) -> Int32:
         Fn signature: `int isspace(int c)`.
     """
     return external_call["isspace", Int32, Int32](c)
+
+
+def isspace_l(c: Int32, loc: locale_t) -> Int32:
+    """Libc POSIX `isspace_l` function.
+
+    Args:
+        c: The character to ask about. It has to be either what an `unsigned
+            char` holds or `EOF`: anything else, a negative number in
+            particular, is not something C promises to answer for.
+        loc: The locale to answer for, rather than the one the thread is in. It
+            is a `locale_t` from `newlocale`; `uselocale` is how the thread's
+            own is changed.
+
+    Returns:
+        Not 0 when it is white space in `loc`: a space, a tab, a newline, a
+            carriage return, a form feed or a vertical tab; and 0 when it is
+            not. It is 1 on some systems and other numbers on others, so ask
+            whether it is 0 and not whether it is 1.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/isspace.3.html).
+        Fn signature: `int isspace_l(int c, locale_t loc)`.
+    """
+    return external_call["isspace_l", Int32, Int32, locale_t](c, loc)
 
 
 @inline(.nodebug)

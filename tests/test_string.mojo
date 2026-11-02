@@ -21,10 +21,12 @@ from libc.string import (
     stpcpy,
     stpncpy,
     strcasecmp,
+    strcasecmp_l,
     strcat,
     strchr,
     strcmp,
     strcoll,
+    strcoll_l,
     strcopy,
     strcpy,
     strcspn,
@@ -32,6 +34,7 @@ from libc.string import (
     strerror,
     strlen,
     strncasecmp,
+    strncasecmp_l,
     strncat,
     strncmp,
     strncopy,
@@ -47,8 +50,10 @@ from libc.string import (
     strtok,
     strtok_r,
     strxfrm,
+    strxfrm_l,
 )
 from libc.constant import c_ptr
+from libc.locale import LC_ALL, Locale, freelocale, newlocale
 from libc.utils import (
     char_ptr_to_string,
     is_null,
@@ -538,6 +543,68 @@ def test_copying_up_to_a_byte() raises:
     src.unsafe_free()
 
 
+def test_the_l_variants_ask_a_locale_object() raises:
+    """The `_l` calls ask a locale that is handed to them instead of the one
+    the thread is in, and it arrives as the last argument — a binding that
+    dropped it would read whatever followed as the locale and answer about
+    nothing.
+
+    The C locale is the one asked, both because its answers are the ones
+    POSIX fixes and because there the `_l` calls and the plain ones have to
+    agree: `strcasecmp_l` folds case the way `strcasecmp` does, `strcoll_l`
+    orders the way `strcoll` does, and `strxfrm_l` in a C locale leaves a
+    string exactly as it found it, which is the one case where the
+    transformed string can be read back as the string it came from.
+    """
+    var c_locale = string_to_char_ptr("C")
+    var loc = newlocale(LC_ALL, c_locale, null_ptr[Locale]())
+    assert_true(Int(loc) != 0, "a C locale object was made to ask")
+    c_locale.unsafe_free()
+
+    var apple = string_to_char_ptr("apple")
+    var banana = string_to_char_ptr("banana")
+    assert_true(strcoll_l(apple, banana, loc) < 0, "apple sorts before banana")
+    assert_true(strcoll_l(banana, apple, loc) > 0, "and after it the other way")
+    assert_equal(
+        strcoll_l(apple, apple, loc), 0, "and a string is not before itself"
+    )
+    assert_equal(
+        strcoll_l(apple, banana, loc) < 0,
+        strcoll(apple, banana) < 0,
+        "which is the order strcoll gives in the same locale",
+    )
+
+    var hello = string_to_char_ptr("Hello")
+    var shout = string_to_char_ptr("hELLO")
+    assert_equal(strcasecmp_l(hello, shout, loc), 0, "case is folded away")
+
+    var abc_x = string_to_char_ptr("abcX")
+    var abc_y = string_to_char_ptr("ABCY")
+    assert_equal(strncasecmp_l(abc_x, abc_y, 3, loc), 0, "three bytes agree")
+    assert_true(strncasecmp_l(abc_x, abc_y, 4, loc) != 0, "the fourth does not")
+
+    var roomy = unsafe_alloc[UInt8](16)
+    var src = string_to_char_ptr("abc")
+    assert_equal(
+        Int(strxfrm_l(roomy, src, 16, loc)),
+        3,
+        "the C locale leaves abc three bytes long",
+    )
+    assert_equal(
+        char_ptr_to_string(roomy), "abc", "and writes it out unchanged"
+    )
+
+    var tight = unsafe_alloc[UInt8](3)
+    var six = string_to_char_ptr("abcdef")
+    assert_equal(
+        Int(strxfrm_l(tight, six, 3, loc)),
+        6,
+        "and a buffer too small is still told the six bytes a full one needs",
+    )
+
+    freelocale(loc)
+
+
 def main() raises:
     test_strlen()
     test_copying()
@@ -553,6 +620,7 @@ def main() raises:
     test_memmem()
     test_the_bsd_spellings()
     test_finding_the_first_and_the_last()
+    test_the_l_variants_ask_a_locale_object()
     test_copying_up_to_a_byte()
     test_strsep()
     test_ffs()

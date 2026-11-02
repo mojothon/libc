@@ -11,7 +11,7 @@ the bottom.
 | `libc.float` | `<float.h>` | 30 |
 | `libc.unistd` | `<unistd.h>` | 198 |
 | `libc.file` | `<stdio.h>` file operations | 42 |
-| `libc.ctype` | `<ctype.h>` | 29 |
+| `libc.ctype` | `<ctype.h>` | 31 |
 | `libc.sys.socket` | `<sys/socket.h>` | 24 |
 | `libc.sys.stat` | `<sys/stat.h>` | 22 |
 | `libc.sys.times` | `<sys/times.h>` | 2 |
@@ -19,7 +19,7 @@ the bottom.
 | `libc.fenv` | `<fenv.h>` | 26 |
 | `libc.sys.mman` | `<sys/mman.h>` | 15 |
 | `libc.pthread` | `<pthread.h>` | 98 |
-| `libc.string` | `<string.h>` | 45 |
+| `libc.string` | `<string.h>` | 49 |
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 44 |
 | `libc.complex` | `<complex.h>` | 46 |
 | `libc.sched` | `<sched.h>` | 15 |
@@ -47,7 +47,7 @@ the bottom.
 | `libc.fcntl` | `<fcntl.h>` | 50 |
 | `libc.getopt` | `<getopt.h>` taking a command line apart | 12 |
 | `libc.dlfcn` | `<dlfcn.h>` | 7 |
-| `libc.wchar` | `<wchar.h>` | 72 |
+| `libc.wchar` | `<wchar.h>` | 76 |
 | `libc.wordexp` | `<wordexp.h>` shell-style word splitting | 6 |
 | `libc.wctype` | `<wctype.h>` | 3 |
 | `libc.sys.statvfs` | `<sys/statvfs.h>` | 3 |

@@ -4,6 +4,7 @@ from libc.ctype import (
     isalnum,
     isalnum_l,
     isalpha,
+    isalpha_l,
     isascii,
     isascii_l,
     isblank,
@@ -21,6 +22,7 @@ from libc.ctype import (
     ispunct,
     ispunct_l,
     isspace,
+    isspace_l,
     isupper,
     isupper_l,
     isxdigit,
@@ -218,6 +220,10 @@ def test_l_variants_agree_in_the_c_locale() raises:
     for c in range(128):
         var ch = Int32(c)
         if (isalnum_l(ch, loc) != 0) != (isalnum(ch) != 0):
+            bad_l += 1
+        if (isalpha_l(ch, loc) != 0) != (isalpha(ch) != 0):
+            bad_l += 1
+        if (isspace_l(ch, loc) != 0) != (isspace(ch) != 0):
             bad_l += 1
         if (isxdigit_l(ch, loc) != 0) != (isxdigit(ch) != 0):
             bad_l += 1

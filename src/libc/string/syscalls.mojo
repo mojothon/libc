@@ -6,6 +6,7 @@
 from std.ffi import external_call
 from std.memory import Pointer
 from libc.constant import c_char, c_int, c_long, c_longlong, c_ptr, c_size_t
+from libc.locale import locale_t
 
 
 @inline(.nodebug)
@@ -500,6 +501,28 @@ def strcasecmp(s1: c_ptr[UInt8], s2: c_ptr[UInt8]) -> c_int:
     )
 
 
+def strcasecmp_l(s1: c_ptr[UInt8], s2: c_ptr[UInt8], loc: locale_t) -> c_int:
+    """Libc POSIX `strcasecmp_l` function.
+
+    Args:
+        s1: The first string.
+        s2: The second string.
+        loc: The locale to fold case in, rather than the one the thread is in.
+            It is a `locale_t` from `newlocale`.
+
+    Returns:
+        A negative, zero or positive value as `s1` sorts before, the same as,
+        or after `s2` once case is folded away in `loc`.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/strcasecmp.3.html).
+        Fn signature: `int strcasecmp_l(const char *s1, const char *s2, locale_t loc)`.
+    """
+    return external_call[
+        "strcasecmp_l", c_int, c_ptr[UInt8], c_ptr[UInt8], locale_t
+    ](s1, s2, loc)
+
+
 @inline(.nodebug)
 def strncasecmp(s1: c_ptr[UInt8], s2: c_ptr[UInt8], n: c_size_t) -> c_int:
     """Libc POSIX `strncasecmp` function.
@@ -521,6 +544,32 @@ def strncasecmp(s1: c_ptr[UInt8], s2: c_ptr[UInt8], n: c_size_t) -> c_int:
     ](s1, s2, n)
 
 
+def strncasecmp_l(
+    s1: c_ptr[UInt8], s2: c_ptr[UInt8], n: c_size_t, loc: locale_t
+) -> c_int:
+    """Libc POSIX `strncasecmp_l` function.
+
+    Args:
+        s1: The first string.
+        s2: The second string.
+        n: How many bytes at most to compare.
+        loc: The locale to fold case in, rather than the one the thread is in.
+            It is a `locale_t` from `newlocale`.
+
+    Returns:
+        A negative, zero or positive value as the first `n` bytes of `s1` sort
+        before, the same as, or after those of `s2` with case folded away in
+        `loc`.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/strncasecmp.3.html).
+        Fn signature: `int strncasecmp_l(const char *s1, const char *s2, size_t n, locale_t loc)`.
+    """
+    return external_call[
+        "strncasecmp_l", c_int, c_ptr[UInt8], c_ptr[UInt8], c_size_t, locale_t
+    ](s1, s2, n, loc)
+
+
 @inline(.nodebug)
 def strcoll(s1: c_ptr[UInt8], s2: c_ptr[UInt8]) -> c_int:
     """Libc C89 `strcoll` function.
@@ -537,6 +586,28 @@ def strcoll(s1: c_ptr[UInt8], s2: c_ptr[UInt8]) -> c_int:
         Fn signature: `int strcoll(const char *s1, const char *s2)`.
     """
     return external_call["strcoll", c_int, c_ptr[UInt8], c_ptr[UInt8]](s1, s2)
+
+
+def strcoll_l(s1: c_ptr[UInt8], s2: c_ptr[UInt8], loc: locale_t) -> c_int:
+    """Libc POSIX `strcoll_l` function.
+
+    Args:
+        s1: The first string.
+        s2: The second string.
+        loc: The locale to order them by, rather than the one the thread is in.
+            It is a `locale_t` from `newlocale`.
+
+    Returns:
+        A negative, zero or positive value under the `LC_COLLATE` ordering of
+        `loc`.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/strcoll.3.html).
+        Fn signature: `int strcoll_l(const char *s1, const char *s2, locale_t loc)`.
+    """
+    return external_call[
+        "strcoll_l", c_int, c_ptr[UInt8], c_ptr[UInt8], locale_t
+    ](s1, s2, loc)
 
 
 @inline(.nodebug)
@@ -559,6 +630,35 @@ def strxfrm(dest: c_ptr[UInt8], src: c_ptr[UInt8], n: c_size_t) -> c_size_t:
     return external_call[
         "strxfrm", c_size_t, c_ptr[UInt8], c_ptr[UInt8], c_size_t
     ](dest, src, n)
+
+
+def strxfrm_l(
+    dest: c_ptr[UInt8], src: c_ptr[UInt8], n: c_size_t, loc: locale_t
+) -> c_size_t:
+    """Libc POSIX `strxfrm_l` function.
+
+    Args:
+        dest: Where to put the transformed string, or what `null_ptr` gives for
+            a buffer wanted for its length alone: nothing is written there and
+            none is read, which makes a zero `n` worth passing.
+        src: The string to transform, NUL terminated.
+        n: How many bytes `dest` can hold, terminator included.
+        loc: The locale to transform for, rather than the one the thread is in.
+            It is a `locale_t` from `newlocale`.
+
+    Returns:
+        The length of the transformed string, terminator excluded, which is
+        what a buffer would have to hold to take all of it. A buffer too small
+        is still told that length, which is how a caller finds out how much it
+        needs before it has anywhere to put the answer.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/strxfrm.3.html).
+        Fn signature: `size_t strxfrm_l(char *dest, const char *src, size_t n, locale_t loc)`.
+    """
+    return external_call[
+        "strxfrm_l", c_size_t, c_ptr[UInt8], c_ptr[UInt8], c_size_t, locale_t
+    ](dest, src, n, loc)
 
 
 @inline(.nodebug)
