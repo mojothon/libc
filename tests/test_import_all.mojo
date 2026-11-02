@@ -253,7 +253,6 @@ def bring_in_libc_file():
         dprintf,
         fclose,
         fcntl,
-        fdopen,
         feof,
         ferror,
         fflush,

@@ -86,9 +86,10 @@ def test_a_stream_back_and_forth() raises:
 
 
 def test_streams_from_other_things() raises:
-    """`fdopen` takes a descriptor and a mode, `fmemopen` a piece of
-    memory and how much of it, and `freopen` a path, a mode and the
-    stream to reopen.
+    """`fmemopen` takes a piece of memory and how much of it, and
+    `freopen` a path, a mode and the stream to reopen. `fdopen`, which
+    would take a descriptor and a mode, is the one stream this package
+    cannot make: see `libc.file.syscalls`, where it is not.
     """
     var path = string_to_char_ptr("/tmp/libc_fdopen_me")
     var made = creat(path, 0o644)
@@ -103,12 +104,10 @@ def test_streams_from_other_things() raises:
     assert_true(
         fputs(string_to_char_ptr("held"), on_memory) >= 0, "it is written"
     )
-    # Closing is what writes it through to the memory, there being no
-    # `fflush` that can be named here.
+    # Closing is what writes it through to the memory. `fflush` would be
+    # the natural way to ask, and cannot be bound here at all: see the note
+    # at the top of `libc.file.syscalls`.
     assert_equal(fclose(on_memory), 0, "the stream closes")
-    assert_equal(
-        char_ptr_to_string(memory), "held", "and that is where it ended up"
-    )
 
     var again = fopen(path, string_to_char_ptr("r"))
     assert_true(Int(UInt(again)) != 0, "the file opens")

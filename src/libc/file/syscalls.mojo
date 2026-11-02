@@ -8,6 +8,22 @@ from std.ffi import external_call
 from libc.sys.socket import iovec
 
 
+# Two of `<stdio.h>`'s calls are not in this file, and it is not for want of a
+# signature: the Mojo standard library declares `fflush` and `fdopen` itself,
+# with a `FILE *` of its own inside `std.io`, and `external_call` refuses a
+# second declaration of a name that is already declared — `error: existing
+# function with conflicting signature`, at compile time, in the module where
+# the call is made. Every other call here that takes a `FILE *` is fine,
+# `fopen` and `fclose` and the rest of them, so this is about the two names
+# and not about streams.
+#
+# Both were bound, and the bindings compiled, because `external_call` is only
+# lowered where it is used. What a caller would have met is that error,
+# pointing into `std/ffi` and not into this file. They are gone; a test that
+# asks them something is what found it, and `scripts/check-symbols.py` keeps
+# them from coming back.
+
+
 struct FILE(TrivialRegisterPassable):
     """An opaque C `FILE`, the stream `fopen` and friends hand back.
 
@@ -17,26 +33,6 @@ struct FILE(TrivialRegisterPassable):
     """
 
     pass
-
-
-def fflush(arg: c_ptr[FILE]) -> Int32:
-    """Libc POSIX `fflush` function.
-
-    Args:
-        arg: A pointer to a stream.
-
-    Returns:
-        0, or `EOF` on failure with `errno` set.
-
-    Notes:
-        What has been buffered is written out. A null pointer in place of a
-        stream asks for every stream that is open for writing, which is the
-        one case where the argument is not a stream.
-
-        [Reference](https://man7.org/linux/man-pages/man3/fflush.3p.html).
-        Fn signature: `int fflush(FILE *stream);`.
-    """
-    return external_call["fflush", Int32, c_ptr[FILE]](arg)
 
 
 def fcntl(fildes: c_int, cmd: c_int) -> c_int:
@@ -152,25 +148,6 @@ def fopen(pathname: c_ptr[c_char], mode: c_ptr[c_char]) -> c_ptr[FILE]:
         c_ptr[c_char],
         c_ptr[c_char],
     ](pathname, mode)
-
-
-def fdopen(fildes: c_int, mode: c_ptr[c_char]) -> c_ptr[FILE]:
-    """Libc POSIX `fdopen` function.
-
-    Args:
-        fildes: A File Descriptor to open the file with.
-        mode: A mode to open the file with.
-
-    Returns:
-    The stream, or a null pointer on failure with `errno` set.
-
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/fdopen.3p.html).
-        Fn signature: `FILE *fdopen(int fildes, const char *mode)`.
-    """
-    return external_call["fdopen", c_ptr[FILE], c_int, c_ptr[c_char]](
-        fildes, mode
-    )
 
 
 def freopen(

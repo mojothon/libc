@@ -3,11 +3,18 @@ from std.testing import assert_equal, assert_true
 
 from libc.constant import (
     AT_FDCWD,
+    ENOENT,
+    O_CREAT,
+    O_RDONLY,
+    O_TRUNC,
+    O_WRONLY,
     c_char,
     c_ptr,
     c_size_t,
     c_void,
 )
+from libc.errno import set_errno
+from libc.fcntl import open
 from libc.file import (
     FILE,
     close,
@@ -44,7 +51,10 @@ from libc.stdio import (
     popen,
     putc,
     putc_unlocked,
+    perror,
     putchar,
+    putchar_unlocked,
+    puts,
     putw,
     remove,
     rename,
@@ -59,6 +69,8 @@ from libc.stdio import (
     ungetc,
 )
 from libc.stdlib import free, mkstemp
+from libc.string import strerror
+from libc.unistd import dup, dup2, read
 from libc.utils import char_ptr_to_string, null_ptr, string_to_char_ptr
 
 
@@ -324,6 +336,127 @@ def test_the_unlocked_spellings() raises:
     assert_equal(fclose(stream), 0, "the stream is closed")
 
 
+def test_the_three_that_write_where_they_point() raises:
+    """`puts` and `putchar_unlocked` write to standard output and `perror`
+    to standard error — the three calls that are handed no stream because
+    the stream is decided for them.
+
+    That is why none of them had been called: a test that let them write
+    where they point would be writing into the middle of the suite's own
+    output, and where that output goes is the terminal's business. So the
+    two descriptors are pointed at files here and put back afterwards —
+    `dup` keeps the one the process started with, `dup2` moves the file
+    over descriptor 1 or 2, and the same pair puts it back. It is the pair
+    `adddup2` uses in `test_spawn.mojo` to point a child's output
+    somewhere, used on this process instead.
+
+    Standard error is unbuffered, so `perror`'s message is in its file by
+    the time the call returns. What is asked of it is that it wrote the
+    string it was given, a colon, a space, and `strerror` of the number
+    `errno` was set to — compared against `strerror` rather than against
+    the words, which are each platform's own to spell.
+
+    Standard output is buffered, and the call that empties the buffer is
+    `fflush`, which this package cannot bind at all: `std.io` declares the
+    name and a second declaration of it will not compile — the note at the
+    top of `libc.file.syscalls` says so, and `check-symbols.py` keeps it
+    from being tried again. So the line `puts` is given here is longer than
+    any buffer: what will not fit is written out as it is made, and a
+    thousand of its characters in the file is what says the call wrote to
+    descriptor 1 rather than to the terminal. The rest is still waiting in
+    the buffer when the test ends, which is why that is a floor and not the
+    length, and why `putchar_unlocked` is asked for its answer rather than
+    for its byte — the byte it writes goes into the same buffer, ahead of
+    the long line, so it does come out with it.
+
+    The line is made of spaces. Whatever is still waiting in the buffer
+    when this test ends is written to the terminal when the process exits,
+    and a thousand spaces in the middle of a run's output is not something
+    a reader has to look at or explain.
+    """
+    comptime out_path = "/tmp/libc-stdio-pointed-at"
+    comptime err_path = "/tmp/libc-stdio-pointed-at-too"
+    var out_name = string_to_char_ptr(out_path)
+    var err_name = string_to_char_ptr(err_path)
+
+    var out = open(out_name, O_WRONLY | O_CREAT | O_TRUNC, 0o644)
+    assert_true(out >= 0, "a file to stand in for standard output")
+    var kept_out = dup(1)
+    assert_true(kept_out >= 0, "and the terminal's own descriptor kept")
+    assert_equal(dup2(out, 1), 1, "standard output moved onto the file")
+    assert_equal(close(out), 0, "and the second handle given back")
+
+    var err = open(err_name, O_WRONLY | O_CREAT | O_TRUNC, 0o644)
+    assert_true(err >= 0, "one to stand in for standard error")
+    var kept_err = dup(2)
+    assert_true(kept_err >= 0, "and that one kept too")
+    assert_equal(dup2(err, 2), 2, "standard error moved onto it")
+    assert_equal(close(err), 0, "and the second handle given back")
+
+    assert_equal(
+        Int(putchar_unlocked(65)),
+        65,
+        "putchar_unlocked handed back the byte it was given",
+    )
+
+    var line = unsafe_alloc[c_char](9000)
+    for i in range(8999):
+        line.unsafe_offset(i)[] = 0x20
+    line.unsafe_offset(8999)[] = 0
+    assert_true(
+        Int(puts(line)) >= 0, "puts wrote its line without being told where"
+    )
+    line.unsafe_free()
+
+    set_errno(ENOENT)
+    _ = perror(string_to_char_ptr("looking"))
+
+    assert_equal(dup2(kept_out, 1), 1, "standard output is the terminal again")
+    assert_equal(close(kept_out), 0, "and the copy of it is given back")
+    assert_equal(dup2(kept_err, 2), 2, "so is standard error")
+    assert_equal(close(kept_err), 0, "and its copy")
+
+    var reading = open(out_name, O_RDONLY)
+    assert_true(reading >= 0, "the file standard output went to opens")
+    var got = unsafe_alloc[c_char](16384)
+    for i in range(16384):
+        got.unsafe_offset(i)[] = 0
+    var wrote = read(reading, got, 16383)
+    assert_true(wrote > 0, "and something was written to it")
+    var spaces = 0
+    var saw_the_byte = False
+    for i in range(Int(wrote)):
+        var byte = Int(got.unsafe_offset(i)[])
+        if byte == 0x20:
+            spaces += 1
+        if byte == 65:
+            saw_the_byte = True
+    assert_true(
+        spaces > 1000, "a thousand characters of that line are in the file"
+    )
+    assert_true(
+        saw_the_byte, "with the byte putchar_unlocked wrote before them"
+    )
+    assert_equal(close(reading), 0, "and it closes")
+    _ = remove(out_name)
+    got.unsafe_free()
+
+    var reading_err = open(err_name, O_RDONLY)
+    assert_true(reading_err >= 0, "so does the one standard error went to")
+    var said = unsafe_alloc[c_char](128)
+    for i in range(128):
+        said.unsafe_offset(i)[] = 0
+    assert_true(read(reading_err, said, 127) > 0, "and it has something in it")
+    assert_equal(
+        char_ptr_to_string(said),
+        "looking: " + char_ptr_to_string(strerror(ENOENT)) + String("\n"),
+        "perror wrote the string, a colon, and what errno meant",
+    )
+    assert_equal(close(reading_err), 0, "and that one closes")
+    _ = remove(err_name)
+    said.unsafe_free()
+
+
 def test_where_a_stream_is() raises:
     """`fgetpos` writes down where a stream is and `fsetpos` puts it
     back there, which is `ftell` and `fseek` done with an opaque value
@@ -507,6 +640,7 @@ def main() raises:
     test_the_two_that_write_one_character()
     test_setbuf_and_tmpnam()
     test_the_unlocked_spellings()
+    test_the_three_that_write_where_they_point()
     test_where_a_stream_is()
     test_naming_a_terminal_and_a_temporary()
     test_writing_a_stream_into_memory()

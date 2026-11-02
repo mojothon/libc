@@ -67,11 +67,6 @@ CANNOT_ASK = {
 # to empty, and the run fails if it grows: a binding nobody calls is how the
 # `gl_flags` bug survived three releases.
 NOT_YET = {
-    "fdopen": "writes through a stream, as `puts` does",
-    "fflush": "writes through a stream, as `puts` does",
-    "perror": "writes to standard error, which the suite's own output goes to",
-    "puts": "writes to standard output, and the suite prints its progress there",
-    "putchar_unlocked": "writes to standard output, as `puts` does",
     "putwchar": "writes to standard output, as `puts` does",
     "pthread_detach": "needs a thread whose ending nothing waits for",
     "pthread_mutex_getprioceiling": "needs a priority-ceiling mutex, and the privilege to make one",

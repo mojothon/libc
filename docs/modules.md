@@ -10,7 +10,7 @@ the bottom.
 | `libc.stdlib` | `<stdlib.h>` | 75 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.unistd` | `<unistd.h>` | 200 |
-| `libc.file` | `<stdio.h>` file operations | 42 |
+| `libc.file` | `<stdio.h>` file operations | 40 |
 | `libc.ctype` | `<ctype.h>` | 31 |
 | `libc.sys.socket` | `<sys/socket.h>` | 35 |
 | `libc.sys.stat` | `<sys/stat.h>` | 36 |
@@ -121,6 +121,16 @@ of its terminal session, `pthread_atfork` asks for a fork, `pthread_cancel`
 and `pthread_cond_wait` need a thread the suite is sharing, `prctl` is
 Linux's and changes the process it is called on, and `isascii_l` and
 `sched_getcpucount` are symbols glibc does not export at all.
+
+Two calls are not bound at all, which is a different thing from not being
+asked: `fflush` and `fdopen` cannot be declared from Mojo while the standard
+library declares them. `std.io` has a `FILE *` of its own and a second
+declaration of either name is refused at compile time — `existing function
+with conflicting signature` — in whichever module makes the call and nowhere
+else, so a binding for one compiles, sits in the package looking bound, and
+fails when a caller touches it. Both were in that state until a test asked
+them something; they are gone, and `scripts/check-symbols.py` fails if either
+name comes back.
 
 `scripts/check-tests.py` keeps the full list, with a reason each, and fails
 when a binding is added with neither a test nor a reason. It also keeps the

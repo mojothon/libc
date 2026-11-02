@@ -112,6 +112,28 @@ def branch_of(lines: list[str], i: int) -> str:
     return stack[-1][1] if stack else "plain"
 
 
+# Two calls cannot be bound at all, and it is not about the signature the
+# C header gives them: the Mojo standard library declares both names itself,
+# `std.io` keeping a `FILE *` of its own, and a second declaration of a name
+# that is already declared is refused at compile time — `error: existing
+# function with conflicting signature` out of `std/ffi`, and only in the
+# module where the call is made, so a binding for one sits here looking bound
+# until somebody calls it. Three lines that import nothing from this package
+# are enough to see it:
+#
+#     from std.ffi import external_call
+#     def main():
+#         print(Int(external_call["fflush", Int32]()))
+#
+# Every other `FILE *` call in the package is fine, so this is about the two
+# names. Both were bound until a test asked them something; they are gone,
+# and this is what keeps them from being added back.
+STDLIB_OWNS = {
+    "fflush": "std.io declares it; a second declaration will not compile",
+    "fdopen": "std.io declares it, as it declares `fflush`",
+}
+
+
 def main() -> int:
     have = library_symbols()
     if not have:
@@ -172,6 +194,16 @@ def main() -> int:
         f" {len(must_exist)} on both"
     )
 
+    # A name the standard library already declares compiles fine and fails
+    # where it is called, which is the one place this walk cannot look, so
+    # it is checked by name rather than by trying it.
+    owned = {n: v for n, v in called.items() if n in STDLIB_OWNS}
+    if owned:
+        print("\n  bound under a name the standard library already declares:")
+        for name in sorted(owned):
+            where, _ = owned[name]
+            print(f"    {name:24} {where} -- {STDLIB_OWNS[name]}")
+
     unexplained = {n: v for n, v in missing.items() if n not in KNOWN_MISSING}
     if missing:
         print("\n  called but not exported here:")
@@ -184,6 +216,9 @@ def main() -> int:
     print()
     if unexplained:
         print("  *** symbols that are called everywhere but exported nowhere ***")
+        return 1
+    if owned:
+        print("  *** names the standard library owns, which will not compile ***")
         return 1
     print("  every symbol that has to be here is here")
     return 0

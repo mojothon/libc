@@ -479,6 +479,39 @@ All notable changes to this project are documented here. The format follows
   two entries exempt and the reasons written down: `test_main` is the suite,
   and `test_smoke` is what `recipe/recipe.yaml` runs against a built package,
   where nothing can be printed.
+- **`fflush` and `fdopen` are gone, because this package cannot bind them.**
+  Both were written, both were exported, and neither could be called: the
+  Mojo standard library declares both names itself, `std.io` keeping a
+  `FILE *` of its own, and `external_call` refuses a second declaration of a
+  name that is already declared. The error is `existing function with
+  conflicting signature`, it comes out of `std/ffi` at compile time, and it
+  appears only in the module that makes the call — so a binding for one
+  compiles, ships, and fails when a caller touches it, which is the worst
+  place for it to fail. Every other `FILE *` call in the package is fine,
+  `fopen` and `fclose` and `freopen` among them, so this is about the two
+  names rather than about streams. Three lines that import nothing from this
+  package show it; they are in `scripts/check-symbols.py`, which now fails
+  if either name is bound again. What found them was a test: `fdopen` had
+  been named in a docstring as though it were called, and `fflush` had a
+  comment explaining why it was not available, which is a thing worth
+  noticing in a package that binds `fclose`.
+- **`puts`, `putchar_unlocked` and `perror` are asked something.** They were
+  the three that write where they point — standard output twice, standard
+  error once — and a test that let them do it would have written into the
+  middle of the suite's own output. So `dup` keeps the descriptors the
+  process started with, `dup2` moves files over descriptors 1 and 2, and the
+  same pair puts them back; it is the pair `adddup2` uses to point a child's
+  output somewhere, used on this process instead. `perror`'s message is
+  compared against `strerror` rather than against words, which are each
+  platform's own. Standard output is buffered and nothing in this package can
+  flush it now, so the line `puts` is given is longer than any buffer and a
+  thousand characters of it in the file is the floor that says the call went
+  to descriptor 1; the line is spaces, because whatever is left in the buffer
+  is written to the terminal when the process exits.
+- **`beyond-c.md` says 950 symbols again**, 947 of them in the four
+  libraries, 26.5% — the two that left took the count back to where it was
+  before `getprotoent` and `getservent` were added, which is a coincidence
+  worth only this line. `modules.md` says `libc.file` has 40.
 
 ## [0.12.0] - 2026-10-19
 
