@@ -185,6 +185,21 @@ OFFSETS: dict[tuple[str, str], tuple[str, str]] = {
     ("libc.ifaddrs", "IFADDRS_NETMASK_OFFSET"): ("ifaddrs", "ifa_netmask"),
     ("libc.ifaddrs", "IFADDRS_DSTADDR_OFFSET"): ("ifaddrs", "ifa_dstaddr"),
     ("libc.ifaddrs", "IFADDRS_DATA_OFFSET"): ("ifaddrs", "ifa_data"),
+    ("libc.netif", "IFNAMEINDEX_INDEX_OFFSET"): ("if_nameindex", "if_index"),
+    ("libc.netif", "IFNAMEINDEX_NAME_OFFSET"): ("if_nameindex", "if_name"),
+    ("libc.sys.sysinfo", "SYSINFO_UPTIME"): ("sysinfo", "uptime"),
+    ("libc.sys.sysinfo", "SYSINFO_LOADS"): ("sysinfo", "loads"),
+    ("libc.sys.sysinfo", "SYSINFO_TOTALRAM"): ("sysinfo", "totalram"),
+    ("libc.sys.sysinfo", "SYSINFO_FREERAM"): ("sysinfo", "freeram"),
+    ("libc.sys.sysinfo", "SYSINFO_SHAREDRAM"): ("sysinfo", "sharedram"),
+    ("libc.sys.sysinfo", "SYSINFO_BUFFERRAM"): ("sysinfo", "bufferram"),
+    ("libc.sys.sysinfo", "SYSINFO_TOTALSWAP"): ("sysinfo", "totalswap"),
+    ("libc.sys.sysinfo", "SYSINFO_FREESWAP"): ("sysinfo", "freeswap"),
+    ("libc.sys.sysinfo", "SYSINFO_PROCS"): ("sysinfo", "procs"),
+    ("libc.sys.sysinfo", "SYSINFO_TOTALHIGH"): ("sysinfo", "totalhigh"),
+    ("libc.sys.sysinfo", "SYSINFO_FREEHIGH"): ("sysinfo", "freehigh"),
+    ("libc.sys.sysinfo", "SYSINFO_MEM_UNIT"): ("sysinfo", "mem_unit"),
+    ("libc.sys.timer", "SIGEVENT_NOTIFY_OFFSET"): ("sigevent", "sigev_notify"),
     ("libc.termios", "TERMIOS_IFLAG_OFFSET"): ("termios", "c_iflag"),
     ("libc.termios", "TERMIOS_OFLAG_OFFSET"): ("termios", "c_oflag"),
     ("libc.termios", "TERMIOS_CFLAG_OFFSET"): ("termios", "c_cflag"),
@@ -614,11 +629,14 @@ def main() -> int:
             f" nothing when it is not."
         )
     if not_listed:
+        # Held as bytes and naming no offset: either nothing here reads a
+        # member out of it, which is every one of these now, or a member is
+        # read at a number that has not been written down. Either way what
+        # is claimed is a size, and the size check above is what covers it.
         print(
-            f"  And {len(not_listed)} structs hold their bytes in a buffer, placing"
-            f" members at numbers written into the accessors — numbers this cannot"
-            f" read, and `OFFSETS` is where they go when somebody wants them"
-            f" checked: {', '.join(not_listed[:6])}{', ...' if len(not_listed) > 6 else ''}"
+            f"  And {len(not_listed)} structs hold their bytes in a buffer and name"
+            f" no offset, which is a size rather than a layout and is checked as"
+            f" one: {', '.join(not_listed[:6])}{', ...' if len(not_listed) > 6 else ''}"
         )
 
     print()

@@ -42,6 +42,18 @@ comptime TIMER_ABSTIME: c_int = 1
 comptime timer_t = c_ptr[UInt8]
 
 
+# Where the one member of C's `struct sigevent` that this sets sits: the
+# word that says which of the three things the timer does when it runs out.
+# `sigev_value` is eight bytes at 0 and `sigev_signo` four more at 8, so
+# `sigev_notify` starts a new half-word at 12 — the high half of the second
+# slot rather than the low half of a third.
+#
+# Linux only: `timer_create` does not exist on Darwin, and neither does this
+# struct's shape there. The number is glibc's, and is compared with C's
+# `offsetof` by `scripts/check-layouts.py` on the one platform that has it.
+comptime SIGEVENT_NOTIFY_OFFSET: Int = 12
+
+
 struct sigevent:
     """A C `struct sigevent`: what a timer is to do when it runs out.
 
@@ -58,13 +70,18 @@ struct sigevent:
         """Zeroes the block, which is a timer that sends `SIGALRM`."""
         self._slots = Array[UInt64, 8](fill=0)
 
+    def _u32(self, off: Int) -> UInt32:
+        """Four little-endian bytes at `off`."""
+        var slot = self._slots[off // 8]
+        return UInt32((slot >> UInt64((off % 8) * 8)) & 0xFFFFFFFF)
+
     def notify(self) -> Int32:
         """Which of the three things the timer is to do.
 
         Returns:
             The `sigev_notify` word, which is the second of the eight.
         """
-        return Int32(self._slots[1] >> 32)
+        return Int32(self._u32(SIGEVENT_NOTIFY_OFFSET))
 
     def set_notify(mut self, how: Int32):
         """Says which of the three things the timer is to do.
@@ -73,9 +90,11 @@ struct sigevent:
             how: One of the `SIGEV_*` numbers, of which only
                 `SIGEV_NONE` is worth writing from here.
         """
-        self._slots[1] = (self._slots[1] & 0xFFFF_FFFF) | (
-            UInt64(UInt32(how)) << 32
-        )
+        comptime slot = SIGEVENT_NOTIFY_OFFSET // 8
+        comptime shift = UInt64((SIGEVENT_NOTIFY_OFFSET % 8) * 8)
+        self._slots[slot] = (
+            self._slots[slot] & ~(UInt64(0xFFFF_FFFF) << shift)
+        ) | (UInt64(UInt32(how)) << shift)
 
 
 struct itimerspec:

@@ -23,7 +23,7 @@ the bottom.
 | `libc.sys.eventfd` | `<sys/eventfd.h>` a counter behind a descriptor | 6 |
 | `libc.aio` | `<aio.h>` I/O handed over rather than waited for | 24 |
 | `libc.sys.sysinfo` | `<sys/sysinfo.h>` | 18 |
-| `libc.sys.timer` | `<time.h>` the timers Darwin does not have | 11 |
+| `libc.sys.timer` | `<time.h>` the timers Darwin does not have | 12 |
 | `libc.pthread` | `<pthread.h>` | 100 |
 | `libc.string` | `<string.h>` | 49 |
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 44 |
@@ -40,7 +40,7 @@ the bottom.
 | `libc.sys.resource` | `<sys/resource.h>` | 15 |
 | `libc.network` | `<arpa/inet.h>` byte order and address conversion | 14 |
 | `libc.netdb` | `<netdb.h>` name and service lookup | 48 |
-| `libc.netif` | `<net/if.h>` interface names and numbers | 6 |
+| `libc.netif` | `<net/if.h>` interface names and numbers | 9 |
 | `libc.regex` | `<regex.h>` POSIX regular expressions | 29 |
 | `libc.glob` | `<glob.h>` pathname matching | 23 |
 | `libc.grp` | `<grp.h>` the group database | 12 |

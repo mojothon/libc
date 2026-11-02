@@ -13,6 +13,20 @@ from libc.utils import char_ptr_to_string
 comptime IF_NAMESIZE = 16
 
 
+# Where the two members of C's `struct if_nameindex` sit: the number first,
+# then the name, eight bytes apart on both platforms and nowhere near
+# anything the kernel is free to move. Both are worth naming for what the
+# pair means rather than for the numbers: `if_nameindex` hands back an array
+# of these with a last one whose index is 0 and whose name is null, and
+# that pair *is* the terminator — there is no count to go with it.
+#
+# Numbers from glibc's and XNU's `net/if.h`, and both are compared with
+# C's `offsetof` on both platforms by `scripts/check-layouts.py`.
+comptime IFNAMEINDEX_SLOTS: Int = 2
+comptime IFNAMEINDEX_INDEX_OFFSET: Int = 0
+comptime IFNAMEINDEX_NAME_OFFSET: Int = 8
+
+
 struct IfNameindex:
     """A C `struct if_nameindex`: one interface's number and its name.
 
@@ -30,24 +44,30 @@ struct IfNameindex:
     `en0` against `eth0`, so nothing here is portable to write down.
     """
 
-    var _bytes: Array[UInt64, 2]
+    var _bytes: Array[UInt64, IFNAMEINDEX_SLOTS]
 
     def __init__(out self):
         """Zeroes the block, which is the pair that ends the array."""
-        self._bytes = Array[UInt64, 2](fill=0)
+        self._bytes = Array[UInt64, IFNAMEINDEX_SLOTS](fill=0)
 
     def if_index(self) -> UInt32:
         """The number the kernel knows the interface by, counting from 1.
         Zero means the entry is the one that ends the array and not an
         interface at all.
         """
-        return UInt32(self._bytes[0] & 0xFFFFFFFF)
+        return UInt32(
+            (
+                self._bytes[IFNAMEINDEX_INDEX_OFFSET // 8]
+                >> UInt64((IFNAMEINDEX_INDEX_OFFSET % 8) * 8)
+            )
+            & 0xFFFFFFFF
+        )
 
     def if_name(self) raises -> String:
         """The name of that interface. Null on the entry that ends the
         array, where the name is read as an empty string.
         """
-        var held = self._bytes[1]
+        var held = self._bytes[IFNAMEINDEX_NAME_OFFSET // 8]
         if held == 0:
             return String("")
         return char_ptr_to_string(c_ptr[UInt8](unsafe_from_address=Int(held)))

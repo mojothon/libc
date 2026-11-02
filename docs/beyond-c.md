@@ -133,31 +133,38 @@ reach Mojo without constructing anything, the offset of a member does not,
 because asking a pointer where a member lives asks for a member pointer and
 Mojo has none. But a struct held as bytes does not have to be asked — the
 numbers its accessors read at *are* the offsets, and C can be asked the
-same question about the same member. Ninety-six of them are listed in the
-script now and checked with `offsetof` on whichever platform is running:
-the records of `utmpx`, `termios`, `dirent` and `aiocb`, and the members of
-`Stat`, `Statvfs`, `Utsname`, `group`, `passwd`, `sockaddr`, `msghdr`,
-`siginfo_t`, `glob_t`, `ifaddrs`, `regmatch_t` and `sched_param`. The first
-twenty-two were already right, which is what a check written after the fact
-tends to find. Of the seventy-four that came after, one was not: `gl_flags`
-was read from the high half of the word it begins in, which answers 0 for a
-`glob` that was given flags, and no test had ever asked. That is the
-argument for the rest of it — an offset written by hand is a claim, and a
-claim nothing checks is only usually true — so they are named offsets at the
-top of the module now, which is a layout a script can read, rather than slot
-numbers and shift counts, which is a layout you have to reconstruct in your
-head. `Statvfs` is
-why that matters: four of its members share two words on Darwin and take
-four words on glibc, so the same struct has `f_flag` at 48 and at 72, and
-one number written from the other platform's header would leave nine
-members reading the right bytes of the wrong member.
+same question about the same member. A hundred and eleven of them are listed
+in the script now and checked with `offsetof` on whichever platform is
+running — every member this package reads out of a C struct, from the record
+`getutxent` hands back to `si_pid` and the one flag word in a `glob_t`. The
+first twenty-two were already right, which is what a check written after the
+fact tends to find. Of the eighty-nine that came after, one was not:
+`gl_flags` was read from the high half of the word it begins in, which
+answers 0 for a `glob` that was given flags, and no test had ever asked. That
+is the argument for the rest of it — an offset written by hand is a claim,
+and a claim nothing checks is only usually true — so they are named offsets
+at the top of the module now, which is a layout a script can read, rather
+than slot numbers and shift counts, which is a layout you have to
+reconstruct in your head. `Statvfs` is why that matters: four of its members
+share two words on Darwin and take four words on glibc, so the same struct
+has `f_flag` at 48 and at 72, and one number written from the other
+platform's header would leave nine members reading the right bytes of the
+wrong member.
 
-What is left is counted rather than trusted silently: the members of a
-struct Mojo lays out itself rest on the order they are declared in, and
-nineteen structs hold their bytes in a buffer while placing members at
-numbers written into the accessors — numbers no script can read, and
-`OFFSETS` is where they go when somebody wants them compared. A hole that
-is numbered is a hole somebody can fill.
+What is left is counted rather than trusted silently, and it splits in two.
+The members of a struct Mojo lays out itself rest on the order they are
+declared in, which is C's arrangement when the order is and says nothing
+when it is not. The seventeen that hold their bytes in a buffer and read no
+member at all are the other half — the eight pthread handles and attributes,
+`fenv_t` and `fexcept_t`, the two spawn types, `fpos_t`, `mbstate_t`,
+`fd_set`, `msqid_ds` and `shmid_ds`. Not one of them is a layout with numbers
+in it: nothing here ever reads a field that C's header names, so there is no
+offset to name and nothing for `offsetof` to disagree with. What they claim
+is a size, and that is what gets checked, in one direction only. A block
+larger than C's is safe, because libc is handed a pointer and writes what it
+thinks is there; a block smaller than C's is whatever came next in memory
+being overwritten, which is why the script calls that a failure and calls the
+generous ones loose.
 
 glibc, for its part, does not come with anything that checks glibc.
 

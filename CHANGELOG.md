@@ -365,6 +365,21 @@ All notable changes to this project are documented here. The format follows
   four bytes of padding behind it, and `ifa_dstaddr` is a union on glibc
   and a plain pointer on Darwin, spelled as a macro the first way and as
   a member the second, which `offsetof` settles either way.
+- **The last three structs that read a member are in the table, and the
+  rest are sizes rather than layouts.** `if_nameindex` names its two,
+  `Sysinfo` its twelve — already named in the module, never compared — and
+  `sigevent` the one word it sets. That is a hundred and eleven offsets,
+  and every member this package reads out of a C struct is now read at an
+  offset a script can compare with the compiler's. The seventeen that are
+  left are the ones that read nothing: the eight pthread handles and
+  attributes, `fenv_t`, `fexcept_t`, the two spawn types, `fpos_t`,
+  `mbstate_t`, `fd_set`, `msqid_ds`, `shmid_ds`. Each of those is a block
+  with a size and no members, so a name in `OFFSETS` would be a zero
+  pretending to be a fact; what they claim is the size, which is checked,
+  and only in one direction — libc writes into a block it was handed a
+  pointer to, so a larger block is safe and a smaller one is somebody
+  else's memory. `beyond-c.md` now says that out loud instead of counting
+  them as work left undone.
 
 ## [0.12.0] - 2026-10-19
 
