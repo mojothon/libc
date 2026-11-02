@@ -873,6 +873,18 @@ def bring_in_libc_search():
     )
 
 
+def bring_in_libc_semaphore():
+    from libc.semaphore import (
+        Semaphore,
+        sem_close,
+        sem_open,
+        sem_post,
+        sem_trywait,
+        sem_unlink,
+        sem_wait,
+    )
+
+
 def bring_in_libc_setjmp():
     from libc.setjmp import (
         longjmp,
@@ -1653,6 +1665,7 @@ def main() raises:
     bring_in_libc_regex()
     bring_in_libc_sched()
     bring_in_libc_search()
+    bring_in_libc_semaphore()
     bring_in_libc_setjmp()
     bring_in_libc_signal()
     bring_in_libc_stdio()

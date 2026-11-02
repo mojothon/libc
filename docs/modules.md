@@ -25,6 +25,7 @@ the bottom.
 | `libc.sched` | `<sched.h>` | 15 |
 | `libc.signal` | `<signal.h>` | 43 |
 | `libc.spawn` | `<spawn.h>` start a process without fork | 23 |
+| `libc.semaphore` | `<semaphore.h>` semaphores opened by name | 7 |
 | `libc.locale` | `<locale.h>` | 16 |
 | `libc.sys.epoll` | `<sys/epoll.h>` | 7 |
 | `libc.search` | `<search.h>` | 9 |
