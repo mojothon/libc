@@ -1520,6 +1520,13 @@ def bring_in_libc_wchar():
     )
 
 
+def bring_in_libc_wctype():
+    from libc.wctype import (
+        towctrans,
+        wctrans,
+    )
+
+
 def main() raises:
     bring_in_libc_complex()
     bring_in_libc_ctype()
@@ -1576,4 +1583,5 @@ def main() raises:
     bring_in_libc_time()
     bring_in_libc_unistd()
     bring_in_libc_wchar()
+    bring_in_libc_wctype()
     print("test_import_all: ok")
