@@ -1223,6 +1223,22 @@ def bring_in_libc_sys_sigqueue():
     )
 
 
+def bring_in_libc_sys_timer():
+    from libc.sys.timer import (
+        SIGEV_NONE,
+        SIGEV_SIGNAL,
+        TIMER_ABSTIME,
+        itimerspec,
+        sigevent,
+        timer_create,
+        timer_delete,
+        timer_getoverrun,
+        timer_gettime,
+        timer_settime,
+        timer_t,
+    )
+
+
 def bring_in_libc_sys_epoll():
     from libc.sys.epoll import (
         epoll_create,
@@ -1757,6 +1773,7 @@ def main() raises:
     bring_in_libc_sys_eventfd()
     bring_in_libc_sys_inotify()
     bring_in_libc_sys_sigqueue()
+    bring_in_libc_sys_timer()
     bring_in_libc_sys_epoll()
     bring_in_libc_sys_ipc()
     bring_in_libc_sys_mman()
