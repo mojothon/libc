@@ -583,3 +583,94 @@ def posix_spawnattr_setsigmask(
         c_ptr[posix_spawnattr_t],
         c_ptr[UInt8],
     ](attr, sigmask)
+
+
+def posix_spawnattr_getsigdefault(
+    attr: c_ptr[posix_spawnattr_t], sigdefault: c_ptr[UInt8]
+) -> c_int:
+    """C library <spawn.h> function `posix_spawnattr_getsigdefault`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/posix_spawnattr_getsigmask.3.html
+
+    Prototype:
+        int posix_spawnattr_getsigdefault(
+            const posix_spawnattr_t *restrict attr,
+            sigset_t *restrict sigdefault)
+
+    Description:
+        Reads back what `posix_spawnattr_setsigdefault` was given: the
+        set of signals the new process is to start handling the default
+        way, rather than inheriting this process's handlers for.
+
+        The set is not a `sigset_t` here but bytes, sixty-four bytes on
+        Darwin and a hundred and twenty-eight on Linux, and this one is
+        written rather than read, so it has to be given room for the
+        larger of the two: asked for 128 bytes, both fill the low ones
+        and leave the rest alone.
+
+    Args:
+        attr: The handle.
+        sigdefault: Where to write the set, as bytes.
+
+    Returns:
+        0, or the error number itself.
+
+    Notes:
+        Only honoured where `POSIX_SPAWN_SETSIGDEF` is among the flags.
+        What comes back is a copy of what was put in, and the handle
+        keeps its own: the block can be written over afterwards without
+        changing anything about the spawn.
+    """
+    return external_call[
+        "posix_spawnattr_getsigdefault",
+        c_int,
+        c_ptr[posix_spawnattr_t],
+        c_ptr[UInt8],
+    ](attr, sigdefault)
+
+
+def posix_spawnattr_getsigmask(
+    attr: c_ptr[posix_spawnattr_t], sigmask: c_ptr[UInt8]
+) -> c_int:
+    """C library <spawn.h> function `posix_spawnattr_getsigmask`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/posix_spawnattr_getsigmask.3.html
+
+    Prototype:
+        int posix_spawnattr_getsigmask(
+            const posix_spawnattr_t *restrict attr,
+            sigset_t *restrict sigmask)
+
+    Description:
+        Reads back what `posix_spawnattr_setsigmask` was given: the mask
+        of signals the new process is to start with blocked, which is
+        why anyone asks for it — a child that starts with this process's
+        mask blocked inherits whatever this process was in the middle of.
+
+        The set is not a `sigset_t` here but bytes, sixty-four bytes on
+        Darwin and a hundred and twenty-eight on Linux, and this one is
+        written rather than read, so it has to be given room for the
+        larger of the two: asked for 128 bytes, both fill the low ones
+        and leave the rest alone.
+
+    Args:
+        attr: The handle.
+        sigmask: Where to write the set, as bytes.
+
+    Returns:
+        0, or the error number itself.
+
+    Notes:
+        Only honoured where `POSIX_SPAWN_SETSIGMASK` is among the flags.
+        What comes back is a copy of what was put in, and the handle
+        keeps its own: the block can be written over afterwards without
+        changing anything about the spawn.
+    """
+    return external_call[
+        "posix_spawnattr_getsigmask",
+        c_int,
+        c_ptr[posix_spawnattr_t],
+        c_ptr[UInt8],
+    ](attr, sigmask)

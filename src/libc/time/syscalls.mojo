@@ -9,6 +9,7 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 
 from libc.constant import c_int, c_long, c_ptr, c_size_t
+from libc.locale import locale_t
 from libc.sys.stat import timeval
 from libc.utils import char_ptr_to_string
 
@@ -418,6 +419,54 @@ def strftime(
     return external_call[
         "strftime", c_size_t, c_ptr[UInt8], c_size_t, c_ptr[UInt8], c_ptr[tm]
     ](buf, maxsize, format, broken)
+
+
+def strftime_l(
+    buf: c_ptr[UInt8],
+    maxsize: c_size_t,
+    format: c_ptr[UInt8],
+    broken: c_ptr[tm],
+    locale: locale_t,
+) -> c_size_t:
+    """Libc POSIX `strftime_l` function.
+
+    Args:
+        buf: Where to write the formatted string.
+        maxsize: The size of `buf`, including room for the null byte.
+        format: A `strftime` format string.
+        broken: A broken-down time.
+        locale: The locale the letters are to be written in, as
+            `newlocale` or `duplocale` hand one out.
+
+    Returns:
+        The number of bytes written, excluding the null byte, or 0 if the
+        result did not fit.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/strftime.3.html).
+        Fn signature: `size_t strftime_l(char *buf, size_t maxsize, const
+            char *format, const struct tm *tm, locale_t locale)`.
+
+        This is `strftime` with the locale in the call instead of taken
+        from whatever the program is running under, and the two answer
+        alike when the locale handed in is the one in force. What the
+        locale decides is the letters: `%A` and `%B`, `%p` and `%x`, and
+        the `%c` and `%X` that are made of them. The numbers — `%Y`,
+        `%m`, `%d`, `%H` — are digits on both, and `%Y-%m-%d` is the same
+        string in every locale there is.
+
+        The locale object is not consumed and may be used again, and is
+        handed to `freelocale` when it is not wanted any more.
+    """
+    return external_call[
+        "strftime_l",
+        c_size_t,
+        c_ptr[UInt8],
+        c_size_t,
+        c_ptr[UInt8],
+        c_ptr[tm],
+        locale_t,
+    ](buf, maxsize, format, broken, locale)
 
 
 def strptime(

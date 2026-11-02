@@ -31,6 +31,7 @@ from libc.time import (
     nanosleep,
     setitimer,
     strftime,
+    strftime_l,
     strptime,
     time,
     timegm,
@@ -40,8 +41,10 @@ from libc.time import (
     tm,
     tzset,
 )
+from libc.locale import LC_ALL, Locale, freelocale, newlocale
 from libc.utils import (
     char_ptr_to_string,
+    is_null,
     null_ptr,
     string_to_char_ptr,
     strlen,
@@ -106,6 +109,65 @@ def test_strftime() raises:
     assert_equal(
         Int(strftime(small, 4, string_to_char_ptr("%Y-%m-%d"), slot)), 0
     )
+
+
+def test_strftime_l_writes_the_names_in_the_locale_it_is_given() raises:
+    """`strftime_l` is `strftime` with the locale in the call rather
+    than taken from whatever the program is running under.
+
+    The locale it is given here is the C locale, which is the one locale
+    both platforms have and the one whose names POSIX fixes: 1 January
+    1970 was a Thursday, in January, at 00:00:00, and both spell those
+    three the same way. That is what makes exact strings worth asking
+    for, and what makes `%A` a check on the locale argument rather than
+    on the clock: a locale that was not in play would answer in whatever
+    language the program happened to be running.
+    """
+    var loc = newlocale(LC_ALL, string_to_char_ptr("C"), null_ptr[Locale]())
+    assert_true(not is_null(loc), "the C locale has an object")
+
+    var epoch = unsafe_alloc[Int64](1)
+    epoch[] = 0
+    var slot = unsafe_alloc[tm](1)
+    slot[] = tm()
+    assert_true(Int(gmtime_r(epoch, slot)) != 0, "the Epoch broken down")
+
+    var buf = unsafe_alloc[UInt8](64)
+    assert_equal(
+        Int(strftime_l(buf, 64, string_to_char_ptr("%Y-%m-%d"), slot, loc)), 10
+    )
+    assert_equal(char_ptr_to_string(buf), "1970-01-01")
+
+    assert_equal(
+        Int(strftime_l(buf, 64, string_to_char_ptr("%A"), slot, loc)), 8
+    )
+    assert_equal(char_ptr_to_string(buf), "Thursday")
+
+    assert_equal(
+        Int(strftime_l(buf, 64, string_to_char_ptr("%B"), slot, loc)), 7
+    )
+    assert_equal(char_ptr_to_string(buf), "January")
+
+    assert_equal(
+        Int(strftime_l(buf, 64, string_to_char_ptr("%H:%M:%S"), slot, loc)), 8
+    )
+    assert_equal(char_ptr_to_string(buf), "00:00:00")
+
+    # The same letters `strftime` writes with no locale named at all, the
+    # program's being C: the two agree when it is the same locale.
+    var plain = unsafe_alloc[UInt8](64)
+    assert_equal(
+        Int(strftime(plain, 64, string_to_char_ptr("%A %B"), slot)), 16
+    )
+    assert_equal(char_ptr_to_string(plain), "Thursday January")
+
+    # Too small a buffer writes nothing and reports 0.
+    var small = unsafe_alloc[UInt8](4)
+    assert_equal(
+        Int(strftime_l(small, 4, string_to_char_ptr("%Y-%m-%d"), slot, loc)), 0
+    )
+
+    freelocale(loc)
 
 
 def test_asctime_and_ctime() raises:
@@ -413,6 +475,7 @@ def main() raises:
     test_clock_and_time()
     test_utc_round_trip()
     test_strftime()
+    test_strftime_l_writes_the_names_in_the_locale_it_is_given()
     test_asctime_and_ctime()
     test_strptime()
     test_clocks()

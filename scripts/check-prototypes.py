@@ -651,6 +651,7 @@ SPELLED_DIFFERENTLY = {
     "Rlimit": "rlimit",
     "Timeval": "timeval",
     "socketaddr": "sockaddr",
+    "Sysinfo": "sysinfo",
     "cdouble": "double _Complex",
     "cfloat": "float _Complex",
     "IfNameindex": "if_nameindex",

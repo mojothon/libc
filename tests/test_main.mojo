@@ -19,6 +19,7 @@ from test_dlfcn import main as run_dlfcn
 from test_sched import main as run_sched
 from test_pthread import main as run_pthread
 from test_epoll import main as run_epoll
+from test_sysinfo import main as run_sysinfo
 from test_socket import main as run_socket
 from test_signal import main as run_signal
 from test_random import main as run_random
@@ -87,6 +88,7 @@ def main() raises:
     run_sched()
     run_pthread()
     run_epoll()
+    run_sysinfo()
     run_socket()
     run_signal()
     run_random()

@@ -15,16 +15,17 @@ the bottom.
 | `libc.sys.socket` | `<sys/socket.h>` | 24 |
 | `libc.sys.stat` | `<sys/stat.h>` | 22 |
 | `libc.sys.times` | `<sys/times.h>` | 2 |
-| `libc.time` | `<time.h>` | 37 |
+| `libc.time` | `<time.h>` | 38 |
 | `libc.fenv` | `<fenv.h>` | 26 |
 | `libc.sys.mman` | `<sys/mman.h>` | 15 |
+| `libc.sys.sysinfo` | `<sys/sysinfo.h>` | 18 |
 | `libc.pthread` | `<pthread.h>` | 98 |
 | `libc.string` | `<string.h>` | 49 |
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 44 |
 | `libc.complex` | `<complex.h>` | 46 |
 | `libc.sched` | `<sched.h>` | 15 |
 | `libc.signal` | `<signal.h>` | 43 |
-| `libc.spawn` | `<spawn.h>` start a process without fork | 23 |
+| `libc.spawn` | `<spawn.h>` start a process without fork | 25 |
 | `libc.locale` | `<locale.h>` | 16 |
 | `libc.sys.epoll` | `<sys/epoll.h>` | 7 |
 | `libc.search` | `<search.h>` | 9 |

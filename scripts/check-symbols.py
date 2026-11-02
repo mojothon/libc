@@ -36,6 +36,11 @@ KNOWN_MISSING = {
     # say so on the first line: the symbols are not on the other side at all.
     "epoll_create": "Linux only; Darwin has kqueue instead",
     "epoll_create1": "Linux only; Darwin has kqueue instead",
+    "get_nprocs": "Linux only; <sys/sysinfo.h> is not on the other side",
+    "get_nprocs_conf": "Linux only; <sys/sysinfo.h> is not on the other side",
+    "get_phys_pages": "Linux only; <sys/sysinfo.h> is not on the other side",
+    "get_avphys_pages": "Linux only; <sys/sysinfo.h> is not on the other side",
+    "sysinfo": "Linux only; <sys/sysinfo.h> is not on the other side",
     "getrandom": "Linux only; Darwin uses arc4random_buf",
     "mlock2": "Linux only; mlock2(2) is a Linux-specific call",
     "prctl": "Linux only; prctl(2) is a Linux-specific call",

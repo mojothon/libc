@@ -20,12 +20,17 @@ from libc.spawn import (
     posix_spawnattr_destroy,
     posix_spawnattr_getflags,
     posix_spawnattr_getpgroup,
+    posix_spawnattr_getsigdefault,
+    posix_spawnattr_getsigmask,
     posix_spawnattr_init,
     posix_spawnattr_setflags,
     posix_spawnattr_setpgroup,
+    posix_spawnattr_setsigdefault,
+    posix_spawnattr_setsigmask,
     posix_spawnattr_t,
     posix_spawnp,
 )
+from libc.signal import sigemptyset, sigfillset
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, waitpid
 from libc.unistd import pipe
 from libc.utils import char_ptr_to_string, null_ptr, string_to_char_ptr
@@ -227,9 +232,127 @@ def test_the_attributes_hold_the_group_and_the_flags_they_are_given() raises:
     flags.unsafe_free()
 
 
+def _zeroed_set() raises -> c_ptr[UInt8]:
+    """A signal set as C wants one: 128 bytes, room for the largest of
+    the two, since each writes its own width and no more.
+    """
+    var block = unsafe_alloc[UInt8](128)
+    for i in range(128):
+        block.unsafe_offset(i)[] = 0
+    return block
+
+
+def _sentinel_set() raises -> c_ptr[UInt8]:
+    """A block filled with something no set is, so a getter that writes
+    nothing cannot pass for one that did.
+    """
+    var block = unsafe_alloc[UInt8](128)
+    for i in range(128):
+        block.unsafe_offset(i)[] = 0xA5
+    return block
+
+
+def test_the_signal_sets_the_handle_is_given_come_back_out() raises:
+    """What `posix_spawnattr_setsigmask` and `posix_spawnattr_setsigdefault`
+    put in, the two getters hand back: a copy of it, in a block of the
+    caller's, which is what makes the getters worth having at all,
+    there being no other way to ask what a handle is carrying.
+
+    Only the first four bytes are compared. Both platforms write their
+    own `sigset_t` and no more, and four bytes is the width the two have
+    in common, so it is all a test can say is equal without knowing
+    which one it is running on.
+    """
+    var attr = unsafe_alloc[posix_spawnattr_t](1)
+    assert_equal(Int(posix_spawnattr_init(attr)), 0, "the handle is made")
+
+    var filled = _zeroed_set()
+    assert_equal(Int(sigfillset(filled)), 0, "a set with everything in it")
+    assert_equal(
+        Int(posix_spawnattr_setsigmask(attr, filled)), 0, "the mask goes in"
+    )
+    assert_equal(
+        Int(posix_spawnattr_setsigdefault(attr, filled)),
+        0,
+        "and so does the set of signals left at their default",
+    )
+
+    var got_mask = _sentinel_set()
+    assert_equal(
+        Int(posix_spawnattr_getsigmask(attr, got_mask)),
+        0,
+        "the mask comes back",
+    )
+    for i in range(4):
+        assert_equal(
+            Int(got_mask.unsafe_offset(i)[]),
+            Int(filled.unsafe_offset(i)[]),
+            "the mask byte that went in is the one that came out",
+        )
+
+    var got_default = _sentinel_set()
+    assert_equal(
+        Int(posix_spawnattr_getsigdefault(attr, got_default)),
+        0,
+        "and so does the default",
+    )
+    for i in range(4):
+        assert_equal(
+            Int(got_default.unsafe_offset(i)[]),
+            Int(filled.unsafe_offset(i)[]),
+            "the default byte that went in is the one that came out",
+        )
+
+    assert_equal(Int(posix_spawnattr_destroy(attr)), 0, "the handle goes back")
+
+
+def test_the_two_signal_sets_are_two_things() raises:
+    """The two getters do not read one field: a mask holding every
+    signal and a default holding none come back as what they were, which
+    is the one way to tell the two apart. A getter wired to the wrong
+    one, or both wired to the same, answers full for both here.
+    """
+    var attr = unsafe_alloc[posix_spawnattr_t](1)
+    assert_equal(Int(posix_spawnattr_init(attr)), 0, "the handle is made")
+
+    var full = _zeroed_set()
+    var empty = _zeroed_set()
+    assert_equal(Int(sigfillset(full)), 0, "one set full")
+    assert_equal(Int(sigemptyset(empty)), 0, "and one empty")
+
+    assert_equal(Int(posix_spawnattr_setsigmask(attr, full)), 0, "mask: full")
+    assert_equal(
+        Int(posix_spawnattr_setsigdefault(attr, empty)), 0, "default: empty"
+    )
+
+    var got_mask = _sentinel_set()
+    var got_default = _sentinel_set()
+    assert_equal(
+        Int(posix_spawnattr_getsigmask(attr, got_mask)), 0, "mask read"
+    )
+    assert_equal(
+        Int(posix_spawnattr_getsigdefault(attr, got_default)), 0, "default read"
+    )
+
+    assert_equal(
+        Int(got_mask.unsafe_offset(0)[]),
+        Int(full.unsafe_offset(0)[]),
+        "the mask came back full",
+    )
+    assert_equal(
+        Int(got_default.unsafe_offset(0)[]),
+        Int(empty.unsafe_offset(0)[]),
+        "and the default came back empty, which the mask is not",
+    )
+
+    assert_equal(Int(posix_spawnattr_destroy(attr)), 0, "the handle goes back")
+
+
 def main() raises:
     test_posix_spawnp_runs_the_program_its_arguments_name()
     test_posix_spawn_answers_for_a_path_that_is_not_there()
     test_the_file_actions_hand_the_child_a_pipe_for_its_output()
     test_the_attributes_hold_the_group_and_the_flags_they_are_given()
+    test_the_signal_sets_the_handle_is_given_come_back_out()
+    test_the_two_signal_sets_are_two_things()
     print("test_spawn: ok")
