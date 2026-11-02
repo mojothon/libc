@@ -164,6 +164,19 @@ Being fair about the other direction:
   arrive: a file asked for with 0o644 came out as 0o150, which is no umask
   of 0o644 but whatever was on the stack. `fchmod` afterwards is the way to
   be sure, and both docstrings say so.
+- **Semaphores.** `<semaphore.h>` is read and not bound, for two reasons
+  that meet in the same header. Darwin has no unnamed semaphores:
+  `sem_init` is declared, marked deprecated, and answers -1 with `ENOSYS`,
+  because Apple never implemented them — what its `sem_t` is, is an `int`
+  naming a semaphore the kernel holds. The named ones work, `sem_open`
+  being a syscall there, but the count a new one starts at is an argument
+  after a variadic one, which is the `openat` problem again: on arm64
+  Darwin whatever arrives as the count is what was on the stack, and a
+  semaphore that starts at the wrong number is worse than one that is not
+  there at all. A round was written and taken back for this. The failure
+  signature is worth knowing if anyone tries again: the call answers 0 and
+  the semaphore exists, and only a `sem_trywait` says the count was not
+  the one asked for.
 - **Speed.** Measured, and there is nothing here to be modest about:
   **1.6 ns** per call through the binding against **2.2 ns** for the same
   call from C — `strlen`, 20 million times, run twice. The gap favours
