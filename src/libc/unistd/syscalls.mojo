@@ -572,6 +572,62 @@ def isatty(fd: Int32) -> Int32:
     return external_call["isatty", Int32, Int32](fd)
 
 
+def ttyname(fd: Int32) -> c_ptr[UInt8]:
+    """Libc POSIX `ttyname` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/ttyname.3p.html
+
+    Args:
+        fd: A descriptor to ask about.
+
+    Returns:
+        The path of the terminal it is attached to, or a null pointer
+        where it is not attached to one, with `errno` set to `ENOTTY`.
+
+    Notes:
+        The path is the library's own: it belongs to the library and not
+        to the caller, and the next call of this kind may write over it,
+        which is the reason `ttyname_r` exists. Both platforms keep it in
+        what amounts to one buffer per thread.
+
+        A descriptor that is not a terminal is not an error to ask about,
+        so the answer is a null pointer rather than a failure with `errno`
+        left where it was — except that `ENOTTY` is set as well, which
+        says what it was not.
+    """
+    return external_call["ttyname", c_ptr[UInt8], Int32](fd)
+
+
+def ttyname_r(fd: Int32, buf: c_ptr[UInt8], buflen: UInt64) -> Int32:
+    """Libc POSIX `ttyname_r` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/ttyname_r.3p.html
+
+    Args:
+        fd: A descriptor to ask about.
+        buf: Room for the path, which is written into and not owned by
+            the library.
+        buflen: How much room there is, which has to be at least 32 and
+            wants to be as long as the longest path a terminal can have.
+
+    Returns:
+        Zero, or the error number itself — `ENOTTY` where the descriptor
+        is not a terminal, `ERANGE` where the room was too small.
+
+    Notes:
+        This is one of the few calls on this side of the library that
+        answers with an error number instead of -1 and `errno`, which is
+        how the reentrant versions usually do it and a trap for a caller
+        who checks for -1: a full error number is positive and a check
+        against -1 would call it a success.
+    """
+    return external_call["ttyname_r", Int32, Int32, c_ptr[UInt8], UInt64](
+        fd, buf, buflen
+    )
+
+
 def link(oldpath: c_ptr[UInt8], newpath: c_ptr[UInt8]) -> Int32:
     """Libc POSIX `link` function.
 
@@ -1325,6 +1381,51 @@ def alarm(seconds: Int32) -> Int32:
         does not wait for anything and returns at once.
     """
     return external_call["alarm", Int32, Int32](seconds)
+
+
+def ualarm(usec: UInt32, interval: UInt32) -> UInt32:
+    """Libc BSD `ualarm` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/ualarm.3.html
+
+    Args:
+        usec: How long to wait, in microseconds, or 0 to cancel the one
+            already waiting.
+        interval: How long to wait before each one after that, in
+            microseconds, or 0 for a single `SIGALRM`.
+
+    Returns:
+        How many microseconds were left on the alarm this one replaces,
+        which is 0 where there was none.
+
+    Notes:
+        `alarm` counted in whole seconds and went off once; this counts in
+        microseconds and can go off again and again. Both are the same
+        `ITIMER_REAL` underneath — on both platforms this is `setitimer`
+        with the microseconds divided up differently — so an `alarm`, a
+        `ualarm` and a `setitimer` on `ITIMER_REAL` all replace one
+        another and only one of them can be pending.
+
+        What comes back is what was left of the one it replaced, and not
+        what it was set to, which is the same thing `setitimer` reports
+        through its out argument rather than as its answer.
+
+        `SIGALRM` by default ends the process, so a timer that is set and
+        not taken back will do it — not here but somewhere after, which
+        is what makes reading the return value of the cancelling call
+        worth doing.
+
+        A microsecond count of a million or more is not portable, and the
+        two platforms differ on it: Darwin divides it into seconds and
+        microseconds as it should, and glibc hands it straight to the
+        `tv_usec` of a `setitimer`, which takes less than a million — so
+        asking for a second's worth here comes back as -1 with `EINVAL`
+        rather than a timer. Nothing about that is in the standard, and
+        the standard's own advice is to use `setitimer` for anything
+        longer than a second.
+    """
+    return external_call["ualarm", UInt32, UInt32, UInt32](usec, interval)
 
 
 def pause() -> Int32:

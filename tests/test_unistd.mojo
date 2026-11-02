@@ -7,6 +7,7 @@ from libc.fcntl import O_CREAT, O_RDONLY, open as open_with_mode
 from libc.constant import AT_FDCWD, c_ptr, c_uint, SEEK_END, SEEK_SET
 from libc.sys.stat import Stat, fchmod, fstat, stat
 from libc.sys.utsname import Utsname, uname
+from libc.time import ITIMER_REAL, getitimer, itimerval, setitimer
 from libc.unistd import (
     CS_PATH,
     PC_ASYNC_IO,
@@ -65,6 +66,8 @@ from libc.unistd import (
     getusershell,
     getwd,
     isatty,
+    ttyname,
+    ttyname_r,
     lchown,
     linkat,
     lseek,
@@ -94,13 +97,14 @@ from libc.unistd import (
     usleep,
     write,
     writev,
+    ualarm,
 )
 from libc.constant import O_RDWR, c_char, c_ptr
 from libc.errno import get_errno, set_errno
 from libc.file import close, fclose, fopen, open
 from libc.stdio import fwrite, remove
 from libc.sys.socket import iovec
-from libc.utils import char_ptr_to_string, null_ptr, string_to_char_ptr
+from libc.utils import char_ptr_to_string, is_null, null_ptr, string_to_char_ptr
 
 
 def test_getcwd() raises:
@@ -548,6 +552,13 @@ def test_the_ids_and_the_terminal() raises:
     var fd = open(nothing, O_RDONLY)
     assert_true(fd >= 0, "/dev/null opens")
     assert_equal(isatty(fd), 0, "and it is not a terminal")
+    assert_true(is_null(ttyname(fd)), "so it has no name to give back")
+    var name = unsafe_alloc[UInt8](256)
+    assert_true(
+        ttyname_r(fd, name, 256) != 0,
+        "and ttyname_r answers with the error number itself, not with -1",
+    )
+    name.unsafe_free()
     _ = close(fd)
     nothing.unsafe_free()
 
@@ -851,6 +862,87 @@ def test_walking_the_shells_a_user_may_have() raises:
     endusershell()
 
 
+def test_ualarm_is_the_timer_that_getitimer_reads() raises:
+    """`ualarm` is `ITIMER_REAL` in microseconds, so the two bindings can
+    check each other: one sets the timer and the other is asked what it
+    says.
+
+    The reading is the half worth having. `ualarm` answers with what was
+    left of the timer it replaced rather than with what it was given, so
+    a call that did nothing and a call that worked both answer 0 the
+    first time — it is the countdown that `getitimer` reports afterwards
+    that says the microseconds arrived somewhere.
+
+    Nine hundred and ninety-nine thousandths of a second, and taken back
+    before it can run out: a `SIGALRM` left pending ends the process, and
+    it would do it in whatever ran next rather than here.
+
+    Under a second on purpose. glibc passes the microseconds straight to
+    `setitimer`'s `tv_usec`, which will not take a million or more, so a
+    timer of a second or longer is `EINVAL` there and a timer of a second
+    or longer on Darwin; the only count that means the same thing on both
+    is one below a million, and a test that used ten seconds would be
+    testing the platform.
+    """
+    var nothing = unsafe_alloc[itimerval](1)
+    nothing.unsafe_offset(0)[] = itimerval()
+    assert_equal(
+        setitimer(ITIMER_REAL, nothing, null_ptr[itimerval]()),
+        0,
+        "no timer is pending to begin with",
+    )
+
+    comptime ASKED_FOR: UInt32 = 999_000
+    assert_equal(
+        ualarm(ASKED_FOR, 0),
+        0,
+        "so the microseconds that come back are the none that were left",
+    )
+
+    var current = unsafe_alloc[itimerval](1)
+    current.unsafe_offset(0)[] = itimerval()
+    assert_equal(
+        getitimer(ITIMER_REAL, current), 0, "and the timer it set is read"
+    )
+    assert_equal(
+        current.unsafe_offset(0)[].it_value_sec,
+        0,
+        "as a countdown of no seconds at all",
+    )
+    assert_true(
+        current.unsafe_offset(0)[].it_value_usec > 990_000
+        and current.unsafe_offset(0)[].it_value_usec <= Int64(ASKED_FOR),
+        "but of the microseconds it was given, in their own slot",
+    )
+    assert_equal(
+        current.unsafe_offset(0)[].it_interval_sec,
+        0,
+        "with nothing to repeat, because the interval was nothing",
+    )
+    assert_equal(
+        current.unsafe_offset(0)[].it_interval_usec,
+        0,
+        "microseconds and all",
+    )
+
+    var left = ualarm(0, 0)
+    assert_true(
+        left > 990_000 and left <= ASKED_FOR,
+        "and taking it back answers with the microseconds that were left",
+    )
+
+    assert_equal(
+        getitimer(ITIMER_REAL, current), 0, "and nothing is pending after"
+    )
+    assert_equal(current.unsafe_offset(0)[].it_value_sec, 0, "no seconds left")
+    assert_equal(
+        current.unsafe_offset(0)[].it_value_usec, 0, "and no microseconds"
+    )
+
+    nothing.unsafe_free()
+    current.unsafe_free()
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -882,4 +974,5 @@ def main() raises:
     test_setuid_and_setgid_asked_for_what_we_already_are()
     test_pread_and_pwrite_at_an_offset()
     test_readv_gathers_what_writev_scattered()
+    test_ualarm_is_the_timer_that_getitimer_reads()
     print("test_unistd: ok")
