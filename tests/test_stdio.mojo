@@ -8,12 +8,13 @@ from libc.constant import (
     O_RDONLY,
     O_TRUNC,
     O_WRONLY,
+    SEEK_SET,
     c_char,
     c_ptr,
     c_size_t,
     c_void,
 )
-from libc.errno import set_errno
+from libc.errno import get_errno, set_errno
 from libc.fcntl import open
 from libc.file import (
     FILE,
@@ -25,6 +26,7 @@ from libc.file import (
     fputs,
     fread,
     getdelim,
+    lseek,
     rewind,
 )
 from libc.stdio import (
@@ -380,7 +382,19 @@ def test_the_three_that_write_where_they_point() raises:
     var err_name = string_to_char_ptr(err_path)
 
     var out = open(out_name, O_WRONLY | O_CREAT | O_TRUNC, 0o644)
-    assert_true(out >= 0, "a file to stand in for standard output")
+    assert_true(
+        out >= 0,
+        "a file to stand in for standard output: errno "
+        + String(Int(get_errno())),
+    )
+    # The way back in is taken here, while the file is known to be there and
+    # nothing has been moved: opening it again after the redirection is the
+    # same file, but not the same thing to go wrong.
+    var reading = open(out_name, O_RDONLY)
+    assert_true(
+        reading >= 0,
+        "and a way to read it back: errno " + String(Int(get_errno())),
+    )
     var kept_out = dup(1)
     assert_true(kept_out >= 0, "and the terminal's own descriptor kept")
     assert_equal(dup2(out, 1), 1, "standard output moved onto the file")
@@ -388,6 +402,8 @@ def test_the_three_that_write_where_they_point() raises:
 
     var err = open(err_name, O_WRONLY | O_CREAT | O_TRUNC, 0o644)
     assert_true(err >= 0, "one to stand in for standard error")
+    var reading_err = open(err_name, O_RDONLY)
+    assert_true(reading_err >= 0, "and a way to read that one back")
     var kept_err = dup(2)
     assert_true(kept_err >= 0, "and that one kept too")
     assert_equal(dup2(err, 2), 2, "standard error moved onto it")
@@ -416,8 +432,9 @@ def test_the_three_that_write_where_they_point() raises:
     assert_equal(dup2(kept_err, 2), 2, "so is standard error")
     assert_equal(close(kept_err), 0, "and its copy")
 
-    var reading = open(out_name, O_RDONLY)
-    assert_true(reading >= 0, "the file standard output went to opens")
+    assert_equal(
+        lseek(reading, 0, SEEK_SET), 0, "the file is read from its start"
+    )
     var got = unsafe_alloc[c_char](16384)
     for i in range(16384):
         got.unsafe_offset(i)[] = 0
@@ -441,8 +458,6 @@ def test_the_three_that_write_where_they_point() raises:
     _ = remove(out_name)
     got.unsafe_free()
 
-    var reading_err = open(err_name, O_RDONLY)
-    assert_true(reading_err >= 0, "so does the one standard error went to")
     var said = unsafe_alloc[c_char](128)
     for i in range(128):
         said.unsafe_offset(i)[] = 0
