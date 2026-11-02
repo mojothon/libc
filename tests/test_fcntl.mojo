@@ -141,6 +141,11 @@ def test_flock_is_taken_on_the_open_file() raises:
 
     var first = open(path, O_RDWR | O_CREAT | O_TRUNC, 0o644)
     assert_true(first >= 0, "a file to lock, opened")
+    # Set outright rather than left to umask: a mode of 0o644 through a
+    # umask of 0o022 is 0o644 here and 0o600 somewhere else, and an open
+    # for reading of a file with no permission bits at all comes back
+    # EACCES on Darwin — which is the second open below, not this one.
+    assert_equal(fchmod(first, 0o644), 0, "with its permissions set outright")
     var second = open(path, O_RDWR)
     assert_true(second >= 0, "and opened a second time, as a second open of it")
 
