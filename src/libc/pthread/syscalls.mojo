@@ -2299,3 +2299,94 @@ def pthread_kill(thread: pthread_t, sig: Int32) -> Int32:
         to say and not this call's.
     """
     return external_call["pthread_kill", Int32, pthread_t, Int32](thread, sig)
+
+
+def pthread_getschedparam(
+    thread: pthread_t, policy: c_ptr[Int32], param: c_ptr[sched_param]
+) -> Int32:
+    """C library <pthread.h> function `pthread_getschedparam`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_getschedparam.3.html
+
+    Prototype:
+        int pthread_getschedparam(pthread_t thread, int *policy,
+                                  struct sched_param *param)
+
+    Description:
+        The scheduling policy a thread runs under and the priority it
+        has in it, which are one answer rather than two: a priority
+        means nothing without the policy it is a priority in, the range
+        of priorities being different for each.
+
+    Args:
+        thread: The thread to ask about, which is `pthread_self` for
+            this one.
+        policy: Where the policy is written, one of the `SCHED_*`
+            numbers.
+        param: Where the priority is written.
+
+    Returns:
+        0, or a number that says what went wrong.
+
+    Notes:
+        The reason is the return value and not `errno`, which is the
+        pthread way and the reason it is worth looking at rather than
+        the pointer.
+
+        The same question can be asked of a process rather than of a
+        thread, by `sched_getparam` and `sched_getscheduler`, and for
+        the thread a program starts on the two answers agree.
+    """
+
+    return external_call[
+        "pthread_getschedparam",
+        Int32,
+        pthread_t,
+        c_ptr[Int32],
+        c_ptr[sched_param],
+    ](thread, policy, param)
+
+
+def pthread_setschedparam(
+    thread: pthread_t, policy: Int32, param: c_ptr[sched_param]
+) -> Int32:
+    """C library <pthread.h> function `pthread_setschedparam`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_setschedparam.3.html
+
+    Prototype:
+        int pthread_setschedparam(pthread_t thread, int policy,
+                                  const struct sched_param *param)
+
+    Description:
+        Asks for a thread to run under another policy, or at another
+        priority in the one it has. Both are asked for at once, neither
+        of them being optional: a policy with no priority in it is not
+        a thing a thread can be given.
+
+    Args:
+        thread: The thread to change, which is `pthread_self` for this
+            one.
+        policy: The policy to run it under, one of the `SCHED_*`
+            numbers.
+        param: The priority to run it at, which has to be one that
+            policy allows.
+
+    Returns:
+        0, or a number that says what went wrong.
+
+    Notes:
+        A policy that does not exist and a priority outside the range of
+        one that does are both refused rather than rounded to the
+        nearest that would do.
+
+        Changing another thread's parameters takes the right to do so.
+        Changing this one's to the pair it already has does not, which
+        is what makes the round trip something a test can ask for.
+    """
+
+    return external_call[
+        "pthread_setschedparam", Int32, pthread_t, Int32, c_ptr[sched_param]
+    ](thread, policy, param)

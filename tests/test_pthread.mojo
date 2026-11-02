@@ -46,7 +46,9 @@ from libc.pthread import (
     pthread_key_delete,
     pthread_key_t,
     pthread_kill,
+    pthread_getschedparam,
     pthread_self,
+    pthread_setschedparam,
     pthread_setcancelstate,
     pthread_setcanceltype,
     pthread_setspecific,
@@ -55,7 +57,12 @@ from libc.pthread import (
     pthread_testcancel,
 )
 from libc.signal import SIG_BLOCK, sigemptyset
-from libc.sched import SCHED_OTHER, sched_param
+from libc.sched import (
+    SCHED_OTHER,
+    sched_getparam,
+    sched_getscheduler,
+    sched_param,
+)
 from libc.utils import is_null, null_ptr
 
 # A megabyte of stack and one page in front of it: more than any of them
@@ -469,9 +476,89 @@ def test_a_thread_can_be_asked_for_and_keeps_its_own_mask() raises:
     also_before.unsafe_free()
 
 
+def test_the_scheduling_parameters_of_this_thread() raises:
+    """`pthread_getschedparam` says which policy a thread runs under and
+    what its priority in it is, and `pthread_setschedparam` asks for a
+    pair.
+
+    Both are asserted against the `sched_*` calls that ask the same of a
+    process, which is the part that is not simply a number coming back
+    the way it went in: the thread a program starts on is the process,
+    so the two ways of asking have to agree about it.
+
+    Asking for a policy that does not exist is refused, and asking for
+    the pair that was just read is granted. The round trip is what a
+    wrong argument order would not survive — an `int *` and a
+    `struct sched_param *` are both pointers.
+    """
+    var policy = unsafe_alloc[Int32](1)
+    policy.unsafe_offset(0)[] = -1
+    var param = unsafe_alloc[sched_param](1)
+    param.unsafe_offset(0)[] = sched_param()
+
+    assert_equal(
+        pthread_getschedparam(pthread_self(), policy, param),
+        0,
+        "the scheduling parameters of this thread are read",
+    )
+    assert_true(policy.unsafe_load(0) >= 0, "and a policy comes back with them")
+
+    var process_param = unsafe_alloc[sched_param](1)
+    process_param.unsafe_offset(0)[] = sched_param()
+    assert_equal(
+        sched_getparam(0, process_param),
+        0,
+        "and the same thing is asked of the process",
+    )
+    assert_equal(
+        Int(param.unsafe_offset(0)[].sched_priority()),
+        Int(process_param.unsafe_offset(0)[].sched_priority()),
+        "which gives the same priority",
+    )
+    assert_equal(
+        Int(policy.unsafe_load(0)),
+        Int(sched_getscheduler(0)),
+        "and the same policy",
+    )
+
+    assert_true(
+        pthread_setschedparam(pthread_self(), 9999, param) != 0,
+        "a policy that does not exist is refused",
+    )
+
+    assert_equal(
+        pthread_setschedparam(pthread_self(), policy.unsafe_load(0), param),
+        0,
+        "and the pair that was read is granted",
+    )
+
+    var again_policy = unsafe_alloc[Int32](1)
+    again_policy.unsafe_offset(0)[] = -1
+    var again = unsafe_alloc[sched_param](1)
+    again.unsafe_offset(0)[] = sched_param()
+    assert_equal(pthread_getschedparam(pthread_self(), again_policy, again), 0)
+    assert_equal(
+        Int(again_policy.unsafe_load(0)),
+        Int(policy.unsafe_load(0)),
+        "and reading it again finds the same policy",
+    )
+    assert_equal(
+        Int(again.unsafe_offset(0)[].sched_priority()),
+        Int(param.unsafe_offset(0)[].sched_priority()),
+        "and the same priority",
+    )
+
+    policy.unsafe_free()
+    param.unsafe_free()
+    process_param.unsafe_free()
+    again_policy.unsafe_free()
+    again.unsafe_free()
+
+
 def main() raises:
     test_the_attribute_object()
     test_the_scheduling_settings()
+    test_the_scheduling_parameters_of_this_thread()
     test_which_thread_and_whether_it_may_end()
     test_a_slot_of_its_own()
     test_the_one_that_is_left()

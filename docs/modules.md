@@ -23,7 +23,7 @@ the bottom.
 | `libc.sys.eventfd` | `<sys/eventfd.h>` a counter behind a descriptor | 6 |
 | `libc.aio` | `<aio.h>` I/O handed over rather than waited for | 24 |
 | `libc.sys.sysinfo` | `<sys/sysinfo.h>` | 18 |
-| `libc.pthread` | `<pthread.h>` | 98 |
+| `libc.pthread` | `<pthread.h>` | 100 |
 | `libc.string` | `<string.h>` | 49 |
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 44 |
 | `libc.complex` | `<complex.h>` | 46 |
