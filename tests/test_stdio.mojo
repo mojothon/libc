@@ -360,14 +360,17 @@ def test_the_three_that_write_where_they_point() raises:
     `fflush`, which this package cannot bind at all: `std.io` declares the
     name and a second declaration of it will not compile — the note at the
     top of `libc.file.syscalls` says so, and `check-symbols.py` keeps it
-    from being tried again. So the line `puts` is given here is longer than
-    any buffer: what will not fit is written out as it is made, and a
-    thousand of its characters in the file is what says the call wrote to
-    descriptor 1 rather than to the terminal. The rest is still waiting in
-    the buffer when the test ends, which is why that is a floor and not the
-    length, and why `putchar_unlocked` is asked for its answer rather than
-    for its byte — the byte it writes goes into the same buffer, ahead of
-    the long line, so it does come out with it.
+    from being tried again. How big that buffer is is libc's business, and
+    it is not the same number on the two platforms, so it is not guessed
+    at: a long line of spaces is written again and again, and the round in
+    which the file has something in it is the round in which the buffer was
+    full and wrote itself out. That is the whole of the claim — the
+    characters went to descriptor 1 and not to the terminal — and one flush
+    is enough to settle it.
+
+    `putchar_unlocked` is asked for its answer rather than for its byte: it
+    writes into the same buffer, ahead of the long line, so its byte comes
+    out with the first flush, and finding a 65 in the file says so.
 
     The line is made of spaces. Whatever is still waiting in the buffer
     when this test ends is written to the terminal when the process exits,
@@ -421,8 +424,22 @@ def test_the_three_that_write_where_they_point() raises:
     for i in range(8999):
         line.unsafe_offset(i)[] = 0x20
     line.unsafe_offset(8999)[] = 0
+
+    var got = unsafe_alloc[c_char](16384)
+    for i in range(16384):
+        got.unsafe_offset(i)[] = 0
+    var wrote = 0
+    var rounds = 0
+    while rounds < 64 and wrote <= 0:
+        assert_true(
+            Int(puts(line)) >= 0, "puts wrote its line without being told where"
+        )
+        rounds += 1
+        wrote = read(reading, got, 16383)
     assert_true(
-        Int(puts(line)) >= 0, "puts wrote its line without being told where"
+        wrote > 0,
+        "one of 64 lines filled the buffer and was written out: errno "
+        + String(Int(get_errno())),
     )
     line.unsafe_free()
 
@@ -434,14 +451,6 @@ def test_the_three_that_write_where_they_point() raises:
     assert_equal(dup2(kept_err, 2), 2, "so is standard error")
     assert_equal(close(kept_err), 0, "and its copy")
 
-    assert_equal(
-        lseek(reading, 0, SEEK_SET), 0, "the file is read from its start"
-    )
-    var got = unsafe_alloc[c_char](16384)
-    for i in range(16384):
-        got.unsafe_offset(i)[] = 0
-    var wrote = read(reading, got, 16383)
-    assert_true(wrote > 0, "and something was written to it")
     var spaces = 0
     var saw_the_byte = False
     for i in range(Int(wrote)):
@@ -451,7 +460,9 @@ def test_the_three_that_write_where_they_point() raises:
         if byte == 65:
             saw_the_byte = True
     assert_true(
-        spaces > 1000, "a thousand characters of that line are in the file"
+        spaces > 0,
+        "and what is in it are characters of the line it was given,"
+        + " however much of it the buffer was ready to write",
     )
     assert_true(
         saw_the_byte, "with the byte putchar_unlocked wrote before them"
