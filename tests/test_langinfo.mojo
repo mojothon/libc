@@ -25,9 +25,15 @@ from libc.langinfo import (
     RADIXCHAR,
     T_FMT,
     THOUSEP,
+    NL_CAT_LOCALE,
+    catclose,
+    catgets,
+    catopen,
     nl_langinfo,
+    nl_langinfo_l,
 )
-from libc.utils import char_ptr_to_string
+from libc.locale import LC_ALL, Locale, freelocale, newlocale
+from libc.utils import char_ptr_to_string, is_null, null_ptr, string_to_char_ptr
 
 
 def test_the_names_of_days_and_months_are_the_locales_own() raises:
@@ -110,9 +116,92 @@ def test_the_codeset_has_a_name_and_an_item_nobody_defines_does_not() raises:
     )
 
 
+def test_nl_langinfo_l_answers_from_the_locale_it_is_given() raises:
+    """The `_l` call asks a locale object rather than the process, and the
+    object it is asked is a C locale, so the answers are again POSIX's.
+
+    Two of them are worth an exact string and one is not: the decimal
+    point of the C locale is a dot and its thousands separator is nothing
+    at all, but its character set is spelled `ANSI_X3.4-1968` on glibc
+    and `US-ASCII` on XNU, so that one is only asked to have a name.
+    """
+    var c_locale = string_to_char_ptr("C")
+    var loc = newlocale(LC_ALL, c_locale, null_ptr[Locale]())
+    assert_true(Int(loc) != 0, "a C locale object was made to ask")
+
+    assert_equal(
+        char_ptr_to_string(nl_langinfo_l(RADIXCHAR, loc)),
+        ".",
+        "and it writes the decimal point with a dot",
+    )
+    assert_equal(
+        char_ptr_to_string(nl_langinfo_l(THOUSEP, loc)),
+        "",
+        "and puts nothing between the thousands",
+    )
+
+    var codeset = nl_langinfo_l(CODESET, loc)
+    assert_true(not is_null(codeset), "it names a character set")
+    assert_true(
+        char_ptr_to_string(codeset).byte_length() > 0,
+        "with something in the name",
+    )
+
+    freelocale(loc)
+
+
+def test_catopen_refuses_what_is_not_there_and_catgets_answers_regardless() raises:
+    """A catalog is a compiled file in a format the library owns, and the
+    two libraries own different formats, so there is no catalog file that
+    could be written here and read on both. The half that can be tested
+    is the half that a program leans on: what happens where there is no
+    catalog.
+
+    Both platforms answer a failed `catopen` with the all-ones pointer,
+    and both `catgets` and `catclose` check for that pointer instead of
+    following it — XNU's `catgets` returns its `dflt` for `NULL` or
+    `NLERR` before it touches anything, and glibc's does the same for
+    `(nl_catd) -1`.
+
+    What `catgets` answers with is the string the caller handed over, and
+    the same string and not a copy: it is the fallback the caller owns,
+    which is what lets a program with its own text not care whether the
+    catalog was there.
+    """
+    var path = string_to_char_ptr("/nonexistent/nonexistent.cat")
+    var fallback = string_to_char_ptr("the string the caller brought")
+    var catalog = catopen(path, NL_CAT_LOCALE)
+    path.unsafe_free()
+
+    assert_true(
+        Int(UInt(catalog)) <= 0,
+        "a path with nothing at it opens no catalog, and says so in all ones",
+    )
+
+    var answer = catgets(catalog, 1, 1, fallback)
+    assert_true(
+        not is_null(answer),
+        "asking a catalog that never opened still gets an answer",
+    )
+    assert_equal(
+        UInt(answer),
+        UInt(fallback),
+        "which is the very string it was handed, not a copy and not nothing",
+    )
+
+    assert_true(
+        catclose(catalog) != 0,
+        "and closing what never opened is a failure rather than a success",
+    )
+
+    fallback.unsafe_free()
+
+
 def main() raises:
     test_the_names_of_days_and_months_are_the_locales_own()
     test_how_the_locale_writes_a_time_and_a_date()
     test_how_the_locale_writes_a_number()
     test_the_codeset_has_a_name_and_an_item_nobody_defines_does_not()
+    test_nl_langinfo_l_answers_from_the_locale_it_is_given()
+    test_catopen_refuses_what_is_not_there_and_catgets_answers_regardless()
     print("test_langinfo: ok")

@@ -7,6 +7,7 @@ from std.ffi import external_call
 from std.sys import CompilationTarget
 
 from libc.constant import c_ptr
+from libc.locale import Locale, locale_t
 
 
 # Every one of these is an `nl_item`, and not one of them is the same
@@ -88,6 +89,36 @@ comptime NOEXPR: Int32 = 53 if CompilationTarget.is_macos() else 327681
 comptime CRNCYSTR: Int32 = 56 if CompilationTarget.is_macos() else 262159
 
 
+# The two constants `nl_types.h` keeps for the catalog calls below, and
+# the rare pair that is the same number on both platforms: `NL_SETD` is 1
+# on glibc and 1 on XNU, `NL_CAT_LOCALE` is 1 on both. The first says
+# which set of messages a default message belongs to, and the second is
+# the flag that tells `catopen` to look the catalog up in the locale the
+# process is in rather than in `LANG` read straight from the environment.
+comptime NL_SETD: Int32 = 1
+comptime NL_CAT_LOCALE: Int32 = 1
+
+
+struct Catalog:
+    """An opaque C message catalog, the thing a `nl_catd` points at.
+
+    Empty on purpose: the catalog file's own format is the library's
+    business, and it is not even the same format on the two platforms —
+    glibc reads the `.mo` files `msgfmt` writes, XNU reads a format of its
+    own, and neither reads the other's. All that crosses the boundary is
+    the pointer, and only `catgets` and `catclose` take it back.
+
+    The one value worth knowing is the one that means no catalog: both
+    platforms answer a failed `catopen` with the all-ones pointer, and
+    both `catgets` and `catclose` check for it rather than following it.
+    """
+
+    pass
+
+
+comptime nl_catd = c_ptr[Catalog]
+
+
 def nl_langinfo(item: Int32) -> c_ptr[UInt8]:
     """C library <langinfo.h> function `nl_langinfo`.
 
@@ -136,3 +167,154 @@ def nl_langinfo(item: Int32) -> c_ptr[UInt8]:
         lone `-`.
     """
     return external_call["nl_langinfo", c_ptr[UInt8], Int32](item)
+
+
+def nl_langinfo_l(item: Int32, locale: locale_t) -> c_ptr[UInt8]:
+    """C library <langinfo.h> function `nl_langinfo_l`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/nl_langinfo.3.html
+
+    Description:
+        `nl_langinfo` asked of a locale object instead of the one the
+        process is in. Nothing is switched and nothing is changed: the
+        answer comes out of the `locale_t` that was handed over, so two
+        locales can be asked one after the other without either of them
+        being the process's, and a thread's own locale is left alone.
+
+        The C locale's answers are the ones POSIX fixes, which makes them
+        the ones to test against: a dot between the whole and the
+        fractional part of a number, and nothing between the thousands.
+
+    Args:
+        item: Which thing to ask for, one of the `nl_item` constants
+            above, by name — the two platforms number every one of them
+            differently.
+        locale: The locale object to ask, as made by `newlocale`.
+
+    Returns:
+        What that locale says, NUL terminated, in storage libc owns: the
+        next call may overwrite it and nothing here frees it.
+
+    Notes:
+        On Darwin this is declared in `xlocale/_langinfo.h`, which
+        `<langinfo.h>` pulls in only where something has asked for the
+        extended locales first; the symbol is in libSystem either way.
+    """
+    return external_call["nl_langinfo_l", c_ptr[UInt8], Int32, locale_t](
+        item, locale
+    )
+
+
+def catopen(name: c_ptr[UInt8], oflag: Int32) -> nl_catd:
+    """C library <nl_types.h> function `catopen`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/catopen.3.html
+
+    Description:
+        Opens a message catalog — the compiled file that holds a
+        program's strings in one language — and hands back the descriptor
+        that `catgets` reads messages out of and `catclose` gives back.
+
+        The file's format is the library's own and the two libraries do
+        not share one: glibc reads the `.mo` files `msgfmt` writes, XNU
+        reads a format of its own. A catalog is therefore a file that
+        belongs to the platform it was built for, not a portable one.
+
+    Args:
+        name: The path of the catalog, or, where it is not one, a name to
+            look for along the search path the environment names, NUL
+            terminated.
+        oflag: `NL_CAT_LOCALE` to take the language from the locale the
+            process is in, or 0 to have the library read it out of the
+            environment itself.
+
+    Returns:
+        The catalog descriptor, or the all-ones pointer where there was
+        no catalog to open, with `errno` saying why. Both platforms
+        answer a failure this way, and both `catgets` and `catclose` look
+        for it before they follow the pointer.
+
+    Notes:
+        Nothing here says what a program does with a catalog it could not
+        open, which is the reason `catgets` takes a string of its own: a
+        program that has one to fall back on never has to know whether
+        the catalog was there.
+
+        The search path is `NLSPATH`, and the language read out of the
+        environment is `LANG` — which is the whole difference between the
+        two flags, and a reason to prefer `NL_CAT_LOCALE`: a thread that
+        has set its own locale with `uselocale` is not in `LANG`, and only
+        the flag can see what it did.
+    """
+    return external_call["catopen", nl_catd, c_ptr[UInt8], Int32](name, oflag)
+
+
+def catgets(
+    catalog: nl_catd, set_id: Int32, msg_id: Int32, s: c_ptr[UInt8]
+) -> c_ptr[UInt8]:
+    """C library <nl_types.h> function `catgets`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/catgets.3.html
+
+    Description:
+        Asks a catalog for one message: the one in message set `set_id`
+        under the number `msg_id`.
+
+        The string handed in is what makes this different from every
+        other lookup here — it is not an out parameter, it is the answer
+        the caller wants when the catalog has nothing. So the call always
+        has something to return, and a program that passes its own
+        English there needs no branch for a missing catalog, for a
+        catalog with no such set, or for a message the translators have
+        not reached yet.
+
+    Args:
+        catalog: A descriptor from `catopen`.
+        set_id: Which set of messages to look in.
+        msg_id: Which message in that set.
+        s: The string to answer with where the catalog has no such
+            message, NUL terminated.
+
+    Returns:
+        The message from the catalog, or `s` itself — the same pointer,
+        not a copy of what it points at — in storage the catalog owns
+        when it came from the catalog. Both platforms answer a descriptor
+        that never opened with `s` rather than following it.
+
+    Notes:
+        What comes back from a catalog is freed by `catclose` and not by
+        the caller, so it is worth copying before the descriptor goes
+        back.
+    """
+    return external_call[
+        "catgets", c_ptr[UInt8], nl_catd, Int32, Int32, c_ptr[UInt8]
+    ](catalog, set_id, msg_id, s)
+
+
+def catclose(catalog: nl_catd) -> Int32:
+    """C library <nl_types.h> function `catclose`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/catclose.3.html
+
+    Description:
+        Gives a catalog descriptor back, along with the messages it was
+        holding.
+
+    Args:
+        catalog: A descriptor from `catopen`, opened or not.
+
+    Returns:
+        Zero where the catalog was closed, or -1 with `errno` set to
+        `EBADF` where the descriptor was not one — which includes the
+        all-ones pointer a failed `catopen` answers with, so closing what
+        never opened is an error and not a silent success.
+
+    Notes:
+        Nothing may be read out of a catalog after this, including the
+        strings `catgets` handed out of it.
+    """
+    return external_call["catclose", Int32, nl_catd](catalog)

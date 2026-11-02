@@ -40,7 +40,7 @@ the bottom.
 | `libc.grp` | `<grp.h>` the group database | 8 |
 | `libc.iconv` | `<iconv.h>` character encoding conversion | 4 |
 | `libc.ifaddrs` | `<ifaddrs.h>` network interfaces | 8 |
-| `libc.langinfo` | `<langinfo.h>` strings the locale decides | 56 |
+| `libc.langinfo` | `<langinfo.h>` strings the locale decides | 64 |
 | `libc.fnmatch` | `<fnmatch.h>` matching a single name | 7 |
 | `libc.libgen` | `<libgen.h>` cutting a path in two | 2 |
 | `libc.logging` | `<syslog.h>` | 6 |

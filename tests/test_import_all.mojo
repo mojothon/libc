@@ -547,9 +547,15 @@ def bring_in_libc_langinfo():
         PM_STR,
         RADIXCHAR,
         T_FMT,
+        NL_CAT_LOCALE,
+        NL_SETD,
         THOUSEP,
         YESEXPR,
+        catclose,
+        catgets,
+        catopen,
         nl_langinfo,
+        nl_langinfo_l,
     )
 
 
