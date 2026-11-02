@@ -35,6 +35,9 @@ KNOWN_MISSING = {
     # Linux-specific man pages (epoll(7), getrandom(2), mlock2(2), prctl(2))
     # say so on the first line: the symbols are not on the other side at all.
     "epoll_create": "Linux only; Darwin has kqueue instead",
+    "eventfd": "Linux only; <sys/eventfd.h> is not on the other side",
+    "eventfd_read": "Linux only; <sys/eventfd.h> is not on the other side",
+    "eventfd_write": "Linux only; <sys/eventfd.h> is not on the other side",
     "epoll_create1": "Linux only; Darwin has kqueue instead",
     "get_nprocs": "Linux only; <sys/sysinfo.h> is not on the other side",
     "get_nprocs_conf": "Linux only; <sys/sysinfo.h> is not on the other side",

@@ -1166,6 +1166,17 @@ def bring_in_libc_sys_auxv():
     )
 
 
+def bring_in_libc_sys_eventfd():
+    from libc.sys.eventfd import (
+        EFD_CLOEXEC,
+        EFD_NONBLOCK,
+        EFD_SEMAPHORE,
+        eventfd,
+        eventfd_read,
+        eventfd_write,
+    )
+
+
 def bring_in_libc_sys_epoll():
     from libc.sys.epoll import (
         epoll_create,
@@ -1687,6 +1698,7 @@ def main() raises:
     bring_in_libc_stdlib()
     bring_in_libc_string()
     bring_in_libc_sys_auxv()
+    bring_in_libc_sys_eventfd()
     bring_in_libc_sys_epoll()
     bring_in_libc_sys_ipc()
     bring_in_libc_sys_mman()
