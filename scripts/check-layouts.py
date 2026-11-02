@@ -242,6 +242,46 @@ LINUX_ONLY: set[tuple[str, str]] = {
 
 ON_DARWIN = sys.platform == "darwin"
 
+# `beyond-c.md` states what the package adds up to, and it states it in a
+# table rather than in a sentence because a number written into a paragraph
+# is a number that goes stale quietly. Each row is recognised by the phrase
+# in its first cell and compared with what was counted here, so the two
+# cannot drift apart without one of them failing.
+STATED_ROWS: dict[str, str] = {
+    "by hand": "offsets",
+    "in order": "fielded",
+    "only a size": "bytes",
+    "only Linux": "linux_only",
+}
+
+
+def stated_counts(counts: dict[str, int]) -> list[str]:
+    """Where `docs/beyond-c.md` and what was counted here disagree.
+
+    A row that is gone counts as a disagreement too: the point of the table
+    is that it keeps saying these things, so a paragraph that stops saying
+    one of them is the drift this is watching for.
+    """
+    wrong = []
+    found = set()
+    text = (ROOT / "docs" / "beyond-c.md").read_text()
+    for line in text.splitlines():
+        row = re.fullmatch(r"\|\s*([^|]+?)\s*\|\s*(\d+)\s*\|", line)
+        if row is None:
+            continue
+        cell, said = row.group(1), int(row.group(2))
+        for phrase, key in STATED_ROWS.items():
+            if phrase not in cell:
+                continue
+            found.add(key)
+            if said != counts[key]:
+                wrong.append(f"{cell}: says {said}, and it is {counts[key]}")
+            break
+    for phrase, key in STATED_ROWS.items():
+        if key not in found:
+            wrong.append(f"no longer says how many {phrase}")
+    return wrong
+
 
 def module_of(path: Path) -> str:
     """The name this file is imported by."""
@@ -673,9 +713,30 @@ def main() -> int:
             f" one: {', '.join(not_listed[:6])}{', ...' if len(not_listed) > 6 else ''}"
         )
 
+    stated = {
+        "offsets": len(OFFSETS),
+        "fielded": len(fielded),
+        "bytes": len(not_listed),
+        "linux_only": len(LINUX_ONLY),
+    }
+    wrong_stated = stated_counts(stated)
+    if wrong_stated:
+        print("\n  docs/beyond-c.md disagrees about the counts:")
+        for line in wrong_stated:
+            print(f"      {line}")
+    else:
+        print(
+            f"\n  docs/beyond-c.md says {stated['offsets']} by hand,"
+            f" {stated['fielded']} in order, {stated['bytes']} a size and"
+            f" {stated['linux_only']} Linux's, which is what they are"
+        )
+
     print()
     if disagree or offset_disagree:
         print("  *** structs that disagree with C ***")
+    if wrong_stated:
+        print("  *** docs/beyond-c.md no longer says what is true ***")
+    if disagree or offset_disagree or wrong_stated:
         return 1
     print("  nothing disagrees with C")
     return 0

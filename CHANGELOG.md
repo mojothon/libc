@@ -389,6 +389,15 @@ All notable changes to this project are documented here. The format follows
   is not a finding, so those thirteen are listed as `LINUX_ONLY` and
   counted separately: not asked, not skipped quietly, and the total still
   adds up to a hundred and eleven.
+- **`beyond-c.md` states the four counts in a table, and the script checks
+  them.** The numbers in that essay — how many offsets are placed by hand,
+  how many members are declared in order, how many structs claim only a
+  size, how many are Linux's alone — were in the prose, where they go stale
+  the first time a struct is added and nothing notices. They are a table
+  now, recognised by the phrase in the first cell of each row, and
+  `check-layouts.py` counts the same four things and fails if they differ.
+  A row that disappears fails too: a document that stops making a claim is
+  the drift this is watching for, and silence would pass for agreement.
 
 ## [0.12.0] - 2026-10-19
 

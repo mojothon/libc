@@ -133,17 +133,30 @@ reach Mojo without constructing anything, the offset of a member does not,
 because asking a pointer where a member lives asks for a member pointer and
 Mojo has none. But a struct held as bytes does not have to be asked — the
 numbers its accessors read at *are* the offsets, and C can be asked the
-same question about the same member. A hundred and eleven of them are listed
-in the script now and checked with `offsetof` on whichever platform is
-running — every member this package reads out of a C struct, from the record
-`getutxent` hands back to `si_pid` and the one flag word in a `glob_t`.
-Thirteen of them are Linux's alone: `sys/sysinfo.h` and the `timer_create`
-`sigevent` are not on the other side at all, and Darwin's `sigevent` is a
-different struct with `sigev_notify` first, so asking it would compare a
-member against the wrong struct. Those are counted rather than asked, which
-is what the count is for. The
-first twenty-two were already right, which is what a check written after the
-fact tends to find. Of the eighty-nine that came after, one was not:
+same question about the same member. Every member this package reads out of a
+C struct is in that list now, and checked with `offsetof` on whichever
+platform is running — from the record `getutxent` hands back to `si_pid` and
+the one flag word in a `glob_t`. Thirteen of them are Linux's alone:
+`sys/sysinfo.h` and the `timer_create` `sigevent` are not on the other side at
+all, and Darwin's `sigevent` is a different struct with `sigev_notify` first,
+so asking it would compare a member against the wrong struct. Those are
+counted rather than asked, which is what the count is for.
+
+| what a struct does with its members | how many |
+| --- | --- |
+| places one by hand, at an offset listed in `OFFSETS` | 111 |
+| declares them in order and leaves the layout to Mojo | 179 |
+| reads none of them, and claims only a size | 17 |
+| has a struct only Linux has | 13 |
+
+Those four numbers are the state of the whole exercise, and they are in a
+table because a number in a paragraph is a number that goes stale quietly.
+`scripts/check-layouts.py` counts the same four things and compares, so the
+paragraphs below and the package cannot drift apart without one of them
+failing.
+
+The first twenty-two were already right, which is what a check written after
+the fact tends to find. Of the ones that came after, one was not:
 `gl_flags` was read from the high half of the word it begins in, which
 answers 0 for a `glob` that was given flags, and no test had ever asked. That
 is the argument for the rest of it — an offset written by hand is a claim,
@@ -159,8 +172,8 @@ wrong member.
 What is left is counted rather than trusted silently, and it splits in two.
 The members of a struct Mojo lays out itself rest on the order they are
 declared in, which is C's arrangement when the order is and says nothing
-when it is not. The seventeen that hold their bytes in a buffer and read no
-member at all are the other half — the eight pthread handles and attributes,
+when it is not. The ones that hold their bytes in a buffer and read no member
+at all are the other half — the eight pthread handles and attributes,
 `fenv_t` and `fexcept_t`, the two spawn types, `fpos_t`, `mbstate_t`,
 `fd_set`, `msqid_ds` and `shmid_ds`. Not one of them is a layout with numbers
 in it: nothing here ever reads a field that C's header names, so there is no
