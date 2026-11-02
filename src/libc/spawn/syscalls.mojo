@@ -14,12 +14,14 @@
 from std.ffi import external_call
 
 from libc.constant import c_char, c_int, c_ptr, c_short, c_uint
-from libc.sched import sched_param
 
 
-# All six are the same number on both platforms, which is not the
+# The first four are the same number on both platforms, which is not the
 # pattern here: `_PC_*`, `_SC_*` and `_CS_*` are numbered differently on
-# each. These are plain bit flags, so they agree.
+# each. These are plain bit flags, so they agree. The last two are
+# Linux's alone: Darwin's <spawn.h> puts the calls they belong to behind
+# `#if 0` — `_POSIX_PRIORITY_SCHEDULING` is not supported there — and has
+# no number for either flag.
 comptime POSIX_SPAWN_RESETIDS: Int32 = 1
 comptime POSIX_SPAWN_SETPGROUP: Int32 = 2
 comptime POSIX_SPAWN_SETSIGDEF: Int32 = 4
@@ -581,147 +583,3 @@ def posix_spawnattr_setsigmask(
         c_ptr[posix_spawnattr_t],
         c_ptr[UInt8],
     ](attr, sigmask)
-
-
-def posix_spawnattr_getschedparam(
-    attr: c_ptr[posix_spawnattr_t], param: c_ptr[sched_param]
-) -> c_int:
-    """C library <spawn.h> function `posix_spawnattr_getschedparam`.
-
-    Reference:
-        https://man7.org/linux/man-pages/man3/posix_spawnattr_getschedparam.3.html
-
-    Prototype:
-        int posix_spawnattr_getschedparam(const posix_spawnattr_t *restrict
-                                          attr, struct sched_param *restrict
-                                          param)
-
-    Args:
-        attr: The handle to read.
-        param: Where the scheduling priority is written.
-
-    Returns:
-        0, or the error number itself.
-
-    Notes:
-        Only read when `POSIX_SPAWN_SETSCHEDPARAM` is among the flags;
-        otherwise what the handle holds is not what will happen.
-
-        What is pointed at is `libc.sched`'s `sched_param` and not a
-        bare `Int32`: C writes the whole of the struct, which is one
-        word here and two on Darwin, so a block shorter than the one
-        C writes runs off the end of it.
-    """
-    return external_call[
-        "posix_spawnattr_getschedparam",
-        c_int,
-        c_ptr[posix_spawnattr_t],
-        c_ptr[sched_param],
-    ](attr, param)
-
-
-def posix_spawnattr_setschedparam(
-    attr: c_ptr[posix_spawnattr_t], param: c_ptr[sched_param]
-) -> c_int:
-    """C library <spawn.h> function `posix_spawnattr_setschedparam`.
-
-    Reference:
-        https://man7.org/linux/man-pages/man3/posix_spawnattr_setschedparam.3.html
-
-    Prototype:
-        int posix_spawnattr_setschedparam(posix_spawnattr_t *attr,
-                                          const struct sched_param *restrict
-                                          param)
-
-    Args:
-        attr: The handle.
-        param: The scheduling priority the new process is to start with.
-
-    Returns:
-        0, or the error number itself.
-
-    Notes:
-        What is written here is only what will be asked for; nothing
-        checks that the priority is one the policy allows until the
-        process is actually spawned, and it is then that a bad one is
-        refused.
-
-        Needs `POSIX_SPAWN_SETSCHEDPARAM` among the flags to be
-        honoured.
-    """
-    return external_call[
-        "posix_spawnattr_setschedparam",
-        c_int,
-        c_ptr[posix_spawnattr_t],
-        c_ptr[sched_param],
-    ](attr, param)
-
-
-def posix_spawnattr_getschedpolicy(
-    attr: c_ptr[posix_spawnattr_t], policy: c_ptr[c_int]
-) -> c_int:
-    """C library <spawn.h> function `posix_spawnattr_getschedpolicy`.
-
-    Reference:
-        https://man7.org/linux/man-pages/man3/posix_spawnattr_getschedpolicy.3.html
-
-    Prototype:
-        int posix_spawnattr_getschedpolicy(const posix_spawnattr_t *restrict
-                                           attr, int *restrict policy)
-
-    Args:
-        attr: The handle to read.
-        policy: Where the policy is written.
-
-    Returns:
-        0, or the error number itself.
-
-    Notes:
-        Only read when `POSIX_SPAWN_SETSCHEDULER` is among the flags;
-        otherwise what the handle holds is not what will happen.
-
-        The number that comes back is a `SCHED_*` from `libc.sched`,
-        and they are not numbered the same on the two platforms:
-        `SCHED_OTHER` is 0 here and 1 on Darwin.
-    """
-    return external_call[
-        "posix_spawnattr_getschedpolicy",
-        c_int,
-        c_ptr[posix_spawnattr_t],
-        c_ptr[c_int],
-    ](attr, policy)
-
-
-def posix_spawnattr_setschedpolicy(
-    attr: c_ptr[posix_spawnattr_t], policy: c_int
-) -> c_int:
-    """C library <spawn.h> function `posix_spawnattr_setschedpolicy`.
-
-    Reference:
-        https://man7.org/linux/man-pages/man3/posix_spawnattr_setschedpolicy.3.html
-
-    Prototype:
-        int posix_spawnattr_setschedpolicy(posix_spawnattr_t *attr,
-                                           int policy)
-
-    Args:
-        attr: The handle.
-        policy: The policy the new process is to start with, one of the
-            `SCHED_*` that `libc.sched` binds.
-
-    Returns:
-        0, or the error number itself.
-
-    Notes:
-        Needs `POSIX_SPAWN_SETSCHEDULER` among the flags to be
-        honoured, and it is the scheduler flag rather than the
-        parameter one that this is read with: setting a policy
-        without a priority to go with it, or the other way about,
-        leaves the pair half said.
-    """
-    return external_call[
-        "posix_spawnattr_setschedpolicy",
-        c_int,
-        c_ptr[posix_spawnattr_t],
-        c_int,
-    ](attr, policy)
