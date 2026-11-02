@@ -10,7 +10,7 @@ the bottom.
 | `libc.stdlib` | `<stdlib.h>` | 71 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.unistd` | `<unistd.h>` | 195 |
-| `libc.file` | `<stdio.h>` file operations | 40 |
+| `libc.file` | `<stdio.h>` file operations | 42 |
 | `libc.ctype` | `<ctype.h>` | 29 |
 | `libc.sys.socket` | `<sys/socket.h>` | 23 |
 | `libc.sys.stat` | `<sys/stat.h>` | 22 |
@@ -57,7 +57,7 @@ the bottom.
 | `libc.setjmp` | `<setjmp.h>` | 2 |
 | `libc.sys.utsname` | `<sys/utsname.h>` | 2 |
 | `libc.sys.sendfile` | `<sys/sendfile.h>` | 1 |
-| `libc.sys.random` | `<sys/random.h>` | 2 |
+| `libc.sys.random` | `<sys/random.h>` | 3 |
 | `libc.sys.prctl` | `<sys/prctl.h>` | 19 |
 | `libc.sys.auxv` | `<sys/auxv.h>` | 3 |
 | `libc.errno` | `<errno.h>` | 6 |
@@ -77,9 +77,11 @@ threads, so a binding would only ever work on Linux.
 because Mojo has no type to pass: on x86-64 the C type is the 80-bit x87
 format. `libc.locale` has no `FE_DFL_ENV`, see `fenv_t`.
 
-`libc.sys.epoll`, `libc.sys.prctl`, `libc.sys.sendfile`, `libc.sys.auxv` and
-`libc.sys.random` wrap Linux-only calls; importing them on Darwin will not
-link.
+`libc.sys.epoll`, `libc.sys.prctl`, `libc.sys.sendfile` and `libc.sys.auxv`
+wrap Linux-only calls; importing them on Darwin will not link.
+`libc.sys.random` holds one of each: `getentropy`, which both platforms
+have, and `getrandom`, which answers -1 on Darwin rather than going
+missing.
 
 `libc.stdio` covers the `<stdio.h>` entry points that `libc.file` does not
 already own; see the note at the top of `src/libc/stdio/syscalls.mojo`.

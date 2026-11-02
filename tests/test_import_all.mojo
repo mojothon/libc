@@ -253,8 +253,10 @@ def bring_in_libc_file():
         open,
         openat,
         pread,
+        preadv,
         printf,
         pwrite,
+        pwritev,
         read,
         rewind,
         scanf,
@@ -1211,6 +1213,7 @@ def bring_in_libc_sys_prctl():
 def bring_in_libc_sys_random():
     from libc.sys.random import (
         GRND_INSECURE,
+        getentropy,
         getrandom,
     )
 
