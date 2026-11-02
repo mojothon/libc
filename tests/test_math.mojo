@@ -31,6 +31,8 @@ from libc.math import (
     erf,
     erff,
     exp,
+    exp2,
+    exp2f,
     expf,
     expm1,
     expm1f,
@@ -56,6 +58,9 @@ from libc.math import (
     hypotf,
     ilogb,
     ilogbf,
+    j0,
+    j1,
+    jn,
     labs,
     ldexp,
     ldexpf,
@@ -119,6 +124,9 @@ from libc.math import (
     tgammaf,
     trunc,
     truncf,
+    y0,
+    y1,
+    yn,
 )
 
 
@@ -528,6 +536,60 @@ def test_the_four_that_round_a_float_to_a_whole_number() raises:
     assert_equal(llroundf(-2.5), -3, "and so it does asked for a long long")
 
 
+def test_the_bessel_functions_and_two_to_a_power() raises:
+    """Eight calls the header had and the package did not, all of them in
+    the one place.
+
+    What makes the six Bessel ones worth asking is that they can be
+    checked against each other rather than against a table: `jn(0, x)`
+    and `jn(1, x)` are `j0(x)` and `j1(x)`, and `jn(2, x)` is what
+    those two say it is by the recurrence J_2(x) = 2 J_1(x) / x -
+    J_0(x). A binding that swapped the order and the argument would
+    answer `jn(1, 2.0)` and fail, and so would one wired to a different
+    Bessel call. The second kind is a separate family that obeys the
+    same recurrence, so `y0`, `y1` and `yn` are pinned the same way and
+    against the first kind from the other side.
+
+    `exp2` is the one place a number can be written down: a whole
+    power of two is exact, so 1024 and 0.125 are comparisons rather
+    than approximations.
+    """
+    assert_equal(exp2(10.0), 1024.0, "two to the tenth is exact")
+    assert_equal(exp2(-3.0), 0.125, "and so is a negative whole power")
+    assert_equal(Float64(exp2f(10.0)), 1024.0, "and the float spelling too")
+
+    assert_equal(j0(0.0), 1.0, "J_0(0) is one")
+    assert_equal(j1(0.0), 0.0, "and J_1(0) is zero")
+
+    var x = 1.0
+    assert_true(
+        fabs(jn(0, x) - j0(x)) < 1e-12,
+        "order zero is the same function as j0",
+    )
+    assert_true(
+        fabs(jn(1, x) - j1(x)) < 1e-12,
+        "and order one the same as j1",
+    )
+
+    var from_the_recurrence = 2.0 * j1(x) / x - j0(x)
+    assert_true(
+        fabs(jn(2, x) - from_the_recurrence) < 1e-12,
+        "order two is what its two neighbours say it is",
+    )
+    assert_true(
+        fabs(jn(2, x) - jn(1, 2.0)) > 1e-3,
+        "and is not the answer to the question with the arguments swapped",
+    )
+
+    assert_true(fabs(y0(x) - j0(x)) > 0.1, "Y_0 is not J_0")
+    assert_true(fabs(y1(x) - j1(x)) > 0.1, "nor is Y_1 J_1")
+    var y_from_the_recurrence = 2.0 * y1(x) / x - y0(x)
+    assert_true(
+        fabs(yn(2, x) - y_from_the_recurrence) < 1e-12,
+        "and the second kind obeys the same recurrence",
+    )
+
+
 def main() raises:
     test_abs()
     test_sqrt_and_rounding()
@@ -548,4 +610,5 @@ def main() raises:
     test_the_four_that_round_a_double_to_a_whole_number()
     test_the_four_that_round_a_float_to_a_whole_number()
     test_the_three_whose_neighbour_was_asked()
+    test_the_bessel_functions_and_two_to_a_power()
     print("test_math: ok")

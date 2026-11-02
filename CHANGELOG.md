@@ -512,6 +512,23 @@ All notable changes to this project are documented here. The format follows
   libraries, 26.5% — the two that left took the count back to where it was
   before `getprotoent` and `getservent` were added, which is a coincidence
   worth only this line. `modules.md` says `libc.file` has 40.
+- **`<math.h>` has its two `exp2` calls and its six Bessel calls.** The
+  coverage walk said 103 functions in that header were unbound, which is
+  misleading in the way a count like that usually is: most of them are
+  `long double` variants this package has no type for, macros such as
+  `isinf`, or the `nexttoward` family whose second argument is one.
+  What was actually left was eight calls both libcs export and nobody had
+  asked for. `exp2` and `exp2f` are C99; the Bessel six are SVID and BSD
+  additions ISO C never took, but both platforms put them in `<math.h>`.
+  The test writes down no Bessel value: `jn(0, x)` and `jn(1, x)` are
+  `j0(x)` and `j1(x)`, and `jn(2, x)` is what those two say by the
+  recurrence, so the six are pinned against each other and a swapped
+  `(n, x)` answers `jn(1, 2.0)` and fails. The second kind is a separate
+  family obeying the same recurrence, checked from the other side.
+  `exp2` is the one place a number can be written down, a whole power of
+  two being exact — 1024 and 0.125, not approximations. `beyond-c.md`
+  says 958 symbols, 955 among the four libraries, 26.7%; `modules.md`
+  says `libc.math` has 131.
 - **The list of bindings a test could ask and has not is empty.** Five of
   the last six debts were not blocked by anything, which is the point: four
   of the reasons said a privilege, a thread or a policy was needed, and

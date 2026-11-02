@@ -611,6 +611,8 @@ def bring_in_libc_math():
         erf,
         erff,
         exp,
+        exp2,
+        exp2f,
         expf,
         expm1,
         expm1f,
@@ -636,6 +638,9 @@ def bring_in_libc_math():
         hypotf,
         ilogb,
         ilogbf,
+        j0,
+        j1,
+        jn,
         imaxabs,
         imaxdiv,
         imaxdiv_t,
@@ -701,6 +706,9 @@ def bring_in_libc_math():
         tgammaf,
         trunc,
         truncf,
+        y0,
+        y1,
+        yn,
     )
 
 

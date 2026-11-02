@@ -2751,3 +2751,220 @@ def llroundf(x: Float32) -> Int64:
         environment. `llrintf` is the one that asks.
     """
     return external_call["llroundf", Int64, Float32](x)
+
+
+def exp2(x: Float64) -> Float64:
+    """C library <math.h> function `exp2`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/exp2.3.html
+
+    Prototype:
+        double exp2(double x)
+
+    Description:
+        Raises two to the power of x.
+
+    Arguments:
+        x: The power to raise two to.
+
+    Return value:
+        Two raised to x.
+
+    Notes:
+        `ldexp` asks the same question but can only be given a whole
+        power, and `pow` can be given any base. A whole power of two is
+        exact in all three, which is what lets a test compare rather
+        than approximate.
+    """
+    return external_call["exp2", Float64, Float64](x)
+
+
+def exp2f(x: Float32) -> Float32:
+    """C library <math.h> function `exp2f`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/exp2.3.html
+
+    Prototype:
+        float exp2f(float x)
+
+    Description:
+        Raises two to the power of x, in single precision.
+
+    Arguments:
+        x: The power to raise two to.
+
+    Return value:
+        Two raised to x, as a float.
+
+    Notes:
+        The float form of `exp2`.
+    """
+    return external_call["exp2f", Float32, Float32](x)
+
+
+def j0(x: Float64) -> Float64:
+    """C library <math.h> function `j0`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/j0.3.html
+
+    Prototype:
+        double j0(double x)
+
+    Description:
+        The Bessel function of the first kind of order zero at x.
+
+    Arguments:
+        x: Where the function is asked for.
+
+    Return value:
+        J_0(x).
+
+    Notes:
+        SVID and the BSDs put six Bessel calls in `<math.h>` that ISO C
+        does not have, and both libcs this package links export all six.
+        `j1` is order one and `jn` is any order. The three are pinned
+        against each other by their recurrence rather than by a number
+        written down here, so a binding that called the wrong one of
+        them answers a different question, not merely a different value.
+    """
+    return external_call["j0", Float64, Float64](x)
+
+
+def j1(x: Float64) -> Float64:
+    """C library <math.h> function `j1`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/j0.3.html
+
+    Prototype:
+        double j1(double x)
+
+    Description:
+        The Bessel function of the first kind of order one at x.
+
+    Arguments:
+        x: Where the function is asked for.
+
+    Return value:
+        J_1(x).
+
+    Notes:
+        `j0` is order zero and `jn` is any order. At zero this one is
+        exactly 0, which is one of the two values a test can write down
+        without asking another call.
+    """
+    return external_call["j1", Float64, Float64](x)
+
+
+def jn(n: Int32, x: Float64) -> Float64:
+    """C library <math.h> function `jn`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/j0.3.html
+
+    Prototype:
+        double jn(int n, double x)
+
+    Description:
+        The Bessel function of the first kind of order n at x.
+
+    Arguments:
+        n: The order. It is the first argument.
+        x: Where the function is asked for.
+
+    Return value:
+        J_n(x).
+
+    Notes:
+        The order comes first, unlike the exponent in `pow` and unlike
+        the way the recurrence is written down. `jn(0, x)` is `j0(x)`
+        and `jn(1, x)` is `j1(x)`, which is what makes the order of the
+        two arguments something a test can ask about: with them swapped,
+        `jn(1, 2.0)` is a different number from `jn(2, 1.0)`.
+    """
+    return external_call["jn", Float64, Int32, Float64](n, x)
+
+
+def y0(x: Float64) -> Float64:
+    """C library <math.h> function `y0`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/j0.3.html
+
+    Prototype:
+        double y0(double x)
+
+    Description:
+        The Bessel function of the second kind of order zero at x.
+
+    Arguments:
+        x: Where the function is asked for.
+
+    Return value:
+        Y_0(x).
+
+    Notes:
+        The second kind is a different family from the first: `y0(1.0)`
+        is not `j0(1.0)`, which is what lets a test say that these six
+        calls were not all wired to the same symbol. `y1` is order one
+        and `yn` is any order, and the three obey the same recurrence
+        as `j0`, `j1` and `jn`.
+    """
+    return external_call["y0", Float64, Float64](x)
+
+
+def y1(x: Float64) -> Float64:
+    """C library <math.h> function `y1`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/j0.3.html
+
+    Prototype:
+        double y1(double x)
+
+    Description:
+        The Bessel function of the second kind of order one at x.
+
+    Arguments:
+        x: Where the function is asked for.
+
+    Return value:
+        Y_1(x).
+
+    Notes:
+        `y0` is order zero and `yn` is any order. At x = 1 this one is
+        negative while `j1` is positive, so the two families cannot be
+        confused with each other there.
+    """
+    return external_call["y1", Float64, Float64](x)
+
+
+def yn(n: Int32, x: Float64) -> Float64:
+    """C library <math.h> function `yn`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/j0.3.html
+
+    Prototype:
+        double yn(int n, double x)
+
+    Description:
+        The Bessel function of the second kind of order n at x.
+
+    Arguments:
+        n: The order. It is the first argument.
+        x: Where the function is asked for.
+
+    Return value:
+        Y_n(x).
+
+    Notes:
+        The order comes first, as it does in `jn`. `yn(2, 1.0)` is what
+        `y0(1.0)` and `y1(1.0)` say it is by the recurrence, so this
+        one is checked against its own two neighbours rather than
+        against a value written down in the test.
+    """
+    return external_call["yn", Float64, Int32, Float64](n, x)
