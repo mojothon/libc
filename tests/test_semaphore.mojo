@@ -24,7 +24,7 @@ one platform by not looking.
 from std.testing import assert_equal, assert_true
 
 from libc.constant import EAGAIN, ENOENT
-from libc.errno import get_errno
+from libc.errno import errno_name, get_errno
 from libc.fcntl import O_CREAT, O_EXCL, O_RDWR
 from libc.semaphore import (
     Semaphore,
@@ -58,7 +58,8 @@ def test_a_named_semaphore_counts_down_and_says_so_when_it_is_empty() raises:
     var sem = sem_open(name, O_CREAT | O_EXCL | O_RDWR, 0o600, 1)
     assert_true(
         not is_null(sem) and Int(UInt(sem)) != -1,
-        "a name nobody holds opens a semaphore",
+        "a name nobody holds opens a semaphore, and errno says "
+        + errno_name(get_errno()),
     )
 
     assert_equal(sem_trywait(sem), 0, "the one it started at is taken")
