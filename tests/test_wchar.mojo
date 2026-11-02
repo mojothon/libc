@@ -1,7 +1,7 @@
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import c_ptr, c_void, c_wchar
+from libc.constant import c_longlong, c_ptr, c_ulonglong, c_void, c_wchar
 from libc.utils import (
     char_ptr_to_string,
     is_null,
@@ -59,6 +59,7 @@ from libc.wchar import (
     wcscspn,
     wcsdup,
     wcsftime,
+    wcsftime_l,
     wcslen,
     wcsncasecmp,
     wcsncasecmp_l,
@@ -73,13 +74,19 @@ from libc.wchar import (
     wcsspn,
     wcsstr,
     wcstod,
+    wcstod_l,
     wcstof,
+    wcstof_l,
     wcstok,
     wcstol,
+    wcstol_l,
     wcstoll,
+    wcstoll_l,
     wcstombs,
     wcstoul,
+    wcstoul_l,
     wcstoull,
+    wcstoull_l,
     wcsxfrm,
     wcsxfrm_l,
     wctob,
@@ -961,6 +968,129 @@ def test_the_l_variants_ask_a_locale_object() raises:
     freelocale(loc)
 
 
+def test_reading_numbers_for_a_locale_object() raises:
+    """`wcstol_l` and its siblings read the same text the plain calls read,
+    for a locale that is handed in instead of taken from the thread.
+
+    Base is asked twice on one string — `10` is ten in base ten and sixteen
+    in base sixteen — because a call that dropped its base would answer the
+    same thing both times. The end pointer is read back as well, so a call
+    that read the whole string rather than stopping at the first character
+    that is not part of the number would be caught.
+
+    `wcstoull_l` is asked about a number too wide for a long long, which is
+    the one thing an unsigned read can do that a signed one cannot, and
+    `wcstod_l` about a number the C locale cannot read past its decimal
+    point: a comma is not one, so the reading stops at three.
+    """
+    var c_locale = string_to_char_ptr("C")
+    var loc = newlocale(LC_ALL, c_locale, null_ptr[Locale]())
+    assert_true(Int(loc) != 0, "a C locale object was made to ask")
+    c_locale.unsafe_free()
+
+    var end = unsafe_alloc[c_ptr[c_wchar]](1)
+
+    var ten = wide("10")
+    assert_equal(wcstol_l(ten, end, 10, loc), 10, "ten in base ten, and")
+    assert_equal(wcstol_l(ten, end, 16, loc), 16, "sixteen in base sixteen")
+
+    var spaced = wide("  -42 and the rest")
+    assert_equal(wcstol_l(spaced, end, 10, loc), -42, "sign and space are read")
+    assert_equal(
+        wide_to_string(end.unsafe_offset(0)[]),
+        " and the rest",
+        "and the reading stops at the first character that is not a digit",
+    )
+
+    assert_equal(wcstoul_l(ten, end, 10, loc), 10, "unsigned says the same")
+    var minus_one = wide("-1")
+    assert_equal(
+        wcstoul_l(minus_one, end, 10, loc),
+        UInt(0xFFFFFFFFFFFFFFFF),
+        "and wraps a minus sign rather than refusing it",
+    )
+
+    var widest = wide("9223372036854775807")
+    assert_equal(
+        wcstoll_l(widest, end, 10, loc),
+        c_longlong(9223372036854775807),
+        "the widest long long is read whole",
+    )
+    var beyond = wide("18446744073709551615")
+    assert_equal(
+        wcstoull_l(beyond, end, 10, loc),
+        c_ulonglong(0xFFFFFFFFFFFFFFFF),
+        "and the widest unsigned one, which a long long cannot hold",
+    )
+
+    var hundreds = wide("3.5e2")
+    assert_equal(wcstod_l(hundreds, end, loc), 350.0, "a double is read")
+    assert_equal(wide_to_string(end.unsafe_offset(0)[]), "", "to the end of it")
+
+    var comma = wide("3,5")
+    assert_equal(
+        wcstod_l(comma, end, loc), 3.0, "a comma is not a decimal point"
+    )
+    assert_equal(
+        wide_to_string(end.unsafe_offset(0)[]),
+        ",5",
+        "so the reading stops there",
+    )
+
+    assert_equal(wcstof_l(hundreds, end, loc), Float32(350.0), "a float too")
+
+    end.unsafe_free()
+    freelocale(loc)
+
+
+def test_writing_a_time_out_wide_for_a_locale_object() raises:
+    """`wcsftime_l` writes the time for a locale that is handed in, and the
+    epoch is the one time a test can write down without holding to the day
+    it runs: 1970-01-01 is what `gmtime_r` answers for 0 in every locale.
+
+    The format is digits on purpose — which words come out for a month or a
+    day is the locale's to say, and a test that asked for one would be
+    holding to a language rather than to a format.
+    """
+    var c_locale = string_to_char_ptr("C")
+    var loc = newlocale(LC_ALL, c_locale, null_ptr[Locale]())
+    assert_true(Int(loc) != 0, "a C locale object was made to write for")
+    c_locale.unsafe_free()
+
+    var epoch = unsafe_alloc[Int64](1)
+    epoch.unsafe_offset(0)[] = 0
+    var slot = unsafe_alloc[tm](1)
+    slot.unsafe_offset(0)[] = tm()
+    assert_true(
+        Int(UInt(gmtime_r(epoch, slot))) != 0,
+        "the epoch breaks down into a time",
+    )
+
+    var buf = unsafe_alloc[c_wchar](64)
+    var layout = wide("%Y-%m-%d")
+    assert_equal(
+        Int(wcsftime_l(buf, 64, layout, slot, loc)),
+        10,
+        "a date is ten characters",
+    )
+    assert_equal(
+        wide_to_string(buf), "1970-01-01", "and the epoch is that date"
+    )
+
+    var tiny = unsafe_alloc[c_wchar](4)
+    assert_equal(
+        Int(wcsftime_l(tiny, 4, layout, slot, loc)),
+        0,
+        "and too little room for the whole of it is 0",
+    )
+
+    tiny.unsafe_free()
+    buf.unsafe_free()
+    slot.unsafe_free()
+    epoch.unsafe_free()
+    freelocale(loc)
+
+
 def main() raises:
     test_length_and_compare()
     test_search()
@@ -982,4 +1112,6 @@ def main() raises:
     test_the_stateful_conversions()
     test_writing_a_time_out_wide()
     test_the_l_variants_ask_a_locale_object()
+    test_reading_numbers_for_a_locale_object()
+    test_writing_a_time_out_wide_for_a_locale_object()
     print("test_wchar: ok")

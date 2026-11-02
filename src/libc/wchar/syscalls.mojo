@@ -960,6 +960,44 @@ def wcstol(
     ](nptr, endptr, base)
 
 
+def wcstol_l(
+    nptr: c_ptr[c_wchar],
+    endptr: c_ptr[c_ptr[c_wchar]],
+    base: Int32,
+    loc: locale_t,
+) -> Int:
+    """Libc POSIX `wcstol_l` function.
+
+    Description:
+        Reads a long integer off the front of a wide string, for a
+        locale that is handed in rather than the one the thread is in.
+
+        Which characters count as digits, which sign is a sign and what
+        a leading `0x` means are the locale's to decide, and a locale
+        object is the only way to ask one without borrowing the thread.
+
+    Args:
+        nptr: The string to read from.
+        endptr: Where to put a pointer to the first character that was
+            not part of the number, or a null pointer where that is not
+            wanted.
+        base: The base to read it in, or 0 to let the string say.
+        loc: The locale to read it in, rather than the one the thread is
+            in. It is a `locale_t` from `newlocale`.
+
+    Returns:
+        The number, which is 0 where there was none to read.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcstol.3.html).
+        Fn signature: `long wcstol_l(const wchar_t *nptr,
+            wchar_t **endptr, int base, locale_t loc)`.
+    """
+    return external_call[
+        "wcstol_l", Int, c_ptr[c_wchar], c_ptr[c_ptr[c_wchar]], Int32, locale_t
+    ](nptr, endptr, base, loc)
+
+
 def wcstoul(
     nptr: c_ptr[c_wchar], endptr: c_ptr[c_ptr[c_wchar]], base: Int32
 ) -> UInt:
@@ -992,6 +1030,50 @@ def wcstoul(
     ](nptr, endptr, base)
 
 
+def wcstoul_l(
+    nptr: c_ptr[c_wchar],
+    endptr: c_ptr[c_ptr[c_wchar]],
+    base: Int32,
+    loc: locale_t,
+) -> UInt:
+    """Libc POSIX `wcstoul_l` function.
+
+    Description:
+        Reads an unsigned long integer off the front of a wide string,
+        for a locale that is handed in rather than the one the thread is
+        in.
+
+        An unsigned read takes a minus sign and wraps it, which is what
+        C says it does and not a mistake this call makes: `-1` is the
+        largest unsigned long there is.
+
+    Args:
+        nptr: The string to read from.
+        endptr: Where to put a pointer to the first character that was
+            not part of the number, or a null pointer where that is not
+            wanted.
+        base: The base to read it in, or 0 to let the string say.
+        loc: The locale to read it in, rather than the one the thread is
+            in. It is a `locale_t` from `newlocale`.
+
+    Returns:
+        The number, which is 0 where there was none to read.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcstoul.3.html).
+        Fn signature: `unsigned long wcstoul_l(const wchar_t *nptr,
+            wchar_t **endptr, int base, locale_t loc)`.
+    """
+    return external_call[
+        "wcstoul_l",
+        UInt,
+        c_ptr[c_wchar],
+        c_ptr[c_ptr[c_wchar]],
+        Int32,
+        locale_t,
+    ](nptr, endptr, base, loc)
+
+
 def wcstod(nptr: c_ptr[c_wchar], endptr: c_ptr[c_ptr[c_wchar]]) -> Float64:
     """Libc C95 `wcstod` function.
 
@@ -1018,6 +1100,45 @@ def wcstod(nptr: c_ptr[c_wchar], endptr: c_ptr[c_ptr[c_wchar]]) -> Float64:
     return external_call[
         "wcstod", Float64, c_ptr[c_wchar], c_ptr[c_ptr[c_wchar]]
     ](nptr, endptr)
+
+
+def wcstod_l(
+    nptr: c_ptr[c_wchar], endptr: c_ptr[c_ptr[c_wchar]], loc: locale_t
+) -> Float64:
+    """Libc POSIX `wcstod_l` function.
+
+    Description:
+        Reads a double off the front of a wide string, for a locale that
+        is handed in rather than the one the thread is in.
+
+        The decimal point is the locale's: the C locale's is a full stop,
+        and a locale that writes a comma there reads a comma and stops
+        at a full stop — which is the one thing about this call that a
+        locale object actually changes in the reading.
+
+    Args:
+        nptr: The string to read from.
+        endptr: Where to put a pointer to the first character that was
+            not part of the number, or a null pointer where that is not
+            wanted.
+        loc: The locale whose decimal point and digits to read, rather
+            than the ones the thread is in. It is a `locale_t` from
+            `newlocale`.
+
+    Returns:
+        The number, which is 0 where there was none to read.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcstod.3.html).
+        Fn signature: `double wcstod_l(const wchar_t *nptr,
+            wchar_t **endptr, locale_t loc)`.
+
+        `wcstold_l` is not here and cannot be: it answers with a `long
+        double`, which this language has no type for.
+    """
+    return external_call[
+        "wcstod_l", Float64, c_ptr[c_wchar], c_ptr[c_ptr[c_wchar]], locale_t
+    ](nptr, endptr, loc)
 
 
 def wcstof(nptr: c_ptr[c_wchar], endptr: c_ptr[c_ptr[c_wchar]]) -> Float32:
@@ -1052,6 +1173,42 @@ def wcstof(nptr: c_ptr[c_wchar], endptr: c_ptr[c_ptr[c_wchar]]) -> Float32:
     return external_call[
         "wcstof", Float32, c_ptr[c_wchar], c_ptr[c_ptr[c_wchar]]
     ](nptr, endptr)
+
+
+def wcstof_l(
+    nptr: c_ptr[c_wchar], endptr: c_ptr[c_ptr[c_wchar]], loc: locale_t
+) -> Float32:
+    """Libc POSIX `wcstof_l` function.
+
+    Description:
+        Reads a float off the front of a wide string, for a locale that
+        is handed in rather than the one the thread is in.
+
+        It reads the same text `wcstod_l` does and rounds the answer to
+        a float, so a number with more digits than a float holds comes
+        back different from the double, which is the point of asking for
+        the narrower one.
+
+    Args:
+        nptr: The string to read from.
+        endptr: Where to put a pointer to the first character that was
+            not part of the number, or a null pointer where that is not
+            wanted.
+        loc: The locale whose decimal point and digits to read, rather
+            than the ones the thread is in. It is a `locale_t` from
+            `newlocale`.
+
+    Returns:
+        The number, which is 0 where there was none to read.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcstof.3.html).
+        Fn signature: `float wcstof_l(const wchar_t *nptr,
+            wchar_t **endptr, locale_t loc)`.
+    """
+    return external_call[
+        "wcstof_l", Float32, c_ptr[c_wchar], c_ptr[c_ptr[c_wchar]], locale_t
+    ](nptr, endptr, loc)
 
 
 def wcsnlen(s: c_ptr[c_wchar], maxlen: c_size_t) -> c_size_t:
@@ -1651,6 +1808,46 @@ def wcstoll(
     ](nptr, endptr, base)
 
 
+def wcstoll_l(
+    nptr: c_ptr[c_wchar],
+    endptr: c_ptr[c_ptr[c_wchar]],
+    base: c_int,
+    loc: locale_t,
+) -> c_longlong:
+    """Libc POSIX `wcstoll_l` function.
+
+    Description:
+        Reads a long long off the front of a wide string, for a locale
+        that is handed in rather than the one the thread is in.
+
+    Args:
+        nptr: The string to read from.
+        endptr: Where to put a pointer to the first character that was
+            not part of the number, or a null pointer where that is not
+            wanted.
+        base: Which base to read it in, from 2 to 36, or 0 to let the
+            string say.
+        loc: The locale to read it in, rather than the one the thread is
+            in. It is a `locale_t` from `newlocale`.
+
+    Returns:
+        The number, which is 0 where there was none to read.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcstoll.3.html).
+        Fn signature: `long long wcstoll_l(const wchar_t *nptr,
+            wchar_t **endptr, int base, locale_t loc)`.
+    """
+    return external_call[
+        "wcstoll_l",
+        c_longlong,
+        c_ptr[c_wchar],
+        c_ptr[c_ptr[c_wchar]],
+        c_int,
+        locale_t,
+    ](nptr, endptr, base, loc)
+
+
 def wcstoull(
     nptr: c_ptr[c_wchar], endptr: c_ptr[c_ptr[c_wchar]], base: c_int
 ) -> c_ulonglong:
@@ -1685,6 +1882,50 @@ def wcstoull(
     return external_call[
         "wcstoull", c_ulonglong, c_ptr[c_wchar], c_ptr[c_ptr[c_wchar]], c_int
     ](nptr, endptr, base)
+
+
+def wcstoull_l(
+    nptr: c_ptr[c_wchar],
+    endptr: c_ptr[c_ptr[c_wchar]],
+    base: c_int,
+    loc: locale_t,
+) -> c_ulonglong:
+    """Libc POSIX `wcstoull_l` function.
+
+    Description:
+        Reads an unsigned long long off the front of a wide string, for
+        a locale that is handed in rather than the one the thread is in.
+
+        This is the one that reads a number too wide for a long long to
+        hold, and the one that wraps a minus sign rather than refusing
+        it.
+
+    Args:
+        nptr: The string to read from.
+        endptr: Where to put a pointer to the first character that was
+            not part of the number, or a null pointer where that is not
+            wanted.
+        base: Which base to read it in, from 2 to 36, or 0 to let the
+            string say.
+        loc: The locale to read it in, rather than the one the thread is
+            in. It is a `locale_t` from `newlocale`.
+
+    Returns:
+        The number, which is 0 where there was none to read.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcstoull.3.html).
+        Fn signature: `unsigned long long wcstoull_l(const wchar_t
+            *nptr, wchar_t **endptr, int base, locale_t loc)`.
+    """
+    return external_call[
+        "wcstoull_l",
+        c_ulonglong,
+        c_ptr[c_wchar],
+        c_ptr[c_ptr[c_wchar]],
+        c_int,
+        locale_t,
+    ](nptr, endptr, base, loc)
 
 
 def wcstok(
@@ -1980,3 +2221,52 @@ def wcsftime(
         c_ptr[c_wchar],
         c_ptr[tm],
     ](s, max, format, timeptr)
+
+
+def wcsftime_l(
+    s: c_ptr[c_wchar],
+    max: c_size_t,
+    format: c_ptr[c_wchar],
+    timeptr: c_ptr[tm],
+    loc: locale_t,
+) -> c_size_t:
+    """Libc POSIX `wcsftime_l` function.
+
+    Description:
+        Writes a wide string from a broken-down time in the shape a
+        format asks for, for a locale that is handed in rather than the
+        one the thread is in.
+
+        The names and the shapes a format can ask for are the locale's:
+        `%A` is the day's name in it, `%p` is how it spells morning and
+        afternoon. The C locale's are the ones POSIX fixes, so those
+        are the ones worth knowing by heart.
+
+    Args:
+        s: Where to write it, which is written to.
+        max: The most characters to write, terminator and all.
+        format: The format, which is the same one `strftime` takes.
+        timeptr: The time to write out.
+        loc: The locale to write it for, rather than the one the thread
+            is in. It is a `locale_t` from `newlocale`.
+
+    Returns:
+        How many characters were written, terminator excluded, or 0
+        where the whole of it would not fit in `max` — in which case
+        nothing is written and the contents of `s` are not to be read.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcsftime.3.html).
+        Fn signature: `size_t wcsftime_l(wchar_t *s, size_t maxsize,
+            const wchar_t *format, const struct tm *timeptr,
+            locale_t loc)`.
+    """
+    return external_call[
+        "wcsftime_l",
+        c_size_t,
+        c_ptr[c_wchar],
+        c_size_t,
+        c_ptr[c_wchar],
+        c_ptr[tm],
+        locale_t,
+    ](s, max, format, timeptr, loc)
