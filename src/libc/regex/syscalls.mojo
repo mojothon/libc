@@ -63,6 +63,21 @@ struct regex_t:
         self._opaque = Array[UInt64, 8](fill=0)
 
 
+# Where the two members of C's `regmatch_t` sit, and the one place they
+# differ: both start with `rm_so` at 0, but `rm_eo` follows at 4 on glibc,
+# where `regoff_t` is an `int`, and at 8 on Darwin, where `regoff_t` is
+# `__darwin_off_t` — a `long long`. That makes the struct 8 bytes and
+# 16 bytes, and puts the second member in the other half of the first word
+# on one platform and in a word of its own on the other.
+#
+# Numbers from glibc's `regex.h` and XNU's `_regex.h`, and both are
+# compared with C's `offsetof` on both platforms by
+# `scripts/check-layouts.py`.
+comptime REGMATCH_SLOTS: Int = 2 if CompilationTarget.is_macos() else 1
+comptime REGMATCH_SO_OFFSET: Int = 0
+comptime REGMATCH_EO_OFFSET: Int = 8 if CompilationTarget.is_macos() else 4
+
+
 struct regmatch_t:
     """A C `regmatch_t`: where one substring begins and ends.
 
@@ -79,37 +94,43 @@ struct regmatch_t:
         subexpression that took no part in the match.
     """
 
-    comptime SLOTS = 2 if CompilationTarget.is_macos() else 1
-
-    var _bytes: Array[UInt64, Self.SLOTS]
+    var _bytes: Array[UInt64, REGMATCH_SLOTS]
 
     def __init__(out self):
         """Zeroes the block, which `regexec` overwrites where it matched."""
-        self._bytes = Array[UInt64, Self.SLOTS](fill=0)
+        self._bytes = Array[UInt64, REGMATCH_SLOTS](fill=0)
 
-    def _part(self, low: Bool) -> Int64:
-        """One of the two offsets, read as whoever is compiling stores it.
+    def _i32(self, off: Int) -> Int64:
+        """The four bytes at a four-aligned `off`, sign-extended.
 
-        A `regoff_t` wide as a word takes a whole slot of its own on
-        Darwin; the half-width one on Linux takes half a slot each, and
-        since it is signed, the top bit has to be put back afterwards —
-        all ones is -1, which is how an unused subexpression is marked.
+        The sign is the point: an unused subexpression is -1, so reading
+        the half-width member as unsigned would turn it into 4294967295
+        and every caller that compares against -1 would miss.
         """
-        comptime if CompilationTarget.is_macos():
-            var held = self._bytes[0 if low else 1]
-            return Int64(held) if held < 0x8000000000000000 else -1
-        var raw = (
-            self._bytes[0] >> 32 if not low else self._bytes[0] & 0xFFFFFFFF
+        var raw = Int64(
+            (self._bytes[off // 8] >> UInt64((off % 8) * 8)) & 0xFFFFFFFF
         )
-        return -1 if raw == 0xFFFFFFFF else Int64(raw)
+        return raw - 0x100000000 if raw >= 0x80000000 else raw
+
+    def _i64(self, off: Int) -> Int64:
+        """The eight bytes at an eight-aligned `off`, sign-extended."""
+        var held = self._bytes[off // 8]
+        var raw = Int64(held & 0x7FFFFFFFFFFFFFFF)
+        return raw - 0x8000000000000000 if held >= 0x8000000000000000 else raw
 
     def rm_so(self) -> Int64:
         """The byte the substring starts at, or -1 when it did not match."""
-        return self._part(True)
+        comptime if CompilationTarget.is_macos():
+            return self._i64(REGMATCH_SO_OFFSET)
+        else:
+            return self._i32(REGMATCH_SO_OFFSET)
 
     def rm_eo(self) -> Int64:
         """The byte just past the substring, which is what rm_eo means."""
-        return self._part(False)
+        comptime if CompilationTarget.is_macos():
+            return self._i64(REGMATCH_EO_OFFSET)
+        else:
+            return self._i32(REGMATCH_EO_OFFSET)
 
 
 def regcomp(

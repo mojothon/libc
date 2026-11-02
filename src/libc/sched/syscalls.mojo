@@ -22,6 +22,15 @@ comptime SCHED_FIFO: Int32 = 4 if CompilationTarget.is_macos() else 1
 comptime SCHED_RR: Int32 = 2
 
 
+# Where the priority sits: first, on both platforms. Darwin's struct has a
+# second word after it — a `char __opaque[4]` the kernel writes and nothing
+# here reads — which is why its param is 8 bytes against glibc's 4.
+#
+# Numbers from glibc's `sched.h` and XNU's, and checked with C's `offsetof`
+# by `scripts/check-layouts.py`.
+comptime SCHED_PARAM_PRIORITY_OFFSET: Int = 0
+
+
 struct sched_param:
     """A C `struct sched_param`: the priority a scheduling call is asked for.
 
@@ -47,7 +56,7 @@ struct sched_param:
                 policy allows.
         """
         self._slots = Array[Int32, Self.INT_SLOTS](fill=0)
-        self._slots[0] = priority
+        self._slots[SCHED_PARAM_PRIORITY_OFFSET // 4] = priority
 
     def __init__(out self):
         """Zeroes the priority, which is what a fresh param is."""
@@ -55,7 +64,7 @@ struct sched_param:
 
     def sched_priority(self) -> Int32:
         """The priority, the first word of the struct on both platforms."""
-        return self._slots[0]
+        return self._slots[SCHED_PARAM_PRIORITY_OFFSET // 4]
 
     def set_sched_priority(mut self, priority: Int32):
         """Sets the priority, leaving whatever else is in the block.

@@ -257,7 +257,7 @@ All notable changes to this project are documented here. The format follows
   checked against XNU's headers on the macOS job and by a compiler that
   has never seen them before. None of the twenty-two was wrong. What is
   not checked is counted in the output rather than assumed: the members
-  Mojo lays out in declaration order, and the twenty-five structs that
+  Mojo lays out in declaration order, and the twenty-two structs that
   hold their bytes in a buffer while placing members at numbers written
   into their accessors, which is what `OFFSETS` is there to have more of.
 - **`Stat` places its members by name now.** They were slot numbers and
@@ -320,6 +320,19 @@ All notable changes to this project are documented here. The format follows
   and is now `MSGHDR_FLAGS_OFFSET`. Nine offsets into `OFFSETS`,
   seventy-five in total, and `sa_len` counted as checkable on the one
   platform that has it.
+- **`regmatch_t` and `sched_param` name theirs too**, which is three more
+  offsets and one more thing the script learned. `regmatch_t` is the
+  smallest struct in the package that the two platforms lay out
+  differently at all: `regoff_t` is an `int` on glibc and
+  `__darwin_off_t` on XNU, so `rm_eo` is at 4 on one and 8 on the other,
+  and a subexpression that took no part in the match is -1 in both — which
+  is why the read is sign-extending rather than masking, and why
+  `regoff_t` being half a word showed up as `4294967295` before it was.
+  `regmatch_t` is also a typedef with no struct tag, so
+  `offsetof(struct regmatch_t, rm_so)` does not compile, and a member
+  this cannot ask about is a member this cannot check: `check-layouts.py`
+  now tries `struct X` and then plain `X` before giving up on a struct,
+  which is what makes these two checkable at all.
 
 ## [0.12.0] - 2026-10-19
 

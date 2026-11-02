@@ -164,6 +164,9 @@ OFFSETS: dict[tuple[str, str], tuple[str, str]] = {
     ("libc.sys.socket", "MSGHDR_CONTROL_OFFSET"): ("msghdr", "msg_control"),
     ("libc.sys.socket", "MSGHDR_CONTROLLEN_OFFSET"): ("msghdr", "msg_controllen"),
     ("libc.sys.socket", "MSGHDR_FLAGS_OFFSET"): ("msghdr", "msg_flags"),
+    ("libc.regex", "REGMATCH_SO_OFFSET"): ("regmatch_t", "rm_so"),
+    ("libc.regex", "REGMATCH_EO_OFFSET"): ("regmatch_t", "rm_eo"),
+    ("libc.sched", "SCHED_PARAM_PRIORITY_OFFSET"): ("sched_param", "sched_priority"),
     ("libc.termios", "TERMIOS_IFLAG_OFFSET"): ("termios", "c_iflag"),
     ("libc.termios", "TERMIOS_OFLAG_OFFSET"): ("termios", "c_oflag"),
     ("libc.termios", "TERMIOS_CFLAG_OFFSET"): ("termios", "c_cflag"),
@@ -371,9 +374,12 @@ def c_offsets() -> tuple[dict[tuple[str, str], int], list[tuple[str, str]]]:
     for key, (struct, member) in OFFSETS.items():
         by_struct.setdefault(struct, []).append((key, member))
 
-    def program(struct: str, members: list[tuple[tuple[str, str], str]]) -> str:
+    def program(
+        struct: str, members: list[tuple[tuple[str, str], str]], tagged: bool
+    ) -> str:
+        kind = f"struct {struct}" if tagged else struct
         lines = "\n".join(
-            f'    printf("_{index} %zu\\n", offsetof(struct {struct}, {member}));'
+            f'    printf("_{index} %zu\\n", offsetof({kind}, {member}));'
             for index, (_key, member) in enumerate(members)
         )
         return (
@@ -381,10 +387,13 @@ def c_offsets() -> tuple[dict[tuple[str, str], int], list[tuple[str, str]]]:
             f"int main(void) {{\n{lines}\n    return 0;\n}}\n"
         )
 
-    def ask(struct: str, members: list[tuple[tuple[str, str], str]]) -> None:
+    def record(
+        struct: str, members: list[tuple[tuple[str, str], str]], tagged: bool
+    ) -> bool:
+        """Asks C about these members, once, and keeps the answers it got."""
         source = ROOT / ".build-check" / "offsets.c"
         source.parent.mkdir(exist_ok=True)
-        source.write_text(program(struct, members))
+        source.write_text(program(struct, members, tagged))
         built = subprocess.run(
             [
                 *CC,
@@ -397,20 +406,30 @@ def c_offsets() -> tuple[dict[tuple[str, str], int], list[tuple[str, str]]]:
             capture_output=True,
             text=True,
         )
-        if built.returncode == 0:
-            ran = subprocess.run(
-                [str(ROOT / ".build-check" / "offsets")],
-                capture_output=True,
-                text=True,
-            )
-            seen = {}
-            for line in ran.stdout.splitlines():
-                parts = line.split()
-                if len(parts) == 2 and parts[0].startswith("_"):
-                    seen[parts[0]] = int(parts[1])
-            if all(f"_{index}" in seen for index in range(len(members))):
-                for index, (key, _member) in enumerate(members):
-                    said[key] = seen[f"_{index}"]
+        if built.returncode != 0:
+            return False
+        ran = subprocess.run(
+            [str(ROOT / ".build-check" / "offsets")],
+            capture_output=True,
+            text=True,
+        )
+        seen = {}
+        for line in ran.stdout.splitlines():
+            parts = line.split()
+            if len(parts) == 2 and parts[0].startswith("_"):
+                seen[parts[0]] = int(parts[1])
+        if not all(f"_{index}" in seen for index in range(len(members))):
+            return False
+        for index, (key, _member) in enumerate(members):
+            said[key] = seen[f"_{index}"]
+        return True
+
+    def ask(struct: str, members: list[tuple[tuple[str, str], str]]) -> None:
+        # Two spellings, because not every one of these is a struct tag:
+        # `regmatch_t` is a typedef with no tag at all, and `offsetof(struct
+        # regmatch_t, rm_so)` does not compile.
+        for tagged in (True, False):
+            if record(struct, members, tagged):
                 return
         if len(members) == 1:
             missing.append(members[0][0])

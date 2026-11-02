@@ -28,7 +28,7 @@ the bottom.
 | `libc.string` | `<string.h>` | 49 |
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 44 |
 | `libc.complex` | `<complex.h>` | 46 |
-| `libc.sched` | `<sched.h>` | 15 |
+| `libc.sched` | `<sched.h>` | 16 |
 | `libc.signal` | `<signal.h>` | 46 |
 | `libc.spawn` | `<spawn.h>` start a process without fork | 25 |
 | `libc.locale` | `<locale.h>` | 16 |
@@ -41,7 +41,7 @@ the bottom.
 | `libc.network` | `<arpa/inet.h>` byte order and address conversion | 14 |
 | `libc.netdb` | `<netdb.h>` name and service lookup | 48 |
 | `libc.netif` | `<net/if.h>` interface names and numbers | 6 |
-| `libc.regex` | `<regex.h>` POSIX regular expressions | 26 |
+| `libc.regex` | `<regex.h>` POSIX regular expressions | 29 |
 | `libc.glob` | `<glob.h>` pathname matching | 18 |
 | `libc.grp` | `<grp.h>` the group database | 12 |
 | `libc.iconv` | `<iconv.h>` character encoding conversion | 4 |
