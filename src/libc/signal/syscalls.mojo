@@ -420,6 +420,76 @@ def sigprocmask(how: Int32, set: c_ptr[UInt8], oldset: c_ptr[UInt8]) -> Int32:
     ](how, set, oldset)
 
 
+def sigblock(mask: Int32) -> Int32:
+    """C library <signal.h> function `sigblock`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sigsetmask.3.html
+
+    Prototype:
+        int sigblock(int mask)
+
+    Description:
+        Adds signals to the blocked set, and answers with the set that
+        was there before. The set is one machine word rather than the
+        bytes `sigprocmask` takes: bit `signal - 1` for each signal
+        blocked, so signal 1 is bit 0 and signal 31 is bit 30.
+
+    Args:
+        mask: The signals to add, as a word of bits.
+
+    Returns:
+        The blocked set as it was before the call, as a word of bits, or
+        -1 on failure with `errno` set.
+
+    Notes:
+        This is the shape the blocked set had before `sigprocmask`, kept
+        for the code that still calls it: the two are one mask, said as a
+        word and as bytes, and a bit here is the same signal as a bit
+        there.
+
+        Only the first thirty-two signals fit in a word, which is the one
+        thing `sigprocmask` can do that this cannot.
+
+        Reading the set without changing it is `sigblock(0)`: adding
+        nothing answers with the set and leaves it as it was.
+    """
+    return external_call["sigblock", Int32, Int32](mask)
+
+
+def sigsetmask(mask: Int32) -> Int32:
+    """C library <signal.h> function `sigsetmask`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sigsetmask.3.html
+
+    Prototype:
+        int sigsetmask(int mask)
+
+    Description:
+        Replaces the blocked set with `mask`, and answers with the set it
+        replaced.
+
+    Args:
+        mask: The set to leave in place, as a word of bits.
+
+    Returns:
+        The blocked set as it was before the call, as a word of bits, or
+        -1 on failure with `errno` set.
+
+    Notes:
+        `sigblock` beside it only adds; this is the one that can take a
+        signal out of the set as well, and putting back the word that
+        `sigblock(0)` answered with is how a caller undoes it.
+
+        A signal taken out of the set that arrived while it was still
+        blocked is delivered before this returns, which is what
+        `sigprocmask` does too, and the reason to put a set back rather
+        than leave it empty.
+    """
+    return external_call["sigsetmask", Int32, Int32](mask)
+
+
 def sigsuspend(mask: c_ptr[UInt8]) -> Int32:
     """C library <signal.h> function `sigsuspend`.
 

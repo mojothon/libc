@@ -83,7 +83,6 @@ ANSWERS_WITH = {
     "mkstemp": "a descriptor",
     "shm_open": "a descriptor",
     "epoll_create1": "a descriptor",
-    "timer_create": "a descriptor",
     "eventfd": "a descriptor",
     "fcntl": "whatever its command asks for",
     "time": "the time",
@@ -104,6 +103,8 @@ ANSWERS_WITH = {
     "abs": "the number",
     "atoi": "the number",
     "isatty": "1 or 0 for yes or no, and 0 is no",
+    "sigblock": "the mask that was in place before it",
+    "sigsetmask": "the mask that was in place before it",
 }
 
 # Ways of saying failure is -1. Only these count, because a docstring

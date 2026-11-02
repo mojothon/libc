@@ -5,6 +5,8 @@ from libc.constant import EINVAL, c_ptr
 from libc.errno import get_errno, set_errno
 from libc.signal import (
     SIGINT,
+    SIGUSR1,
+    SIGUSR2,
     SIG_BLOCK,
     craise,
     kill,
@@ -12,12 +14,14 @@ from libc.signal import (
     psignal,
     sigaction,
     sigaddset,
+    sigblock,
     sigaltstack,
     sigdelset,
     sigemptyset,
     sigfillset,
     siginterrupt,
     sigismember,
+    sigsetmask,
     sigpending,
     sigprocmask,
 )
@@ -233,6 +237,77 @@ def test_signal_zero_asks_whether_a_group_is_there() raises:
     doing.unsafe_free()
 
 
+def test_the_blocked_set_as_a_word_and_as_bytes() raises:
+    """`sigblock` and `sigsetmask` keep the same mask `sigprocmask` keeps,
+    said as one word instead of a set of bytes.
+
+    The two are asked of each other: every bit of the word is compared
+    with the byte it belongs in, for the thirty-one signals a word can
+    hold, so a word that meant something else would be caught before it
+    was used.
+
+    Then one signal the set does not hold is blocked, and the bytes are
+    read again to find it there; the set is put back, and the bytes say
+    it is gone. That is the whole of how these two are used — save the
+    answer, hand it back — and it is what says the answer is the set.
+    """
+    var start = sigblock(0)
+    assert_true(start >= 0, "blocking nothing answers with the set in place")
+
+    var nothing = empty_set()
+    var was = unsafe_alloc[UInt8](128)
+    assert_equal(
+        sigprocmask(SIG_BLOCK, nothing, was), 0, "and the mask is read as bytes"
+    )
+    for number in range(1, 32):
+        var index = (number - 1) // 8
+        var offset = (number - 1) % 8
+        assert_equal(
+            (Int(start) >> (number - 1)) & 1,
+            (Int(was.unsafe_offset(index)[]) >> offset) & 1,
+            "the word and the bytes say the same about a signal",
+        )
+
+    var chosen = Int(SIGUSR1)
+    var bit = Int32(1) << (SIGUSR1 - 1)
+    if (start & bit) != 0:
+        chosen = Int(SIGUSR2)
+        bit = Int32(1) << (SIGUSR2 - 1)
+    assert_equal(
+        (Int(start) >> (chosen - 1)) & 1, 0, "one of the two is not in the set"
+    )
+
+    assert_equal(
+        sigblock(bit), start, "blocking it answers with the set before it"
+    )
+    assert_equal(
+        sigprocmask(SIG_BLOCK, nothing, was), 0, "and the bytes are read"
+    )
+    assert_equal(
+        (Int(was.unsafe_offset((chosen - 1) // 8)[]) >> ((chosen - 1) % 8)) & 1,
+        1,
+        "where the signal is now blocked",
+    )
+
+    assert_equal(
+        sigsetmask(start),
+        start | bit,
+        "putting the set back answers with the one it replaced",
+    )
+    assert_equal(
+        sigprocmask(SIG_BLOCK, nothing, was), 0, "and the bytes are read again"
+    )
+    assert_equal(
+        (Int(was.unsafe_offset((chosen - 1) // 8)[]) >> ((chosen - 1) % 8)) & 1,
+        0,
+        "where it is no longer blocked",
+    )
+    assert_equal(sigblock(0), start, "and the word is the one it started as")
+
+    was.unsafe_free()
+    nothing.unsafe_free()
+
+
 def main() raises:
     test_sigaddset_round_trips_through_sigismember()
     test_sigismember_refuses_a_number_that_is_not_a_signal()
@@ -243,4 +318,5 @@ def main() raises:
     test_sigaltstack_asked_and_told_nothing()
     test_sigaction_asked_and_told_nothing()
     test_craise_with_nothing_to_send()
+    test_the_blocked_set_as_a_word_and_as_bytes()
     print("signal ok")

@@ -83,6 +83,8 @@ from libc.unistd import (
     setegid,
     seteuid,
     setgid,
+    setregid,
+    setreuid,
     setpgid,
     setuid,
     setusershell,
@@ -765,6 +767,32 @@ def test_setuid_and_setgid_asked_for_what_we_already_are() raises:
         assert_equal(setuid(0), -1, "and an ordinary process is refused root")
 
 
+def test_setreuid_and_setregid_name_both_ids_at_once() raises:
+    """`setreuid` and `setregid` take the two ids in one call, and -1 is
+    how one of them is left alone.
+
+    Asked for the pair the process already has, each answers 0 and
+    neither id has moved; asked for -1 twice, the same. What cannot be
+    asked is the swap, which an ordinary process is allowed and a
+    privileged one is not, so the test stays on the pair it has.
+    """
+    var uid = getuid()
+    var euid = geteuid()
+    assert_equal(setreuid(uid, euid), 0, "setreuid asked for the pair we have")
+    assert_equal(getuid(), uid, "and the real id is the one it was")
+    assert_equal(geteuid(), euid, "and so is the effective one")
+    assert_equal(setreuid(-1, -1), 0, "and asked for neither, it sets neither")
+    assert_equal(getuid(), uid, "which leaves the real one alone")
+    assert_equal(geteuid(), euid, "and the effective one too")
+
+    var gid = getgid()
+    var egid = getegid()
+    assert_equal(setregid(gid, egid), 0, "setregid asked for the pair we have")
+    assert_equal(getgid(), gid, "and the real group id is the one it was")
+    assert_equal(getegid(), egid, "and so is the effective one")
+    assert_equal(setregid(-1, -1), 0, "and asked for neither, it sets neither")
+
+
 def test_asking_after_the_machine_and_the_process() raises:
     """`getdtablesize` says how many descriptors may be open at once,
     `getdomainname` the name of the NIS domain this machine is in,
@@ -972,6 +1000,7 @@ def main() raises:
     test_syscall_by_number()
     test_the_exec_family_refuses_what_is_not_there()
     test_setuid_and_setgid_asked_for_what_we_already_are()
+    test_setreuid_and_setregid_name_both_ids_at_once()
     test_pread_and_pwrite_at_an_offset()
     test_readv_gathers_what_writev_scattered()
     test_ualarm_is_the_timer_that_getitimer_reads()

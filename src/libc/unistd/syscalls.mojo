@@ -1360,6 +1360,61 @@ def setegid(egid: Int32) -> Int32:
     return external_call["setegid", Int32, Int32](egid)
 
 
+def setreuid(ruid: Int32, euid: Int32) -> Int32:
+    """Libc POSIX `setreuid` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/setreuid.2.html
+
+    Description:
+        setreuid() sets the real and the effective user ID, either or
+        both of them, in one call.
+
+    Args:
+        ruid: The real user ID to set, or -1 to leave it alone.
+        euid: The effective user ID to set, or -1 to leave it alone.
+
+    Returns:
+        0 on success, -1 on error.
+
+    Notes:
+        -1 is how one of the two is left alone, which is what makes this
+        the call for swapping them: given the two the other way round it
+        is a swap, and an unprivileged process is allowed exactly that and
+        nothing else. `seteuid` and `setegid` beside it set one id and
+        leave the other, which is this with half the arguments.
+
+        It is in POSIX though withdrawn, and both platforms keep it for
+        the code that has not moved.
+    """
+    return external_call["setreuid", Int32, Int32, Int32](ruid, euid)
+
+
+def setregid(rgid: Int32, egid: Int32) -> Int32:
+    """Libc POSIX `setregid` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/setregid.2.html
+
+    Description:
+        setregid() sets the real and the effective group ID, either or
+        both of them, in one call.
+
+    Args:
+        rgid: The real group ID to set, or -1 to leave it alone.
+        egid: The effective group ID to set, or -1 to leave it alone.
+
+    Returns:
+        0 on success, -1 on error.
+
+    Notes:
+        The same call as `setreuid` for the group side, -1 and all: it is
+        the one that can swap the two group IDs, which is what a program
+        that puts a file group's rights down and then back up does.
+    """
+    return external_call["setregid", Int32, Int32, Int32](rgid, egid)
+
+
 def alarm(seconds: Int32) -> Int32:
     """Libc POSIX `alarm` function.
 
