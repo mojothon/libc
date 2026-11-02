@@ -434,6 +434,19 @@ All notable changes to this project are documented here. The format follows
   sentence names — 26.6% where 947 of 3574 is 26.5% — and is 26.5% now. The
   3574 and the 947 stay as stated: they come from `nm` on one glibc, the
   page says so, and checking them would fail on the machine next door.
+- **Every binding is now either asked something by a test or says why it
+  cannot be.** `gl_flags` was read from the wrong half of a word for three
+  releases and every check here was green, because nothing was wrong except
+  that no test gave `glob` a flag. `scripts/check-tests.py` walks the same
+  bindings `check-prototypes.py` does and asks `tests/` which ones it calls,
+  ignoring imports, since `test_import_all.mojo` imports all 978. 923 are
+  called. Of the 31 that are not, 17 cannot be — reading standard input,
+  waiting for a signal, ending or forking the process, or naming a symbol
+  glibc does not export — and each says which. The remaining 14 are testable
+  and untested: a debt with a number on it that fails the run only if it
+  grows. Eight of them were paid off in the same change (`round`,
+  `remainder`, `erff`, `csinf`, `access`, `dup`, `link`, `umask`), which is
+  the shape the rest is meant to go.
 
 ## [0.12.0] - 2026-10-19
 
