@@ -51,6 +51,7 @@ the bottom.
 | `libc.wctype` | `<wctype.h>` | 3 |
 | `libc.sys.statvfs` | `<sys/statvfs.h>` | 3 |
 | `libc.sys.select` | `<sys/select.h>` | 9 |
+| `libc.sys.shm` | `<sys/shm.h>` shared memory | 7 |
 | `libc.poll` | `<poll.h>` | 14 |
 | `libc.setjmp` | `<setjmp.h>` | 2 |
 | `libc.sys.utsname` | `<sys/utsname.h>` | 2 |

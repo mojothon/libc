@@ -1255,6 +1255,18 @@ def bring_in_libc_sys_sendfile():
     )
 
 
+def bring_in_libc_sys_shm():
+    from libc.sys.shm import (
+        SHM_RDONLY,
+        SHM_RND,
+        shmat,
+        shmctl,
+        shmdt,
+        shmget,
+        shmid_ds,
+    )
+
+
 def bring_in_libc_sys_socket():
     from libc.sys.socket import (
         SOCK_CLOEXEC,
@@ -1598,6 +1610,7 @@ def main() raises:
     bring_in_libc_sys_resource()
     bring_in_libc_sys_select()
     bring_in_libc_sys_sendfile()
+    bring_in_libc_sys_shm()
     bring_in_libc_sys_socket()
     bring_in_libc_sys_stat()
     bring_in_libc_sys_statvfs()
