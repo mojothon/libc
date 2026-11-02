@@ -257,7 +257,7 @@ All notable changes to this project are documented here. The format follows
   checked against XNU's headers on the macOS job and by a compiler that
   has never seen them before. None of the twenty-two was wrong. What is
   not checked is counted in the output rather than assumed: the members
-  Mojo lays out in declaration order, and the twenty-nine structs that
+  Mojo lays out in declaration order, and the twenty-seven structs that
   hold their bytes in a buffer while placing members at numbers written
   into their accessors, which is what `OFFSETS` is there to have more of.
 - **`Stat` places its members by name now.** They were slot numbers and
@@ -295,6 +295,17 @@ All notable changes to this project are documented here. The format follows
   stops at `machine`; the script reports it as uncheckable there rather
   than skipping it, which is the difference between a hole that is
   counted and one that is not.
+- **`group` and `passwd` name their offsets too.** Four members the two
+  platforms agree on, and seven they do not: Darwin adds `pw_change`,
+  `pw_class` and `pw_expire` after `pw_gid`, which pushes `pw_gecos`,
+  `pw_dir` and `pw_shell` eight bytes further in and makes the struct 72
+  bytes against glibc's 48. The getters used to spell that out at every
+  use — `self._text_at(24 if not CompilationTarget.is_macos() else 40)` —
+  and say `PASSWD_GECOS_OFFSET` now, with the platform decision made once
+  where the constant is. Fourteen offsets go into `OFFSETS`, sixty-six in
+  total: sixty-three are checkable on Linux and the three that are not are
+  the Darwin-only members, counted as checkable elsewhere rather than
+  dropped, and compared on the job where they exist.
 
 ## [0.12.0] - 2026-10-19
 

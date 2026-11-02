@@ -43,7 +43,7 @@ the bottom.
 | `libc.netif` | `<net/if.h>` interface names and numbers | 6 |
 | `libc.regex` | `<regex.h>` POSIX regular expressions | 26 |
 | `libc.glob` | `<glob.h>` pathname matching | 18 |
-| `libc.grp` | `<grp.h>` the group database | 8 |
+| `libc.grp` | `<grp.h>` the group database | 12 |
 | `libc.iconv` | `<iconv.h>` character encoding conversion | 4 |
 | `libc.ifaddrs` | `<ifaddrs.h>` network interfaces | 8 |
 | `libc.langinfo` | `<langinfo.h>` strings the locale decides | 64 |
@@ -68,7 +68,7 @@ the bottom.
 | `libc.sys.prctl` | `<sys/prctl.h>` | 19 |
 | `libc.sys.auxv` | `<sys/auxv.h>` | 3 |
 | `libc.errno` | `<errno.h>` | 6 |
-| `libc.pwd` | `<pwd.h>` | 8 |
+| `libc.pwd` | `<pwd.h>` | 18 |
 | `libc.termios` | `<termios.h>` how a terminal line is set | 54 |
 | `libc.sys.ipc` | `<sys/ipc.h>` keys for System V objects | 9 |
 | `libc.sys.msg` | `<sys/msg.h>` message queues | 6 |

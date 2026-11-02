@@ -9,6 +9,20 @@ from libc.constant import c_ptr, c_size_t
 from libc.utils import char_ptr_to_string
 
 
+# Where each member of C's `struct group` sits. Both platforms agree on
+# every one of them, which is worth checking rather than asserting: four
+# eight-byte members at 0, 8, 16 and 24, with `gr_gid` — a `gid_t` here, an
+# `int` there, four bytes either way — in the low half of the third and
+# padding above it.
+#
+# Numbers from glibc's `grp.h` and XNU's, and all four are compared with C's
+# `offsetof` on both platforms by `scripts/check-layouts.py`.
+comptime GROUP_NAME_OFFSET: Int = 0
+comptime GROUP_PASSWD_OFFSET: Int = 8
+comptime GROUP_GID_OFFSET: Int = 16
+comptime GROUP_MEM_OFFSET: Int = 24
+
+
 struct group:
     """A C `struct group`: one row of the group database.
 
@@ -17,7 +31,8 @@ struct group:
     both, thirty-two bytes and eight-aligned either way. `gr_gid` is a
     `gid_t` here and an `int` there, and both are four bytes in the same
     place. This is the one struct in the package that needs no reading at
-    the offset of whoever is compiling.
+    the offset of whoever is compiling, which is a claim the offsets above
+    let a script check rather than repeat.
 
     libc owns the object this points at, and may hand every caller the
     same one: two calls overwrite each other's answer, and nothing here
@@ -44,27 +59,29 @@ struct group:
 
     def gr_name(self) raises -> String:
         """The group's name, as in `wheel` or `staff`."""
-        return self._text_at(0)
+        return self._text_at(GROUP_NAME_OFFSET)
 
     def gr_passwd(self) raises -> String:
         """The password field, which has held nothing but a placeholder
         for decades — `x` on Linux, `*` on Darwin.
         """
-        return self._text_at(8)
+        return self._text_at(GROUP_PASSWD_OFFSET)
 
     def gr_gid(self) raises -> UInt32:
         """The group's id, which is what files are owned by and what
         `getgrgid` looks one up by. Zero is `root` on Linux and `wheel`
         on Darwin.
         """
-        return UInt32(self._member(16) & 0xFFFFFFFF)
+        return UInt32(self._member(GROUP_GID_OFFSET) & 0xFFFFFFFF)
 
     def gr_mem(self) -> c_ptr[c_ptr[UInt8]]:
         """The group's members: a vector of login names, ended by a null
         pointer, each one readable with `char_ptr_to_string`. An empty
         group is one null and nothing before it.
         """
-        return c_ptr[c_ptr[UInt8]](unsafe_from_address=Int(self._member(24)))
+        return c_ptr[c_ptr[UInt8]](
+            unsafe_from_address=Int(self._member(GROUP_MEM_OFFSET))
+        )
 
 
 def setgrent() -> None:

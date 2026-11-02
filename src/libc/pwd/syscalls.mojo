@@ -10,6 +10,27 @@ from libc.constant import c_ptr, c_size_t
 from libc.utils import char_ptr_to_string
 
 
+# Where each member of C's `struct passwd` sits. POSIX fixes the order of
+# the seven and both platforms honour it; Darwin adds three of its own in the
+# middle, after `pw_gid`, which pushes everything from `pw_gecos` on eight
+# bytes further in and makes the struct 72 bytes against glibc's 48.
+#
+# Numbers from glibc's `pwd.h` and XNU's, and all ten are compared with C's
+# `offsetof` by `scripts/check-layouts.py` — the three Darwin-only ones
+# among them, which the macOS job can check and the Linux job can only count
+# as checkable elsewhere.
+comptime PASSWD_NAME_OFFSET: Int = 0
+comptime PASSWD_PASSWD_OFFSET: Int = 8
+comptime PASSWD_UID_OFFSET: Int = 16
+comptime PASSWD_GID_OFFSET: Int = 20
+comptime PASSWD_CHANGE_OFFSET: Int = 24
+comptime PASSWD_CLASS_OFFSET: Int = 32
+comptime PASSWD_GECOS_OFFSET: Int = 40 if CompilationTarget.is_macos() else 24
+comptime PASSWD_DIR_OFFSET: Int = 48 if CompilationTarget.is_macos() else 32
+comptime PASSWD_SHELL_OFFSET: Int = 56 if CompilationTarget.is_macos() else 40
+comptime PASSWD_EXPIRE_OFFSET: Int = 64
+
+
 struct passwd:
     """A C `struct passwd`: one row of the user database.
 
@@ -44,7 +65,7 @@ struct passwd:
 
     def pw_name(self) raises -> String:
         """The user's login name, as in `root`."""
-        return self._text_at(0)
+        return self._text_at(PASSWD_NAME_OFFSET)
 
     def pw_passwd(self) raises -> String:
         """The password field.
@@ -53,27 +74,27 @@ struct passwd:
         `shadow` on Linux and out of `/etc/passwd` on Darwin, so what is here
         is a placeholder such as `x` or `*`.
         """
-        return self._text_at(8)
+        return self._text_at(PASSWD_PASSWD_OFFSET)
 
     def pw_uid(self) raises -> UInt32:
         """The user's id, which is what files are owned by."""
-        return UInt32(self._member(16) & 0xFFFFFFFF)
+        return UInt32(self._member(PASSWD_UID_OFFSET) & 0xFFFFFFFF)
 
     def pw_gid(self) raises -> UInt32:
         """The user's principal group id."""
-        return UInt32(self._member(16) >> 32)
+        return UInt32(self._member(PASSWD_GID_OFFSET) >> 32)
 
     def pw_gecos(self) raises -> String:
         """The user's real name, and whatever else follows it."""
-        return self._text_at(24 if not CompilationTarget.is_macos() else 40)
+        return self._text_at(PASSWD_GECOS_OFFSET)
 
     def pw_dir(self) raises -> String:
         """The user's home directory."""
-        return self._text_at(32 if not CompilationTarget.is_macos() else 48)
+        return self._text_at(PASSWD_DIR_OFFSET)
 
     def pw_shell(self) raises -> String:
         """The user's login shell, which is `/bin/false` for nobody."""
-        return self._text_at(40 if not CompilationTarget.is_macos() else 56)
+        return self._text_at(PASSWD_SHELL_OFFSET)
 
     def pw_change(self) raises -> Int64:
         """When the password was last changed. Darwin only.
@@ -82,7 +103,7 @@ struct passwd:
         than something read out of a slot holding the gecos field.
         """
         comptime if CompilationTarget.is_macos():
-            return Int64(self._member(24))
+            return Int64(self._member(PASSWD_CHANGE_OFFSET))
         else:
             return Int64(0)
 
@@ -95,14 +116,14 @@ struct passwd:
         there.
         """
         comptime if CompilationTarget.is_macos():
-            return Int64(self._member(64))
+            return Int64(self._member(PASSWD_EXPIRE_OFFSET))
         else:
             return Int64(0)
 
     def pw_class(self) raises -> String:
         """The user's access class. Darwin only."""
         comptime if CompilationTarget.is_macos():
-            return self._text_at(32)
+            return self._text_at(PASSWD_CLASS_OFFSET)
         else:
             return String("")
 
