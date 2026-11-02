@@ -49,6 +49,8 @@ comptime SOCK_SEQPACKET = 5
 comptime SOCK_DCCP = 6
 comptime SOCK_PACKET = 10
 comptime MSG_DONTWAIT: Int32 = 128 if CompilationTarget.is_macos() else 64
+# 2 on both; `MSG_TRUNC` is not — it is 16 on Darwin and 32 on Linux.
+comptime MSG_PEEK = 2
 comptime IPPROTO_IP = 0
 comptime IPPROTO_ICMP = 1
 comptime IPPROTO_IGMP = 2

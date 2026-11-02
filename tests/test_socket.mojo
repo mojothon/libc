@@ -13,6 +13,7 @@ from std.testing import assert_equal, assert_true
 from libc.constant import (
     AF_INET,
     AF_UNIX,
+    MSG_PEEK,
     SHUT_RDWR,
     SOCK_DGRAM,
     SOCK_STREAM,
@@ -28,6 +29,7 @@ from libc.sys.socket import (
     listen,
     msghdr,
     recv,
+    recvmsg,
     recvfrom,
     send,
     sendmsg,
@@ -342,10 +344,105 @@ def test_sendmsg() raises:
     _ = close(right)
 
 
+def test_recvmsg_gathers_without_taking() raises:
+    """`recvmsg` is handed pieces to fill rather than one buffer, and
+    `MSG_PEEK` is what makes the count it returns worth reading twice.
+
+    Five bytes go out over two pieces and come back into two pieces of a
+    different split, so the boundary the sender used is not the boundary
+    the receiver gets: anything that copied a buffer would put `abcde`
+    into the first three bytes of one block, and this puts `ab` there and
+    `cde` in the next piece.
+
+    The peek is followed by a zeroing of both pieces and then a second
+    read, because a peek that consumed would still hand the same bytes
+    back to a test that never cleared them.
+    """
+    var ends = unsafe_alloc[Int32](2)
+    assert_equal(
+        socketpair(AF_UNIX, SOCK_STREAM, 0, ends), 0, "a pair to talk over"
+    )
+    var left = ends.unsafe_load(0)
+    var right = ends.unsafe_load(1)
+
+    var bytes = unsafe_alloc[UInt8](5)
+    for i in range(5):
+        bytes.unsafe_offset(i)[] = UInt8(97 + i)
+
+    var sending = unsafe_alloc[iovec](2)
+    sending.unsafe_offset(0)[] = iovec(bytes, 3)
+    sending.unsafe_offset(1)[] = iovec(bytes.unsafe_offset(3), 2)
+    var out = unsafe_alloc[msghdr](1)
+    out.unsafe_offset(0)[] = msghdr()
+    out.unsafe_offset(0)[].set_msg_iov(sending)
+    out.unsafe_offset(0)[].set_msg_iovlen(2)
+    assert_equal(
+        Int(sendmsg(left, out, 0)), 5, "five bytes out over two pieces"
+    )
+
+    var first = unsafe_alloc[UInt8](3)
+    var second = unsafe_alloc[UInt8](2)
+    var pieces = unsafe_alloc[iovec](2)
+    pieces.unsafe_offset(0)[] = iovec(first, 2)  # a split of its own
+    pieces.unsafe_offset(1)[] = iovec(second, 3)
+    var coming = unsafe_alloc[msghdr](1)
+    coming.unsafe_offset(0)[] = msghdr()
+    coming.unsafe_offset(0)[].set_msg_iov(pieces)
+    coming.unsafe_offset(0)[].set_msg_iovlen(2)
+
+    assert_equal(
+        Int(recvmsg(right, coming, MSG_PEEK)), 5, "a peek sees all five bytes"
+    )
+    assert_equal(
+        first.unsafe_offset(0)[],
+        UInt8(97),
+        "the first piece starts the message",
+    )
+    assert_equal(
+        first.unsafe_offset(1)[],
+        UInt8(98),
+        "and stops at its own length rather than at the sender's",
+    )
+    assert_equal(
+        second.unsafe_offset(0)[], UInt8(99), "so the rest goes to the second"
+    )
+    assert_equal(
+        second.unsafe_offset(2)[], UInt8(101), "as far as the last byte"
+    )
+    assert_equal(
+        coming.unsafe_offset(0)[].msg_flags(),
+        0,
+        "and the message arrived whole, which is what msg_flags reports",
+    )
+
+    for i in range(3):
+        first.unsafe_offset(i)[] = 0
+    for i in range(2):
+        second.unsafe_offset(i)[] = 0
+
+    assert_equal(Int(recvmsg(right, coming, 0)), 5, "and the peek took nothing")
+    assert_equal(
+        first.unsafe_offset(0)[], UInt8(97), "the same five bytes are there"
+    )
+    assert_equal(second.unsafe_offset(2)[], UInt8(101), "to be taken this time")
+
+    bytes.unsafe_free()
+    sending.unsafe_free()
+    out.unsafe_free()
+    pieces.unsafe_free()
+    coming.unsafe_free()
+    first.unsafe_free()
+    second.unsafe_free()
+    ends.unsafe_free()
+    _ = close(left)
+    _ = close(right)
+
+
 def main() raises:
     test_a_connection_over_the_loopback()
     test_accept4()
     test_socketpair()
     test_sendto_and_recvfrom()
     test_sendmsg()
+    test_recvmsg_gathers_without_taking()
     print("test_socket: ok")

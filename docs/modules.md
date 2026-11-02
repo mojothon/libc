@@ -12,7 +12,7 @@ the bottom.
 | `libc.unistd` | `<unistd.h>` | 195 |
 | `libc.file` | `<stdio.h>` file operations | 42 |
 | `libc.ctype` | `<ctype.h>` | 29 |
-| `libc.sys.socket` | `<sys/socket.h>` | 23 |
+| `libc.sys.socket` | `<sys/socket.h>` | 24 |
 | `libc.sys.stat` | `<sys/stat.h>` | 22 |
 | `libc.sys.times` | `<sys/times.h>` | 2 |
 | `libc.time` | `<time.h>` | 31 |

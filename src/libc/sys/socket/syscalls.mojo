@@ -380,6 +380,43 @@ def sendmsg(sockfd: Int32, msg: c_ptr[msghdr], flags: Int32) -> Int64:
     )
 
 
+def recvmsg(sockfd: Int32, msg: c_ptr[msghdr], flags: Int32) -> Int64:
+    """Libc POSIX `recvmsg` function.
+
+    Reference: https://man7.org/linux/man-pages/man3/recvmsg.3p.html
+    Fn signature: ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags)
+
+    Args:
+        sockfd: Which socket to read from.
+        msg: The message to fill in: where the pieces of it go, and room
+            for the address and the ancillary data if either is wanted.
+            It is written, not read, apart from those three pointers.
+        flags: `MSG_*` flags for this one call, or 0 for none.
+
+    Returns:
+        How many bytes arrived, which can be fewer than there was room
+        for, 0 at the end of a stream, or -1 with `errno` set.
+
+    Notes:
+        The other half of `sendmsg`, and the reason both exist: a message
+        that arrives in pieces can be put into pieces, with one call and
+        one return value rather than one per piece.
+
+        `msg_flags` is an output here even though it looks like part of
+        the message that was handed in. It says what was true of the
+        message that arrived — `MSG_TRUNC` when it did not fit, for
+        instance — and is not the flags this was called with; those are
+        the third argument and they stay an argument.
+
+        `MSG_PEEK` is what makes the returned count worth reading twice:
+        the bytes are put into the pieces and left in the socket, so the
+        next call sees the same ones.
+    """
+    return external_call["recvmsg", Int64, Int32, c_ptr[msghdr], Int32](
+        sockfd, msg, flags
+    )
+
+
 def socket(domain: Int32, type: Int32, protocol: Int32) -> Int32:
     """Libc POSIX `socket` function.
 

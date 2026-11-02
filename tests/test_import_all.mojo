@@ -1297,6 +1297,7 @@ def bring_in_libc_sys_socket():
         listen,
         msghdr,
         recv,
+        recvmsg,
         recvfrom,
         send,
         sendmsg,
