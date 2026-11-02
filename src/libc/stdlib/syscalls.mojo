@@ -1716,3 +1716,136 @@ def nrand48(xsubi: c_ptr[c_ushort]) -> c_long:
         a test can be written for it at all.
     """
     return external_call["nrand48", c_long, c_ptr[c_ushort]](xsubi)
+
+
+def ecvt(
+    value: Float64, ndigit: Int32, decpt: c_ptr[Int32], sign: c_ptr[Int32]
+) -> c_ptr[c_char]:
+    """C library <stdlib.h> function `ecvt`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/ecvt.3.html
+
+    Prototype:
+        char *ecvt(double value, int ndigit, int *decpt, int *sign)
+
+    Description:
+        Writes a number out as digits and nothing else: no point, no
+        sign, no exponent. `ndigit` says how many digits, counted
+        from the first one that is not a zero, and where the point
+        really goes is written to `decpt` instead — 1 for
+        `1.25`'s `"125"`, 2 for `12.5`'s, 0 for a number that
+        starts with one. Whether it was negative is written to
+        `sign`, the digits themselves being the same either way.
+
+    Args:
+        value: The number to write out.
+        ndigit: How many digits to write, counted from the left.
+        decpt: Where the number of digits before the point is put.
+        sign: Where 1 is put for a negative number and 0 for one that
+            is not.
+
+    Returns:
+        The digits, as a string the library owns, or null if `ndigit`
+        asked for more than the number has.
+
+    Notes:
+        The string is one the library keeps, not one it makes for
+        this call: it is written over by the next of the three that
+        is called, and it is shared by every thread that calls them.
+
+        Marked legacy in the man pages, and not in C99, but it is on
+        both platforms and has no successor: `snprintf` with `%e`
+        and a width is the nearest thing, and says the exponent
+        whether it is wanted or not.
+    """
+
+    return external_call[
+        "ecvt", c_ptr[c_char], Float64, Int32, c_ptr[Int32], c_ptr[Int32]
+    ](value, ndigit, decpt, sign)
+
+
+def fcvt(
+    value: Float64, ndigit: Int32, decpt: c_ptr[Int32], sign: c_ptr[Int32]
+) -> c_ptr[c_char]:
+    """C library <stdlib.h> function `fcvt`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/ecvt.3.html
+
+    Prototype:
+        char *fcvt(double value, int ndigit, int *decpt, int *sign)
+
+    Description:
+        The same three things as `ecvt` writes, with `ndigit`
+        counted from the other end: from the point rather than from
+        the first digit, so it is how many digits are kept after the
+        point and not how many are written in all. `1.25` asked for
+        three gives `"1250"`, where `ecvt` gives `"125"`.
+
+    Args:
+        value: The number to write out.
+        ndigit: How many digits to keep, counted from the point.
+        decpt: Where the number of digits before the point is put.
+        sign: Where 1 is put for a negative number and 0 for one that
+            is not.
+
+    Returns:
+        The digits, as a string the library owns.
+
+    Notes:
+        The two differ in one thing only, and the value and the count
+        can be the same in both: what changes is where the count is
+        counted from.
+
+        The string is one the library keeps, not one it makes for
+        this call: it is written over by the next of the three that
+        is called, and it is shared by every thread that calls them.
+    """
+
+    return external_call[
+        "fcvt", c_ptr[c_char], Float64, Int32, c_ptr[Int32], c_ptr[Int32]
+    ](value, ndigit, decpt, sign)
+
+
+def gcvt(value: Float64, ndigit: Int32, buf: c_ptr[c_char]) -> c_ptr[c_char]:
+    """C library <stdlib.h> function `gcvt`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/ecvt.3.html
+
+    Prototype:
+        char *gcvt(double value, int ndigit, char *buf)
+
+    Description:
+        Writes a number out the way it would be written by hand:
+        point, sign and all, in as few characters as `ndigit`
+        significant digits can be had in, and an exponent only where
+        there is no room without one. The one of the three that
+        writes into a buffer of the caller's, and the one that writes
+        a number a person can read.
+
+    Args:
+        value: The number to write out.
+        ndigit: How many significant digits to write, which is what
+            the width of a `%g` is.
+        buf: Where to write it, which must have room for the number
+            and the byte that ends it.
+
+    Returns:
+        `buf`, the same pointer that was given.
+
+    Notes:
+        How many bytes `buf` needs is up to the number: the digits, a
+        sign, a point, an `e` with its exponent where one is needed,
+        and the byte that ends it.
+
+        `ndigit` is significant digits and not places: `1.25` asked
+        for four is `"1.25"` and asked for two is `"1.2"`, which is
+        a different number, the count being one that rounds off
+        rather than one that pads out.
+    """
+
+    return external_call["gcvt", c_ptr[c_char], Float64, Int32, c_ptr[c_char]](
+        value, ndigit, buf
+    )

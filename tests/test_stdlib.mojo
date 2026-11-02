@@ -24,6 +24,9 @@ from libc.stdlib import (
     free,
     getenv,
     getloadavg,
+    ecvt,
+    fcvt,
+    gcvt,
     getsubopt,
     initstate,
     jrand48,
@@ -757,6 +760,120 @@ def test_the_number_the_rand48s_have_next() raises:
     seeds.unsafe_free()
 
 
+def test_writing_a_number_out_as_digits() raises:
+    """`ecvt` writes digits and nothing else: no point, no sign, no
+    exponent. Where the point goes and whether the number was
+    negative are written out beside it, which is the only reason the
+    two pointers are there.
+
+    `decpt` is the number of digits before the point, so it is what
+    moves when the number is ten times bigger: `1.25` and `12.5`
+    write the same three digits and are told apart by it alone.
+    """
+    var decpt = unsafe_alloc[Int32](1)
+    var sign = unsafe_alloc[Int32](1)
+    decpt.unsafe_offset(0)[] = -1
+    sign.unsafe_offset(0)[] = -1
+
+    assert_equal(
+        char_ptr_to_string(ecvt(1.25, 3, decpt, sign)),
+        "125",
+        "ecvt writes the digits of 1.25",
+    )
+    assert_equal(
+        Int(decpt.unsafe_load(0)), 1, "with one of them before the point"
+    )
+    assert_equal(Int(sign.unsafe_load(0)), 0, "and no sign, it being positive")
+
+    assert_equal(
+        char_ptr_to_string(ecvt(12.5, 3, decpt, sign)),
+        "125",
+        "and the digits of 12.5 are the same three",
+    )
+    assert_equal(
+        Int(decpt.unsafe_load(0)), 2, "with two of them before the point"
+    )
+
+    assert_equal(
+        char_ptr_to_string(ecvt(-1.25, 3, decpt, sign)),
+        "125",
+        "and a negative writes the same digits again",
+    )
+    assert_equal(Int(sign.unsafe_load(0)), 1, "and says so beside them")
+
+    decpt.unsafe_free()
+    sign.unsafe_free()
+
+
+def test_the_same_number_counted_from_the_other_end() raises:
+    """`fcvt` counted from the point instead of from the first digit,
+    which is the only difference between it and `ecvt` and the one
+    thing worth asserting: the same number, the same count, a
+    different answer.
+
+    `1.25` asked for three gives four digits here and three there. A
+    test that gave each of them a different number to work on would
+    pass with the two the wrong way round.
+    """
+    var decpt = unsafe_alloc[Int32](1)
+    var sign = unsafe_alloc[Int32](1)
+    decpt.unsafe_offset(0)[] = -1
+    sign.unsafe_offset(0)[] = -1
+
+    assert_equal(
+        char_ptr_to_string(fcvt(1.25, 3, decpt, sign)),
+        "1250",
+        "fcvt keeps three digits after the point, where ecvt kept three in all",
+    )
+    assert_equal(
+        Int(decpt.unsafe_load(0)), 1, "and the point is still in the same place"
+    )
+    assert_equal(Int(sign.unsafe_load(0)), 0, "and there is no sign")
+
+    assert_equal(
+        char_ptr_to_string(fcvt(-1.25, 2, decpt, sign)),
+        "125",
+        "two digits after the point, and a negative",
+    )
+    assert_equal(Int(sign.unsafe_load(0)), 1, "is said beside them")
+
+    decpt.unsafe_free()
+    sign.unsafe_free()
+
+
+def test_writing_a_number_the_way_it_is_written() raises:
+    """`gcvt` writes into a buffer of the caller's, which is what
+    sets it apart from the other two, and writes a number as a person
+    would: with its point and its sign.
+
+    That it answers with the buffer it was given is itself worth
+    asking, the other two answering with a string of the library's
+    own. And `ndigit` is significant digits: asked for two, `1.25`
+    is a different number, which is a count that rounds off rather
+    than one that pads out.
+    """
+    var buf = unsafe_alloc[c_char](32)
+    buf.unsafe_offset(0)[] = 0
+
+    var written = gcvt(1.25, 4, buf)
+    assert_true(written == buf, "gcvt answers with the buffer it was given")
+    assert_equal(char_ptr_to_string(buf), "1.25", "and writes 1.25 in it")
+
+    _ = gcvt(1.25, 2, buf)
+    assert_equal(
+        char_ptr_to_string(buf),
+        "1.2",
+        "and two significant digits is a different number",
+    )
+
+    _ = gcvt(-3.5, 3, buf)
+    assert_equal(
+        char_ptr_to_string(buf), "-3.5", "and a negative keeps its sign"
+    )
+
+    buf.unsafe_free()
+
+
 def main() raises:
     test_malloc()
     test_the_untried_calls()
@@ -776,5 +893,8 @@ def main() raises:
     test_writing_a_number_in_sixty_four_characters()
     test_yes_no_and_neither()
     test_a_name_is_made_and_a_number_is_read()
+    test_writing_a_number_out_as_digits()
+    test_the_same_number_counted_from_the_other_end()
+    test_writing_a_number_the_way_it_is_written()
     test_the_number_the_rand48s_have_next()
     print("test_stdlib: ok")
