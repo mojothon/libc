@@ -21,6 +21,7 @@ from libc.sys.stat import (
     stat,
     timespec,
     timeval,
+    umask,
     utimbuf,
     utime,
     utimensat,
@@ -317,6 +318,20 @@ def test_stat_at_the_working_directory_agrees_with_stat() raises:
     by_at.unsafe_free()
 
 
+def test_umask_answers_with_what_it_replaced() raises:
+    """`umask` is the one call here that answers with what it replaced
+    rather than with what it did, and there is no getter: asking what the
+    mask is means setting it and putting it back. That is also why this
+    test restores the old one before asserting anything else — the mask is
+    process-wide, and every file the rest of the suite makes is made under
+    it, so a test that left 0o077 behind would change what the others
+    create rather than fail.
+    """
+    var was = umask(0o077)
+    assert_equal(umask(0o022), 0o077, "the answer is the mask it replaced")
+    assert_equal(umask(was), 0o022, "and asking again answers the last one")
+
+
 def main() raises:
     test_mkdir_and_mkdirat()
     test_chmod_and_fchmodat()
@@ -325,4 +340,5 @@ def main() raises:
     test_the_times()
     test_setting_times_in_microseconds()
     test_stat_at_the_working_directory_agrees_with_stat()
+    test_umask_answers_with_what_it_replaced()
     print("test_stat: ok")

@@ -29,10 +29,12 @@ from libc.unistd import (
     SC_OPEN_MAX,
     SC_PAGESIZE,
     SYS_getpid,
+    access,
     alarm,
     chdir,
     chown,
     confstr,
+    dup,
     dup2,
     dup3,
     endusershell,
@@ -69,6 +71,7 @@ from libc.unistd import (
     ttyname,
     ttyname_r,
     lchown,
+    link,
     linkat,
     lseek,
     nice,
@@ -971,6 +974,60 @@ def test_ualarm_is_the_timer_that_getitimer_reads() raises:
     current.unsafe_free()
 
 
+def test_access_dup_and_link() raises:
+    """The three whose suffix a test had been standing on: `linkat` was
+    asked and `link` was not, `dup2` and `dup3` were asked and `dup` was
+    not, and `access` was called by nothing at all.
+
+    `access` is the awkward one, because its modes are numbers this package
+    does not name: `F_OK` is 0 and asks only whether the path is there,
+    which is what a caller usually means and what the shell's `test -e` is.
+    """
+    var path = string_to_char_ptr("/tmp/libc_access_me")
+    var fd = open_with_mode(path, O_CREAT | O_RDWR, 0o644)
+    assert_true(fd >= 0, "the file is there")
+
+    assert_equal(access(path, 0), 0, "F_OK finds what exists")
+
+    var missing = string_to_char_ptr("/tmp/libc_not_there_at_all")
+    _ = unlink(missing)
+    assert_equal(access(missing, 0), -1, "and does not find what does not")
+    missing.unsafe_free()
+
+    # `dup` takes nothing but a descriptor, and what it hands back is a
+    # second name for the same open file rather than a copy of it. `fstat`
+    # says so by agreeing about the inode, which two opens of one path would
+    # also do — the difference is that this one shares the offset.
+    var copy = dup(fd)
+    assert_true(copy >= 0, "dup answers a descriptor")
+    assert_true(copy != fd, "and not the one it was handed")
+
+    var original = unsafe_alloc[Stat](1)
+    var second = unsafe_alloc[Stat](1)
+    assert_equal(fstat(fd, original), 0, "the descriptor can be asked about")
+    assert_equal(fstat(copy, second), 0, "and so can the second name")
+    assert_equal(
+        second.unsafe_offset(0)[].ino(),
+        original.unsafe_offset(0)[].ino(),
+        "both name one inode",
+    )
+    original.unsafe_free()
+    second.unsafe_free()
+    _ = close(copy)
+
+    var hard = string_to_char_ptr("/tmp/libc_link_name")
+    _ = unlink(hard)
+    assert_equal(link(path, hard), 0, "link gives the file a second name")
+    assert_equal(access(hard, 0), 0, "which is a path like any other")
+    _ = unlink(hard)
+    assert_equal(access(hard, 0), -1, "and unlinking it takes it away")
+
+    hard.unsafe_free()
+    _ = close(fd)
+    _ = unlink(path)
+    path.unsafe_free()
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -997,6 +1054,7 @@ def main() raises:
     test_usleep()
     test_process_groups()
     test_dup3()
+    test_access_dup_and_link()
     test_syscall_by_number()
     test_the_exec_family_refuses_what_is_not_there()
     test_setuid_and_setgid_asked_for_what_we_already_are()

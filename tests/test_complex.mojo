@@ -111,6 +111,12 @@ def test_trigonometric() raises:
     assert_cdouble(ccos(cdouble(0.0, 0.0)), 1.0, 0.0)
     assert_cdouble(ctan(cdouble(0.0, 0.0)), 0.0, 0.0)
 
+    # The float half of the same three, of which only `csinf` had no test:
+    # `ccosf` and `ctanf` are asked below with the rest of the `f` pair, and
+    # this one was left out, so the name went unchecked while its neighbours
+    # did not.
+    assert_cfloat(csinf(cfloat(0.0, 0.0)), 0.0, 0.0)
+
     assert_cdouble(casin(cdouble(0.0, 0.0)), 0.0, 0.0)
     assert_true(abs(cacos(cdouble(0.0, 0.0)).re - 1.5707963267948966) < EPS_D)
     assert_cdouble(catan(cdouble(0.0, 0.0)), 0.0, 0.0)

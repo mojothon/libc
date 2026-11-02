@@ -29,6 +29,7 @@ from libc.math import (
     cosh,
     coshf,
     erf,
+    erff,
     exp,
     expf,
     expm1,
@@ -93,10 +94,12 @@ from libc.math import (
     nextafterf,
     pow,
     powf,
+    remainder,
     remainderf,
     remquo,
     remquof,
     rintf,
+    round,
     roundf,
     scalbln,
     scalblnf,
@@ -286,6 +289,36 @@ def test_rounding_and_remainders() raises:
 
     assert_true(fabs(Float64(copysignf(3.0, -1.0)) + 3.0) < 1e-6)
     assert_true(fabs(Float64(copysignf(-3.0, 1.0)) - 3.0) < 1e-6)
+
+
+def test_the_three_whose_neighbour_was_asked() raises:
+    """`roundf` was asked and `round` was not, `remainderf` and `remainder`,
+    `erf` and `erff`. Each pair is one declaration in C and two in this
+    package, and the second name is the whole of the difference — which is
+    exactly what a check here can get wrong without anything noticing, since
+    the wrong symbol still links and still answers a number.
+
+    `remainder` is the one worth being careful about: it rounds the quotient
+    to nearest rather than truncating it, so 3/2 gives -1 and not 1, and a
+    binding that called `fmod` instead would be wrong in a way that looks
+    like an arithmetic mistake.
+    """
+    assert_true(fabs(round(2.5) - 3.0) < 1e-12, "half rounds away from zero")
+    assert_true(fabs(round(-2.5) + 3.0) < 1e-12, "and away on the other side")
+    assert_true(fabs(round(2.4) - 2.0) < 1e-12, "below half goes down")
+
+    assert_true(
+        fabs(remainder(3.0, 2.0) + 1.0) < 1e-12, "the quotient goes to 2"
+    )
+    assert_true(fabs(remainder(5.0, 3.0) + 1.0) < 1e-12, "5 is 2 * 3 - 1")
+    assert_true(
+        fabs(Float64(remainderf(3.0, 2.0)) + 1.0) < 1e-6, "float agrees"
+    )
+    # `fmod` truncates instead, and answers 1 for the same two numbers.
+    assert_true(fabs(fmod(3.0, 2.0) - 1.0) < 1e-12, "while fmod does not")
+
+    assert_true(fabs(Float64(erff(0.0))) < 1e-7, "erf of nothing is nothing")
+    assert_true(Float64(erff(1.0)) > 0.84, "and erf of 1 is a little over 0.84")
 
 
 def test_scaling_and_exponents() raises:
@@ -514,4 +547,5 @@ def main() raises:
     test_remquof_keeps_the_quotient()
     test_the_four_that_round_a_double_to_a_whole_number()
     test_the_four_that_round_a_float_to_a_whole_number()
+    test_the_three_whose_neighbour_was_asked()
     print("test_math: ok")
