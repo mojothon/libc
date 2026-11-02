@@ -79,8 +79,6 @@ NOT_YET = {
     "pthread_mutex_setprioceiling": "the same, and it asks for the privilege again",
     "sched_rr_get_interval": "answers only for a process already running round-robin",
     "sched_setscheduler": "asks for a privilege the suite does not have",
-    "setprotoent": "walks the protocol database, which the suite would then have to reset",
-    "setservent": "walks the service database, as `setprotoent` does",
 }
 
 

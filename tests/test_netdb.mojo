@@ -17,7 +17,7 @@ from libc.constant import (
     c_size_t,
     c_ushort,
 )
-from libc.network import htons
+from libc.network import htons, ntohs
 from libc.netdb import (
     AI_NUMERICHOST,
     AI_NUMERICSERV,
@@ -40,12 +40,16 @@ from libc.netdb import (
     getnameinfo,
     getprotobyname,
     getprotobynumber,
+    getprotoent,
     getservbyname,
     getservbyport,
+    getservent,
     herror,
     hostent,
     hstrerror,
     sethostent,
+    setprotoent,
+    setservent,
 )
 from libc.utils import char_ptr_to_string, is_null, string_to_char_ptr
 
@@ -197,6 +201,72 @@ def test_the_address_answers_with_the_host_it_came_from() raises:
     service.unsafe_free()
     host.unsafe_free()
     serv.unsafe_free()
+
+
+def test_walking_the_protocol_database() raises:
+    """`setprotoent` and `endprotoent` were both here with nothing between
+    them, which is a walk that cannot be taken: the two ends were bound to
+    a database nothing in this package could read a row of.
+
+    What is asked of `getprotoent` is that it hands back rows of the same
+    database the lookup reads, and that `setprotoent` winds back to the
+    top: asked again after it, the walk starts at the row it started at.
+    The rows all come out of one buffer, so the name is copied before the
+    next call overwrites it — that is the shape of the call, not a quirk
+    of this test.
+    """
+    setprotoent(1)
+    var first = getprotoent()
+    assert_true(not is_null(first), "the protocol database has a first row")
+    var name = char_ptr_to_string(first.unsafe_offset(0)[].p_name)
+    assert_true(name.byte_length() > 0, "and a row has a name")
+
+    var second = getprotoent()
+    if not is_null(second):
+        assert_true(
+            char_ptr_to_string(second.unsafe_offset(0)[].p_name).byte_length()
+            > 0,
+            "and so does the row after it",
+        )
+
+    setprotoent(0)
+    var again = getprotoent()
+    assert_true(not is_null(again), "setprotoent winds back to the top")
+    assert_equal(
+        char_ptr_to_string(again.unsafe_offset(0)[].p_name),
+        name,
+        "and the row there is the one it started at",
+    )
+    endprotoent()
+
+
+def test_walking_the_service_database() raises:
+    """The same walk over `/etc/services`, and the same question: that
+    `getservent` reads rows of the database `getservbyname` looks in.
+
+    The row's port is in network order, so it is passed through `ntohs`
+    before it is compared — the number in the row is the one that goes on
+    the wire, not the one that counts here.
+    """
+    setservent(1)
+    var first = getservent()
+    assert_true(not is_null(first), "the service database has a first row")
+    var name = char_ptr_to_string(first.unsafe_offset(0)[].s_name)
+    assert_true(name.byte_length() > 0, "and a row has a name")
+    assert_true(
+        Int(ntohs(UInt16(first.unsafe_offset(0)[].s_port))) > 0,
+        "and a port in network order, which is 80 for some row or other",
+    )
+
+    setservent(0)
+    var again = getservent()
+    assert_true(not is_null(again), "setservent winds back to the top")
+    assert_equal(
+        char_ptr_to_string(again.unsafe_offset(0)[].s_name),
+        name,
+        "and the row there is the one it started at",
+    )
+    endservent()
 
 
 def test_the_protocol_database_by_name_and_by_number() raises:
@@ -404,6 +474,8 @@ def main() raises:
     test_a_name_that_is_not_a_number_is_refused()
     test_the_address_answers_with_the_host_it_came_from()
     test_the_protocol_database_by_name_and_by_number()
+    test_walking_the_protocol_database()
+    test_walking_the_service_database()
     test_the_service_database_by_name_and_by_port()
     test_the_host_database_read_row_by_row()
     test_a_host_asked_for_by_name_answers_with_the_kind_it_was_asked_by()

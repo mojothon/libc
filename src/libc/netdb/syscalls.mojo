@@ -437,12 +437,39 @@ def setprotoent(stayopen: Int32) -> None:
         Fn signature: `void setprotoent(int stayopen)`.
 
         This is the one end of the walk over every protocol there is,
-        `getprotoent` being the middle and `endprotoent` the other
-        end. Asking after one protocol by name or by number opens and
-        shuts the database on its own, so this is only for where the
-        whole of it is wanted.
+        `getprotoent` reading the rows and `endprotoent` the other end.
+        Asking after one protocol by name or by number opens and shuts
+        the database on its own, so this is only for where the whole of
+        it is wanted.
     """
     external_call["setprotoent", NoneType, Int32](stayopen)
+
+
+def getprotoent() -> c_ptr[protoent]:
+    """Libc POSIX `getprotoent` function.
+
+    Description:
+        Reads the next row of the protocol database, which is the walk
+        `setprotoent` opens and `endprotoent` closes.
+
+    Returns:
+        The next row, or a null pointer at the end of it.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getprotoent.3.html).
+        Fn signature: `struct protoent *getprotoent(void)`.
+
+        Every row is read into the same storage, so the pointer is the
+        position in the walk rather than a copy of the row: read what
+        is wanted out of it before asking for the next one, and copy
+        anything that has to outlive the call.
+
+        `/etc/protocols` is not on every machine. Where it is not, the
+        first call answers null, which is what the end of the database
+        answers too — libc does not tell the two apart, so neither does
+        this.
+    """
+    return external_call["getprotoent", c_ptr[protoent]]()
 
 
 def endprotoent() -> None:
@@ -457,9 +484,10 @@ def endprotoent() -> None:
 
         What this gives back is whatever was opened to read the
         database, and after it the next call starts from the top
-        again. Asking after one protocol by name or by number shuts
-        the database on its own, so this is called not because it is
-        wanted but because it is there.
+        again. The walk `setprotoent` starts ends here: a caller that
+        reads to the end of the database gets the same effect from the
+        null `getprotoent` answers, but one that stops early has to say
+        so, and this is how.
     """
     external_call["endprotoent", NoneType]()
 
@@ -549,12 +577,37 @@ def setservent(stayopen: Int32) -> None:
         Fn signature: `void setservent(int stayopen)`.
 
         This is the one end of the walk over every service there is,
-        `getservent` being the middle and `endservent` the other end.
+        `getservent` reading the rows and `endservent` the other end.
         Asking after one service by name or by port opens and shuts
         the database on its own, so this is only for where the whole
         of it is wanted.
     """
     external_call["setservent", NoneType, Int32](stayopen)
+
+
+def getservent() -> c_ptr[servent]:
+    """Libc POSIX `getservent` function.
+
+    Description:
+        Reads the next row of the service database, which is the walk
+        `setservent` opens and `endservent` closes.
+
+    Returns:
+        The next row, or a null pointer at the end of it.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getservent.3.html).
+        Fn signature: `struct servent *getservent(void)`.
+
+        Every row is read into the same storage, so the pointer is the
+        position in the walk rather than a copy of the row: read what
+        is wanted out of it before asking for the next one, and copy
+        anything that has to outlive the call.
+
+        `/etc/services` is on every machine that has ever had a socket,
+        so unlike the protocol database this one has rows to walk.
+    """
+    return external_call["getservent", c_ptr[servent]]()
 
 
 def endservent() -> None:
@@ -569,9 +622,10 @@ def endservent() -> None:
 
         What this gives back is whatever was opened to read the
         database, and after it the next call starts from the top
-        again. Asking after one service by name or by port shuts the
-        database on its own, so this is called not because it is
-        wanted but because it is there.
+        again. The walk `setservent` starts ends here: a caller that
+        reads to the end of the database gets the same effect from the
+        null `getservent` answers, but one that stops early has to say
+        so, and this is how.
     """
     external_call["endservent", NoneType]()
 

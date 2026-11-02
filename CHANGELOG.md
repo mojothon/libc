@@ -447,6 +447,17 @@ All notable changes to this project are documented here. The format follows
   grows. Eight of them were paid off in the same change (`round`,
   `remainder`, `erff`, `csinf`, `access`, `dup`, `link`, `umask`), which is
   the shape the rest is meant to go.
+- **`getprotoent` and `getservent` are bound**, which the coverage check is
+  what found: `setprotoent` and `endprotoent` were both here with nothing
+  between them, so the package documented a walk over the protocol database
+  whose middle it did not have, and the same for services. A setter with no
+  reader is not a call anybody can make. Both docstrings had been describing
+  `getprotoent` as the middle of the walk, which is how the gap read as
+  complete.
+- **The counts that follow move with it**: `beyond-c.md` now says 952 C
+  symbols, 949 of them in the four libraries, 26.6%; `modules.md` says
+  `libc.netdb` has 50. Both are checked, and both failed before the numbers
+  were changed.
 
 ## [0.12.0] - 2026-10-19
 
