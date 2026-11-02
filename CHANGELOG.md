@@ -242,6 +242,25 @@ All notable changes to this project are documented here. The format follows
   it. The tests take five small command lines apart and check what
   came back against what was handed in. `libc.getopt` starts at 12.
 
+### Changed
+
+- **`scripts/check-layouts.py` checks field offsets now, for the members
+  this package places by hand.** Size and alignment reach Mojo without
+  constructing anything; an offset does not, because asking a pointer
+  where a member lives asks for a member pointer and Mojo has none. But a
+  struct held as bytes does not need asking: the number an accessor reads
+  at *is* the offset, and C can be asked the same question with
+  `offsetof`. Twenty-two are listed — the records of `utmpx`, `termios`,
+  `dirent` and `aiocb`, which are the four places a member is placed by
+  hand rather than by declaration — and each is compared on whichever
+  platform is running, so the numbers taken from XNU's headers are
+  checked against XNU's headers on the macOS job and by a compiler that
+  has never seen them before. None of the twenty-two was wrong. What is
+  not checked is counted in the output rather than assumed: the members
+  Mojo lays out in declaration order, and the thirty-two structs that
+  hold their bytes in a buffer while placing members at numbers written
+  into their accessors, which is what `OFFSETS` is there to have more of.
+
 ## [0.12.0] - 2026-10-19
 
 ### Added

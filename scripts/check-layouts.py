@@ -15,7 +15,17 @@ so nothing here depends on a struct having a no-argument constructor or
 exported fields. Field offsets are not reachable at all: the pointer this
 module is written against has no `address_of`, and while `Pointer` does,
 asking it for the address of a member asks for a member pointer, which
-Mojo does not have. Those stay on trust and are counted below as such.
+Mojo does not have.
+
+Which leaves two kinds of struct here, and one of them can be asked about
+its offsets after all. A struct held as bytes has no members for C's
+`offsetof` to be compared against, but it does have a number per member —
+the one its accessors read and write at — and that number is a claim
+about C made in exactly the terms C answers in. Those are listed in
+`OFFSETS` and checked one by one. The rest declare their members in
+order and let Mojo lay them out, which agrees with C when the order does
+and says nothing about anything else, so they are counted rather than
+checked.
 """
 
 import importlib.util
@@ -79,6 +89,41 @@ NOT_A_C_STRUCT = {
     "FILE": "an opaque handle; C never says what is inside it",
     "Locale": "this package's own handle, not a C struct",
     "CString": "this package's own handle, not a C struct",
+}
+
+# Where this package places a member itself rather than letting Mojo lay the
+# struct out: one byte offset per member, used by the accessors of a struct
+# held as bytes. Each is a claim about C, so each is asked of C.
+#
+# Written out one by one, and deliberately not derived from the names:
+# nothing about `TERMIOS_CC_OFFSET` says C calls that member `c_cc`, and a
+# guess that happens to land on the right answer is worth less here than a
+# list somebody had to type. A constant that is renamed or dropped is
+# reported as unchecked rather than skipped, so the list cannot quietly go
+# stale.
+OFFSETS: dict[tuple[str, str], tuple[str, str]] = {
+    ("libc.aio", "AIOCB_FILDES"): ("aiocb", "aio_fildes"),
+    ("libc.aio", "AIOCB_LIO_OPCODE"): ("aiocb", "aio_lio_opcode"),
+    ("libc.aio", "AIOCB_REQPRIO"): ("aiocb", "aio_reqprio"),
+    ("libc.aio", "AIOCB_BUF"): ("aiocb", "aio_buf"),
+    ("libc.aio", "AIOCB_NBYTES"): ("aiocb", "aio_nbytes"),
+    ("libc.aio", "AIOCB_OFFSET"): ("aiocb", "aio_offset"),
+    ("libc.dirent", "DIRENT_RECLEN_OFFSET"): ("dirent", "d_reclen"),
+    ("libc.dirent", "DIRENT_TYPE_OFFSET"): ("dirent", "d_type"),
+    ("libc.dirent", "DIRENT_NAME_OFFSET"): ("dirent", "d_name"),
+    ("libc.termios", "TERMIOS_IFLAG_OFFSET"): ("termios", "c_iflag"),
+    ("libc.termios", "TERMIOS_OFLAG_OFFSET"): ("termios", "c_oflag"),
+    ("libc.termios", "TERMIOS_CFLAG_OFFSET"): ("termios", "c_cflag"),
+    ("libc.termios", "TERMIOS_LFLAG_OFFSET"): ("termios", "c_lflag"),
+    ("libc.termios", "TERMIOS_CC_OFFSET"): ("termios", "c_cc"),
+    ("libc.termios", "TERMIOS_ISPEED_OFFSET"): ("termios", "c_ispeed"),
+    ("libc.termios", "TERMIOS_OSPEED_OFFSET"): ("termios", "c_ospeed"),
+    ("libc.utmpx", "UT_TYPE_OFFSET"): ("utmpx", "ut_type"),
+    ("libc.utmpx", "UT_PID_OFFSET"): ("utmpx", "ut_pid"),
+    ("libc.utmpx", "UT_LINE_OFFSET"): ("utmpx", "ut_line"),
+    ("libc.utmpx", "UT_ID_OFFSET"): ("utmpx", "ut_id"),
+    ("libc.utmpx", "UT_USER_OFFSET"): ("utmpx", "ut_user"),
+    ("libc.utmpx", "UT_HOST_OFFSET"): ("utmpx", "ut_host"),
 }
 
 
@@ -201,6 +246,131 @@ def c_layouts(items: list[tuple[str, str]]) -> tuple[dict[str, tuple[int, int]],
     return said, refused
 
 
+def mojo_offsets() -> tuple[dict[tuple[str, str], int], list[tuple[str, str]]]:
+    """What Mojo says each of those numbers is on this platform.
+
+    Read out of the compiler rather than out of the source, for the same
+    reason the sizes are: the values are conditional on the platform, and
+    a second reading here of `8 if ... else 4` would be a second place to
+    be wrong in. Halved when it will not build, so that one constant that
+    stopped being importable does not hide the other twenty-one.
+    """
+    said: dict[tuple[str, str], int] = {}
+    missing: list[tuple[str, str]] = []
+
+    def program(batch: list[tuple[str, str]]) -> str:
+        imports = "\n".join(
+            f"from {module} import {constant} as _{index}"
+            for index, (module, constant) in enumerate(batch)
+        )
+        lines = "\n".join(
+            f'    print("_{index}", _{index})' for index in range(len(batch))
+        )
+        return f"{imports}\n\n\ndef main():\n{lines}\n"
+
+    def ask(batch: list[tuple[str, str]]) -> None:
+        if not batch:
+            return
+        source = ROOT / ".build-check" / "offsets.mojo"
+        source.parent.mkdir(exist_ok=True)
+        source.write_text(program(batch))
+        ran = subprocess.run(
+            [*mojo(), "run", "-I", str(ROOT / "src"), str(source)],
+            capture_output=True,
+            text=True,
+            cwd=ROOT,
+        )
+        if ran.returncode == 0:
+            seen = {}
+            for line in ran.stdout.splitlines():
+                parts = line.split()
+                if len(parts) == 2 and parts[0].startswith("_"):
+                    seen[parts[0]] = int(parts[1])
+            if all(f"_{index}" in seen for index in range(len(batch))):
+                for index, key in enumerate(batch):
+                    said[key] = seen[f"_{index}"]
+                return
+        if len(batch) == 1:
+            missing.append(batch[0])
+            return
+        middle = len(batch) // 2
+        ask(batch[:middle])
+        ask(batch[middle:])
+
+    ask(list(OFFSETS))
+    return said, missing
+
+
+def c_offsets() -> tuple[dict[tuple[str, str], int], list[tuple[str, str]]]:
+    """What `offsetof` says for each of them, one struct at a time.
+
+    Every member of one struct comes out of one compilation, which keeps
+    this at four builds rather than twenty-two. A member C does not have
+    under that name would take the rest of its struct down with it, so a
+    struct that will not build is asked again a member at a time — that
+    being the likeliest way for a field to be spelled wrongly here.
+    """
+    said: dict[tuple[str, str], int] = {}
+    missing: list[tuple[str, str]] = []
+    includes = "\n".join(f"#include <{h}>" for h in CHECK_CONSTANTS.headers())
+
+    by_struct: dict[str, list[tuple[tuple[str, str], str]]] = {}
+    for key, (struct, member) in OFFSETS.items():
+        by_struct.setdefault(struct, []).append((key, member))
+
+    def program(struct: str, members: list[tuple[tuple[str, str], str]]) -> str:
+        lines = "\n".join(
+            f'    printf("_{index} %zu\\n", offsetof(struct {struct}, {member}));'
+            for index, (_key, member) in enumerate(members)
+        )
+        return (
+            f"#include <stdio.h>\n#include <stddef.h>\n{includes}\n"
+            f"int main(void) {{\n{lines}\n    return 0;\n}}\n"
+        )
+
+    def ask(struct: str, members: list[tuple[tuple[str, str], str]]) -> None:
+        source = ROOT / ".build-check" / "offsets.c"
+        source.parent.mkdir(exist_ok=True)
+        source.write_text(program(struct, members))
+        built = subprocess.run(
+            [
+                *CC,
+                *DEFINES,
+                "-w",
+                "-o",
+                str(ROOT / ".build-check" / "offsets"),
+                str(source),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if built.returncode == 0:
+            ran = subprocess.run(
+                [str(ROOT / ".build-check" / "offsets")],
+                capture_output=True,
+                text=True,
+            )
+            seen = {}
+            for line in ran.stdout.splitlines():
+                parts = line.split()
+                if len(parts) == 2 and parts[0].startswith("_"):
+                    seen[parts[0]] = int(parts[1])
+            if all(f"_{index}" in seen for index in range(len(members))):
+                for index, (key, _member) in enumerate(members):
+                    said[key] = seen[f"_{index}"]
+                return
+        if len(members) == 1:
+            missing.append(members[0][0])
+            return
+        middle = len(members) // 2
+        ask(struct, members[:middle])
+        ask(struct, members[middle:])
+
+    for struct, members in by_struct.items():
+        ask(struct, members)
+    return said, missing
+
+
 def main() -> int:
     declared = structs()
     comparable = []
@@ -305,15 +475,64 @@ def main() -> int:
         for label, why in not_a_struct:
             print(f"      {label:<28} {why}")
 
+    placed_here, unread = mojo_offsets()
+    placed_by_c, unheard_of = c_offsets()
+    offset_agree = 0
+    offset_disagree = []
+    offset_unchecked = []
+    for key, (struct, member) in OFFSETS.items():
+        module, constant = key
+        if key in unread:
+            offset_unchecked.append(f"{module}.{constant} Mojo will not say")
+        elif key in unheard_of:
+            offset_unchecked.append(
+                f"{module}.{constant} C has no {struct}.{member}"
+            )
+        elif placed_here[key] == placed_by_c[key]:
+            offset_agree += 1
+        else:
+            offset_disagree.append((key, struct, member))
+
+    print(f"\n  Field offsets, for the {len(OFFSETS)} members placed by hand:")
+    print(f"      {offset_agree} agree with offsetof")
+    if offset_disagree:
+        print(f"      {len(offset_disagree)} disagree, and cannot:")
+        for (module, constant), struct, member in offset_disagree:
+            print(
+                f"      {module + '.' + constant:<40} here {placed_here[(module, constant)]:>4}  "
+                f"C says {placed_by_c[(module, constant)]:>4}   {struct}.{member}"
+            )
+    if offset_unchecked:
+        print(f"      {len(offset_unchecked)} could not be checked:")
+        for line in offset_unchecked:
+            print(f"      {line}")
+
     fielded = [f for _l, _m, _n, fields in declared for f in fields]
+    held_as_bytes = [
+        label
+        for label, _module, _name, fields in declared
+        if len(fields) == 1 and fields[0].startswith("_")
+    ]
+    covered = {module for module, _constant in OFFSETS}
+    not_listed = [
+        label for label in held_as_bytes if label.rsplit(".", 1)[0] not in covered
+    ]
     if fielded:
         print(
-            f"\n  Field offsets are not checked: {len(fielded)} fields across these"
-            f" structs rest on the values they were written with."
+            f"\n  The other {len(fielded)} members are declared in order and left to Mojo"
+            f" to lay out, which is C's arrangement when the order is and says"
+            f" nothing when it is not."
+        )
+    if not_listed:
+        print(
+            f"  And {len(not_listed)} structs hold their bytes in a buffer, placing"
+            f" members at numbers written into the accessors — numbers this cannot"
+            f" read, and `OFFSETS` is where they go when somebody wants them"
+            f" checked: {', '.join(not_listed[:6])}{', ...' if len(not_listed) > 6 else ''}"
         )
 
     print()
-    if disagree:
+    if disagree or offset_disagree:
         print("  *** structs that disagree with C ***")
         return 1
     print("  nothing disagrees with C")

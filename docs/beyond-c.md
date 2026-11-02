@@ -128,11 +128,25 @@ breaks nothing, since every call takes it by pointer and libc writes less
 than it was given. The script says which is which rather than treating any
 difference as failure.
 
-Field offsets are still on trust. `size_of` and `align_of` reach Mojo
-without constructing anything; the offset of a member does not, because
-asking a pointer where a member lives asks for a member pointer, and Mojo
-has none. That leaves 116 fields whose positions are whatever they were
-written down as.
+Field offsets were the half that stayed on trust: `size_of` and `align_of`
+reach Mojo without constructing anything, the offset of a member does not,
+because asking a pointer where a member lives asks for a member pointer and
+Mojo has none. But a struct held as bytes does not have to be asked — the
+numbers its accessors read at *are* the offsets, and C can be asked the
+same question about the same member. Twenty-two of them are listed in the
+script now and checked with `offsetof` on whichever platform is running:
+the records of `utmpx`, `termios`, `dirent` and `aiocb`, which between them
+are the four places where a member is placed by hand rather than by
+declaration. None of the twenty-two was wrong, which is what a check
+written after the fact tends to find, and is the reason to write it down
+before the next struct rather than after.
+
+What is left is counted rather than trusted silently: the members of a
+struct Mojo lays out itself rest on the order they are declared in, and
+thirty-two structs hold their bytes in a buffer while placing members at
+numbers written into the accessors — numbers no script can read, and
+`OFFSETS` is where they go when somebody wants them compared. A hole that
+is numbered is a hole somebody can fill.
 
 glibc, for its part, does not come with anything that checks glibc.
 
