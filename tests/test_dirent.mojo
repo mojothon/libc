@@ -20,27 +20,73 @@ from libc.dirent import (
 from libc.fcntl import open
 from libc.stdlib import free
 from libc.string import strcmp
+from libc.unistd import close
 from libc.utils import is_null, null_ptr, string_to_char_ptr
 
 
 def test_opendir_readdir() raises:
+    """A stream handed every entry until there are none left.
+
+    Which entries there are is the directory's business, but two of them
+    are not: `.` and `..` are in every directory, which is the one thing
+    that can be asserted about a listing without knowing what is being
+    listed. Reaching the end and finding them there is what says the loop
+    walked the stream, and the `NULL` that ends it is what says when.
+    """
     var path = string_to_char_ptr("/tmp")
     var dirp = opendir(path)
-    assert_true(Int(UInt(dirp)) != 0)
+    assert_true(not is_null(dirp), "/tmp opens")
 
-    var entry = readdir(dirp)
-    assert_true(Int(UInt(entry)) != 0)
-    assert_true(entry[].name().byte_length() > 0)
+    var dot = string_to_char_ptr(".")
+    var dotdot = string_to_char_ptr("..")
+    var seen_dot = False
+    var seen_dotdot = False
+    var count = 0
+    while True:
+        var entry = readdir(dirp)
+        if is_null(entry):
+            break
+        count += 1
+        var name = entry.unsafe_bitcast[UInt8]().unsafe_offset(
+            DIRENT_NAME_OFFSET
+        )
+        if Int(strcmp(name, dot)) == 0:
+            seen_dot = True
+        if Int(strcmp(name, dotdot)) == 0:
+            seen_dotdot = True
+
+    assert_true(count > 0, "and it has entries in it, and")
+    assert_true(seen_dot, "the one every directory has, and")
+    assert_true(seen_dotdot, "the other one every directory has")
 
     assert_equal(closedir(dirp), 0)
+    dot.unsafe_free()
+    dotdot.unsafe_free()
     path.unsafe_free()
 
 
 def test_dirfd() raises:
+    """`dirfd` answers with the descriptor the stream reads through.
+
+    For a stream made by `fdopendir` that is the descriptor it was handed
+    and not a copy of it — taking ownership is exactly that — so the
+    number is known in advance and is asked for exactly. What follows from
+    it is asked as well: `closedir` closes that descriptor, which the
+    `close` after it says, since a descriptor already closed is one `close`
+    refuses.
+    """
     var path = string_to_char_ptr("/tmp")
-    var dirp = opendir(path)
-    assert_true(dirfd(dirp) >= 0)
-    assert_equal(closedir(dirp), 0)
+    var fd = open(path, O_RDONLY)
+    assert_true(fd >= 0, "/tmp opens")
+
+    var dirp = fdopendir(fd)
+    assert_true(not is_null(dirp), "and makes a stream of it")
+    assert_equal(
+        dirfd(dirp), fd, "which reads through that descriptor and no other"
+    )
+
+    assert_equal(closedir(dirp), 0, "and closing the stream closes it, so")
+    assert_equal(close(fd), -1, "the descriptor it took is not there any more")
     path.unsafe_free()
 
 
