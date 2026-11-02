@@ -275,6 +275,26 @@ def split_args(text: str) -> list[str]:
     return [a for a in out if a]
 
 
+# `beyond-c.md` opens by stating how many C symbols this binds, and calls it
+# "the one number here that cannot drift from the source, because it is read
+# out of the source and compared against this paragraph". The second half of
+# that sentence is what this is: the number the page states is the number the
+# walk below finds, or the run fails. A page that stops stating it fails too —
+# the claim is the sentence, not the digits.
+STATED_SYMBOLS = re.compile(r"this binds\s+(\d+) C symbols")
+
+
+def stated_symbols(bound: int) -> list[str]:
+    """Where `docs/beyond-c.md` and the walk disagree about how many."""
+    page = (ROOT / "docs" / "beyond-c.md").read_text()
+    said = STATED_SYMBOLS.search(page)
+    if said is None:
+        return ["no longer says how many C symbols it binds"]
+    if int(said.group(1)) != bound:
+        return [f"says it binds {said.group(1)} C symbols, and it binds {bound}"]
+    return []
+
+
 def module_counts() -> dict[str, int]:
     """{package: functions, structs and public constants it defines}.
 
@@ -955,6 +975,15 @@ def main() -> int:
         f"all {len(walked)} calls match the C prototypes,"
         f" over {len(symbols)} distinct C symbols"
     )
+
+    wrong_stated = stated_symbols(len(symbols))
+    if wrong_stated:
+        print("\n  docs/beyond-c.md disagrees about the count:")
+        for line in wrong_stated:
+            print(f"      {line}")
+        print("\n  *** the page and the walk disagree about how many ***")
+        return 1
+    print(f"  and the page says {len(symbols)}, which is what it is")
     return 0
 
 

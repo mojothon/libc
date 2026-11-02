@@ -3,20 +3,20 @@
 This is a binding, so what it can call is a subset of what C can call and
 will stay that way. The count says how much of a subset: `libc`, `libm`,
 `libdl` and `librt` publish 3574 functions between them, and this binds
-950 C symbols, 947 of which are among those — **26.6%**. C offers more, and
+950 C symbols, 947 of which are among those — **26.5%**. C offers more, and
 calling more of it is not what this is for.
 
 Both numbers move with the machine they are taken on, which is worth saying
 before either is quoted. `nm -D --defined-only` over those four libraries
 gives 3574 names here and gave 2778 on the machine this page was first
-written on, a different glibc with fewer of them exported; the 950 is the
-symbols `scripts/check-prototypes.py` walks, which is the one count that
-cannot drift from the source because it is read out of the source. Take the
-shape rather than the digits: a quarter of what those four publish, every
-one of them checked against the header it comes from, and no intention of
-the rest.
+written on, a different glibc with fewer of them exported; the count of
+symbols is the one `scripts/check-prototypes.py` walks, and it is the one
+number here that cannot drift from the source, because it is read out of the
+source and compared against this paragraph. Take the shape rather than the
+digits: a quarter of what those four publish, every one of them checked
+against the header it comes from, and no intention of the rest.
 
-(950 took correcting twice. An earlier count here said 470, because the
+(That number took correcting twice. An earlier count here said 470, because the
 symbol was read off the same line as `external_call[` and a fifth of the
 calls in this package put the name on the next line instead. Then it said
 567, which was right the day it was counted and was not recounted as the

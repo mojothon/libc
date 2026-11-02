@@ -423,6 +423,17 @@ All notable changes to this project are documented here. The format follows
   that has to stay a fragment says so with a `mojo fragment` fence, and the
   run prints how many it skipped, so the escape hatch is counted rather
   than assumed.
+- **The symbol count on the first line of `beyond-c.md` is checked.** That
+  paragraph calls it "the one number here that cannot drift from the source,
+  because it is read out of the source" — and nothing read it out of
+  anything, so it was a number three lines into the page with the same
+  standing as the 3574 beside it. `check-prototypes.py` now compares what
+  the page says against the symbols it walks, and fails if the sentence is
+  reworded out of recognition, because the claim is the sentence. The
+  percentage beside it was computed from 950 rather than from the 947 the
+  sentence names — 26.6% where 947 of 3574 is 26.5% — and is 26.5% now. The
+  3574 and the 947 stay as stated: they come from `nm` on one glibc, the
+  page says so, and checking them would fail on the machine next door.
 
 ## [0.12.0] - 2026-10-19
 
