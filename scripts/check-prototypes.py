@@ -649,6 +649,7 @@ SPELLED_DIFFERENTLY = {
     "Statvfs": "statvfs",
     "Utsname": "utsname",
     "Rlimit": "rlimit",
+    "Aiocb": "aiocb",
     "Timeval": "timeval",
     "socketaddr": "sockaddr",
     "Sysinfo": "sysinfo",

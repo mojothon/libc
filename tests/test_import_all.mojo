@@ -8,6 +8,27 @@ than in whatever a caller was doing when it imported us.
 """
 
 
+def bring_in_libc_aio():
+    from libc.aio import (
+        AIO_ALLDONE,
+        AIO_CANCELED,
+        AIO_NOTCANCELED,
+        Aiocb,
+        LIO_NOP,
+        LIO_NOWAIT,
+        LIO_READ,
+        LIO_WRITE,
+        aio_cancel,
+        aio_error,
+        aio_fsync,
+        aio_read,
+        aio_return,
+        aio_suspend,
+        aio_write,
+        lio_listio,
+    )
+
+
 def bring_in_libc_complex():
     from libc.complex import (
         cabs,
@@ -1626,6 +1647,7 @@ def bring_in_libc_wctype():
 
 def main() raises:
     bring_in_libc_complex()
+    bring_in_libc_aio()
     bring_in_libc_ctype()
     bring_in_libc_dirent()
     bring_in_libc_dlfcn()

@@ -18,6 +18,7 @@ the bottom.
 | `libc.time` | `<time.h>` | 38 |
 | `libc.fenv` | `<fenv.h>` | 26 |
 | `libc.sys.mman` | `<sys/mman.h>` | 15 |
+| `libc.aio` | `<aio.h>` I/O handed over rather than waited for | 24 |
 | `libc.sys.sysinfo` | `<sys/sysinfo.h>` | 18 |
 | `libc.pthread` | `<pthread.h>` | 98 |
 | `libc.string` | `<string.h>` | 49 |
