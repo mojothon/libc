@@ -8,6 +8,7 @@ from libc.sys.stat import timeval
 from libc.time import (
     CLOCK_MONOTONIC,
     CLOCK_REALTIME,
+    ITIMER_REAL,
     TIME_UTC,
     adjtime,
     asctime,
@@ -20,12 +21,15 @@ from libc.time import (
     ctime_r,
     difftime,
     gettimeofday,
+    getitimer,
     gmtime,
     gmtime_r,
+    itimerval,
     localtime,
     localtime_r,
     mktime,
     nanosleep,
+    setitimer,
     strftime,
     strptime,
     time,
@@ -36,7 +40,12 @@ from libc.time import (
     tm,
     tzset,
 )
-from libc.utils import char_ptr_to_string, string_to_char_ptr, strlen
+from libc.utils import (
+    char_ptr_to_string,
+    null_ptr,
+    string_to_char_ptr,
+    strlen,
+)
 
 
 def test_clock_and_time() raises:
@@ -296,6 +305,109 @@ def test_asking_the_clock_how_far_it_is_to_move() raises:
     nothing.unsafe_free()
 
 
+def test_a_timer_that_is_set_and_taken_back() raises:
+    """`setitimer` sets one timer per clock and replaces whatever was
+    there, so the setting that comes back through its third argument is
+    what is worth reading: it is the call's only way of saying what it
+    displaced.
+
+    The repeat is asked for exactly and comes back exactly — it is a
+    number that is stored, not a countdown. The time until the first go
+    does not: it is already running, so a timer set to ten seconds reads
+    back as ten or as nine and a fraction of one.
+
+    Ten seconds and not one, because a test that leaks a timer leaks a
+    `SIGALRM`, whose default is to end the process in the middle of
+    whatever the suite is doing next. Everything here is set back to
+    nothing before it returns, and the reading afterwards is the proof.
+
+    `settimeofday` is in the same header and is not tested: moving the
+    wall clock is not something this could put back.
+    """
+    var nothing = unsafe_alloc[itimerval](1)
+    nothing.unsafe_offset(0)[] = itimerval()
+
+    assert_equal(
+        setitimer(ITIMER_REAL, nothing, null_ptr[itimerval]()),
+        0,
+        "a timer set to nothing is a timer that is off",
+    )
+
+    var wanted = unsafe_alloc[itimerval](1)
+    wanted.unsafe_offset(0)[] = itimerval()
+    wanted.unsafe_offset(0)[].it_value_sec = 10
+    wanted.unsafe_offset(0)[].it_interval_sec = 3
+
+    var previous = unsafe_alloc[itimerval](1)
+    previous.unsafe_offset(0)[] = itimerval()
+    assert_equal(
+        setitimer(ITIMER_REAL, wanted, previous),
+        0,
+        "and one set to ten seconds",
+    )
+    assert_equal(
+        previous.unsafe_offset(0)[].it_value_sec,
+        0,
+        "what it displaced was nothing, which is the whole of what the third",
+    )
+    assert_equal(
+        previous.unsafe_offset(0)[].it_interval_sec, 0, "argument is for"
+    )
+
+    var current = unsafe_alloc[itimerval](1)
+    current.unsafe_offset(0)[] = itimerval()
+    assert_equal(
+        getitimer(ITIMER_REAL, current), 0, "and what is set reads back"
+    )
+    assert_equal(
+        current.unsafe_offset(0)[].it_interval_sec,
+        3,
+        "the repeat as the number it was given",
+    )
+    assert_equal(
+        current.unsafe_offset(0)[].it_interval_usec,
+        0,
+        "microseconds and all, because nothing counts it down",
+    )
+    assert_true(
+        current.unsafe_offset(0)[].it_value_sec > 0
+        and current.unsafe_offset(0)[].it_value_sec <= 10,
+        "and the time left is ten seconds or a little less of them",
+    )
+
+    assert_equal(
+        setitimer(ITIMER_REAL, nothing, previous), 0, "which is then taken back"
+    )
+    assert_true(
+        previous.unsafe_offset(0)[].it_value_sec >= 9
+        and previous.unsafe_offset(0)[].it_value_sec <= 10,
+        "and the ten seconds that were left come back through the old setting",
+    )
+    assert_equal(
+        previous.unsafe_offset(0)[].it_interval_sec,
+        3,
+        "along with the repeat, which had not begun to count",
+    )
+
+    assert_equal(getitimer(ITIMER_REAL, current), 0, "and it is off afterwards")
+    assert_equal(
+        current.unsafe_offset(0)[].it_value_sec,
+        0,
+        "with nothing left to wait for, so no `SIGALRM` is on its way",
+    )
+
+    assert_equal(
+        setitimer(99, nothing, null_ptr[itimerval]()),
+        -1,
+        "and a clock that is not a timer is refused rather than guessed at",
+    )
+
+    nothing.unsafe_free()
+    wanted.unsafe_free()
+    previous.unsafe_free()
+    current.unsafe_free()
+
+
 def main() raises:
     test_clock_settime_is_refused_to_an_ordinary_process()
     test_clock_and_time()
@@ -307,4 +419,5 @@ def main() raises:
     test_nanosleep()
     test_localtime()
     test_the_ones_that_keep_their_own_buffer()
+    test_a_timer_that_is_set_and_taken_back()
     print("test_time: ok")

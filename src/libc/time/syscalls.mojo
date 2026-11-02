@@ -20,6 +20,13 @@ comptime CLOCK_REALTIME: c_int = 0
 comptime CLOCK_MONOTONIC: c_int = 6 if CompilationTarget.is_macos() else 1
 comptime TIME_UTC: c_int = 1
 
+# Which clock a timer counts against: wall clock, time this process has
+# spent on a processor, or that plus time the system spent on its behalf.
+# The three are 0, 1 and 2 on both platforms.
+comptime ITIMER_REAL: c_int = 0
+comptime ITIMER_VIRTUAL: c_int = 1
+comptime ITIMER_PROF: c_int = 2
+
 
 struct tm(TrivialRegisterPassable):
     """A C `struct tm`: a broken-down calendar time.
@@ -607,3 +614,106 @@ def adjtime(delta: c_ptr[timeval], olddelta: c_ptr[timeval]) -> c_int:
     return external_call["adjtime", c_int, c_ptr[timeval], c_ptr[timeval]](
         delta, olddelta
     )
+
+
+struct itimerval(TrivialRegisterPassable):
+    """A C `struct itimerval`: how soon a timer goes off, and then how
+    often, each as a `struct timeval`.
+
+    Four numbers in the order they are laid out — seconds and
+    microseconds of what is to come, then seconds and microseconds of
+    the repeat — which is two `struct timeval`s in a row. Both platforms
+    put them in the same places, but `tv_usec` is 32-bit on Darwin, so
+    the odd slots read correctly only if the struct was zeroed before it
+    was filled in, which `__init__` does.
+
+    A repeat of nothing is a timer that goes off once; a time of nothing
+    is one that never goes off at all, and that is also how one is
+    switched off.
+    """
+
+    var it_interval_sec: Int64
+    var it_interval_usec: Int64
+    var it_value_sec: Int64
+    var it_value_usec: Int64
+
+    def __init__(out self):
+        """Zeroes every member, which is the timer that never goes off."""
+        self.it_interval_sec = 0
+        self.it_interval_usec = 0
+        self.it_value_sec = 0
+        self.it_value_usec = 0
+
+
+def getitimer(which: c_int, current: c_ptr[itimerval]) -> c_int:
+    """Libc POSIX `getitimer` function.
+
+    Args:
+        which: Which timer, as one of `ITIMER_REAL`, `ITIMER_VIRTUAL` or
+            `ITIMER_PROF`.
+        current: Where to put what is set: how long until it goes off and
+            how often after that. It is written.
+
+    Returns:
+        0, or -1 with `errno` set where `which` is not a timer.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getitimer.3.html).
+        Fn signature: `int getitimer(int which, struct itimerval *current)`.
+
+        What comes back is what is left and not what was asked for: the
+        interval is echoed as it was given, and the time has already
+        started counting down, so it is never quite the number that was
+        set. Reading zeros in both is the timer being off.
+
+        `ITIMER_REAL` counts wall clock and sends `SIGALRM` when it is
+        due, which by default ends the process — so the interesting use
+        of this call is to ask before a timer that was set is allowed to
+        run out.
+    """
+    return external_call["getitimer", c_int, c_int, c_ptr[itimerval]](
+        which, current
+    )
+
+
+def setitimer(
+    which: c_int, new_value: c_ptr[itimerval], old_value: c_ptr[itimerval]
+) -> c_int:
+    """Libc POSIX `setitimer` function.
+
+    Args:
+        which: Which timer, as one of `ITIMER_REAL`, `ITIMER_VIRTUAL` or
+            `ITIMER_PROF`.
+        new_value: How long until it goes off and how often after that, or
+            nothing to switch it off. It is read.
+        old_value: Where to put what was set before this call for the same
+            timer, which is written, or a null pointer where that is not
+            wanted.
+
+    Returns:
+        0, or -1 with `errno` set where `which` is not a timer or a
+        number cannot be that long.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/setitimer.3.html).
+        Fn signature: `int setitimer(int which, const struct itimerval
+            *new_value, struct itimerval *old_value)`.
+
+        One timer per clock, and setting one replaces whatever was there:
+        the previous setting comes back through `old_value` and is not
+        added to. Asking for what was already set is therefore not a way
+        to lengthen it, but a way to read it while replacing it.
+
+        The numbers this leaves behind settle at a tick of the clock, so
+        a timer set to a second and a half does not come back as exactly
+        a second and a half — the interval does, because it is a number
+        and not a countdown, and the time does not, because it has begun.
+
+        `settimeofday` is declared in the same header and is not bound
+        here: it moves the wall clock, and a test that moved it would
+        have no way to put it back on a machine where it does not have
+        the right to.
+    """
+    return external_call[
+        "setitimer", c_int, c_int, c_ptr[itimerval], c_ptr[itimerval]
+    ](which, new_value, old_value)

@@ -15,7 +15,7 @@ the bottom.
 | `libc.sys.socket` | `<sys/socket.h>` | 24 |
 | `libc.sys.stat` | `<sys/stat.h>` | 22 |
 | `libc.sys.times` | `<sys/times.h>` | 2 |
-| `libc.time` | `<time.h>` | 31 |
+| `libc.time` | `<time.h>` | 37 |
 | `libc.fenv` | `<fenv.h>` | 26 |
 | `libc.sys.mman` | `<sys/mman.h>` | 15 |
 | `libc.pthread` | `<pthread.h>` | 98 |
