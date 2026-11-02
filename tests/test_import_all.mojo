@@ -1567,6 +1567,17 @@ def bring_in_libc_wchar():
     )
 
 
+def bring_in_libc_wordexp():
+    from libc.wordexp import (
+        WRDE_APPEND,
+        WRDE_DOOFFS,
+        WRDE_NOCMD,
+        wordfree,
+        wordexp,
+        wordexp_t,
+    )
+
+
 def bring_in_libc_wctype():
     from libc.wctype import (
         towctrans,
@@ -1634,5 +1645,6 @@ def main() raises:
     bring_in_libc_time()
     bring_in_libc_unistd()
     bring_in_libc_wchar()
+    bring_in_libc_wordexp()
     bring_in_libc_wctype()
     print("test_import_all: ok")
