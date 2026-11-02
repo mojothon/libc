@@ -71,7 +71,6 @@ CALLED = re.compile(r"`([A-Za-z_]\w*)\(\w*\)`")
 PROSE = frozenset({
     "IEEE754", "XXXXXX", "PATH", "TODO", "NOTE", "POSIX", "ASCII", "UTF",
     "GNU", "BSD", "LINUX", "MACOS", "DARWIN", "ANSI", "MAP_FAILED",
-    "SEM_FAILED",
     "LC_GLOBAL_LOCALE", "LC_ALL_MASK", "FE_DFL_ENV", "TCP", "UDP", "IPV6",
     "HTTP", "HTTPS", "NULL", "sizeof", "size_t",
 })

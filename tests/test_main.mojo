@@ -30,7 +30,6 @@ from test_statvfs import main as run_statvfs
 from test_sync import main as run_sync
 from test_logging import main as run_logging
 from test_sendfile import main as run_sendfile
-from test_semaphore import main as run_semaphore
 from test_errno import main as run_errno
 from test_fenv import main as run_fenv
 from test_float import main as run_float
@@ -99,7 +98,6 @@ def main() raises:
     run_sync()
     run_logging()
     run_sendfile()
-    run_semaphore()
     run_errno()
     run_fenv()
     run_float()
