@@ -55,7 +55,7 @@ the bottom.
 | `libc.dlfcn` | `<dlfcn.h>` | 7 |
 | `libc.wchar` | `<wchar.h>` | 83 |
 | `libc.wordexp` | `<wordexp.h>` shell-style word splitting | 6 |
-| `libc.wctype` | `<wctype.h>` | 3 |
+| `libc.wctype` | `<wctype.h>` | 5 |
 | `libc.sys.statvfs` | `<sys/statvfs.h>` | 15 |
 | `libc.sys.select` | `<sys/select.h>` | 9 |
 | `libc.sys.shm` | `<sys/shm.h>` shared memory | 7 |

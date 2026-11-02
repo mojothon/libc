@@ -549,6 +549,28 @@ All notable changes to this project are documented here. The format follows
   lines, but all three were already here. `beyond-c.md` says 962
   symbols, 959 among the four libraries, 26.8%; `modules.md` says
   `libc.math` has 133 and `libc.network` 16.
+- **`<wctype.h>` has both halves now.** It already carried `wctrans` and
+  `towctrans`, but its docstring said Darwin had no `iswctype`, so the
+  `wctype`/`iswctype` pair was left out. That note was wrong: Apple's
+  `locale/iswctype.c` compiles the inline classifiers into extern
+  functions with `_EXTERNALIZE_WCTYPE_INLINES_TOP_` — the same route by
+  which `iswalpha`, already bound and passing on macOS, reaches
+  libSystem — and `locale/FreeBSD/wctype.c` is an ordinary function
+  whose twelve standard class names return the very masks the inline
+  `isw*` functions test. Both are now bound and the note is corrected.
+  A `wctype` handle is an unsigned integer on both platforms
+  (address-sized on Linux, a bit mask on Darwin), unlike the `wctrans`
+  handle which is a pointer on one and a number on the other, so one
+  `UInt64` carries either and no second comptime alias is needed.
+  The test writes nothing down about the handle's value: for all 128
+  ASCII characters and all twelve class names, `iswctype(c,
+  wctype(name))` has to agree with the corresponding `iswX(c)` bound in
+  `libc.wchar` — 1536 comparisons against twelve independent bindings,
+  so a symbol wired to the wrong function or an argument order reversed
+  cannot survive. An unknown name and a name meaning a change of case
+  both answer zero, and a zero handle classifies nothing. `beyond-c.md`
+  says 964 symbols, 961 among the four libraries, 26.9%; `modules.md`
+  says `libc.wctype` has 5.
 - **The list of bindings a test could ask and has not is empty.** Five of
   the last six debts were not blocked by anything, which is the point: four
   of the reasons said a privilege, a thread or a policy was needed, and

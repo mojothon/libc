@@ -3,7 +3,7 @@
 This is a binding, so what it can call is a subset of what C can call and
 will stay that way. The count says how much of a subset: `libc`, `libm`,
 `libdl` and `librt` publish 3574 functions between them, and this binds
-962 C symbols, 959 of which are among those — **26.8%**. C offers more, and
+964 C symbols, 961 of which are among those — **26.9%**. C offers more, and
 calling more of it is not what this is for.
 
 Both numbers move with the machine they are taken on, which is worth saying

@@ -1760,8 +1760,10 @@ def bring_in_libc_wordexp():
 
 def bring_in_libc_wctype():
     from libc.wctype import (
+        iswctype,
         towctrans,
         wctrans,
+        wctype,
     )
 
 
