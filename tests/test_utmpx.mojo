@@ -2,6 +2,7 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
+from libc.constant import c_int
 from libc.fcntl import O_CREAT, O_RDWR, O_TRUNC, open
 from libc.unistd import close, getpid, unlink, write
 from libc.utmpx import (
@@ -20,7 +21,16 @@ from libc.utmpx import (
 from libc.utils import is_null, string_to_char_ptr
 
 
-comptime PATH = "/tmp/mojo-utmpx-record"
+# XNU will only take a name for its login database that ends in `x` — its
+# own are `/var/run/utmpx` and `/var/log/wtmpx` — so the files here are
+# named to suit both, and the suffix is the one thing about the test that
+# is there for one platform's benefit.
+comptime PATH = "/tmp/mojo-utmpx-record.utmpx"
+
+# And what the two answer when a name is taken: glibc 0, XNU 1. The
+# binding hands back whichever it got; this is what says the test knows
+# which one it is asking for rather than accepting either.
+comptime NAME_TAKEN: c_int = 1 if CompilationTarget.is_macos() else 0
 
 
 def test_a_new_record_is_the_empty_one() raises:
@@ -75,20 +85,27 @@ def test_a_record_reads_back_what_was_put_in_it() raises:
     assert_equal(record.ut_user(), "someone", "running into the user's name")
 
 
-def test_the_walk_reads_a_file_of_our_own() raises:
-    """Records written here and read back by C.
+def test_a_record_written_back_comes_out_again() raises:
+    """A file of our own, filled and walked through the binding itself.
 
-    This is the test that knows the layout: the bytes are put in the file
-    at this package's offsets, and libc's own reader is what finds the
-    terminal names in them. If `ut_line` were at glibc's 8 on a machine
-    where C keeps it elsewhere, the walk would find a record whose
-    terminal name is a part of a pid, and every assertion below would
-    say so.
+    Every value goes in through a setter, is copied out of the record by
+    libc, written down, read back by libc and copied in again, and is
+    read out through an accessor — so a member this package puts
+    somewhere C does not would be lost on the way and come back empty or
+    as whatever its neighbour is. XNU converts to a narrower record on
+    the way to the file and back, which is why that holds there and not
+    only here.
     """
     var path = string_to_char_ptr(PATH)
     _ = unlink(path)
     var fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0o600)
     assert_true(fd >= 0, "a file of our own to be the database")
+    assert_equal(close(fd), 0, "empty, and left for libc to fill")
+
+    # The name is remembered rather than opened, so this cannot fail on
+    # the file being empty — and what it answers when it takes one is
+    # asked below, after a record has landed in it.
+    var named = utmpxname(path)
 
     var first = unsafe_alloc[utmpx](1)
     first[] = utmpx()
@@ -97,11 +114,20 @@ def test_the_walk_reads_a_file_of_our_own() raises:
     first[].set_ut_line("mojo-tty0")
     first[].set_ut_id("mj00")
     first[].set_ut_user("mojo")
+    var written = pututxline(first)
+    assert_true(not is_null(written), "the first record is written")
     assert_equal(
-        write(fd, first.unsafe_bitcast[UInt8](), UInt32(UTMPX_BYTES)),
-        UTMPX_BYTES,
-        "the first record is exactly one record long",
+        written[].ut_line(), "mojo-tty0", "and comes back as it went in"
     )
+    assert_equal(written[].ut_id(), "mj00", "with its identifier")
+    assert_equal(written[].ut_user(), "mojo", "and its user")
+    assert_equal(written[].ut_pid(), 4242, "and its process")
+    assert_equal(Int(written[].ut_type()), Int(USER_PROCESS), "and its type")
+
+    # Nothing was written anywhere until the name was taken, and it went
+    # into a file this process can write, so the answer is the platform's
+    # one for success.
+    assert_equal(named, NAME_TAKEN, "a name ending in x is taken, and answered")
 
     var second = unsafe_alloc[utmpx](1)
     second[] = utmpx()
@@ -110,27 +136,20 @@ def test_the_walk_reads_a_file_of_our_own() raises:
     second[].set_ut_line("mojo-tty1")
     second[].set_ut_id("mj11")
     second[].set_ut_user("other")
-    assert_equal(
-        write(fd, second.unsafe_bitcast[UInt8](), UInt32(UTMPX_BYTES)),
-        UTMPX_BYTES,
-        "and so is the second",
-    )
+    assert_true(not is_null(pututxline(second)), "and so is the second")
 
-    assert_equal(utmpxname(path), 0, "the walk is pointed at that file")
     setutxent()
-
     var got = getutxent()
-    assert_true(not is_null(got), "the first record is read back")
+    assert_true(not is_null(got), "the walk reads the first one back")
     assert_equal(
         got[].ut_line(), "mojo-tty0", "with the terminal that was put in"
     )
     assert_equal(got[].ut_id(), "mj00", "and the identifier")
     assert_equal(got[].ut_user(), "mojo", "and the user")
     assert_equal(got[].ut_pid(), 4242, "and the process")
-    assert_equal(Int(got[].ut_type()), Int(USER_PROCESS), "and the type")
 
     got = getutxent()
-    assert_true(not is_null(got), "and then the second")
+    assert_true(not is_null(got), "the walk reads the second one")
     assert_equal(got[].ut_line(), "mojo-tty1", "which is the other terminal")
     assert_equal(got[].ut_user(), "other", "and the other user")
 
@@ -147,8 +166,6 @@ def test_the_walk_reads_a_file_of_our_own() raises:
         "a search from the end of the file finds nothing, until",
     )
 
-    # Asking for one by name, from a record that holds nothing else: the
-    # comparison is C's, at C's offset for the terminal.
     setutxent()
     probe[].set_ut_line("mojo-tty1")
     var found = getutxline(probe)
@@ -174,21 +191,6 @@ def test_the_walk_reads_a_file_of_our_own() raises:
     probe[].set_ut_id("zz99")
     assert_true(is_null(getutxid(probe)), "and one that is not filed is not")
 
-    # Written back through libc, then found again by libc, which is the
-    # only way to tell that a record this package filled in was one C
-    # could read out of the block.
-    var third = unsafe_alloc[utmpx](1)
-    third[] = utmpx()
-    third[].set_ut_type(Int16(USER_PROCESS))
-    third[].set_ut_pid(getpid())
-    third[].set_ut_line("mojo-put")
-    third[].set_ut_id("mj22")
-    third[].set_ut_user("writer")
-    var written = pututxline(third)
-    assert_true(not is_null(written), "a record can be written back")
-    assert_equal(written[].ut_line(), "mojo-put", "and it is the one given")
-    assert_equal(written[].ut_user(), "writer", "whole, and not another one")
-
     # A record with next to nothing in it is written as it stands: glibc
     # adds neither the pid of the caller nor an identifier taken from the
     # end of the terminal, and hands back the zeroes it was given. XNU is
@@ -206,19 +208,107 @@ def test_the_walk_reads_a_file_of_our_own() raises:
         assert_equal(as_written[].ut_pid(), 0, "with nothing added to its pid")
         assert_equal(as_written[].ut_id(), "", "and nothing filing it")
 
+    endutxent()
+
+    first.unsafe_free()
+    second.unsafe_free()
+    bare.unsafe_free()
+    probe.unsafe_free()
+    assert_equal(unlink(path), 0, "the file is taken away")
+    path.unsafe_free()
+
+
+def test_bytes_written_at_these_offsets_are_bytes_libc_reads() raises:
+    """The one test that would catch an offset that is not C's.
+
+    Everything else here goes through libc in both directions, so a
+    member read at the wrong offset on the way in is written at that same
+    wrong offset on the way out and comes back looking right. Here the
+    bytes are put in the file at this package's offsets and libc is the
+    only reader: an offset that moved by a byte turns a terminal name
+    into a part of a pid and every assertion below says so.
+
+    glibc only, and not for want of trying. XNU's database file is not an
+    array of these records: it opens with a signature record in the
+    narrower 32-bit shape and every record after it is in that shape too,
+    converted on the way in and out — so bytes written at a 64-bit
+    record's offsets are not bytes XNU can read at all, which is why the
+    test above is the one that covers XNU.
+    """
+    if CompilationTarget.is_macos():
+        return
+
+    var path = string_to_char_ptr("/tmp/mojo-utmpx-raw.utmpx")
+    _ = unlink(path)
+    var fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0o600)
+    assert_true(fd >= 0, "a file of our own to be the database")
+
+    var first = unsafe_alloc[utmpx](1)
+    first[] = utmpx()
+    first[].set_ut_type(Int16(USER_PROCESS))
+    first[].set_ut_pid(4242)
+    first[].set_ut_line("mojo-tty0")
+    first[].set_ut_id("mj00")
+    first[].set_ut_user("mojo")
+    assert_equal(
+        write(fd, first.unsafe_bitcast[UInt8](), UInt32(UTMPX_BYTES)),
+        UTMPX_BYTES,
+        "one record, exactly as long as C's",
+    )
+
+    var second = unsafe_alloc[utmpx](1)
+    second[] = utmpx()
+    second[].set_ut_type(Int16(USER_PROCESS))
+    second[].set_ut_pid(4243)
+    second[].set_ut_line("mojo-tty1")
+    second[].set_ut_id("mj11")
+    second[].set_ut_user("other")
+    assert_equal(
+        write(fd, second.unsafe_bitcast[UInt8](), UInt32(UTMPX_BYTES)),
+        UTMPX_BYTES,
+        "and a second one after it",
+    )
+
+    assert_equal(
+        utmpxname(path), NAME_TAKEN, "the walk is pointed at that file"
+    )
     setutxent()
-    probe[].set_ut_id("")
-    probe[].set_ut_line("mojo-put")
-    var after = getutxline(probe)
-    assert_true(not is_null(after), "and the walk finds it afterwards")
-    assert_equal(after[].ut_pid(), getpid(), "belonging to this process")
+
+    var got = getutxent()
+    assert_true(not is_null(got), "the first record is read back")
+    assert_equal(
+        got[].ut_line(), "mojo-tty0", "with the terminal that was put there"
+    )
+    assert_equal(got[].ut_id(), "mj00", "and the identifier")
+    assert_equal(got[].ut_user(), "mojo", "and the user")
+    assert_equal(got[].ut_pid(), 4242, "and the process")
+
+    got = getutxent()
+    assert_true(not is_null(got), "and then the second")
+    assert_equal(got[].ut_line(), "mojo-tty1", "which is the other terminal")
+    assert_equal(got[].ut_user(), "other", "and the other user")
+    assert_true(is_null(getutxent()), "and then there are no more records")
+
+    # Worth saying twice: the walk is at the end of the file now, so the
+    # search has to be wound back before it can find the record that is
+    # behind it.
+    setutxent()
+    var probe = unsafe_alloc[utmpx](1)
+    probe[] = utmpx()
+    probe[].set_ut_type(Int16(USER_PROCESS))
+    probe[].set_ut_line("mojo-tty1")
+    var found = getutxline(probe)
+    assert_true(
+        not is_null(found), "and libc finds one of them by its own field"
+    )
+    assert_equal(
+        found[].ut_pid(), 4243, "which is the record for that terminal"
+    )
 
     endutxent()
 
     first.unsafe_free()
     second.unsafe_free()
-    third.unsafe_free()
-    bare.unsafe_free()
     probe.unsafe_free()
     assert_equal(close(fd), 0, "the file is closed")
     assert_equal(unlink(path), 0, "and taken away")
@@ -234,28 +324,29 @@ def test_endutxent_ends_the_walk_and_setutxent_starts_it_again() raises:
     `setutxent` after an `endutxent` that does not walk off the end of a
     closed file.
     """
-    var path = string_to_char_ptr("/tmp/mojo-utmpx-does-not-exist")
+    var path = string_to_char_ptr("/tmp/mojo-utmpx-absent.utmpx")
     _ = unlink(path)
-    assert_equal(
-        utmpxname(path), 0, "a name is remembered whether or not it is"
-    )
+    assert_equal(utmpxname(path), NAME_TAKEN, "a name is remembered whether")
 
     setutxent()
-    assert_true(
-        is_null(getutxent()), "there is a file there, so nothing is read"
-    )
+    assert_true(is_null(getutxent()), "or not the file is there to be read")
 
     endutxent()
     setutxent()
     assert_true(is_null(getutxent()), "and starting again reads nothing again")
     endutxent()
 
+    # XNU's reader makes the file it was pointed at before finding nothing
+    # in it; glibc's does not. Neither is asked about afterwards except
+    # for being gone.
+    _ = unlink(path)
     path.unsafe_free()
 
 
 def main() raises:
     test_a_new_record_is_the_empty_one()
     test_a_record_reads_back_what_was_put_in_it()
-    test_the_walk_reads_a_file_of_our_own()
+    test_a_record_written_back_comes_out_again()
+    test_bytes_written_at_these_offsets_are_bytes_libc_reads()
     test_endutxent_ends_the_walk_and_setutxent_starts_it_again()
     print("test_utmpx: ok")

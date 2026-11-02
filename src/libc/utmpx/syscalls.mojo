@@ -26,6 +26,13 @@
 # the platform's own rather than the larger of them: a record written out
 # with this struct has to be exactly as long as C's, or the file it goes
 # into is not one libc can walk.
+#
+# On XNU that is not enough by itself. A file there opens with a signature
+# record in the 32-bit shape — the one a 32-bit process wrote — and every
+# record after it is in that shape too, converted on the way in and out.
+# So the file is libc's to make: `pututxline` into a file of your own is
+# how one gets written, and bytes copied into it at this struct's offsets
+# are not bytes XNU reads.
 # ----------------------------------
 from std.ffi import external_call
 from std.sys import CompilationTarget
@@ -389,12 +396,24 @@ def utmpxname(file: c_ptr[c_char]) -> c_int:
         file: The path of the file to walk from now on.
 
     Returns:
-        0, or -1 with `errno` set.
+        0 when the name was taken and -1 when it was not, on glibc. XNU
+        answers 1 and 0 for those two, which is the opposite way round
+        and is not a mistake here: its own implementation returns the
+        boolean its internals use. A caller that compares the answer
+        against 0 is therefore comparing against the wrong thing on one
+        of the two platforms, and the one thing both agree on is that the
+        name they took is the name used.
 
     Notes:
-        The name is remembered, not opened: -1 means the name was too
-        long to keep or no room could be found for it. A name that is not
-        there is found out at `setutxent`, which is the call that opens
-        it.
+        The name is remembered, not opened: this says nothing about
+        whether the file is there. A name that is not there is found out
+        at `setutxent`, which is the call that opens it.
+
+        XNU takes only a name that ends in `x` — its own are
+        `/var/run/utmpx` and `/var/log/wtmpx` — and answers 0 for
+        anything else without setting `errno` to say why. That is a
+        corner of the platform a header does not mention and a test
+        finds: a path of the caller's own that works on glibc is one XNU
+        quietly ignores.
     """
     return external_call["utmpxname", c_int, c_ptr[c_char]](file)

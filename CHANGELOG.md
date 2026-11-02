@@ -24,9 +24,16 @@ All notable changes to this project are documented here. The format follows
   else that is numbered twice: `OLD_TIME` and `NEW_TIME` are the other
   way round on the two, and XNU's `ACCOUNTING`, `SIGNATURE` and
   `SHUTDOWN_TIME` are left out rather than bound on one platform and
-  missing on the other. One thing the tests had to be told: a search
-  carries on from wherever the walk got to, so `getutxline` after a walk
-  that has ended finds nothing at all until `setutxent` winds it back.
+  missing on the other. Three things the tests had to be told, none of
+  them in a header: a search carries on from wherever the walk got to, so
+  `getutxline` after a walk that has ended finds nothing at all until
+  `setutxent` winds it back; XNU's `utmpxname` takes only a name ending
+  in `x` and silently ignores anything else, and answers 1 for a name it
+  takes where glibc answers 0; and an XNU database file is not an array
+  of these records at all — it opens with a signature record in the
+  narrower 32-bit shape and converts every record after it on the way in
+  and out — so a file of one's own is libc's to make there, and only on
+  glibc can the raw bytes at this struct's offsets be what libc reads.
   `libc.utmpx` starts at 29.
 - **The `_SC_*` knobs are bound in `libc.unistd`, eighty of them.**
   `sysconf` took a knob number and this package named exactly one,
