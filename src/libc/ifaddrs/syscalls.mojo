@@ -23,6 +23,30 @@ comptime IFF_POINTOPOINT = 16
 comptime IFF_RUNNING = 64
 
 
+# Where the seven members of C's `struct ifaddrs` sit, which happens to be
+# the same on both platforms — and is worth writing down for that reason as
+# much as any other: seven pointers and a `u32` in a row, `ifa_flags` being
+# the one that leaves four bytes of padding behind it, so the word at 16 is
+# half flags and half nothing.
+#
+# `ifa_dstaddr` is the one with two names: glibc's `struct ifaddrs` holds a
+# union there, and `<ifaddrs.h>` has a macro that spells `ifa_broadaddr` and
+# `ifa_dstaddr` as the two members of it. On Darwin it is a plain pointer
+# called `ifa_dstaddr`. Same slot either way, and `offsetof` macro-expands
+# the glibc one far enough to agree.
+#
+# Numbers from glibc's and XNU's `ifaddrs.h`, and both are compared with
+# C's `offsetof` on both platforms by `scripts/check-layouts.py`.
+comptime IFADDRS_SLOTS: Int = 7
+comptime IFADDRS_NEXT_OFFSET: Int = 0
+comptime IFADDRS_NAME_OFFSET: Int = 8
+comptime IFADDRS_FLAGS_OFFSET: Int = 16
+comptime IFADDRS_ADDR_OFFSET: Int = 24
+comptime IFADDRS_NETMASK_OFFSET: Int = 32
+comptime IFADDRS_DSTADDR_OFFSET: Int = 40
+comptime IFADDRS_DATA_OFFSET: Int = 48
+
+
 struct ifaddrs:
     """A C `struct ifaddrs`: one network interface's worth of addresses.
 
@@ -39,11 +63,11 @@ struct ifaddrs:
     way out, and only on the head.
     """
 
-    var _bytes: Array[UInt64, 7]
+    var _bytes: Array[UInt64, IFADDRS_SLOTS]
 
     def __init__(out self):
         """Zeroes the block, which is the state of one nothing has filled."""
-        self._bytes = Array[UInt64, 7](fill=0)
+        self._bytes = Array[UInt64, IFADDRS_SLOTS](fill=0)
 
     def _member(self, offset: Int) -> UInt64:
         """The eight bytes at `offset`, where each of these members begins."""
@@ -55,13 +79,15 @@ struct ifaddrs:
         all; `getifaddrs` gives the head, `freeifaddrs` is the only
         release and it takes the head too.
         """
-        return c_ptr[ifaddrs](unsafe_from_address=Int(self._member(0)))
+        return c_ptr[ifaddrs](
+            unsafe_from_address=Int(self._member(IFADDRS_NEXT_OFFSET))
+        )
 
     def ifa_name(self) raises -> String:
         """The name of the interface, as in `lo0` on Darwin or `lo` on
         glibc. Every entry is named, even the half a half.
         """
-        var held = self._member(8)
+        var held = self._member(IFADDRS_NAME_OFFSET)
         if held == 0:
             return String("")
         return char_ptr_to_string(c_ptr[UInt8](unsafe_from_address=Int(held)))
@@ -72,7 +98,7 @@ struct ifaddrs:
         every loopback has set, and `IFF_RUNNING` is the one a working
         interface carries.
         """
-        return UInt32(self._member(16) & 0xFFFFFFFF)
+        return UInt32(self._member(IFADDRS_FLAGS_OFFSET) & 0xFFFFFFFF)
 
     def ifa_addr(self) -> c_ptr[socketaddr]:
         """The address the interface answers at, which is what
@@ -81,13 +107,17 @@ struct ifaddrs:
         the second one for the loopback, the IPv6 one. Read the family
         with `family` on `socketaddr`.
         """
-        return c_ptr[socketaddr](unsafe_from_address=Int(self._member(24)))
+        return c_ptr[socketaddr](
+            unsafe_from_address=Int(self._member(IFADDRS_ADDR_OFFSET))
+        )
 
     def ifa_netmask(self) -> c_ptr[socketaddr]:
         """The netmask for the address, in the same family. Null when
         there is no address, the loopback's IPv6 one for instance.
         """
-        return c_ptr[socketaddr](unsafe_from_address=Int(self._member(32)))
+        return c_ptr[socketaddr](
+            unsafe_from_address=Int(self._member(IFADDRS_NETMASK_OFFSET))
+        )
 
     def ifa_dstaddr(self) -> c_ptr[socketaddr]:
         """The destination for a point-to-point link, the broadcast
@@ -95,13 +125,17 @@ struct ifaddrs:
         header's macros make them two names for one. Null for any
         interface that is neither.
         """
-        return c_ptr[socketaddr](unsafe_from_address=Int(self._member(40)))
+        return c_ptr[socketaddr](
+            unsafe_from_address=Int(self._member(IFADDRS_DSTADDR_OFFSET))
+        )
 
     def ifa_data(self) -> c_ptr[UInt8]:
         """Address-specific data, mostly for `AF_LINK` on Darwin and
         seldom useful from the outside. Null on most entries.
         """
-        return c_ptr[UInt8](unsafe_from_address=Int(self._member(48)))
+        return c_ptr[UInt8](
+            unsafe_from_address=Int(self._member(IFADDRS_DATA_OFFSET))
+        )
 
 
 def getifaddrs(ifap: c_ptr[c_ptr[ifaddrs]]) -> Int32:

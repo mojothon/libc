@@ -42,6 +42,21 @@ comptime GLOB_ABORTED: Int32 = -2 if CompilationTarget.is_macos() else 2
 comptime GLOB_NOMATCH: Int32 = -3 if CompilationTarget.is_macos() else 3
 
 
+# Where the four members of C's `glob_t` that this reads sit. Three of them
+# are in the same place on both platforms, and the fourth is nowhere near:
+# glibc puts the vector of paths third, right after the count and before
+# `gl_offs`, while XNU puts a `gl_matchc` there instead and the vector last,
+# twenty-four bytes further along.
+#
+# Numbers from glibc's `glob.h` and XNU's, and both are compared with C's
+# `offsetof` on both platforms by `scripts/check-layouts.py`.
+comptime GLOB_SLOTS: Int = 11 if CompilationTarget.is_macos() else 9
+comptime GLOB_PATHC_OFFSET: Int = 0
+comptime GLOB_OFFS_OFFSET: Int = 16
+comptime GLOB_FLAGS_OFFSET: Int = 24
+comptime GLOB_PATHV_OFFSET: Int = 32 if CompilationTarget.is_macos() else 8
+
+
 struct glob_t:
     """A C `glob_t`: where `glob` put what it found.
 
@@ -72,22 +87,36 @@ struct glob_t:
         not from this package's.
     """
 
-    comptime SLOTS = 11 if CompilationTarget.is_macos() else 9
-
-    var _bytes: Array[UInt64, Self.SLOTS]
+    var _bytes: Array[UInt64, GLOB_SLOTS]
 
     def __init__(out self):
         """Zeroes the block, which is what `glob` expects to be given."""
-        self._bytes = Array[UInt64, Self.SLOTS](fill=0)
+        self._bytes = Array[UInt64, GLOB_SLOTS](fill=0)
 
-    def _slot(self, offset: Int) -> UInt64:
-        """The eight bytes at byte `offset`."""
-        return self._bytes[offset // 8]
+    def _u64(self, off: Int) -> UInt64:
+        """The eight bytes at byte `off`, which is where a `size_t` or a
+        pointer begins on both platforms.
+        """
+        return self._bytes[off // 8]
+
+    def _u32(self, off: Int) -> UInt32:
+        """Four little-endian bytes at byte `off`, which is where the one
+        `int` in here begins.
+
+        Which half of a word that is, is the whole question: `gl_flags`
+        follows `gl_offs`, an eight-byte `size_t`, so it starts a word
+        rather than ending one and is the low half of the slot at 24. Read
+        as the high half it answers 0 whatever the flags were, which looks
+        right until somebody checks one.
+        """
+        var slot = self._bytes[off // 8]
+        return UInt32((slot >> UInt64((off % 8) * 8)) & 0xFFFFFFFF)
 
     def gl_pathc(self) -> Int:
         """How many paths there are, which is 0 when nothing matched
-        unless `GLOB_NOCHECK` said otherwise."""
-        return Int(self._slot(0))
+        unless `GLOB_NOCHECK` said otherwise.
+        """
+        return Int(self._u64(GLOB_PATHC_OFFSET))
 
     def gl_pathv(self) -> c_ptr[c_ptr[UInt8]]:
         """The paths themselves: that many NUL-terminated strings one
@@ -99,21 +128,21 @@ struct glob_t:
             paths in it, so check `gl_pathc` before walking it.
         """
         return c_ptr[c_ptr[UInt8]](
-            unsafe_from_address=Int(
-                self._slot(32 if CompilationTarget.is_macos() else 8)
-            )
+            unsafe_from_address=Int(self._u64(GLOB_PATHV_OFFSET))
         )
 
     def gl_offs(self) -> Int:
         """How many entries were asked to be left empty at the head of
-        `gl_pathv`, by `GLOB_DOOFFS`."""
-        return Int(self._slot(16))
+        `gl_pathv`, by `GLOB_DOOFFS`.
+        """
+        return Int(self._u64(GLOB_OFFS_OFFSET))
 
     def gl_flags(self) -> Int32:
         """Which flags the pattern was expanded with, as `glob` kept
         them, including `GLOB_MAGCHAR` when the pattern had metacharacters
-        in it."""
-        return Int32(self._slot(24) >> 32)
+        in it.
+        """
+        return Int32(self._u32(GLOB_FLAGS_OFFSET))
 
 
 def glob(

@@ -42,10 +42,10 @@ the bottom.
 | `libc.netdb` | `<netdb.h>` name and service lookup | 48 |
 | `libc.netif` | `<net/if.h>` interface names and numbers | 6 |
 | `libc.regex` | `<regex.h>` POSIX regular expressions | 29 |
-| `libc.glob` | `<glob.h>` pathname matching | 18 |
+| `libc.glob` | `<glob.h>` pathname matching | 23 |
 | `libc.grp` | `<grp.h>` the group database | 12 |
 | `libc.iconv` | `<iconv.h>` character encoding conversion | 4 |
-| `libc.ifaddrs` | `<ifaddrs.h>` network interfaces | 8 |
+| `libc.ifaddrs` | `<ifaddrs.h>` network interfaces | 16 |
 | `libc.langinfo` | `<langinfo.h>` strings the locale decides | 64 |
 | `libc.fnmatch` | `<fnmatch.h>` matching a single name | 7 |
 | `libc.libgen` | `<libgen.h>` cutting a path in two | 2 |

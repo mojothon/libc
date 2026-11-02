@@ -347,6 +347,24 @@ All notable changes to this project are documented here. The format follows
   both at 24 on Linux because they are different members of one union,
   a child's status and a value sent with `sigqueue` not being true of the
   same signal at once; on Darwin they are 20 and 32.
+- **`glob_t` and `ifaddrs` name theirs, and `glob_t` had one wrong.**
+  `gl_flags` is the one member of a `glob_t` that is not a count or a
+  pointer, and it sits at 24 — a word of its own, whose low half is the
+  flag word and whose high half is padding. It was being read from the
+  high half, so `gl_flags` answered 0 whatever `glob` had been told, and
+  no test had ever asked it. It is read at a named offset now, through a
+  four-byte read that says which half it is, and a test says what the
+  answer should be: `GLOB_MAGCHAR` is set for a pattern with a `*` in it
+  and clear for a path without one, which both platforms promise. That
+  the check found this the first time these offsets were written down is
+  the whole argument for writing them down — `glob_t`'s other three
+  members were right, and one wrong member out of four is not a rate
+  anything else here would have caught. `ifaddrs` is the opposite case:
+  seven members, the same seven offsets on both platforms, worth listing
+  for the members that are *not* there — `ifa_flags` is four bytes with
+  four bytes of padding behind it, and `ifa_dstaddr` is a union on glibc
+  and a plain pointer on Darwin, spelled as a macro the first way and as
+  a member the second, which `offsetof` settles either way.
 
 ## [0.12.0] - 2026-10-19
 
@@ -427,6 +445,13 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- **`glob_t.gl_flags` answered 0 for every `glob` that was given flags.**
+  The flag word is the low half of the word at 24 on both platforms, and
+  it was read as the high half — four bytes of padding — so `GLOB_MAGCHAR`
+  and every flag the caller had passed in came back as zero. Nothing
+  caught it because nothing had ever read it: the offset was written by
+  hand, along with three that were right. It is a named offset now with
+  a test on the other side of it.
 - **`Stat` reads its members from the wrong slots on Darwin.** Four
   members came back wrong on the macOS runner — `nlink` and `mode`
   answered zero, and `size`, `blocks` and `mtime` came from the

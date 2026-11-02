@@ -11,6 +11,7 @@ from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
 from libc.glob import (
+    GLOB_MAGCHAR,
     GLOB_NOCHECK,
     GLOB_NOMATCH,
     GLOB_NOSORT,
@@ -125,8 +126,55 @@ def test_a_star_finds_the_names_it_covers() raises:
     pattern.unsafe_free()
 
 
+def test_the_flags_are_the_ones_asked_for_and_the_magic_bit_beside_them() raises:
+    """`gl_flags` is the one member of this struct that is neither a count
+    nor a pointer, and it is the one that sits in the half of a word the
+    count next to it does not — so it is the one a reader can get wrong
+    without any count going wrong with it.
+
+    What libc promises is that the flags it was given come back, with
+    `GLOB_MAGCHAR` added when the pattern had a metacharacter in it. Both
+    platforms do that — XNU clears the bit before copying the flags in and
+    sets it again if the pattern needs it — so a pattern with a `*` has it
+    and a plain path does not, and that pair is the assertion.
+    """
+    var found = unsafe_alloc[glob_t](1)
+    found.unsafe_offset(0)[] = glob_t()
+    var magic = string_to_char_ptr("/dev/nul*")
+
+    assert_equal(
+        glob(magic, GLOB_NOSORT, null_ptr[UInt8](), found),
+        0,
+        "a pattern with a star in it expands",
+    )
+    assert_true(
+        (found.unsafe_offset(0)[].gl_flags() & GLOB_MAGCHAR) != 0,
+        "and comes back saying the pattern had magic in it",
+    )
+    globfree(found)
+
+    found.unsafe_offset(0)[] = glob_t()
+    var plain = string_to_char_ptr("/dev/null")
+    assert_equal(
+        glob(plain, 0, null_ptr[UInt8](), found),
+        0,
+        "a path with no star in it is not a pattern",
+    )
+    assert_equal(
+        found.unsafe_offset(0)[].gl_flags() & GLOB_MAGCHAR,
+        0,
+        "so the magic bit stays clear",
+    )
+
+    globfree(found)
+    found.unsafe_free()
+    magic.unsafe_free()
+    plain.unsafe_free()
+
+
 def main() raises:
     test_a_pattern_with_no_magic_in_it_finds_the_one_name_it_names()
     test_nothing_matching_is_a_number_or_the_pattern_itself()
     test_a_star_finds_the_names_it_covers()
+    test_the_flags_are_the_ones_asked_for_and_the_magic_bit_beside_them()
     print("test_glob: ok")
