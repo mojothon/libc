@@ -56,6 +56,7 @@ from test_pwd import main as run_pwd
 from test_regex import main as run_regex
 from test_resource import main as run_resource
 from test_search import main as run_search
+from test_sem import main as run_sem
 from test_stdio import main as run_stdio
 from test_spawn import main as run_spawn
 from test_stat import main as run_stat
@@ -122,6 +123,7 @@ def main() raises:
     run_regex()
     run_resource()
     run_search()
+    run_sem()
     run_stdio()
     run_spawn()
     run_stat()

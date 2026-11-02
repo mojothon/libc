@@ -1249,6 +1249,17 @@ def bring_in_libc_sys_select():
     )
 
 
+def bring_in_libc_sys_sem():
+    from libc.sys.sem import (
+        GETVAL,
+        SEM_UNDO,
+        sembuf,
+        semctl,
+        semget,
+        semop,
+    )
+
+
 def bring_in_libc_sys_sendfile():
     from libc.sys.sendfile import (
         sendfile,
@@ -1609,6 +1620,7 @@ def main() raises:
     bring_in_libc_sys_random()
     bring_in_libc_sys_resource()
     bring_in_libc_sys_select()
+    bring_in_libc_sys_sem()
     bring_in_libc_sys_sendfile()
     bring_in_libc_sys_shm()
     bring_in_libc_sys_socket()

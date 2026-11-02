@@ -52,6 +52,7 @@ the bottom.
 | `libc.sys.statvfs` | `<sys/statvfs.h>` | 3 |
 | `libc.sys.select` | `<sys/select.h>` | 9 |
 | `libc.sys.shm` | `<sys/shm.h>` shared memory | 7 |
+| `libc.sys.sem` | `<sys/sem.h>` counters that wait | 6 |
 | `libc.poll` | `<poll.h>` | 14 |
 | `libc.setjmp` | `<setjmp.h>` | 2 |
 | `libc.sys.utsname` | `<sys/utsname.h>` | 2 |
