@@ -16,6 +16,20 @@ comptime SOCK_NONBLOCK: Int32 = 16384 if CompilationTarget.is_macos() else 2048
 comptime SOCK_CLOEXEC: Int32 = 16777216 if CompilationTarget.is_macos() else 524288
 
 
+# Where the family sits, and where Darwin's `sa_len` does. glibc's
+# `struct sockaddr` starts with a two-byte `sa_family`; XNU's starts with a
+# one-byte `sa_len` and puts a one-byte `sa_family` after it, so the family
+# is at 1 there and the length at 0. Both are sixteen bytes, which is why
+# the size alone never showed this.
+#
+# Numbers from `bits/socket.h` and XNU `sys/socket.h`, and checked with C's
+# `offsetof` by `scripts/check-layouts.py` — `sa_len` only on Darwin, where
+# it exists, and the script says so on Linux rather than skipping it.
+comptime SOCKADDR_SLOTS: Int = 8
+comptime SOCKADDR_LEN_OFFSET: Int = 0
+comptime SOCKADDR_FAMILY_OFFSET: Int = 1 if CompilationTarget.is_macos() else 0
+
+
 struct socketaddr:
     """A socket address, as C's `struct sockaddr` has it: a family and
     fourteen bytes whose meaning is up to the family.
@@ -37,11 +51,11 @@ struct socketaddr:
     `sa_len` too where the platform has one.
     """
 
-    var _slots: Array[UInt16, 8]
+    var _slots: Array[UInt16, SOCKADDR_SLOTS]
 
     def __init__(out self):
         """Zeroes all sixteen bytes, which is what `memset` would leave."""
-        self._slots = Array[UInt16, 8](fill=0)
+        self._slots = Array[UInt16, SOCKADDR_SLOTS](fill=0)
 
     def _byte(self, off: Int) -> UInt8:
         """The one byte at `off`."""
@@ -56,20 +70,33 @@ struct socketaddr:
             UInt16(value) << shift
         )
 
+    def _u16(self, off: Int) -> UInt16:
+        """The two bytes at a two-aligned `off`, little-endian."""
+        return UInt16((self._slots[off // 2] >> UInt16((off % 2) * 8)) & 0xFFFF)
+
+    def _set_u16(mut self, off: Int, value: UInt16) -> None:
+        """Writes the two bytes at a two-aligned `off`, leaving the rest."""
+        var slot = off // 2
+        var shift = UInt16((off % 2) * 8)
+        var keep = (UInt16(0xFF) << shift) ^ UInt16(0xFFFF)
+        self._slots[slot] = (self._slots[slot] & keep) | (value << shift)
+
     def family(self) -> UInt16:
         """The address family, `AF_INET` and friends."""
         comptime if CompilationTarget.is_macos():
-            return UInt16(self._byte(1))
+            return UInt16(self._byte(SOCKADDR_FAMILY_OFFSET))
         else:
-            return self._slots[0]
+            return self._u16(SOCKADDR_FAMILY_OFFSET)
 
     def set_family(mut self, value: UInt16) -> None:
         """Sets the family, and `sa_len` with it where Darwin has one."""
         comptime if CompilationTarget.is_macos():
-            self._set_byte(0, 16)  # sa_len: the size of a struct sockaddr
-            self._set_byte(1, UInt8(value))
+            self._set_byte(
+                SOCKADDR_LEN_OFFSET, 16
+            )  # the size of a struct sockaddr
+            self._set_byte(SOCKADDR_FAMILY_OFFSET, UInt8(value))
         else:
-            self._slots[0] = value
+            self._set_u16(SOCKADDR_FAMILY_OFFSET, value)
 
     def byte(self, off: Int) -> UInt8:
         """The byte at `off` of the sixteen, the family's own data."""
@@ -257,6 +284,26 @@ struct iovec(TrivialRegisterPassable):
         self.iov_len = iov_len
 
 
+# Where each member of C's `struct msghdr` sits. The first three agree and
+# the rest do not: glibc makes `msg_iovlen` and `msg_controllen` `size_t`,
+# XNU makes them `int` and `socklen_t`, four bytes each, so Darwin's struct
+# is 48 bytes with `msg_flags` at 44 and glibc's is 56 with it at 48 — the
+# one member that is in the high half of a word on one platform and a word
+# of its own on the other.
+#
+# Numbers from `bits/socket.h` and XNU `sys/socket.h`, and all seven are
+# compared with C's `offsetof` on both platforms by
+# `scripts/check-layouts.py`.
+comptime MSGHDR_SLOTS: Int = 7
+comptime MSGHDR_NAME_OFFSET: Int = 0
+comptime MSGHDR_NAMELEN_OFFSET: Int = 8
+comptime MSGHDR_IOV_OFFSET: Int = 16
+comptime MSGHDR_IOVLEN_OFFSET: Int = 24
+comptime MSGHDR_CONTROL_OFFSET: Int = 32
+comptime MSGHDR_CONTROLLEN_OFFSET: Int = 40
+comptime MSGHDR_FLAGS_OFFSET: Int = 44 if CompilationTarget.is_macos() else 48
+
+
 struct msghdr:
     """One message for `sendmsg`, holding the address it goes to and the
     pieces it is made of, which are not all in one place.
@@ -268,67 +315,98 @@ struct msghdr:
     bytes, its struct is 56, and `msg_flags` is at 48. Held in slots and
     read and written at the offset and width that fit, which is why the
     members come from methods. 56 covers both.
+
+    The offsets are named above and the widths are on the lines that use
+    them, so the one member that moves — `msg_flags`, from the high half
+    of the `msg_controllen` word on Darwin to a word of its own on glibc —
+    is a constant rather than a shift written out three times.
     """
 
-    var _slots: Array[UInt64, 7]
+    var _slots: Array[UInt64, MSGHDR_SLOTS]
 
     def __init__(out self):
         """Zeroes the message, which is what `memset` would leave."""
-        self._slots = Array[UInt64, 7](fill=0)
+        self._slots = Array[UInt64, MSGHDR_SLOTS](fill=0)
 
     def _at(self, off: Int) -> UInt64:
-        """The eight bytes at `off`."""
+        """The eight bytes at an eight-aligned `off`."""
         return self._slots[off // 8]
+
+    def _u32(self, off: Int) -> UInt64:
+        """The four bytes at a four-aligned `off`, little-endian."""
+        return (self._slots[off // 8] >> UInt64((off % 8) * 8)) & 0xFFFFFFFF
+
+    def _set_at(mut self, off: Int, value: UInt64) -> None:
+        """Writes the eight bytes at an eight-aligned `off`."""
+        self._slots[off // 8] = value
+
+    def _set_u32(mut self, off: Int, value: UInt64) -> None:
+        """Writes the four bytes at a four-aligned `off`, leaving the rest."""
+        var slot = off // 8
+        var shift = UInt64((off % 8) * 8)
+        var keep = ~(UInt64(0xFFFFFFFF) << shift)
+        self._slots[slot] = (self._slots[slot] & keep) | (
+            (value & 0xFFFFFFFF) << shift
+        )
 
     def msg_name(self) -> c_ptr[UInt8]:
         """Where the address goes, or null for a connected socket."""
-        return c_ptr[UInt8](unsafe_from_address=Int(self._at(0)))
+        return c_ptr[UInt8](
+            unsafe_from_address=Int(self._at(MSGHDR_NAME_OFFSET))
+        )
 
     def set_msg_name(mut self, value: c_ptr[UInt8]) -> None:
         """Sets where the address comes from."""
-        self._slots[0] = UInt64(Int(value))
+        self._set_at(MSGHDR_NAME_OFFSET, UInt64(Int(value)))
 
     def msg_namelen(self) -> UInt32:
         """How long the address is, a `socklen_t` on both platforms."""
-        return UInt32(self._at(8) & 0xFFFFFFFF)
+        return UInt32(self._u32(MSGHDR_NAMELEN_OFFSET))
 
     def set_msg_namelen(mut self, value: UInt32) -> None:
         """Sets how long the address is."""
-        self._slots[1] = UInt64(value)
+        self._set_u32(MSGHDR_NAMELEN_OFFSET, UInt64(value))
 
     def msg_iov(self) -> c_ptr[iovec]:
         """The scatter/gather array of pieces the message is made of."""
-        return c_ptr[iovec](unsafe_from_address=Int(self._at(16)))
+        return c_ptr[iovec](
+            unsafe_from_address=Int(self._at(MSGHDR_IOV_OFFSET))
+        )
 
     def set_msg_iov(mut self, value: c_ptr[iovec]) -> None:
         """Sets the array of pieces."""
-        self._slots[2] = UInt64(Int(value))
+        self._set_at(MSGHDR_IOV_OFFSET, UInt64(Int(value)))
 
     def msg_iovlen(self) -> UInt64:
         """How many pieces the array holds, an `int` on Darwin."""
         comptime if CompilationTarget.is_macos():
-            return UInt64(self._at(24) & 0xFFFFFFFF)
+            return self._u32(MSGHDR_IOVLEN_OFFSET)
         else:
-            return self._at(24)
+            return self._at(MSGHDR_IOVLEN_OFFSET)
 
     def set_msg_iovlen(mut self, value: UInt64) -> None:
         """Sets how many pieces there are."""
-        self._slots[3] = value
+        comptime if CompilationTarget.is_macos():
+            self._set_u32(MSGHDR_IOVLEN_OFFSET, value)
+        else:
+            self._set_at(MSGHDR_IOVLEN_OFFSET, value)
 
     def msg_control(self) -> c_ptr[UInt8]:
         """The ancillary data, or null when there is none."""
-        return c_ptr[UInt8](unsafe_from_address=Int(self._at(32)))
+        return c_ptr[UInt8](
+            unsafe_from_address=Int(self._at(MSGHDR_CONTROL_OFFSET))
+        )
 
     def set_msg_control(mut self, value: c_ptr[UInt8]) -> None:
         """Sets the ancillary data."""
-        self._slots[4] = UInt64(Int(value))
+        self._set_at(MSGHDR_CONTROL_OFFSET, UInt64(Int(value)))
 
     def msg_controllen(self) -> UInt64:
         """How much ancillary data there is."""
         comptime if CompilationTarget.is_macos():
-            return UInt64(self._at(40) & 0xFFFFFFFF)
+            return self._u32(MSGHDR_CONTROLLEN_OFFSET)
         else:
-            return self._at(40)
+            return self._at(MSGHDR_CONTROLLEN_OFFSET)
 
     def set_msg_controllen(mut self, value: UInt64) -> None:
         """Sets how much ancillary data there is.
@@ -337,27 +415,17 @@ struct msghdr:
         it, so only the low half is written.
         """
         comptime if CompilationTarget.is_macos():
-            self._slots[5] = (self._slots[5] & 0xFFFFFFFF00000000) | (
-                value & 0xFFFFFFFF
-            )
+            self._set_u32(MSGHDR_CONTROLLEN_OFFSET, value)
         else:
-            self._slots[5] = value
+            self._set_at(MSGHDR_CONTROLLEN_OFFSET, value)
 
     def msg_flags(self) -> Int32:
         """The flags on a message that was received."""
-        comptime if CompilationTarget.is_macos():
-            return Int32(self._at(40) >> 32)
-        else:
-            return Int32(self._at(48) & 0xFFFFFFFF)
+        return Int32(self._u32(MSGHDR_FLAGS_OFFSET))
 
     def set_msg_flags(mut self, value: Int32) -> None:
         """Sets the flags."""
-        comptime if CompilationTarget.is_macos():
-            self._slots[5] = (self._slots[5] & 0xFFFFFFFF) | (
-                UInt64(value) << 32
-            )
-        else:
-            self._slots[6] = UInt64(value)
+        self._set_u32(MSGHDR_FLAGS_OFFSET, UInt64(value))
 
 
 def sendmsg(sockfd: Int32, msg: c_ptr[msghdr], flags: Int32) -> Int64:

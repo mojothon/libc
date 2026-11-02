@@ -257,7 +257,7 @@ All notable changes to this project are documented here. The format follows
   checked against XNU's headers on the macOS job and by a compiler that
   has never seen them before. None of the twenty-two was wrong. What is
   not checked is counted in the output rather than assumed: the members
-  Mojo lays out in declaration order, and the twenty-seven structs that
+  Mojo lays out in declaration order, and the twenty-five structs that
   hold their bytes in a buffer while placing members at numbers written
   into their accessors, which is what `OFFSETS` is there to have more of.
 - **`Stat` places its members by name now.** They were slot numbers and
@@ -306,6 +306,20 @@ All notable changes to this project are documented here. The format follows
   total: sixty-three are checkable on Linux and the three that are not are
   the Darwin-only members, counted as checkable elsewhere rather than
   dropped, and compared on the job where they exist.
+- **`sockaddr` and `msghdr` name their offsets.** The two structs every
+  socket call in here takes a pointer to, and the two where a member at
+  the wrong offset reads as a plausible address rather than a crash.
+  `sockaddr` is the sharpest case in the package: both platforms are
+  sixteen bytes, and Darwin puts a one-byte `sa_len` in front of a
+  one-byte family where glibc has a two-byte family and no length, so the
+  family is at 0 on one and 1 on the other and no size check can see it.
+  `msghdr` differs in width instead: `msg_iovlen` and `msg_controllen` are
+  `size_t` on glibc and `int`/`socklen_t` on XNU, which puts `msg_flags`
+  in the high half of the `msg_controllen` word on Darwin and in a word of
+  its own on glibc — a shift that used to be written out in three places
+  and is now `MSGHDR_FLAGS_OFFSET`. Nine offsets into `OFFSETS`,
+  seventy-five in total, and `sa_len` counted as checkable on the one
+  platform that has it.
 
 ## [0.12.0] - 2026-10-19
 
