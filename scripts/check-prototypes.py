@@ -301,13 +301,25 @@ def module_counts() -> dict[str, int]:
     return counts
 
 
-def documented_counts() -> dict[str, int]:
-    """What `docs/modules.md` says each package has."""
-    counts: dict[str, int] = {}
+def documented_counts() -> dict[str, int | None]:
+    """What `docs/modules.md` says each package has, and which it counts.
+
+    A dash is a package the table lists without counting, and there are two
+    kinds: `libc.constant` is 416 `comptime` aliases rather than 416
+    functions, and `libc.utils` is a file in `libc` itself rather than a
+    sub-package. Both are reasons not to put a number in that column, so the
+    dash is read as a statement — listed, and deliberately not counted —
+    rather than skipped, which is how `libc.constant` came to be the one
+    package whose 416 declarations nothing looked at.
+    """
+    counts: dict[str, int | None] = {}
     for line in (ROOT / "docs" / "modules.md").read_text().splitlines():
-        m = re.match(r"^\|\s*`(libc(?:\.\w+)+)`\s*\|.*\|\s*(\d+)\s*\|\s*$", line)
+        m = re.match(
+            r"^\|\s*`(libc(?:\.\w+)+)`\s*\|.*\|\s*(\d+|—)\s*\|\s*$", line
+        )
         if m:
-            counts[m.group(1)] = int(m.group(2))
+            said = m.group(2)
+            counts[m.group(1)] = None if said == "—" else int(said)
     return counts
 
 
@@ -891,9 +903,22 @@ def main() -> int:
 
     # `docs/modules.md` puts a number next to every package, and a number
     # nobody checks is a number that stops being true the moment a function
-    # is added.
-    for package, documented in sorted(documented_counts().items()):
-        actual = module_counts().get(package, 0)
+    # is added. That argument only holds in the direction it is aimed at,
+    # though: the table was read for its numbers, so a package the table
+    # never mentioned had no number to disagree with and passed in silence.
+    # Both directions now — every package either has a count that is checked
+    # or a dash that says why it has none, and a package with no row fails.
+    listed = documented_counts()
+    counted = module_counts()
+    for package, number in sorted(counted.items()):
+        if package not in listed:
+            problems.append(
+                f"docs/modules.md: {package} is not listed, and defines {number}"
+            )
+    for package, documented in sorted(listed.items()):
+        if documented is None:
+            continue
+        actual = counted.get(package, 0)
         if actual != documented:
             problems.append(
                 f"docs/modules.md: {package} is listed as {documented} and"

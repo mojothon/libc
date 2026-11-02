@@ -398,6 +398,17 @@ All notable changes to this project are documented here. The format follows
   `check-layouts.py` counts the same four things and fails if they differ.
   A row that disappears fails too: a document that stops making a claim is
   the drift this is watching for, and silence would pass for agreement.
+- **`docs/modules.md` is read in both directions.** `check-prototypes.py`
+  compared the count in each row against the package, which proves only
+  that the listed packages are counted correctly: a package with no row had
+  no count to disagree with, and passed. It now also fails when a package
+  in `src/` has no row, and the dash the table already used for
+  `libc.constant` and `libc.utils` is parsed rather than skipped — a row
+  that says "listed, not counted" is a statement, and the two reasons for
+  it are different: `libc.constant` is 416 `comptime` aliases rather than
+  416 functions, and `libc.utils` is a file in `libc` itself rather than a
+  sub-package. Adding a module and forgetting the table now fails in a
+  second, on the spot, instead of waiting for a reader to notice.
 
 ## [0.12.0] - 2026-10-19
 
