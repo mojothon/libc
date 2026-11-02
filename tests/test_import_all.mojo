@@ -1177,6 +1177,35 @@ def bring_in_libc_sys_eventfd():
     )
 
 
+def bring_in_libc_sys_inotify():
+    from libc.sys.inotify import (
+        IN_ACCESS,
+        IN_ALL_EVENTS,
+        IN_ATTRIB,
+        IN_CLOEXEC,
+        IN_CLOSE_NOWRITE,
+        IN_CLOSE_WRITE,
+        IN_CREATE,
+        IN_DELETE,
+        IN_DELETE_SELF,
+        IN_IGNORED,
+        IN_ISDIR,
+        IN_MODIFY,
+        IN_MOVE_SELF,
+        IN_MOVED_FROM,
+        IN_MOVED_TO,
+        IN_NONBLOCK,
+        IN_OPEN,
+        IN_Q_OVERFLOW,
+        IN_UNMOUNT,
+        inotify_add_watch,
+        inotify_event,
+        inotify_init,
+        inotify_init1,
+        inotify_rm_watch,
+    )
+
+
 def bring_in_libc_sys_epoll():
     from libc.sys.epoll import (
         epoll_create,
@@ -1699,6 +1728,7 @@ def main() raises:
     bring_in_libc_string()
     bring_in_libc_sys_auxv()
     bring_in_libc_sys_eventfd()
+    bring_in_libc_sys_inotify()
     bring_in_libc_sys_epoll()
     bring_in_libc_sys_ipc()
     bring_in_libc_sys_mman()

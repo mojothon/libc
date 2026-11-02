@@ -8,6 +8,7 @@ or simply `pixi run test`.
 """
 from test_aio import main as run_aio
 from test_complex import main as run_complex
+from test_inotify import main as run_inotify
 from test_import_all import main as run_import_all
 from test_constant import main as run_constant
 from test_ctype import main as run_ctype
@@ -79,6 +80,7 @@ from test_version import main as run_version
 def main() raises:
     run_aio()
     run_complex()
+    run_inotify()
     run_import_all()
     run_constant()
     run_ctype()
