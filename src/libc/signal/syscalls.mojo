@@ -643,3 +643,14 @@ struct siginfo_t:
         whichever `si_code` says it was.
         """
         return Int32(self._u32(24 if not CompilationTarget.is_macos() else 20))
+
+    def si_value(self) -> Int32:
+        """The number that was sent along with the signal, the
+        `sival_int` half of the `sigval` union.
+
+        Notes:
+            Sits where `si_status` sits on Linux, the two being
+            different members of one union there, and past the
+            faulting address on Darwin, where they are not.
+        """
+        return Int32(self._u32(24 if not CompilationTarget.is_macos() else 32))

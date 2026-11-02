@@ -24,6 +24,7 @@ from test_eventfd import main as run_eventfd
 from test_epoll import main as run_epoll
 from test_sysinfo import main as run_sysinfo
 from test_socket import main as run_socket
+from test_sigqueue import main as run_sigqueue
 from test_signal import main as run_signal
 from test_random import main as run_random
 from test_setjmp import main as run_setjmp
@@ -96,6 +97,7 @@ def main() raises:
     run_epoll()
     run_sysinfo()
     run_socket()
+    run_sigqueue()
     run_signal()
     run_random()
     run_setjmp()

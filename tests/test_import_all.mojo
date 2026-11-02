@@ -1211,6 +1211,16 @@ def bring_in_libc_sys_inotify():
     )
 
 
+def bring_in_libc_sys_sigqueue():
+    from libc.sys.sigqueue import (
+        SI_QUEUE,
+        SI_USER,
+        sigqueue,
+        sigtimedwait,
+        sigwaitinfo,
+    )
+
+
 def bring_in_libc_sys_epoll():
     from libc.sys.epoll import (
         epoll_create,
@@ -1744,6 +1754,7 @@ def main() raises:
     bring_in_libc_sys_auxv()
     bring_in_libc_sys_eventfd()
     bring_in_libc_sys_inotify()
+    bring_in_libc_sys_sigqueue()
     bring_in_libc_sys_epoll()
     bring_in_libc_sys_ipc()
     bring_in_libc_sys_mman()

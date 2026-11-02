@@ -18,6 +18,7 @@ the bottom.
 | `libc.time` | `<time.h>` | 38 |
 | `libc.fenv` | `<fenv.h>` | 26 |
 | `libc.sys.mman` | `<sys/mman.h>` | 15 |
+| `libc.sys.sigqueue` | `<signal.h>` a signal sent with a number, and the two waits | 5 |
 | `libc.sys.inotify` | `<sys/inotify.h>` watching files for what happens | 24 |
 | `libc.sys.eventfd` | `<sys/eventfd.h>` a counter behind a descriptor | 6 |
 | `libc.aio` | `<aio.h>` I/O handed over rather than waited for | 24 |
@@ -83,8 +84,8 @@ because Mojo has no type to pass: on x86-64 the C type is the 80-bit x87
 format. `libc.locale` has no `FE_DFL_ENV`, see `fenv_t`.
 
 `libc.sys.epoll`, `libc.sys.prctl`, `libc.sys.sendfile`, `libc.sys.eventfd`,
-`libc.sys.inotify` and `libc.sys.auxv` wrap Linux-only calls; importing them
-on Darwin will not link.
+`libc.sys.inotify`, `libc.sys.sigqueue` and `libc.sys.auxv` wrap Linux-only
+calls; importing them on Darwin will not link.
 `libc.sys.random` holds one of each: `getentropy`, which both platforms
 have, and `getrandom`, which answers -1 on Darwin rather than going
 missing.
