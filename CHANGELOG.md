@@ -380,6 +380,15 @@ All notable changes to this project are documented here. The format follows
   pointer to, so a larger block is safe and a smaller one is somebody
   else's memory. `beyond-c.md` now says that out loud instead of counting
   them as work left undone.
+- **`scripts/check-layouts.py` knows which members are Linux's alone.**
+  `sysinfo`'s twelve and `sigevent`'s one were being asked of Darwin, which
+  answered the second from a different struct — the only `sigevent` on
+  macOS is the POSIX AIO one, which begins with `sigev_notify` where
+  glibc's begins with eight bytes of `sigev_value` — and reported the
+  answer as a disagreement. A number that differs from a different struct
+  is not a finding, so those thirteen are listed as `LINUX_ONLY` and
+  counted separately: not asked, not skipped quietly, and the total still
+  adds up to a hundred and eleven.
 
 ## [0.12.0] - 2026-10-19
 

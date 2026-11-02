@@ -136,7 +136,12 @@ numbers its accessors read at *are* the offsets, and C can be asked the
 same question about the same member. A hundred and eleven of them are listed
 in the script now and checked with `offsetof` on whichever platform is
 running — every member this package reads out of a C struct, from the record
-`getutxent` hands back to `si_pid` and the one flag word in a `glob_t`. The
+`getutxent` hands back to `si_pid` and the one flag word in a `glob_t`.
+Thirteen of them are Linux's alone: `sys/sysinfo.h` and the `timer_create`
+`sigevent` are not on the other side at all, and Darwin's `sigevent` is a
+different struct with `sigev_notify` first, so asking it would compare a
+member against the wrong struct. Those are counted rather than asked, which
+is what the count is for. The
 first twenty-two were already right, which is what a check written after the
 fact tends to find. Of the eighty-nine that came after, one was not:
 `gl_flags` was read from the high half of the word it begins in, which

@@ -215,6 +215,33 @@ OFFSETS: dict[tuple[str, str], tuple[str, str]] = {
     ("libc.utmpx", "UT_HOST_OFFSET"): ("utmpx", "ut_host"),
 }
 
+# The members whose struct only one platform has. `sys/sysinfo.h` is glibc's
+# and XNU has no header by that name. `struct sigevent` exists on both, but
+# it is not the same struct twice: the only thing that uses it on Darwin is
+# POSIX AIO, and that one begins with `sigev_notify` where glibc's begins
+# with eight bytes of `sigev_value` — which is the `timer_create` struct this
+# package reads, and Darwin has no timers. Asking Darwin's C about a member
+# of it answers about a different struct, so it is not asked, and the member
+# is counted as Linux's rather than as unchecked: a number that disagrees
+# with the wrong struct is not a finding.
+LINUX_ONLY: set[tuple[str, str]] = {
+    ("libc.sys.sysinfo", "SYSINFO_UPTIME"),
+    ("libc.sys.sysinfo", "SYSINFO_LOADS"),
+    ("libc.sys.sysinfo", "SYSINFO_TOTALRAM"),
+    ("libc.sys.sysinfo", "SYSINFO_FREERAM"),
+    ("libc.sys.sysinfo", "SYSINFO_SHAREDRAM"),
+    ("libc.sys.sysinfo", "SYSINFO_BUFFERRAM"),
+    ("libc.sys.sysinfo", "SYSINFO_TOTALSWAP"),
+    ("libc.sys.sysinfo", "SYSINFO_FREESWAP"),
+    ("libc.sys.sysinfo", "SYSINFO_PROCS"),
+    ("libc.sys.sysinfo", "SYSINFO_TOTALHIGH"),
+    ("libc.sys.sysinfo", "SYSINFO_FREEHIGH"),
+    ("libc.sys.sysinfo", "SYSINFO_MEM_UNIT"),
+    ("libc.sys.timer", "SIGEVENT_NOTIFY_OFFSET"),
+}
+
+ON_DARWIN = sys.platform == "darwin"
+
 
 def module_of(path: Path) -> str:
     """The name this file is imported by."""
@@ -405,6 +432,8 @@ def c_offsets() -> tuple[dict[tuple[str, str], int], list[tuple[str, str]]]:
 
     by_struct: dict[str, list[tuple[tuple[str, str], str]]] = {}
     for key, (struct, member) in OFFSETS.items():
+        if ON_DARWIN and key in LINUX_ONLY:
+            continue
         by_struct.setdefault(struct, []).append((key, member))
 
     def program(
@@ -585,9 +614,12 @@ def main() -> int:
     offset_agree = 0
     offset_disagree = []
     offset_unchecked = []
+    offset_elsewhere = []
     for key, (struct, member) in OFFSETS.items():
         module, constant = key
-        if key in unread:
+        if ON_DARWIN and key in LINUX_ONLY:
+            offset_elsewhere.append(f"{module}.{constant} {struct}.{member}")
+        elif key in unread:
             offset_unchecked.append(f"{module}.{constant} Mojo will not say")
         elif key in unheard_of:
             offset_unchecked.append(
@@ -607,6 +639,8 @@ def main() -> int:
                 f"      {module + '.' + constant:<40} here {placed_here[(module, constant)]:>4}  "
                 f"C says {placed_by_c[(module, constant)]:>4}   {struct}.{member}"
             )
+    if offset_elsewhere:
+        print(f"      {len(offset_elsewhere)} are Linux's alone, and are not asked here")
     if offset_unchecked:
         print(f"      {len(offset_unchecked)} could not be checked:")
         for line in offset_unchecked:
