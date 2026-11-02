@@ -9,6 +9,26 @@ from std.sys import CompilationTarget
 from libc.constant import c_ptr
 
 
+# Where each name starts. glibc lays six arrays of 65 bytes end to end, XNU
+# five of 256 — no padding between them, since a name is a byte array and
+# needs no alignment, so the offsets are the lengths added up and nothing
+# else. Both are NUL terminated inside their own array, which is what makes
+# this readable at all: a name ends before the next one begins even when it
+# fills its array.
+#
+# Numbers from `bits/utsname.h` and XNU `sys/utsname.h`, and five of the six
+# are compared with C's `offsetof` on both platforms by
+# `scripts/check-layouts.py`. The sixth, `domainname`, has no member to be
+# compared with on Darwin, where the struct stops at `machine`; the script
+# says that out loud instead of passing it.
+comptime UTSNAME_SYSNAME_OFFSET: Int = 0
+comptime UTSNAME_NODENAME_OFFSET: Int = 256 if CompilationTarget.is_macos() else 65
+comptime UTSNAME_RELEASE_OFFSET: Int = 512 if CompilationTarget.is_macos() else 130
+comptime UTSNAME_VERSION_OFFSET: Int = 768 if CompilationTarget.is_macos() else 195
+comptime UTSNAME_MACHINE_OFFSET: Int = 1024 if CompilationTarget.is_macos() else 260
+comptime UTSNAME_DOMAINNAME_OFFSET: Int = 325
+
+
 struct Utsname:
     """A C `struct utsname`, which `uname` fills in.
 
@@ -16,6 +36,10 @@ struct Utsname:
     bytes, 390 in total, while Darwin's is five of 256, 1280 in total. This
     holds the larger and reads each name at the offset that fits, which is why
     the names come from methods rather than fields.
+
+    The offsets are named above, one per name, because they are the whole of
+    the layout here: no member is wider than a byte, so the only thing that
+    can be wrong about it is where a name starts.
     """
 
     var _bytes: Array[UInt8, 1280]
@@ -26,35 +50,23 @@ struct Utsname:
 
     def sysname(self) raises -> String:
         """The operating system name, `Linux` or `Darwin`."""
-        return self._at(0)
+        return self._at(UTSNAME_SYSNAME_OFFSET)
 
     def nodename(self) raises -> String:
         """The name this machine has on the network."""
-        comptime if CompilationTarget.is_macos():
-            return self._at(256)
-        else:
-            return self._at(65)
+        return self._at(UTSNAME_NODENAME_OFFSET)
 
     def release(self) raises -> String:
         """The operating system release, as in `uname -r`."""
-        comptime if CompilationTarget.is_macos():
-            return self._at(512)
-        else:
-            return self._at(130)
+        return self._at(UTSNAME_RELEASE_OFFSET)
 
     def version(self) raises -> String:
         """The operating system version, as in `uname -v`."""
-        comptime if CompilationTarget.is_macos():
-            return self._at(768)
-        else:
-            return self._at(195)
+        return self._at(UTSNAME_VERSION_OFFSET)
 
     def machine(self) raises -> String:
         """The hardware type, `x86_64` or `arm64`."""
-        comptime if CompilationTarget.is_macos():
-            return self._at(1024)
-        else:
-            return self._at(260)
+        return self._at(UTSNAME_MACHINE_OFFSET)
 
     def domainname(self) raises -> String:
         """The NIS domain name.
@@ -65,7 +77,7 @@ struct Utsname:
         comptime if CompilationTarget.is_macos():
             return String("")
         else:
-            return self._at(325)
+            return self._at(UTSNAME_DOMAINNAME_OFFSET)
 
     def _at(self, offset: Int) raises -> String:
         """The NUL terminated string starting at `offset`."""

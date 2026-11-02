@@ -56,13 +56,13 @@ the bottom.
 | `libc.wchar` | `<wchar.h>` | 83 |
 | `libc.wordexp` | `<wordexp.h>` shell-style word splitting | 6 |
 | `libc.wctype` | `<wctype.h>` | 3 |
-| `libc.sys.statvfs` | `<sys/statvfs.h>` | 3 |
+| `libc.sys.statvfs` | `<sys/statvfs.h>` | 15 |
 | `libc.sys.select` | `<sys/select.h>` | 9 |
 | `libc.sys.shm` | `<sys/shm.h>` shared memory | 7 |
 | `libc.sys.sem` | `<sys/sem.h>` counters that wait | 6 |
 | `libc.poll` | `<poll.h>` | 14 |
 | `libc.setjmp` | `<setjmp.h>` | 2 |
-| `libc.sys.utsname` | `<sys/utsname.h>` | 2 |
+| `libc.sys.utsname` | `<sys/utsname.h>` | 8 |
 | `libc.sys.sendfile` | `<sys/sendfile.h>` | 1 |
 | `libc.sys.random` | `<sys/random.h>` | 3 |
 | `libc.sys.prctl` | `<sys/prctl.h>` | 19 |

@@ -257,7 +257,7 @@ All notable changes to this project are documented here. The format follows
   checked against XNU's headers on the macOS job and by a compiler that
   has never seen them before. None of the twenty-two was wrong. What is
   not checked is counted in the output rather than assumed: the members
-  Mojo lays out in declaration order, and the thirty-one structs that
+  Mojo lays out in declaration order, and the twenty-nine structs that
   hold their bytes in a buffer while placing members at numbers written
   into their accessors, which is what `OFFSETS` is there to have more of.
 - **`Stat` places its members by name now.** They were slot numbers and
@@ -279,6 +279,22 @@ All notable changes to this project are documented here. The format follows
   the compiler, including on Darwin where `st_atimespec` is at 32 and
   `st_size` at 96 for no reason other than that a fourth `timespec` is in
   the way.
+- **`Statvfs` and `Utsname` name their offsets too.** The same move, for
+  the two structs where a member's place is least guessable. `Statvfs`
+  keeps its members in the same order on both platforms and widths them
+  differently — glibc's block and inode counts are `unsigned long`, XNU's
+  `unsigned int` — so four of them share two words on Darwin and take
+  four words on glibc, and `f_flag` lands at 48 on one and 72 on the
+  other; a number copied from the wrong header would have nine members
+  reading the right bytes of the wrong member. `Utsname` does not even
+  have the same members: six arrays of 65 bytes against five of 256.
+  Eleven offsets and six offsets respectively, all of them in `OFFSETS`,
+  so `offsetof` confirms them on the platform that is running — 52
+  members in total and none of them wrong. `UTSNAME_DOMAINNAME_OFFSET` is
+  the one that cannot be confirmed everywhere, because Darwin's struct
+  stops at `machine`; the script reports it as uncheckable there rather
+  than skipping it, which is the difference between a hole that is
+  counted and one that is not.
 
 ## [0.12.0] - 2026-10-19
 
