@@ -402,11 +402,15 @@ def recvmsg(sockfd: Int32, msg: c_ptr[msghdr], flags: Int32) -> Int64:
         that arrives in pieces can be put into pieces, with one call and
         one return value rather than one per piece.
 
-        `msg_flags` is an output here even though it looks like part of
-        the message that was handed in. It says what was true of the
-        message that arrived — `MSG_TRUNC` when it did not fit, for
-        instance — and is not the flags this was called with; those are
-        the third argument and they stay an argument.
+        `msg_flags` says what was true of the message that arrived —
+        `MSG_TRUNC` when it did not fit, for instance — and on glibc it
+        starts from zero, so the flags this was called with are not in
+        it. XNU starts it from them instead: `recvit` is handed a
+        `msg_flags` already set to the third argument and only adds to
+        it, so a `MSG_PEEK` read on Darwin comes back reporting
+        `MSG_PEEK` in a field that reads like an answer. Nothing is
+        wrong with the bytes; it is the same word being used for two
+        things on one platform.
 
         `MSG_PEEK` is what makes the returned count worth reading twice:
         the bytes are put into the pieces and left in the socket, so the

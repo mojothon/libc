@@ -357,6 +357,12 @@ def test_recvmsg_gathers_without_taking() raises:
     The peek is followed by a zeroing of both pieces and then a second
     read, because a peek that consumed would still hand the same bytes
     back to a test that never cleared them.
+
+    `msg_flags` is read twice for the same kind of reason. Darwin starts
+    it from the flags the call was made with, so the peek comes back
+    carrying `MSG_PEEK` there and nothing on glibc; the second read is
+    made with no flags at all and is zero on both, which is the part that
+    says the field is still worth reading.
     """
     var ends = unsafe_alloc[Int32](2)
     assert_equal(
@@ -409,10 +415,14 @@ def test_recvmsg_gathers_without_taking() raises:
     assert_equal(
         second.unsafe_offset(2)[], UInt8(101), "as far as the last byte"
     )
+    # Darwin starts `msg_flags` from the flags the call was made with, and
+    # glibc starts it from zero: the same peek reports `MSG_PEEK` on one and
+    # nothing on the other. What both agree on is that nothing was truncated.
+    comptime PEEKED: Int32 = MSG_PEEK if CompilationTarget.is_macos() else 0
     assert_equal(
         coming.unsafe_offset(0)[].msg_flags(),
-        0,
-        "and the message arrived whole, which is what msg_flags reports",
+        PEEKED,
+        "no truncation, which is all msg_flags is for on glibc",
     )
 
     for i in range(3):
@@ -425,6 +435,11 @@ def test_recvmsg_gathers_without_taking() raises:
         first.unsafe_offset(0)[], UInt8(97), "the same five bytes are there"
     )
     assert_equal(second.unsafe_offset(2)[], UInt8(101), "to be taken this time")
+    assert_equal(
+        coming.unsafe_offset(0)[].msg_flags(),
+        0,
+        "and with no flags asked for, msg_flags is zero on both platforms",
+    )
 
     bytes.unsafe_free()
     sending.unsafe_free()
