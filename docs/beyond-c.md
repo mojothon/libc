@@ -211,10 +211,28 @@ Being fair about the other direction:
   signature is worth knowing if anyone tries again: the call answers 0 and
   the semaphore exists, and only a `sem_trywait` says the count was not
   the one asked for.
-- **Speed.** Measured, and there is nothing here to be modest about:
-  **1.6 ns** per call through the binding against **2.2 ns** for the same
-  call from C — `strlen`, 20 million times, run twice. The gap favours
-  neither in any way that means anything: the C side pays for a jump
-  through the procedure linkage table that an external call does not, and
-  the spread between two runs of the same binary is wider than the
-  distance between the two numbers. `scripts/bench-call.sh` prints both.
+- **Speed.** `scripts/bench-call.sh` runs it: a hundred million calls of
+  `strlen`, `strcmp` and `getpid`, five times over, keeping the fastest of
+  the five, with a first row that is the same loop with no call in it. A
+  call's cost is the distance from that row, and nothing else says what the
+  loop itself cost. On the machine this was last run on:
+
+  ```
+  call        through C    through the binding
+  nothing         282 ps              454 ps
+  strlen         2504 ps             1499 ps
+  strcmp         2087 ps             1904 ps
+  getpid       327878 ps           329006 ps
+  ```
+
+  The row that settles anything is `getpid`. A syscall costs what a syscall
+  costs through either side — 0.4% apart — which is the whole claim: an
+  external call adds nothing measurable to a call. The two cheap rows are
+  another matter, and the honest reading is that they cannot be read at
+  all: run the script again and `strlen` through C moves by 500 ps, which
+  is the size of the gap that was supposed to be measured between the two
+  languages. An earlier version of this paragraph quoted **1.6 ns** against
+  **2.2 ns** for `strlen`, taken the same way and without the `nothing` row
+  to hold them down; a repeat will not give either number back. What
+  repeats is the shape — the binding is not slower — and the syscall row,
+  which does not move at all.
