@@ -137,25 +137,58 @@ def mknodat(fd: Int32, path: c_ptr[UInt8], mode: Int32, dev: UInt64) -> Int32:
     )
 
 
+# Where each member of C's `struct stat` sits on this platform. Both are
+# 144 bytes and neither is the other's prefix: XNU packs `st_dev`,
+# `st_mode` and `st_nlink` into the first eight bytes and puts the 64-bit
+# `st_ino` after them, where glibc spends those bytes on `st_dev` alone
+# and leads with `st_ino` next. The four `timespec` Darwin carries —
+# access, modify, status change and birth — are what put `st_size` at 96
+# there and 48 on glibc, and what swaps `st_blocks` past `st_blksize`.
+#
+# Numbers from XNU `bsd/sys/stat.h` and glibc's `bits/struct_stat.h`, and
+# every one of them is compared with C's `offsetof` on both platforms by
+# `scripts/check-layouts.py`: a member placed by hand is a member placed
+# from memory unless something asks the compiler that laid it out.
+comptime STAT_SLOTS: Int = 19
+comptime STAT_DEV_OFFSET: Int = 0
+comptime STAT_INO_OFFSET: Int = 8
+comptime STAT_MODE_OFFSET: Int = 4 if CompilationTarget.is_macos() else 24
+comptime STAT_NLINK_OFFSET: Int = 6 if CompilationTarget.is_macos() else 16
+comptime STAT_UID_OFFSET: Int = 16 if CompilationTarget.is_macos() else 28
+comptime STAT_GID_OFFSET: Int = 20 if CompilationTarget.is_macos() else 32
+comptime STAT_RDEV_OFFSET: Int = 24 if CompilationTarget.is_macos() else 40
+comptime STAT_ATIME_OFFSET: Int = 32 if CompilationTarget.is_macos() else 72
+comptime STAT_MTIME_OFFSET: Int = 48 if CompilationTarget.is_macos() else 88
+comptime STAT_CTIME_OFFSET: Int = 64 if CompilationTarget.is_macos() else 104
+comptime STAT_SIZE_OFFSET: Int = 96 if CompilationTarget.is_macos() else 48
+comptime STAT_BLOCKS_OFFSET: Int = 104 if CompilationTarget.is_macos() else 64
+comptime STAT_BLKSIZE_OFFSET: Int = 112 if CompilationTarget.is_macos() else 56
+
+
 struct Stat:
     """A C `struct stat`, which `stat`, `fstat` and friends fill in.
 
     Linux's is 144 bytes and Darwin's is 144 too, but the order differs:
     glibc leads with `st_dev`, `st_ino`, `st_nlink`, `st_mode`, while Darwin
-    packs `st_dev`, `st_mode`, `st_nlink` into the first eight bytes and
-    puts the 64-bit `st_ino` after them. So the bytes are held as slots
-    and every member is read at the offset that fits the platform, the
-    way `struct dirent` does it.
+    packs `st_dev`, `st_mode` and `st_nlink` into the first eight bytes and
+    puts the 64-bit `st_ino` after them. So the bytes are held as slots and
+    every member is read at the offset that fits the platform, the way
+    `struct dirent` does it — the offsets are named above rather than in
+    the methods, so that they can be read as a layout instead of assembled
+    from slot numbers, and so that a script can check them.
+
+    The width is the platform's too: `dev_t` and `blksize_t` are four bytes
+    on Darwin and eight on glibc, `mode_t` and `nlink_t` two and eight, and
+    a member read at the wrong width is as wrong as one read at the wrong
+    place.
 
     Darwin's `struct stat` (the `_DARWIN_FEATURE_64_BIT_INODE` one that
     `stat` fills) carries **four** `timespec` — access, modify, status
-    change, and birth — where Linux has three, and that fourth one is
-    what pushes `st_size` down to offset 96 instead of 80. Offsets below
-    come from XNU `bsd/sys/stat.h` plus the `stat(2)` man page, and were
-    checked against a C struct laid out the same way.
+    change, and birth — where Linux has three, and that fourth one is what
+    pushes `st_size` down to offset 96 instead of 48.
     """
 
-    var _slots: Array[Int64, 19]
+    var _slots: Array[Int64, STAT_SLOTS]
 
     def __init__(out self):
         """Zeroes all 152 bytes, which is what `memset` would leave behind.
@@ -163,122 +196,107 @@ struct Stat:
         the buffer holds without being read, so that a `stat` writing
         the C struct never runs past the end of it.
         """
-        self._slots = Array[Int64, 19](fill=0)
+        self._slots = Array[Int64, STAT_SLOTS](fill=0)
+
+    def _u16(self, off: Int) -> Int:
+        """The two bytes at a two-aligned `off`, little-endian.
+
+        Little-endian is what both platforms are; this is a reading of the
+        bytes C wrote, not a portable decode.
+        """
+        return Int((self._slots[off // 8] >> Int64((off % 8) * 8)) & 0xFFFF)
+
+    def _u32(self, off: Int) -> Int64:
+        """The four bytes at a four-aligned `off`, little-endian."""
+        return (self._slots[off // 8] >> Int64((off % 8) * 8)) & 0xFFFFFFFF
+
+    def _u64(self, off: Int) -> Int64:
+        """The eight bytes at an eight-aligned `off`, which is all of a slot."""
+        return self._slots[off // 8]
 
     def dev(self) -> Int64:
         """The ID of the device holding the file."""
-        # `st_dev` (4B) is the low half of slot 0 on Darwin; `st_mode`
-        # (2B) and `st_nlink` (2B) sit above it in the same slot.
+        # `dev_t` is four bytes on Darwin, eight on glibc.
         comptime if CompilationTarget.is_macos():
-            return self._slots[0] & 0xFFFFFFFF
+            return self._u32(STAT_DEV_OFFSET)
         else:
-            return self._slots[0]
+            return self._u64(STAT_DEV_OFFSET)
 
     def ino(self) -> Int64:
         """The file serial number, its inode."""
-        # `st_ino` is a full 8 bytes at offset 8 — the whole of slot 1.
-        # It is not truncated: Darwin's `ino_t` is 64-bit, unlike the
-        # 32-bit one in the pre-`_DARWIN_FEATURE_64_BIT_INODE` struct.
-        comptime if CompilationTarget.is_macos():
-            return self._slots[1]
-        else:
-            return self._slots[1]
+        # A full eight bytes on both: Darwin's `ino_t` is 64-bit under
+        # `_DARWIN_FEATURE_64_BIT_INODE`, unlike the 32-bit one in the
+        # struct that came before it.
+        return self._u64(STAT_INO_OFFSET)
 
     def nlink(self) -> Int64:
         """How many hard links point at the file."""
-        # `st_nlink` (2B) at offset 6 — the high 2 bytes of slot 0.
+        # Sixteen bits on Darwin, in the same word as `st_dev` and
+        # `st_mode`; `nlink_t` is a full word on glibc.
         comptime if CompilationTarget.is_macos():
-            return Int64((self._slots[0] >> 48) & 0xFFFF)
+            return Int64(self._u16(STAT_NLINK_OFFSET))
         else:
-            return self._slots[2]
+            return self._u64(STAT_NLINK_OFFSET)
 
     def mode(self) -> Int:
         """The file type and permission bits."""
-        # `st_mode` (2B) at offset 4 — slot 0 bytes 4..5.
+        # Sixteen bits on Darwin, four bytes on glibc.
         comptime if CompilationTarget.is_macos():
-            return Int((self._slots[0] >> 32) & 0xFFFF)
+            return self._u16(STAT_MODE_OFFSET)
         else:
-            return Int(self._slots[3] & 0xFFFFFFFF)
+            return Int(self._u32(STAT_MODE_OFFSET))
 
     def uid(self) -> Int:
         """The user ID of the owner."""
-        # `st_uid` (4B) at offset 16 — the low half of slot 2.
-        comptime if CompilationTarget.is_macos():
-            return Int(self._slots[2] & 0xFFFFFFFF)
-        else:
-            return Int(self._slots[3] >> 32)
+        return Int(self._u32(STAT_UID_OFFSET))
 
     def gid(self) -> Int:
         """The group ID of the owner."""
-        # `st_gid` (4B) at offset 20 — the high half of slot 2.
-        comptime if CompilationTarget.is_macos():
-            return Int(self._slots[2] >> 32)
-        else:
-            return Int(self._slots[4] & 0xFFFFFFFF)
+        return Int(self._u32(STAT_GID_OFFSET))
 
     def rdev(self) -> Int64:
         """The device ID, for files that are devices."""
-        # `st_rdev` (4B) at offset 24 — the low half of slot 3. The high
-        # half of that slot is padding, so it is masked away.
+        # Four bytes on Darwin, where the next four are padding before the
+        # first `timespec`; eight on glibc.
         comptime if CompilationTarget.is_macos():
-            return self._slots[3] & 0xFFFFFFFF
+            return self._u32(STAT_RDEV_OFFSET)
         else:
-            return self._slots[5]
+            return self._u64(STAT_RDEV_OFFSET)
 
     def size(self) -> Int64:
         """The file size in bytes."""
-        # `struct stat` on Darwin is what `stat()` writes: dev(4) +
-        # mode(2) + nlink(2) + 4 pad + ino(8) + uid(4) + gid(4) +
-        # rdev(4) + 4 pad + 4 * timespec(16) = 96 bytes of header, so
-        # `st_size` is the whole of slot 12.
-        comptime if CompilationTarget.is_macos():
-            return self._slots[12]
-        else:
-            return self._slots[6]
+        # Behind the `timespec` — four of them on Darwin, three on glibc,
+        # which is the whole of the difference between the two offsets.
+        return self._u64(STAT_SIZE_OFFSET)
 
     def blksize(self) -> Int64:
         """The preferred block size for I/O on this file."""
-        # `st_blksize` (4B) at offset 112 — the low 4 bytes of slot 14,
-        # with `st_flags` above it.
+        # Four bytes on Darwin, where `st_flags` sits above it in the same
+        # word; eight on glibc.
         comptime if CompilationTarget.is_macos():
-            return Int64(self._slots[14] & 0xFFFFFFFF)
+            return self._u32(STAT_BLKSIZE_OFFSET)
         else:
-            return self._slots[7]
+            return self._u64(STAT_BLKSIZE_OFFSET)
 
     def blocks(self) -> Int64:
         """How many 512-byte blocks the file occupies."""
-        # `st_blocks` (8B) at offset 104 — the whole of slot 13.
-        comptime if CompilationTarget.is_macos():
-            return self._slots[13]
-        else:
-            return self._slots[8]
+        return self._u64(STAT_BLOCKS_OFFSET)
 
     def atime(self) -> Int64:
         """The seconds of the last access time."""
-        # `st_atimespec` starts at offset 32, so its `tv_sec` is the
-        # whole of slot 4. Each `timespec` is `tv_sec` then `tv_nsec`.
-        comptime if CompilationTarget.is_macos():
-            return self._slots[4]
-        else:
-            return self._slots[9]
+        # The `tv_sec` of `st_atimespec` on Darwin, of `st_atim` on glibc;
+        # `tv_nsec` is the four bytes after it and is not read here.
+        return self._u64(STAT_ATIME_OFFSET)
 
     def mtime(self) -> Int64:
         """The seconds of the last modification time."""
-        # `st_mtimespec` starts at offset 48 — slot 6.
-        comptime if CompilationTarget.is_macos():
-            return self._slots[6]
-        else:
-            return self._slots[11]
+        return self._u64(STAT_MTIME_OFFSET)
 
     def ctime(self) -> Int64:
         """The seconds of the last status change."""
-        # `st_ctimespec` starts at offset 64 — slot 8. The fourth
-        # timespec, `st_birthtimespec`, follows at offset 80 and is not
-        # read by any method here.
-        comptime if CompilationTarget.is_macos():
-            return self._slots[8]
-        else:
-            return self._slots[13]
+        # `st_birthtimespec` follows this one on Darwin, at offset 80, and
+        # is read by no method here.
+        return self._u64(STAT_CTIME_OFFSET)
 
 
 def stat(pathname: c_ptr[UInt8], statbuf: c_ptr[Stat]) -> Int32:

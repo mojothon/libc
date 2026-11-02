@@ -257,9 +257,28 @@ All notable changes to this project are documented here. The format follows
   checked against XNU's headers on the macOS job and by a compiler that
   has never seen them before. None of the twenty-two was wrong. What is
   not checked is counted in the output rather than assumed: the members
-  Mojo lays out in declaration order, and the thirty-two structs that
+  Mojo lays out in declaration order, and the thirty-one structs that
   hold their bytes in a buffer while placing members at numbers written
   into their accessors, which is what `OFFSETS` is there to have more of.
+- **`Stat` places its members by name now.** They were slot numbers and
+  shift counts — `self._slots[0] >> 32 & 0xFFFF` for `st_mode` on Darwin,
+  `self._slots[3] & 0xFFFFFFFF` for the same member on glibc — which is a
+  layout that lives in the head of whoever wrote it and that nothing can
+  check. The thirteen offsets are named at the top of the module now, one
+  per member, with the width alongside each: `dev_t`, `blksize_t`,
+  `mode_t` and `nlink_t` are half the size on Darwin that they are on
+  glibc, and a member read at the wrong width is as wrong as one read at
+  the wrong place. They go through three little-endian helpers, so a
+  member is read where it says it is and how wide it says it is, and the
+  byte order is the machine's, which is stated rather than implied.
+  Nothing about the behaviour changed — the same bytes were already being
+  read from the same places, and the `stat` tests, which fill a real file
+  and read its mode, owner, size and times back, say so. What changed is
+  that all thirteen are in `OFFSETS`, so both platforms now compare them
+  with `offsetof`: a layout that was correct from memory is correct from
+  the compiler, including on Darwin where `st_atimespec` is at 32 and
+  `st_size` at 96 for no reason other than that a fourth `timespec` is in
+  the way.
 
 ## [0.12.0] - 2026-10-19
 
