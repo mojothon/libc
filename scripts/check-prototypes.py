@@ -924,7 +924,12 @@ def main() -> int:
         print("\nrun with no arguments to see this again, or fix src/libc/")
         return 1
 
-    print(f"all {len(bindings())} calls match the C prototypes")
+    walked = list(bindings())
+    symbols = {symbol for _path, _name, symbol, _args, _ret, _params in walked}
+    print(
+        f"all {len(walked)} calls match the C prototypes,"
+        f" over {len(symbols)} distinct C symbols"
+    )
     return 0
 
 

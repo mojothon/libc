@@ -2,14 +2,26 @@
 
 This is a binding, so what it can call is a subset of what C can call and
 will stay that way. The count says how much of a subset: `libc`, `libm`,
-`libdl` and `librt` publish 2778 functions between them, and this binds
-567 C symbols, 562 of which are among those — **20.2%**. C offers more, and
+`libdl` and `librt` publish 3574 functions between them, and this binds
+943 C symbols, 940 of which are among those — **26.3%**. C offers more, and
 calling more of it is not what this is for.
 
-(567 took correcting. An earlier count here said 470, because the symbol
-was read off the same line as `external_call[` and a fifth of the calls
-in this package put the name on the next line instead. The honest number
-was higher, and nobody benefited from the lower one.)
+Both numbers move with the machine they are taken on, which is worth saying
+before either is quoted. `nm -D --defined-only` over those four libraries
+gives 3574 names here and gave 2778 on the machine this page was first
+written on, a different glibc with fewer of them exported; the 943 is the
+symbols `scripts/check-prototypes.py` walks, which is the one count that
+cannot drift from the source because it is read out of the source. Take the
+shape rather than the digits: a quarter of what those four publish, every
+one of them checked against the header it comes from, and no intention of
+the rest.
+
+(943 took correcting twice. An earlier count here said 470, because the
+symbol was read off the same line as `external_call[` and a fifth of the
+calls in this package put the name on the next line instead. Then it said
+567, which was right the day it was counted and was not recounted as the
+package grew. The honest number is the one the check prints, and nobody
+benefited from the lower one.)
 
 The rest of this page is about the other question, which is not "how much"
 but "how". There are things C cannot do for the caller, or does by
@@ -156,7 +168,29 @@ Being fair about the other direction:
   on arm64 Darwin passes on the stack, where the call cannot reach.
 - **Callbacks.** Nothing here can hand C a function pointer, so `qsort`,
   `bsearch` and signal handlers are out.
-- **Coverage.** 16.7%, as above. `open` here is bound as `openat` with
+- **Bodies that live in another library.** `<arpa/inet.h>` declares
+  `inet_net_pton`, `inet_net_ntop`, `inet_neta` and the two `inet_nsap_*`
+  on both platforms, and on Linux they are not in libc: they are in
+  `libresolv`, which a C program is linked against without ever saying
+  so. Nothing here links it, and the call does not resolve —
+  `undefined reference to inet_net_pton` — while the header goes on
+  saying the function is there. The declaration is not the evidence; the
+  link is, and the quickest place to look is
+  `nm -D /lib/x86_64-linux-gnu/libresolv.so.2`.
+- **Declarations written inside `#if 0`.** Four of `<spawn.h>`'s functions
+  are spelled out in full in Darwin's header and cannot be called:
+  `posix_spawnattr_setschedparam`, `posix_spawnattr_setschedpolicy` and
+  the two getters are inside `#if 0 /* _POSIX_PRIORITY_SCHEDULING : not
+  supported */`. A prototype listing, and a `gcc -aux-info` run on the
+  other platform, both say they are there. So `spawn.h` is bound to 27 of
+  its 31, and the four left over are less a gap in this than a gap in the
+  platform.
+- **Names that are zero and mean something.** `timer_create` writes a
+  `timer_t` that can be 0 and be valid: the kernel numbers its timers
+  from zero, so the first one a process makes is named 0. A binding that
+  checks the name for NULL throws away a working timer, and a test that
+  does it fails on the first timer and passes on the second.
+- **Coverage.** 26.3%, as above. `open` here is bound as `openat` with
   `AT_FDCWD` filled in, which is what POSIX says the two amount to, and is
   the sort of thing that happens when the real name cannot be called.
 - **Variadic arguments, and the argument after them.** `openat` is variadic
