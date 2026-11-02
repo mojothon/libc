@@ -1075,6 +1075,7 @@ def bring_in_libc_stdlib():
         mbtowc,
         mkdtemp,
         mkstemp,
+        mkstemps,
         mktemp,
         mrand48,
         nrand48,

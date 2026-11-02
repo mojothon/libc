@@ -812,6 +812,45 @@ def rand_r(seedp: c_ptr[c_uint]) -> c_int:
 # -------------------------------------------------------
 #  temporary files
 # -------------------------------------------------------
+def mkstemps(template: c_ptr[c_char], suffixlen: c_int) -> c_int:
+    """C library <stdlib.h> function `mkstemps`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/mkstemp.3.html
+
+    Prototype:
+        int mkstemps(char *template, int suffixlen)
+
+    Description:
+        `mkstemp` told that the last `suffixlen` bytes of `template`
+        are a suffix and not part of the name to make up: those are
+        left as they are, and the six `X`s that get replaced are the
+        six before them rather than the six at the end.
+
+    Args:
+        template: A mutable string of at least six `X`s followed by
+            `suffixlen` bytes of suffix; modified in place.
+        suffixlen: How many bytes at the end to leave alone.
+
+    Returns:
+        The open file descriptor, or -1 on failure with `errno` set.
+
+    Notes:
+        What the six `X`s are replaced with is what makes the name
+        unique, so a count that leaves fewer than six of them, or
+        that leaves six somewhere other than just before the suffix,
+        is refused rather than made unique some other way.
+
+        The suffix is how a program says which kind of file it wants
+        and still gets a name nobody else has: `mkstemp` cannot, the
+        `X`s having to be at the very end.
+    """
+
+    return external_call["mkstemps", c_int, c_ptr[c_char], c_int](
+        template, suffixlen
+    )
+
+
 def mkstemp(template: c_ptr[c_char]) -> c_int:
     """C library <stdlib.h> function `mkstemp`.
 

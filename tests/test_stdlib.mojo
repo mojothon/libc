@@ -40,6 +40,7 @@ from libc.stdlib import (
     mbtowc,
     mkdtemp,
     mkstemp,
+    mkstemps,
     mktemp,
     mrand48,
     nrand48,
@@ -874,6 +875,36 @@ def test_writing_a_number_the_way_it_is_written() raises:
     buf.unsafe_free()
 
 
+def test_a_name_made_with_a_suffix_left_alone() raises:
+    """`mkstemps` is `mkstemp` told that the last few bytes are a
+    suffix and not part of the name: those are left as they were and
+    the six `X` it replaces are the six before them.
+
+    What is asserted is not only that a file was made but where the
+    random part went, which is the whole of the difference from
+    `mkstemp`: the four bytes at the end are still the suffix, and
+    the six before them no longer say `XXXXXX`. A count taken from
+    the wrong end would put the random part over the suffix.
+    """
+    var template = string_to_char_ptr("/tmp/libc_mkstemps_XXXXXX.txt")
+    var fd = mkstemps(template, 4)
+    assert_true(fd >= 0, "a file is made from the template")
+
+    assert_equal(
+        char_ptr_to_string(template.unsafe_offset(25)),
+        ".txt",
+        "the last four bytes are the suffix, left as it was",
+    )
+    assert_true(
+        char_ptr_to_string(template.unsafe_offset(19)) != "XXXXXX.txt",
+        "and the six before them have been replaced",
+    )
+
+    assert_equal(close(fd), 0, "the descriptor closes")
+    assert_equal(remove(template), 0, "and the file goes")
+    template.unsafe_free()
+
+
 def main() raises:
     test_malloc()
     test_the_untried_calls()
@@ -896,5 +927,6 @@ def main() raises:
     test_writing_a_number_out_as_digits()
     test_the_same_number_counted_from_the_other_end()
     test_writing_a_number_the_way_it_is_written()
+    test_a_name_made_with_a_suffix_left_alone()
     test_the_number_the_rand48s_have_next()
     print("test_stdlib: ok")
