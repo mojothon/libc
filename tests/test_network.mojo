@@ -235,30 +235,31 @@ def test_an_address_taken_apart_and_put_back_together() raises:
 
 
 def test_an_nsap_address_there_and_back() raises:
-    """An OSI NSAP address is a run of hex digits, so reading it and
-    writing it back out are inverses that do not depend on the machine.
+    """The two NSAP conversions are inverses, but the text between
+    them is not the same on the two platforms.
 
-    What is not written down here is the spelling `inet_nsap_ntoa`
-    chooses: the two platforms group the dots differently, so asking
-    for one particular string would be asking about the platform.
-    Feeding whatever it produced back into `inet_nsap_addr` has to
-    give the same six bytes, which is a question about the two calls
-    and catches either one wired to the wrong direction.
+    One wants a `0x` prefix and dots between pairs of bytes, the
+    other wants bare hex digits, so writing an address down by hand
+    would be writing down the platform. What is written down instead
+    is six bytes, which `inet_nsap_ntoa` spells and
+    `inet_nsap_addr` reads back: the spelling is left to the platform
+    and the bytes are compared, which catches either call wired to
+    the wrong direction.
     """
-    var text = string_to_char_ptr("47000580005a")
     var bin = unsafe_alloc[UInt8](16)
     for i in range(16):
         bin.unsafe_store(i, 0)
-
-    var n = inet_nsap_addr(text, bin, 16)
-    assert_equal(Int(n), 6, "twelve hex digits are six bytes")
-    assert_equal(Int(bin.unsafe_load(0)), 0x47, "the first byte is 0x47")
-    assert_equal(Int(bin.unsafe_load(5)), 0x5A, "and the last is 0x5A")
+    bin.unsafe_store(0, 0x47)
+    bin.unsafe_store(1, 0x00)
+    bin.unsafe_store(2, 0x05)
+    bin.unsafe_store(3, 0x80)
+    bin.unsafe_store(4, 0x00)
+    bin.unsafe_store(5, 0x5A)
 
     var out = unsafe_alloc[UInt8](128)
     for i in range(128):
         out.unsafe_store(i, 0)
-    var written = inet_nsap_ntoa(Int32(n), bin, out)
+    var written = inet_nsap_ntoa(6, bin, out)
     assert_true(Int(written) != 0, "there is a spelling to read back")
 
     var again = unsafe_alloc[UInt8](16)
@@ -266,8 +267,8 @@ def test_an_nsap_address_there_and_back() raises:
         again.unsafe_store(i, 0)
     assert_equal(
         Int(inet_nsap_addr(written, again, 16)),
-        Int(n),
-        "and reading that spelling back gives the same length",
+        6,
+        "and reading that spelling back gives the same six bytes",
     )
     for i in range(6):
         assert_equal(
@@ -279,7 +280,6 @@ def test_an_nsap_address_there_and_back() raises:
     again.unsafe_free()
     out.unsafe_free()
     bin.unsafe_free()
-    text.unsafe_free()
 
 
 def main() raises:

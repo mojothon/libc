@@ -399,10 +399,11 @@ def inet_nsap_addr(
         `unsigned int inet_nsap_addr(const char *cp, unsigned char *buf, int len)`.
 
         Unlike `inet_pton`, this one is about NSAP addresses and not
-        IP ones: the input is a run of hex digits with no separators,
-        so the bytes are the digits in pairs and nothing about byte
-        order enters into it. That is what makes the round trip a
-        question about these two calls rather than about the machine.
+        IP ones. The two platforms do not agree on the text: one wants
+        a `0x` prefix and dots between pairs of bytes, the other
+        wants bare hex digits. So no test here writes an address down
+        by hand. Feeding `inet_nsap_ntoa`'s answer back to this call
+        is the question, and it is the same question on both.
     """
     return external_call[
         "inet_nsap_addr", c_uint, c_ptr[UInt8], c_ptr[UInt8], Int32
@@ -435,8 +436,9 @@ def inet_nsap_ntoa(
         Fn signature:
         `char *inet_nsap_ntoa(int len, const unsigned char *cp, char *buf)`.
 
-        The grouping of the dots is up to the platform, so no test
-        here writes it down: feeding whatever this produces back to
+        The spelling is up to the platform, including whether a `0x`
+        prefix is written and where the dots go, so no test here
+        writes it down: feeding whatever this produces back to
         `inet_nsap_addr` has to give the same bytes, which is a
         stronger question than asking for one particular spelling.
     """

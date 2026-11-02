@@ -540,8 +540,8 @@ All notable changes to this project are documented here. The format follows
   `erfcf.c`, its `Libc` ships `net/FreeBSD/nsap_addr.c` — and neither
   test writes down a value from the library: `erf(x) + erfc(x)` is 1,
   and since `erf` is odd `erfc(-x) + erfc(x)` is 2, while the NSAP
-  pair round-trips six bytes through whatever dot spacing the
-  platform chooses. `wait`, `finite`, `scalb`, `drem`, `significand`
+  pair round-trips six bytes through whatever spelling the platform
+  chooses — one writes a `0x` prefix and dots, the other bare hex. `wait`, `finite`, `scalb`, `drem`, `significand`
   and `gamma` are declared on Darwin but carry `__DARWIN_ALIAS_C`,
   so the symbols have a suffix and an `external_call` under the plain
   name cannot reach them; they stay unbound on purpose. `ecvt`,
