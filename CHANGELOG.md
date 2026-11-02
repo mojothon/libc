@@ -7,6 +7,27 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **`libc.utmpx` is new: the seven calls of `<utmpx.h>`, and the record
+  they hand back.** The login database: one record per session, who, on
+  which terminal, since when, and whether it is still open. `getutxent`
+  walks it a record at a time, `getutxline` and `getutxid` find one in
+  it, `pututxline` writes one back, and `utmpxname` is what says which
+  file all of that is about — which is the part that makes the package
+  testable without being root: point it at a file of your own and the
+  walk reads that one instead of `/var/run/utmpx`. The record is 384
+  bytes on glibc and 640 on XNU, the login name first on one and the
+  type first on the other, and not one member in the same place, so it
+  is held as bytes and read at the offset of whoever is compiling — and
+  the size is the platform's own rather than the larger of the two,
+  because a record written out at the wrong length makes a file libc
+  cannot walk. Two constants needed the same treatment as everything
+  else that is numbered twice: `OLD_TIME` and `NEW_TIME` are the other
+  way round on the two, and XNU's `ACCOUNTING`, `SIGNATURE` and
+  `SHUTDOWN_TIME` are left out rather than bound on one platform and
+  missing on the other. One thing the tests had to be told: a search
+  carries on from wherever the walk got to, so `getutxline` after a walk
+  that has ended finds nothing at all until `setutxent` winds it back.
+  `libc.utmpx` starts at 29.
 - **The `_SC_*` knobs are bound in `libc.unistd`, eighty of them.**
   `sysconf` took a knob number and this package named exactly one,
   `SC_PAGESIZE`, so a caller asking about anything else had to write a

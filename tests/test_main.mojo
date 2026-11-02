@@ -74,6 +74,7 @@ from test_times import main as run_times
 from test_unistd import main as run_unistd
 from test_utils import main as run_utils
 from test_wchar import main as run_wchar
+from test_utmpx import main as run_utmpx
 from test_wctype import main as run_wctype
 from test_wordexp import main as run_wordexp
 from test_version import main as run_version
@@ -150,5 +151,6 @@ def main() raises:
     run_wchar()
     run_wctype()
     run_wordexp()
+    run_utmpx()
     run_version()
     print("all tests passed")

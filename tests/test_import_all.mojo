@@ -1628,6 +1628,28 @@ def bring_in_libc_unistd():
     )
 
 
+def bring_in_libc_utmpx():
+    from libc.utmpx import (
+        EMPTY,
+        UTMPX_BYTES,
+        UTMPX_SLOTS,
+        UT_HOST_OFFSET,
+        UT_ID_OFFSET,
+        UT_LINE_OFFSET,
+        UT_PID_OFFSET,
+        UT_TYPE_OFFSET,
+        UT_USER_OFFSET,
+        endutxent,
+        getutxent,
+        getutxid,
+        getutxline,
+        pututxline,
+        setutxent,
+        utmpx,
+        utmpxname,
+    )
+
+
 def bring_in_libc_wchar():
     from libc.wchar import (
         WEOF,
@@ -1798,5 +1820,6 @@ def main() raises:
     bring_in_libc_unistd()
     bring_in_libc_wchar()
     bring_in_libc_wordexp()
+    bring_in_libc_utmpx()
     bring_in_libc_wctype()
     print("test_import_all: ok")

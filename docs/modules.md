@@ -72,6 +72,7 @@ the bottom.
 | `libc.termios` | `<termios.h>` how a terminal line is set | 54 |
 | `libc.sys.ipc` | `<sys/ipc.h>` keys for System V objects | 9 |
 | `libc.sys.msg` | `<sys/msg.h>` message queues | 6 |
+| `libc.utmpx` | `<utmpx.h>` who is logged in, and where | 29 |
 | `libc.constant` | C type aliases and constants | — |
 | `libc.utils` | String/pointer helpers | — |
 
