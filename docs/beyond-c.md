@@ -37,18 +37,18 @@ in a table, because there is no `errno_name` in libc to ask.
 There is one here:
 
 ```mojo
-from libc.errno import check, errno_message, errno_name
+from libc.errno import errno_message, errno_name
 
-print(errno_name(2))            # ENOENT
-print(errno_message(2))         # ENOENT: No such file or directory
 
-var fd = check(open(path, O_RDONLY))          # raises instead of answering -1
-var stream = check_ptr(fopen(path, mode))     # and for the calls that answer NULL
+def main():
+    print(errno_name(2))     # ENOENT
+    print(errno_message(2))  # ENOENT: No such file or directory
 ```
 
-`check` covers the half of libc that says -1; `check_ptr` covers the other
-half, the one that says NULL — `fopen`, `malloc`, `getcwd` — for which a
-test against a negative number says nothing. C has no answer to either,
+`check` covers the half of libc that says -1, so `check(open(path, O_RDONLY))`
+hands back the descriptor or raises; `check_ptr` covers the other half, the one
+that says NULL — `fopen`, `malloc`, `getcwd` — for which a test against a
+negative number says nothing. C has no answer to either,
 having no exceptions to raise: the nearest it comes is a macro of one's
 own that calls `perror` and then `exit`, which is not the same as being
 able to catch it.
@@ -72,6 +72,8 @@ the header sees one of the two answers and not the fact that there was a
 choice. This writes the choice out:
 
 ```mojo
+from std.sys import CompilationTarget
+
 comptime EAGAIN = 35 if CompilationTarget.is_macos() else 11
 ```
 

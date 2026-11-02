@@ -23,6 +23,10 @@ jobs:
         run: pixi run format-check
       - name: C prototypes
         run: pixi run check-prototypes
+      # The docs are the one place a call is written and nothing compiles it:
+      # a rename leaves an example a reader finds before a test does.
+      - name: Check that the examples in the docs compile
+        run: pixi run check-examples
 
   test:
     name: Test (${{ matrix.os }})

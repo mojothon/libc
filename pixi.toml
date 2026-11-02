@@ -52,6 +52,16 @@ check-return-values = "python3 scripts/check-return-values.py"
 # carrying `atan2`'s prototype, and with it a second argument `y` that it
 # cannot be given; `ldiv`, `lldiv` and `imaxdiv` all saying `div`.
 check-docstrings = "python3 scripts/check-docstrings.py"
+# The documentation is the one place in this repository where a call is
+# written and nothing compiles it. A rename leaves an example naming a
+# function that no longer exists, and the first person to find out is a
+# reader following it. Every fenced `mojo` block is built against `src/`
+# now — built rather than run, since two of them print whichever directory
+# entry comes first and none asserts an answer. A block that is a fragment
+# rather than a program is fenced `mojo fragment`, and the count of those is
+# printed so that skipping is something the run says rather than something
+# a fence can do quietly.
+check-examples = "python3 scripts/check-examples.py"
 
 [feature.build.dependencies]
 rattler-build = ">=0.40,<0.41"

@@ -409,6 +409,20 @@ All notable changes to this project are documented here. The format follows
   416 functions, and `libc.utils` is a file in `libc` itself rather than a
   sub-package. Adding a module and forgetting the table now fails in a
   second, on the spot, instead of waiting for a reader to notice.
+- **The Mojo in the docs is compiled now.** `README.md` and `docs/*.md` are
+  the one place a call to this package is written and nothing checks it: a
+  renamed function leaves an example naming something that no longer
+  exists, and the first person to find out is a reader following it.
+  `scripts/check-examples.py` builds every fenced `mojo` block against
+  `src/` — builds rather than runs, since two of them print whichever
+  directory entry comes first and none asserts an answer — and reports the
+  block and the line when one fails. Two blocks were not programs at all:
+  the `errno_name` example was file-scope print statements, which Mojo does
+  not allow, and the `EAGAIN` line was a `comptime` quoting part of the
+  module without its `CompilationTarget` import. Both compile now. A block
+  that has to stay a fragment says so with a `mojo fragment` fence, and the
+  run prints how many it skipped, so the escape hatch is counted rather
+  than assumed.
 
 ## [0.12.0] - 2026-10-19
 
