@@ -812,9 +812,15 @@ def putwchar(wc: c_wchar) -> c_wint:
         [Reference](https://man7.org/linux/man-pages/man3/putwchar.3.html).
         Fn signature: `wint_t putwchar(wchar_t wc)`.
 
-        Bound and not called: a test that wrote to the terminal would
-        be writing to the terminal, and what comes back from it is
-        not a thing a test can hold to.
+        Bound and not called, and not because of the terminal: the
+        suite can point standard output at a file. What it cannot do
+        is orient it back. The first wide write makes stdout a wide
+        stream for the rest of the process; `fwide` will not change an
+        oriented stream, and clearing one takes a `freopen` on the
+        `stdout` object, which is a variable and not a function this
+        package can reach. On glibc the next byte write to it answers
+        `EOF` and writes nothing, so one call here would silence every
+        later byte-oriented test that shares the stream.
     """
     return external_call["putwchar", c_wint, c_wchar](wc)
 

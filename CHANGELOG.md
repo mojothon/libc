@@ -504,14 +504,50 @@ All notable changes to this project are documented here. The format follows
   output somewhere, used on this process instead. `perror`'s message is
   compared against `strerror` rather than against words, which are each
   platform's own. Standard output is buffered and nothing in this package can
-  flush it now, so the line `puts` is given is longer than any buffer and a
-  thousand characters of it in the file is the floor that says the call went
-  to descriptor 1; the line is spaces, because whatever is left in the buffer
-  is written to the terminal when the process exits.
+  flush it now, so a long line of spaces is written again and again until the
+  buffer writes itself out, and characters of that line in the file are what
+  says the call went to descriptor 1; the line is spaces because whatever is
+  left in the buffer is written to the terminal when the process exits.
 - **`beyond-c.md` says 950 symbols again**, 947 of them in the four
   libraries, 26.5% — the two that left took the count back to where it was
   before `getprotoent` and `getservent` were added, which is a coincidence
   worth only this line. `modules.md` says `libc.file` has 40.
+- **The list of bindings a test could ask and has not is empty.** Five of
+  the last six debts were not blocked by anything, which is the point: four
+  of the reasons said a privilege, a thread or a policy was needed, and
+  the suite already had each of them. What was left was one call that really
+  cannot be asked, and its reason is written down now.
+  - `pthread_mutex_getprioceiling` and `pthread_mutex_setprioceiling`: a
+    lock made with `PTHREAD_PRIO_PROTECT` and a ceiling of 7 in its
+    attributes needs no privilege at all. `get` reads 7, `set(42)` hands
+    back the 7 it replaced, and the next `get` reads 42 — the pair is the
+    whole claim, on both libcs. Darwin reads the ceiling off the lock
+    without asking about the protocol; glibc refuses both calls without it.
+  - `pthread_detach`: `pthread_create` takes a function pointer Mojo
+    cannot make, but the initial thread is a thread nobody joins. The
+    first detach answers 0 (or `EINVAL` where it was never joinable), and
+    the second must answer `EINVAL` — that second answer is the one that
+    would catch a binding that never changed anything.
+  - `sched_rr_get_interval` and `sched_setscheduler`: asked on Linux only,
+    where `sched_*` answers for pid 0. The first has to write a real length
+    of time into a `timespec` that was zeroes; the second is set to the
+    policy the process is already on with the priority it already has,
+    which is no change and asks for no privilege, and `sched_getscheduler`
+    says afterwards that it has not moved.
+  - `putwchar` is the one that goes to `CANNOT_ASK`, and not because of
+    the terminal: one wide write orients standard output to wide characters
+    for the rest of the process, `fwide` will not change an oriented stream,
+    and clearing it takes a `freopen` on the `stdout` variable, which a
+    package of function bindings cannot reach. On glibc the next `puts`
+    answers `EOF` and writes nothing, so one call here would silence every
+    later byte-oriented test sharing the stream.
+- **Two docstrings said things that were no longer true.** `putwchar`'s
+  said a test could not hold the terminal's answer, which stopped being
+  the reason once the suite could point fd 1 at a file; `sched_setscheduler`'s
+  said the package binds no `SCHED_*` constants, while `SCHED_OTHER` has
+  been one since the module was written and the test uses it. The suite's
+  own module docstrings said the mutexes were not tested yet and that
+  `sched_setscheduler` was left out; all four now say what is there.
 
 ## [0.12.0] - 2026-10-19
 

@@ -61,19 +61,18 @@ CANNOT_ASK = {
     "ioctl": "variadic: what it does is decided by its second argument",
     "sched_getcpucount": "glibc does not export it, so calling it would not link",
     "isascii_l": "glibc does not export it, so calling it would not link",
+    "putwchar": "orients standard output to wide for the rest of the process, and nothing here can turn the stream back",
 }
 
 # Bindings that could be asked something and have not been. This is the list
 # to empty, and the run fails if it grows: a binding nobody calls is how the
 # `gl_flags` bug survived three releases.
-NOT_YET = {
-    "putwchar": "writes to standard output, as `puts` does",
-    "pthread_detach": "needs a thread whose ending nothing waits for",
-    "pthread_mutex_getprioceiling": "needs a priority-ceiling mutex, and the privilege to make one",
-    "pthread_mutex_setprioceiling": "the same, and it asks for the privilege again",
-    "sched_rr_get_interval": "answers only for a process already running round-robin",
-    "sched_setscheduler": "asks for a privilege the suite does not have",
-}
+# Empty at the moment, which is not the same as gone: a new binding with
+# nobody asking it anything goes here, and the run fails if that happens.
+# What paid the last six off was noticing that four of the reasons were
+# not reasons — the suite already had a lock, a thread (the initial one),
+# and a process whose policy it could ask to keep.
+NOT_YET = {}
 
 
 def called_by_tests() -> set[str]:
@@ -160,6 +159,8 @@ def main() -> int:
         f" {len(CANNOT_ASK)} that a test cannot ask,"
         f" {len(still)} that no test has asked yet"
     )
+    if not still:
+        print("  nothing a test could ask is left unasked")
 
     orphans, unstarted = unrun_tests()
     if orphans:

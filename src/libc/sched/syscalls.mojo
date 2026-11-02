@@ -357,8 +357,9 @@ def sched_setscheduler(
 
     Arguments:
         pid: Whose policy to change, 0 being the caller.
-        policy: The policy as a number, this package binding no
-            `SCHED_*` constants: on Linux they are 0, 1 and 2.
+        policy: The policy as a number. `SCHED_OTHER` is bound here
+            and is 0 on Linux and 1 on Darwin; the real-time policies
+            are the caller's to name, and to have the privilege for.
         param: The parameters, and the priority in them wants to be
             within the range for the policy being set.
 

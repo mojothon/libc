@@ -113,14 +113,19 @@ worse trade than no test at all:
 | `libc.stdio.getchar` | Reads from standard input, as `scanf` does. |
 | `libc.unistd.pause` | Waits for a signal. |
 
-None of them is known to be broken; they are simply not asked. Eleven more
+None of them is known to be broken; they are simply not asked. Twelve more
 cannot be asked for a reason that is not about waiting: `getchar_unlocked`
 and `getwchar` read standard input as well, `_Exit` ends the process the
 suite is running in, `system` starts a shell, `setsid` takes the process out
 of its terminal session, `pthread_atfork` asks for a fork, `pthread_cancel`
 and `pthread_cond_wait` need a thread the suite is sharing, `prctl` is
-Linux's and changes the process it is called on, and `isascii_l` and
-`sched_getcpucount` are symbols glibc does not export at all.
+Linux's and changes the process it is called on, `isascii_l` and
+`sched_getcpucount` are symbols glibc does not export at all, and
+`putwchar` orients standard output to wide characters for the rest of the
+process. That last one is not about the terminal — the suite points fd 1 at
+a file when it needs to — but about the stream: after one wide write, the
+next byte write to it answers `EOF` and writes nothing, and there is no
+`stdout` object here to reopen and clear it.
 
 Two calls are not bound at all, which is a different thing from not being
 asked: `fflush` and `fdopen` cannot be declared from Mojo while the standard
@@ -136,9 +141,10 @@ name comes back.
 when a binding is added with neither a test nor a reason. It also keeps the
 opposite list — bindings that could be asked something and have not been —
 because that is where `gl_flags` was: called by nothing, wrong for three
-releases, and every other check in this repository green. That second list
-only fails if it grows, so it is a debt with a number on it rather than a
-rule that has to be paid off in one go.
+releases, and every other check in this repository green. That list is
+**empty** now: 936 bindings are asked something, and the 18 that are not
+each have a reason written down. Empty is not the same as gone; it still
+fails if it grows, which is the thing it was written for.
 
 ## API reference
 

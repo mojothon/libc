@@ -1,7 +1,8 @@
 """Tests for the `libc.pthread` mutex bindings.
 
-Making a lock, taking it, giving it up, and giving it back. None of
-these starts a thread — `pthread_create` takes a function pointer,
+Making a lock, taking it, giving it up, and giving it back, and asking
+what ceiling a lock made to have one carries. None of these starts a
+thread — `pthread_create` takes a function pointer,
 which Mojo cannot make one of — so every lock here is taken and
 released by the one thread running the test, which is enough: a lock
 nobody else contends for still has to behave like the kind of lock it
@@ -24,12 +25,15 @@ from libc.pthread import (
     PTHREAD_MUTEX_NORMAL,
     PTHREAD_MUTEX_RECURSIVE,
     PTHREAD_PRIO_INHERIT,
+    PTHREAD_PRIO_PROTECT,
     PTHREAD_PRIO_NONE,
     PTHREAD_PROCESS_PRIVATE,
     PTHREAD_PROCESS_SHARED,
     pthread_mutex_destroy,
+    pthread_mutex_getprioceiling,
     pthread_mutex_init,
     pthread_mutex_lock,
+    pthread_mutex_setprioceiling,
     pthread_mutex_trylock,
     pthread_mutex_unlock,
     pthread_mutex_t,
@@ -326,6 +330,68 @@ def test_prioceiling_says_what_it_was_given() raises:
     attr.unsafe_free()
 
 
+def test_the_ceiling_of_a_lock_goes_both_ways() raises:
+    """The two calls on the lock itself, rather than on the attributes it
+    was made from. `pthread_mutex_getprioceiling` reads the ceiling a
+    lock has, and `pthread_mutex_setprioceiling` changes it and hands
+    back the one it replaced — so the pair is the whole of the claim:
+    a ceiling that cannot be read back was not set.
+
+    The lock is made with `PTHREAD_PRIO_PROTECT` and a ceiling of 7 in
+    its attributes, because glibc refuses both calls on a lock that has
+    no protocol for one. Darwin reads the ceiling off the lock without
+    asking about the protocol, so the same round trip goes through on
+    both. No privilege is needed: the ceiling is a number on the lock,
+    not the priority of a running thread.
+    """
+    var attr = _an_attribute()
+    assert_equal(
+        pthread_mutexattr_setprotocol(attr, PTHREAD_PRIO_PROTECT),
+        0,
+        "the lock is made with the protocol that has a ceiling",
+    )
+    assert_equal(
+        pthread_mutexattr_setprioceiling(attr, 7),
+        0,
+        "and a ceiling for it to start with",
+    )
+    var mutex = unsafe_alloc[pthread_mutex_t](1)
+    mutex.unsafe_offset(0)[] = pthread_mutex_t()
+    assert_equal(pthread_mutex_init(mutex, attr), 0, "the lock initialises")
+
+    var ceiling = unsafe_alloc[Int32](1)
+    ceiling.unsafe_offset(0)[] = -1
+    assert_equal(
+        pthread_mutex_getprioceiling(mutex, ceiling),
+        0,
+        "the lock is asked for its ceiling",
+    )
+    assert_equal(
+        ceiling.unsafe_offset(0)[], 7, "and it is the one it was made with"
+    )
+    assert_equal(
+        pthread_mutex_setprioceiling(mutex, 42, ceiling),
+        0,
+        "a new ceiling is set on the same lock",
+    )
+    assert_equal(
+        ceiling.unsafe_offset(0)[], 7, "and it hands back the one it replaced"
+    )
+    ceiling.unsafe_offset(0)[] = -1
+    assert_equal(
+        pthread_mutex_getprioceiling(mutex, ceiling), 0, "and is read again"
+    )
+    assert_equal(
+        ceiling.unsafe_offset(0)[], 42, "where the new one is the one there is"
+    )
+
+    ceiling.unsafe_free()
+    assert_equal(pthread_mutex_destroy(mutex), 0, "the lock goes away")
+    mutex.unsafe_free()
+    _ = pthread_mutexattr_destroy(attr)
+    attr.unsafe_free()
+
+
 def test_protocol_says_what_it_was_given() raises:
     """`setprotocol` then `getprotocol`, with the same allowance for
     a platform that carries none of it.
@@ -360,5 +426,6 @@ def main() raises:
     test_pshared_goes_both_ways()
     test_a_kind_that_is_not_one_is_refused()
     test_prioceiling_says_what_it_was_given()
+    test_the_ceiling_of_a_lock_goes_both_ways()
     test_protocol_says_what_it_was_given()
     print("test_mutex: ok")

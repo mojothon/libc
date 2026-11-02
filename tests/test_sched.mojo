@@ -1,8 +1,11 @@
 """Tests for the `libc.sched` bindings, none of which had been called.
 
-Only one of them is left out: `sched_setscheduler`, which asks to move
-this process onto another scheduling policy, and that is not this
-process's to ask.
+Two of the questions are put only on Linux. Darwin numbers its policies
+differently and does not answer `sched_getparam(0)` for the running
+process at all, so a call about this process's policy or its time slice
+would be asking a question that libc there has no answer for. What is
+asked on Linux is the policy this process is already on, and the slice
+the kernel gives it — neither changes anything.
 """
 from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
@@ -16,10 +19,13 @@ from libc.sched import (
     sched_getparam,
     sched_getscheduler,
     sched_param,
+    sched_rr_get_interval,
+    sched_setscheduler,
     sched_setaffinity,
     sched_setparam,
     sched_yield,
 )
+from libc.time import timespec
 
 # `SCHED_OTHER`, the policy a process is put on when nobody asks for
 # another: the ordinary one, whose only priority is zero. The number is
@@ -110,7 +116,59 @@ def test_which_processors() raises:
         set.unsafe_free()
 
 
+def test_the_slice_of_a_round_robin_turn() raises:
+    """`sched_rr_get_interval` is given a `timespec` and asked to fill it
+    in: 0 as the pid means this process, and what comes back is a length
+    of time rather than the untouched zeroes that were put there first.
+
+    A call that answered 0 without writing anything would pass an
+    assertion about its return and be wrong, so the seconds and the
+    nanoseconds are both looked at. Only on Linux: Darwin does not
+    answer `sched_*` questions about the process with pid 0.
+    """
+    comptime if CompilationTarget.is_macos():
+        return
+    var slice = unsafe_alloc[timespec](1)
+    slice.unsafe_offset(0)[] = timespec()
+    assert_equal(
+        sched_rr_get_interval(0, slice), 0, "the kernel says what a turn lasts"
+    )
+    assert_true(
+        slice.unsafe_offset(0)[].tv_sec > 0
+        or slice.unsafe_offset(0)[].tv_nsec > 0,
+        "and what it wrote is a length of time, not the zeroes it was given",
+    )
+    slice.unsafe_free()
+
+
+def test_setting_the_policy_it_is_already_on() raises:
+    """`sched_setscheduler` set to the policy this process is on, with
+    the priority it already has. Neither is a change, so no privilege is
+    being asked for: what the call has to do is accept them, and what
+    `sched_getscheduler` says afterwards is that it has not moved.
+
+    Asking for a real-time policy would be the other question, and it
+    is not one this suite can ask. Ask the no-op and the call still has
+    to parse its pid, its policy and its parameter the right way round.
+    """
+    comptime if CompilationTarget.is_macos():
+        return
+    var param = unsafe_alloc[sched_param](1)
+    param.unsafe_offset(0)[] = sched_param(0)
+    assert_equal(
+        sched_setscheduler(0, ORDINARY, param),
+        0,
+        "the policy it is already on is taken back",
+    )
+    assert_equal(
+        sched_getscheduler(0), ORDINARY, "and it has not moved anywhere else"
+    )
+    param.unsafe_free()
+
+
 def main() raises:
     test_what_the_scheduler_says()
     test_which_processors()
+    test_the_slice_of_a_round_robin_turn()
+    test_setting_the_policy_it_is_already_on()
     print("test_sched: ok")

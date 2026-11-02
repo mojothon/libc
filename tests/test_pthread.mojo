@@ -1,12 +1,16 @@
 """Tests for the `libc.pthread` bindings, none of which had been called.
 
-The module is the attribute object and nothing else: `pthread_create`
-and the mutexes are not here yet.
+The attribute object, the thread that is asking, and the scheduling
+settings it carries. No second thread is ever started: `pthread_create`
+takes a function pointer, which Mojo cannot make one of. So the one call
+that is about a thread ending — `pthread_detach` — is asked about the
+initial thread instead, which is the only thread there is. The mutexes
+are in `test_mutex.mojo`.
 """
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import c_ptr
+from libc.constant import EINVAL, c_ptr
 from libc.pthread import (
     PTHREAD_CANCEL_ASYNCHRONOUS,
     PTHREAD_CANCEL_DEFERRED,
@@ -534,6 +538,36 @@ def test_the_scheduling_parameters_of_this_thread() raises:
     again.unsafe_free()
 
 
+def test_detaching_the_thread_that_is_asking() raises:
+    """There is one thread here, and nobody is going to join it. What is
+    asked of `pthread_detach` is that it says either that the thread was
+    detached or that it was never joinable in the first place, and that
+    asking twice cannot detach it twice.
+
+    That second answer is the one both libcs agree on: `EINVAL`. POSIX
+    leaves the initial thread's detachability to the implementation, so
+    the first answer is 0 on one and `EINVAL` on another — but the flag
+    it changes is gone either way, and the second call is the one that
+    would catch a binding that never made the change.
+
+    The initial thread is not joined by anything in this process, so
+    detaching it costs the suite nothing.
+    """
+    var first = pthread_detach(pthread_self())
+    assert_true(
+        first == 0 or first == EINVAL,
+        "the initial thread is detached, or was not joinable to begin with"
+        + " (it answered "
+        + String(first)
+        + ")",
+    )
+    assert_equal(
+        pthread_detach(pthread_self()),
+        EINVAL,
+        "and a second detach cannot find a joinable thread to detach",
+    )
+
+
 def main() raises:
     test_the_attribute_object()
     test_the_scheduling_settings()
@@ -542,4 +576,5 @@ def main() raises:
     test_a_slot_of_its_own()
     test_the_one_that_is_left()
     test_a_thread_can_be_asked_for_and_keeps_its_own_mask()
+    test_detaching_the_thread_that_is_asking()
     print("test_pthread: ok")
