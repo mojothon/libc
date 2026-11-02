@@ -650,6 +650,34 @@ def siginterrupt(sig: Int32, interrupt: Int32) -> Int32:
     return external_call["siginterrupt", Int32, Int32, Int32](sig, interrupt)
 
 
+# Where the members of C's `siginfo_t` that this reads sit. The first
+# three agree on both platforms, and then the two layouts stop agreeing:
+# glibc pads `si_code` out to 16 so that the members after it are all
+# word-aligned inside a union of `_pad[SI_PAD_SIZE]`, while XNU packs
+# `si_pid` straight in at 12 and needs no padding for a 64-bit `si_addr`
+# at 24. That is why one struct is 128 bytes and the other 104.
+#
+# `si_status` and `si_value` are the interesting pair on Linux: both are at
+# 24, because they are different members of one union — a child's status
+# and a value sent with `sigqueue` cannot both be true of one signal. On
+# Darwin they are not in a union and sit at 20 and 32.
+#
+# Numbers from glibc's `bits/types/siginfo_t.h` and XNU's `sys/signal.h`,
+# and both are compared with C's `offsetof` on both platforms by
+# `scripts/check-layouts.py`. That comparison is worth having here more
+# than anywhere else in the package: glibc spells these as macros over
+# `_sifields`, so the name in C and the number here are two different
+# ways of saying where the member is, and nothing but `offsetof` ties the
+# two together.
+comptime SIGINFO_SIGNO_OFFSET: Int = 0
+comptime SIGINFO_ERRNO_OFFSET: Int = 4
+comptime SIGINFO_CODE_OFFSET: Int = 8
+comptime SIGINFO_PID_OFFSET: Int = 12 if CompilationTarget.is_macos() else 16
+comptime SIGINFO_UID_OFFSET: Int = 16 if CompilationTarget.is_macos() else 20
+comptime SIGINFO_STATUS_OFFSET: Int = 20 if CompilationTarget.is_macos() else 24
+comptime SIGINFO_VALUE_OFFSET: Int = 32 if CompilationTarget.is_macos() else 24
+
+
 struct siginfo_t:
     """A C `siginfo_t`: what a signal, or a wait, says happened.
 
@@ -660,7 +688,7 @@ struct siginfo_t:
     and 8 on both.
 
     Nothing here writes one: a `siginfo_t` is something the library
-    fills in and the caller reads, and the six below are the part of
+    fills in and the caller reads, and the seven below are the part of
     it that is worth reading. The block is 128 bytes, which is what
     glibc's is and more than the 104 Darwin asks for, so there is room
     either way.
@@ -688,31 +716,31 @@ struct siginfo_t:
 
     def si_signo(self) -> Int32:
         """The signal number the call was about."""
-        return Int32(self._u32(0))
+        return Int32(self._u32(SIGINFO_SIGNO_OFFSET))
 
     def si_errno(self) -> Int32:
         """Whatever `errno` was when it happened, 0 where nothing went
         wrong.
         """
-        return Int32(self._u32(4))
+        return Int32(self._u32(SIGINFO_ERRNO_OFFSET))
 
     def si_code(self) -> Int32:
         """Why it happened, one of the `CLD_*` codes for a child."""
-        return Int32(self._u32(8))
+        return Int32(self._u32(SIGINFO_CODE_OFFSET))
 
     def si_pid(self) -> Int32:
         """The process it was about: the child, for a wait."""
-        return Int32(self._u32(16 if not CompilationTarget.is_macos() else 12))
+        return Int32(self._u32(SIGINFO_PID_OFFSET))
 
     def si_uid(self) -> UInt32:
         """The real user id of whoever sent it, or of the child."""
-        return self._u32(20 if not CompilationTarget.is_macos() else 16)
+        return self._u32(SIGINFO_UID_OFFSET)
 
     def si_status(self) -> Int32:
         """The number the child left with, or the signal it died of,
         whichever `si_code` says it was.
         """
-        return Int32(self._u32(24 if not CompilationTarget.is_macos() else 20))
+        return Int32(self._u32(SIGINFO_STATUS_OFFSET))
 
     def si_value(self) -> Int32:
         """The number that was sent along with the signal, the
@@ -723,4 +751,4 @@ struct siginfo_t:
             different members of one union there, and past the
             faulting address on Darwin, where they are not.
         """
-        return Int32(self._u32(24 if not CompilationTarget.is_macos() else 32))
+        return Int32(self._u32(SIGINFO_VALUE_OFFSET))

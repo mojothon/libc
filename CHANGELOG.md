@@ -333,6 +333,20 @@ All notable changes to this project are documented here. The format follows
   this cannot ask about is a member this cannot check: `check-layouts.py`
   now tries `struct X` and then plain `X` before giving up on a struct,
   which is what makes these two checkable at all.
+- **`siginfo_t` names its seven, which is where the check earns the most.**
+  glibc does not have a member called `si_pid`: it has a macro called
+  `si_pid` that expands to `_sifields._kill.si_pid`, and the same for
+  every other member after `si_code` — so the name in C and the number in
+  this module were two separate statements of where the member is, and
+  only `offsetof` (which macro-expands its argument before taking the
+  address) could say whether they agreed. They do. The layout also stops
+  agreeing exactly where the macros do: glibc pads `si_code` out to 16
+  because everything after it lives in a union of `int _pad[SI_PAD_SIZE]`,
+  and XNU packs `si_pid` in at 12 and reaches a 64-bit `si_addr` at 24
+  without padding — 128 bytes against 104. `si_status` and `si_value` are
+  both at 24 on Linux because they are different members of one union,
+  a child's status and a value sent with `sigqueue` not being true of the
+  same signal at once; on Darwin they are 20 and 32.
 
 ## [0.12.0] - 2026-10-19
 

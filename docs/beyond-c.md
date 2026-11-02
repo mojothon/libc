@@ -133,13 +133,13 @@ reach Mojo without constructing anything, the offset of a member does not,
 because asking a pointer where a member lives asks for a member pointer and
 Mojo has none. But a struct held as bytes does not have to be asked — the
 numbers its accessors read at *are* the offsets, and C can be asked the
-same question about the same member. Seventy-eight of them are listed in the
+same question about the same member. Eighty-five of them are listed in the
 script now and checked with `offsetof` on whichever platform is running:
 the records of `utmpx`, `termios`, `dirent` and `aiocb`, and the members of
 `Stat`, `Statvfs`, `Utsname`, `group`, `passwd`, `sockaddr`, `msghdr`,
-`regmatch_t` and `sched_param`. The first twenty-two were already right,
-which is what a check written after the fact tends to find. The fifty-six
-that came after were right too, and are now the ones
+`siginfo_t`, `regmatch_t` and `sched_param`. The first twenty-two were
+already right, which is what a check written after the fact tends to find.
+The sixty-three that came after were right too, and are now the ones
 that cannot quietly stop being right: they were slot numbers and shift
 counts before, which is a layout you have to reconstruct in your head, and
 are named offsets at the top of the module now, which is a layout a script
@@ -151,7 +151,7 @@ members reading the right bytes of the wrong member.
 
 What is left is counted rather than trusted silently: the members of a
 struct Mojo lays out itself rest on the order they are declared in, and
-twenty-two structs hold their bytes in a buffer while placing members at
+twenty-one structs hold their bytes in a buffer while placing members at
 numbers written into the accessors — numbers no script can read, and
 `OFFSETS` is where they go when somebody wants them compared. A hole that
 is numbered is a hole somebody can fill.
