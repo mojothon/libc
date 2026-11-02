@@ -130,27 +130,7 @@ def test_two_opens_of_one_name_are_one_count() raises:
     name.unsafe_free()
 
 
-def probe_macos() raises:
-    var a = string_to_char_ptr("/probe-a-" + String(getpid()))
-    var b = string_to_char_ptr("/probe-b-" + String(getpid()))
-    _ = sem_unlink(a)
-    _ = sem_unlink(b)
-    var one = sem_open(a, O_CREAT | O_RDWR, 0o600, 1)
-    print(
-        "  probe create-without-excl:", Int(UInt(one)), errno_name(get_errno())
-    )
-    var two = sem_open(b, O_RDWR, 0, 0)
-    print("  probe open-missing:", Int(UInt(two)), errno_name(get_errno()))
-    var three = sem_open(b, O_CREAT | O_EXCL | O_RDWR, 0o600, 1)
-    print(
-        "  probe create-with-excl:", Int(UInt(three)), errno_name(get_errno())
-    )
-    _ = sem_unlink(a)
-    _ = sem_unlink(b)
-
-
 def main() raises:
-    probe_macos()
     test_a_named_semaphore_counts_down_and_says_so_when_it_is_empty()
     test_two_opens_of_one_name_are_one_count()
     print("all semaphore tests passed")
