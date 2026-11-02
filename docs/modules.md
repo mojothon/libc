@@ -61,6 +61,8 @@ the bottom.
 | `libc.errno` | `<errno.h>` | 6 |
 | `libc.pwd` | `<pwd.h>` | 8 |
 | `libc.termios` | `<termios.h>` how a terminal line is set | 54 |
+| `libc.sys.ipc` | `<sys/ipc.h>` keys for System V objects | 9 |
+| `libc.sys.msg` | `<sys/msg.h>` message queues | 6 |
 | `libc.constant` | C type aliases and constants | — |
 | `libc.utils` | String/pointer helpers | — |
 

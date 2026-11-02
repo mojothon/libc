@@ -1143,6 +1143,20 @@ def bring_in_libc_sys_epoll():
     )
 
 
+def bring_in_libc_sys_ipc():
+    from libc.sys.ipc import (
+        IPC_CREAT,
+        IPC_EXCL,
+        IPC_NOWAIT,
+        IPC_PRIVATE,
+        IPC_RMID,
+        IPC_SET,
+        IPC_STAT,
+        ftok,
+        key_t,
+    )
+
+
 def bring_in_libc_sys_mman():
     from libc.sys.mman import (
         madvise,
@@ -1160,6 +1174,17 @@ def bring_in_libc_sys_mman():
         remap_file_pages,
         shm_open,
         shm_unlink,
+    )
+
+
+def bring_in_libc_sys_msg():
+    from libc.sys.msg import (
+        MSG_NOERROR,
+        msgctl,
+        msgget,
+        msgrcv,
+        msqid_ds,
+        msgsnd,
     )
 
 
@@ -1569,7 +1594,9 @@ def main() raises:
     bring_in_libc_string()
     bring_in_libc_sys_auxv()
     bring_in_libc_sys_epoll()
+    bring_in_libc_sys_ipc()
     bring_in_libc_sys_mman()
+    bring_in_libc_sys_msg()
     bring_in_libc_sys_prctl()
     bring_in_libc_sys_random()
     bring_in_libc_sys_resource()

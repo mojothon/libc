@@ -40,11 +40,13 @@ from test_termios import main as run_termios
 from test_iconv import main as run_iconv
 from test_ifaddrs import main as run_ifaddrs
 from test_inttypes import main as run_inttypes
+from test_ipc import main as run_ipc
 from test_langinfo import main as run_langinfo
 from test_layout import main as run_layout
 from test_libgen import main as run_libgen
 from test_locale import main as run_locale
 from test_math import main as run_math
+from test_msg import main as run_msg
 from test_netdb import main as run_netdb
 from test_netif import main as run_netif
 from test_network import main as run_network
@@ -103,11 +105,13 @@ def main() raises:
     run_iconv()
     run_ifaddrs()
     run_inttypes()
+    run_ipc()
     run_langinfo()
     run_layout()
     run_libgen()
     run_locale()
     run_math()
+    run_msg()
     run_netdb()
     run_netif()
     run_network()
