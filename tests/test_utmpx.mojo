@@ -3,10 +3,9 @@ from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.constant import c_int
-from libc.errno import get_errno
 from libc.fcntl import O_CREAT, O_RDWR, O_TRUNC, open
+from libc.sys.stat import fchmod
 from libc.unistd import close, getpid, unlink, write
-from libc.sys.stat import Stat, fstat
 from libc.utmpx import (
     EMPTY,
     USER_PROCESS,
@@ -102,6 +101,14 @@ def test_a_record_written_back_comes_out_again() raises:
     _ = unlink(path)
     var fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0o600)
     assert_true(fd >= 0, "a file of our own to be the database")
+
+    # Set outright rather than taken from the mode above: that mode is a
+    # variadic argument, and on arm64 Darwin variadic arguments do not
+    # arrive, so the file is made with whatever was on the stack — here,
+    # no permission bits at all, which the next thing to open it for
+    # writing reads as EACCES. The first run of this test failed three
+    # steps later for exactly that, with pututxline answering EPERM.
+    assert_equal(fchmod(fd, 0o600), 0, "and writable outright")
     assert_equal(close(fd), 0, "empty, and left for libc to fill")
 
     # The name is remembered rather than opened, so this cannot fail on
@@ -345,59 +352,7 @@ def test_endutxent_ends_the_walk_and_setutxent_starts_it_again() raises:
     path.unsafe_free()
 
 
-def probe_xnu() raises:
-    """TEMPORARY: prints what XNU does with a file of our own."""
-    var path = string_to_char_ptr(PATH)
-    _ = unlink(path)
-    var fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0o600)
-    print("PROBE open fd=", fd, " errno=", get_errno())
-    print("PROBE close=", close(fd))
-    var named = utmpxname(path)
-    print("PROBE utmpxname=", named, " errno=", get_errno())
-
-    var record = unsafe_alloc[utmpx](1)
-    record[] = utmpx()
-    record[].set_ut_type(Int16(USER_PROCESS))
-    record[].set_ut_pid(4242)
-    record[].set_ut_line("mojo-tty0")
-    record[].set_ut_id("mj00")
-    record[].set_ut_user("mojo")
-    var written = pututxline(record)
-    print(
-        "PROBE pututxline null=",
-        is_null(written),
-        " errno=",
-        get_errno(),
-    )
-
-    var info = unsafe_alloc[Stat](1)
-    info[] = Stat()
-    var stat_fd = open(path, O_RDWR, 0o600)
-    print("PROBE stat=", fstat(stat_fd, info), " size=", Int(info[].size()))
-    print("PROBE close2=", close(stat_fd))
-
-    setutxent()
-    var got = getutxent()
-    if is_null(got):
-        print("PROBE getutxent null= True errno=", get_errno())
-    else:
-        print(
-            "PROBE getutxent line=",
-            got[].ut_line(),
-            " user=",
-            got[].ut_user(),
-            " type=",
-            Int(got[].ut_type()),
-        )
-    endutxent()
-    _ = unlink(path)
-    record.unsafe_free()
-    info.unsafe_free()
-    path.unsafe_free()
-
-
 def main() raises:
-    probe_xnu()
     test_a_new_record_is_the_empty_one()
     test_a_record_reads_back_what_was_put_in_it()
     test_a_record_written_back_comes_out_again()
