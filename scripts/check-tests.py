@@ -73,7 +73,6 @@ NOT_YET = {
     "puts": "writes to standard output, and the suite prints its progress there",
     "putchar_unlocked": "writes to standard output, as `puts` does",
     "putwchar": "writes to standard output, as `puts` does",
-    "posix_spawn_file_actions_addopen": "needs a spawn to observe",
     "pthread_detach": "needs a thread whose ending nothing waits for",
     "pthread_mutex_getprioceiling": "needs a priority-ceiling mutex, and the privilege to make one",
     "pthread_mutex_setprioceiling": "the same, and it asks for the privilege again",
@@ -103,6 +102,45 @@ def called_by_tests() -> set[str]:
     return set(re.findall(r"\b(\w+)\s*\(", body))
 
 
+# The two files in `tests/` that the suite does not start. `test_main.mojo`
+# is the suite, and `test_smoke.mojo` is the check `recipe/recipe.yaml` runs
+# against a built package, where it cannot print anything (its docstring says
+# why). Both are entries rather than tests, so the count below is not for them.
+NOT_SUITE = {"test_main.mojo", "test_smoke.mojo"}
+
+
+def unrun_tests() -> tuple[list[str], list[str]]:
+    """Tests that nothing calls, and test files the runner does not start.
+
+    A test function that no line in its own `main` calls is a test that has
+    never run, and it reads exactly like one that has: it is there in the file,
+    it has a docstring saying what it asks, and `all tests passed` says nothing
+    about it either way. Two were found in this state — a `killpg` test in
+    `test_signal.mojo` and a `clock_nanosleep` one in `test_time.mojo` — and
+    both passed the first time they were made to run, which is the harmless
+    version of the same story.
+
+    The file-level half is the same argument one step up: a `tests/test_x.mojo`
+    whose `main` the runner never imports is a whole suite that does not run.
+    """
+    orphans: list[str] = []
+    for path in TESTS:
+        text = path.read_text()
+        defined = re.findall(r"^def (test_\w+)", text, re.M)
+        called = set(re.findall(r"^\s+(test_\w+)\(\)", text, re.M))
+        orphans += [f"{path.name}: {name}" for name in defined if name not in called]
+
+    runner = (ROOT / "tests" / "test_main.mojo").read_text()
+    started = set(re.findall(r"^\s+run_(\w+)\(\)", runner, re.M))
+    unstarted = [
+        path.name
+        for path in TESTS
+        if path.name not in NOT_SUITE
+        and path.stem.removeprefix("test_") not in started
+    ]
+    return orphans, unstarted
+
+
 def main() -> int:
     prototypes = load("check-prototypes")
     names = {name for _path, name, _symbol, _args, _ret, _params in prototypes.bindings()}
@@ -128,6 +166,18 @@ def main() -> int:
         f" {len(still)} that no test has asked yet"
     )
 
+    orphans, unstarted = unrun_tests()
+    if orphans:
+        plural = "" if len(orphans) == 1 else "s"
+        print(f"\n  {len(orphans)} test{plural} that no line calls, so never run:")
+        for name in orphans:
+            print(f"    {name}")
+    if unstarted:
+        plural = "" if len(unstarted) == 1 else "s"
+        print(f"\n  {len(unstarted)} test file{plural} the runner does not start:")
+        for name in unstarted:
+            print(f"    {name}")
+
     print()
     if unexplained:
         print("  *** bindings with no test and no reason ***")
@@ -141,7 +191,12 @@ def main() -> int:
             print(f"    {name}")
         print("  take them out of the list, so that the count stays honest")
         return 1
+    if orphans or unstarted:
+        print("  *** tests that are written and never run ***")
+        print("  a test nothing calls has not been keeping anything honest")
+        return 1
     print("  every binding is asked something, or says why it cannot be")
+    print("  and every test in tests/ is called by the suite that holds it")
     return 0
 
 

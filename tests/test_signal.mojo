@@ -319,4 +319,5 @@ def main() raises:
     test_sigaction_asked_and_told_nothing()
     test_craise_with_nothing_to_send()
     test_the_blocked_set_as_a_word_and_as_bytes()
+    test_signal_zero_asks_whether_a_group_is_there()
     print("signal ok")

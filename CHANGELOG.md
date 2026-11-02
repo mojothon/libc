@@ -458,6 +458,27 @@ All notable changes to this project are documented here. The format follows
   symbols, 949 of them in the four libraries, 26.6%; `modules.md` says
   `libc.netdb` has 50. Both are checked, and both failed before the numbers
   were changed.
+- **`posix_spawn_file_actions_addopen` is asked something.** The file actions
+  could already say "put this descriptor there" (`adddup2`), and `addopen` is
+  the other half: "open this path there", so the file is opened by the child
+  after it exists and the parent never holds it. The test points the child's
+  standard output at a file in `/tmp`, waits for it, and reads the file back —
+  a call that opened it in the parent, or on the wrong descriptor, leaves it
+  empty. That leaves eleven bindings with no test and a reason for each.
+- **`check-tests.py` now asks whether the tests are called.** The same
+  argument it makes about bindings holds one level up, and it had the same
+  hole: a `def test_` that no line in its own `main` calls has never run, and
+  reads exactly like one that has — it is in the file, it has a docstring
+  saying what it asks, and `all tests passed` says nothing about it either
+  way. Two were in that state: a `killpg` test in `test_signal.mojo` and a
+  `clock_nanosleep` one in `test_time.mojo`. Both were called and both
+  passed first time, which is the harmless version of the story; the other
+  version is a test that would have failed and was never asked to. The
+  runner is checked the same way — a `tests/test_x.mojo` whose `main` that
+  `test_main.mojo` never starts is a whole suite that does not run — with
+  two entries exempt and the reasons written down: `test_main` is the suite,
+  and `test_smoke` is what `recipe/recipe.yaml` runs against a built package,
+  where nothing can be printed.
 
 ## [0.12.0] - 2026-10-19
 

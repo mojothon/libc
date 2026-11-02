@@ -7,13 +7,15 @@ exit code back, or write into a pipe whose other end is held here.
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import c_ptr, c_short
+from libc.constant import c_int, c_ptr, c_short, c_uint
+from libc.fcntl import O_CREAT, O_RDONLY, O_TRUNC, O_WRONLY, open
 from libc.file import close, read
 from libc.spawn import (
     POSIX_SPAWN_SETPGROUP,
     posix_spawn,
     posix_spawn_file_actions_addclose,
     posix_spawn_file_actions_adddup2,
+    posix_spawn_file_actions_addopen,
     posix_spawn_file_actions_destroy,
     posix_spawn_file_actions_init,
     posix_spawn_file_actions_t,
@@ -32,7 +34,7 @@ from libc.spawn import (
 )
 from libc.signal import sigemptyset, sigfillset
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, waitpid
-from libc.unistd import pipe
+from libc.unistd import pipe, unlink
 from libc.utils import char_ptr_to_string, null_ptr, string_to_char_ptr
 
 
@@ -199,6 +201,83 @@ def test_the_file_actions_hand_the_child_a_pipe_for_its_output() raises:
     status.unsafe_free()
 
 
+def test_the_file_actions_open_a_file_where_the_child_would_write() raises:
+    """`addopen` is the other half of `adddup2`: not "put this descriptor
+    there" but "open this path there", so the file is opened by the child
+    after it exists and the parent never holds it.
+
+    What is asked is that the child's standard output is that file and
+    nothing else — the file is on disk here, and it is read back after
+    the child has gone, so a call that opened it in the parent instead,
+    or on the wrong descriptor, leaves it empty.
+    """
+    comptime path = "/tmp/libc-spawn-addopen-output"
+    var want = string_to_char_ptr(path)
+    _ = unlink(want)
+
+    var actions = unsafe_alloc[posix_spawn_file_actions_t](1)
+    assert_equal(
+        Int(posix_spawn_file_actions_init(actions)), 0, "an empty list"
+    )
+    assert_equal(
+        Int(
+            posix_spawn_file_actions_addopen(
+                actions,
+                1,
+                want,
+                c_int(O_WRONLY | O_CREAT | O_TRUNC),
+                c_uint(0o644),
+            )
+        ),
+        0,
+        "standard output becomes a file the child opens",
+    )
+
+    var argv = _argv_for("sh", "-c", "echo redirected")
+    var envp = _empty_environment()
+    var pid = unsafe_alloc[Int32](1)
+    assert_equal(
+        Int(
+            posix_spawn(
+                pid,
+                string_to_char_ptr("/bin/sh"),
+                actions,
+                null_ptr[posix_spawnattr_t](),
+                argv,
+                envp,
+            )
+        ),
+        0,
+        "the shell is started with a file for its output",
+    )
+
+    var status = unsafe_alloc[Int32](1)
+    assert_true(waitpid(pid[], status, 0) == pid[], "the child is waited for")
+    assert_equal(Int(WEXITSTATUS(status[])), 0, "and it wrote and left")
+
+    var reading = open(want, O_RDONLY)
+    assert_true(reading >= 0, "the file the child was given is there")
+    var got = unsafe_alloc[UInt8](32)
+    for i in range(32):
+        got.unsafe_offset(i)[] = 0
+    assert_true(read(reading, got, 31) > 0, "and has what it wrote in it")
+    assert_equal(
+        char_ptr_to_string(got), "redirected\n", "which is the one word"
+    )
+    assert_equal(Int(close(reading)), 0, "and is closed again")
+    _ = unlink(want)
+
+    assert_equal(
+        Int(posix_spawn_file_actions_destroy(actions)), 0, "the list released"
+    )
+    _drop_argv(argv, 3)
+    envp.unsafe_free()
+    want.unsafe_free()
+    got.unsafe_free()
+    pid.unsafe_free()
+    status.unsafe_free()
+
+
 def test_the_attributes_hold_the_group_and_the_flags_they_are_given() raises:
     """A group and the flag that says to look at it, put in and read
     back. 0 means a group of the process's own, which is what
@@ -352,6 +431,7 @@ def main() raises:
     test_posix_spawnp_runs_the_program_its_arguments_name()
     test_posix_spawn_answers_for_a_path_that_is_not_there()
     test_the_file_actions_hand_the_child_a_pipe_for_its_output()
+    test_the_file_actions_open_a_file_where_the_child_would_write()
     test_the_attributes_hold_the_group_and_the_flags_they_are_given()
     test_the_signal_sets_the_handle_is_given_come_back_out()
     test_the_two_signal_sets_are_two_things()

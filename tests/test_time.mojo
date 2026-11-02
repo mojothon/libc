@@ -483,4 +483,5 @@ def main() raises:
     test_localtime()
     test_the_ones_that_keep_their_own_buffer()
     test_a_timer_that_is_set_and_taken_back()
+    test_asking_the_clock_how_far_it_is_to_move()
     print("test_time: ok")
