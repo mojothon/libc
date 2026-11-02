@@ -4,10 +4,7 @@ from std.testing import assert_equal, assert_true
 from libc.constant import (
     AT_FDCWD,
     ENOENT,
-    O_CREAT,
     O_RDONLY,
-    O_TRUNC,
-    O_WRONLY,
     SEEK_SET,
     c_char,
     c_ptr,
@@ -19,6 +16,7 @@ from libc.fcntl import open
 from libc.file import (
     FILE,
     close,
+    creat,
     fclose,
     fgetc,
     fgets,
@@ -381,7 +379,11 @@ def test_the_three_that_write_where_they_point() raises:
     var out_name = string_to_char_ptr(out_path)
     var err_name = string_to_char_ptr(err_path)
 
-    var out = open(out_name, O_WRONLY | O_CREAT | O_TRUNC, 0o644)
+    # `creat` and not `open` with `O_CREAT`: on arm64 Darwin a variadic
+    # `mode` is passed on the stack, and a file made through `open` comes
+    # out with no permission bits at all, which `test_fcntl` says the same
+    # way where it uses `fchmod` to get around it.
+    var out = creat(out_name, 0o644)
     assert_true(
         out >= 0,
         "a file to stand in for standard output: errno "
@@ -400,7 +402,7 @@ def test_the_three_that_write_where_they_point() raises:
     assert_equal(dup2(out, 1), 1, "standard output moved onto the file")
     assert_equal(close(out), 0, "and the second handle given back")
 
-    var err = open(err_name, O_WRONLY | O_CREAT | O_TRUNC, 0o644)
+    var err = creat(err_name, 0o644)
     assert_true(err >= 0, "one to stand in for standard error")
     var reading_err = open(err_name, O_RDONLY)
     assert_true(reading_err >= 0, "and a way to read that one back")
