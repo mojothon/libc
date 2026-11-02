@@ -62,6 +62,16 @@ check-docstrings = "python3 scripts/check-docstrings.py"
 # printed so that skipping is something the run says rather than something
 # a fence can do quietly.
 check-examples = "python3 scripts/check-examples.py"
+# A binding nobody calls is a binding nothing checks. `gl_flags` was read
+# from the wrong half of a word for three releases while every check here
+# was green: the offset was the one the module named, the symbol was the
+# one the header exported, and no test ever gave `glob` a flag. This walks
+# the same bindings `check-prototypes` does and asks `tests/` which ones it
+# calls, lists the rest with the reason each cannot be asked, and fails
+# when a binding arrives with neither a test nor a reason. The remainder —
+# testable and untested — is a list with a number on it, and fails only if
+# it grows.
+check-tests = "python3 scripts/check-tests.py"
 
 [feature.build.dependencies]
 rattler-build = ">=0.40,<0.41"

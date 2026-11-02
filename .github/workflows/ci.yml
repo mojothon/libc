@@ -27,6 +27,11 @@ jobs:
       # a rename leaves an example a reader finds before a test does.
       - name: Check that the examples in the docs compile
         run: pixi run check-examples
+      # Everything above asks whether a binding is right. This asks whether
+      # anything ever calls it, which is a different question and the one
+      # `gl_flags` was on the wrong side of.
+      - name: Check that every binding is asked something
+        run: pixi run check-tests
 
   test:
     name: Test (${{ matrix.os }})
