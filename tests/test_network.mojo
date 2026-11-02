@@ -12,6 +12,8 @@ from libc.network import (
     inet_makeaddr,
     inet_netof,
     inet_network,
+    inet_nsap_addr,
+    inet_nsap_ntoa,
     inet_ntoa,
     inet_ntop,
     inet_pton,
@@ -232,6 +234,54 @@ def test_an_address_taken_apart_and_put_back_together() raises:
     written.unsafe_free()
 
 
+def test_an_nsap_address_there_and_back() raises:
+    """An OSI NSAP address is a run of hex digits, so reading it and
+    writing it back out are inverses that do not depend on the machine.
+
+    What is not written down here is the spelling `inet_nsap_ntoa`
+    chooses: the two platforms group the dots differently, so asking
+    for one particular string would be asking about the platform.
+    Feeding whatever it produced back into `inet_nsap_addr` has to
+    give the same six bytes, which is a question about the two calls
+    and catches either one wired to the wrong direction.
+    """
+    var text = string_to_char_ptr("47000580005a")
+    var bin = unsafe_alloc[UInt8](16)
+    for i in range(16):
+        bin.unsafe_store(i, 0)
+
+    var n = inet_nsap_addr(text, bin, 16)
+    assert_equal(Int(n), 6, "twelve hex digits are six bytes")
+    assert_equal(Int(bin.unsafe_load(0)), 0x47, "the first byte is 0x47")
+    assert_equal(Int(bin.unsafe_load(5)), 0x5A, "and the last is 0x5A")
+
+    var out = unsafe_alloc[UInt8](128)
+    for i in range(128):
+        out.unsafe_store(i, 0)
+    var written = inet_nsap_ntoa(Int32(n), bin, out)
+    assert_true(Int(written) != 0, "there is a spelling to read back")
+
+    var again = unsafe_alloc[UInt8](16)
+    for i in range(16):
+        again.unsafe_store(i, 0)
+    assert_equal(
+        Int(inet_nsap_addr(written, again, 16)),
+        Int(n),
+        "and reading that spelling back gives the same length",
+    )
+    for i in range(6):
+        assert_equal(
+            again.unsafe_load(i),
+            bin.unsafe_load(i),
+            "and the same bytes in the same order",
+        )
+
+    again.unsafe_free()
+    out.unsafe_free()
+    bin.unsafe_free()
+    text.unsafe_free()
+
+
 def main() raises:
     test_htonl()
     test_htons()
@@ -243,4 +293,5 @@ def main() raises:
     test_an_address_written_down_and_read_back()
     test_the_bytes_go_on_the_wire_one_way_and_are_counted_the_other()
     test_an_address_taken_apart_and_put_back_together()
+    test_an_nsap_address_there_and_back()
     print("test_network: ok")

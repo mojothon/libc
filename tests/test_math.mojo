@@ -29,6 +29,8 @@ from libc.math import (
     cosh,
     coshf,
     erf,
+    erfc,
+    erfcf,
     erff,
     exp,
     exp2,
@@ -590,6 +592,37 @@ def test_the_bessel_functions_and_two_to_a_power() raises:
     )
 
 
+def test_the_other_half_of_the_error_function() raises:
+    """The four calls in `<math.h>` that make up the error function,
+    pinned against each other rather than against a table.
+
+    `erf` and `erff` were here before this, and their complementary
+    halves were not. Nothing here needs a value written down from the
+    library: erf(x) + erfc(x) is 1, and because erf is odd,
+    erfc(-x) + erfc(x) is 2. A binding wired to `erf` instead of the
+    complement would answer 0 to the first of those, and to the
+    second would answer 0 as well. The float pair agrees only to
+    single precision, which is why that one has a float-sized
+    tolerance rather than an exact comparison.
+    """
+    assert_equal(erfc(0.0), 1.0, "one minus erf(0) is one")
+    assert_equal(Float64(erfcf(0.0)), 1.0, "and the float form too")
+
+    assert_true(
+        fabs(erf(1.0) + erfc(1.0) - 1.0) < 1e-12,
+        "the two halves add up to one",
+    )
+    assert_true(
+        fabs(Float64(erff(1.0)) + Float64(erfcf(1.0)) - 1.0) < 1e-6,
+        "and the float halves do too, to single precision",
+    )
+    assert_true(
+        fabs(erfc(-1.0) + erfc(1.0) - 2.0) < 1e-12,
+        "erf is odd, so the two sides of zero add up to two",
+    )
+    assert_true(erfc(3.0) < 1e-4, "and it is nearly nothing at three")
+
+
 def main() raises:
     test_abs()
     test_sqrt_and_rounding()
@@ -611,4 +644,5 @@ def main() raises:
     test_the_four_that_round_a_float_to_a_whole_number()
     test_the_three_whose_neighbour_was_asked()
     test_the_bessel_functions_and_two_to_a_power()
+    test_the_other_half_of_the_error_function()
     print("test_math: ok")

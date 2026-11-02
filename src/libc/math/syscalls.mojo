@@ -2968,3 +2968,58 @@ def yn(n: Int32, x: Float64) -> Float64:
         against a value written down in the test.
     """
     return external_call["yn", Float64, Int32, Float64](n, x)
+
+
+def erfc(arg: Float64) -> Float64:
+    """C library <math.h> function `erfc`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/erf.3.html
+
+    Prototype:
+        double erfc(double arg)
+
+    Description:
+        Computes the complementary error function, one minus the error
+        function at the same point.
+
+    Arguments:
+        arg: The point to evaluate it at.
+
+    Return value:
+        One minus the error function at `arg`.
+
+    Notes:
+        `erf` is the other half of the pair, and the two are pinned
+        against each other: `erf(x)` and `erfc(x)` add up to one. This
+        is the one to ask about a large positive `arg`, where `erf`
+        has rounded to one and subtracting it from one would leave
+        nothing at all.
+    """
+    return external_call["erfc", Float64, Float64](arg)
+
+
+def erfcf(arg: Float32) -> Float32:
+    """C library <math.h> function `erfcf`.
+
+    Link:
+        https://man7.org/linux/man-pages/man3/erf.3.html
+
+    Prototype:
+        float erfcf(float arg)
+
+    Description:
+        Computes the complementary error function in single precision.
+
+    Arguments:
+        arg: The point to evaluate it at.
+
+    Return value:
+        One minus `erff(arg)`, as a float.
+
+    Notes:
+        The float form of `erfc`, and the other half of `erff`. Adding
+        those two gives one only to single precision, so a test asks
+        for a float-sized agreement rather than an exact one.
+    """
+    return external_call["erfcf", Float32, Float32](arg)

@@ -72,7 +72,7 @@ PROSE = frozenset({
     "IEEE754", "XXXXXX", "PATH", "TODO", "NOTE", "POSIX", "ASCII", "UTF",
     "GNU", "BSD", "LINUX", "MACOS", "DARWIN", "ANSI", "MAP_FAILED",
     "LC_GLOBAL_LOCALE", "LC_ALL_MASK", "FE_DFL_ENV", "TCP", "UDP", "IPV6",
-    "HTTP", "HTTPS", "NULL", "sizeof", "size_t",
+    "HTTP", "HTTPS", "NULL", "sizeof", "size_t", "NSAP",
 })
 # `CPU_*` and its like are a whole family being pointed at, not one thing
 # promised, so they are read differently from `IPPROTO_TCP`.

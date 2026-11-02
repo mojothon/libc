@@ -529,6 +529,26 @@ All notable changes to this project are documented here. The format follows
   two being exact — 1024 and 0.125, not approximations. `beyond-c.md`
   says 958 symbols, 955 among the four libraries, 26.7%; `modules.md`
   says `libc.math` has 131.
+- **Both halves of the error function, and both directions of an NSAP
+  address.** The coverage walk now says 415 functions are unbound, and
+  the same three filters cut that down as before: `long double`
+  variants, macros, callbacks, and GNU extensions that only one
+  platform has. What remained were two pairs whose other half was
+  simply missing: `erf`/`erff` were bound without `erfc`/`erfcf`, and
+  `inet_pton`/`inet_ntop` without `inet_nsap_addr`/`inet_nsap_ntoa`.
+  Both pairs exist on both sides — Apple's `Libm` ships `erfc.c` and
+  `erfcf.c`, its `Libc` ships `net/FreeBSD/nsap_addr.c` — and neither
+  test writes down a value from the library: `erf(x) + erfc(x)` is 1,
+  and since `erf` is odd `erfc(-x) + erfc(x)` is 2, while the NSAP
+  pair round-trips six bytes through whatever dot spacing the
+  platform chooses. `wait`, `finite`, `scalb`, `drem`, `significand`
+  and `gamma` are declared on Darwin but carry `__DARWIN_ALIAS_C`,
+  so the symbols have a suffix and an `external_call` under the plain
+  name cannot reach them; they stay unbound on purpose. `ecvt`,
+  `fcvt` and `gcvt` looked unbound to a grep that did not look across
+  lines, but all three were already here. `beyond-c.md` says 962
+  symbols, 959 among the four libraries, 26.8%; `modules.md` says
+  `libc.math` has 133 and `libc.network` 16.
 - **The list of bindings a test could ask and has not is empty.** Five of
   the last six debts were not blocked by anything, which is the point: four
   of the reasons said a privilege, a thread or a policy was needed, and

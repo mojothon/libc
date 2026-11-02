@@ -369,3 +369,77 @@ def inet_lnaof(address: in_addr) -> UInt32:
         in POSIX.
     """
     return external_call["inet_lnaof", UInt32, in_addr](address)
+
+
+def inet_nsap_addr(
+    cp: c_ptr[UInt8], buf: c_ptr[UInt8], buflen: Int32
+) -> c_uint:
+    """Libc POSIX `inet_nsap_addr` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/inet_nsap_addr.3.html
+
+    Description:
+        Reads an OSI NSAP address written as hexadecimal digits and
+        writes its bytes into `buf`. `inet_nsap_ntoa` is the other
+        direction, and the pair is how an address is checked without
+        writing down the spelling either platform chooses.
+
+    Args:
+        cp: The address as NUL-terminated hexadecimal text.
+        buf: Where the bytes go. It has to have room for `buflen` of them.
+        buflen: How many bytes `buf` holds.
+
+    Returns:
+        How many bytes the address took, or 0 when the text was not
+        hexadecimal or would not fit.
+
+    Notes:
+        Fn signature:
+        `unsigned int inet_nsap_addr(const char *cp, unsigned char *buf, int len)`.
+
+        Unlike `inet_pton`, this one is about NSAP addresses and not
+        IP ones: the input is a run of hex digits with no separators,
+        so the bytes are the digits in pairs and nothing about byte
+        order enters into it. That is what makes the round trip a
+        question about these two calls rather than about the machine.
+    """
+    return external_call[
+        "inet_nsap_addr", c_uint, c_ptr[UInt8], c_ptr[UInt8], Int32
+    ](cp, buf, buflen)
+
+
+def inet_nsap_ntoa(
+    nbytes: Int32, cp: c_ptr[UInt8], buf: c_ptr[UInt8]
+) -> c_ptr[UInt8]:
+    """Libc POSIX `inet_nsap_ntoa` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/inet_nsap_ntoa.3.html
+
+    Description:
+        Writes `nbytes` bytes of an OSI NSAP address out as
+        hexadecimal text with dots between groups, the inverse of
+        `inet_nsap_addr`.
+
+    Args:
+        nbytes: How many bytes to write out.
+        cp: The bytes, as `inet_nsap_addr` produced them.
+        buf: Where the text goes, NUL terminated. The longest form
+            takes a little over twice `nbytes` bytes, with the dots.
+
+    Returns:
+        `buf`, or NULL where it could not be written.
+
+    Notes:
+        Fn signature:
+        `char *inet_nsap_ntoa(int len, const unsigned char *cp, char *buf)`.
+
+        The grouping of the dots is up to the platform, so no test
+        here writes it down: feeding whatever this produces back to
+        `inet_nsap_addr` has to give the same bytes, which is a
+        stronger question than asking for one particular spelling.
+    """
+    return external_call[
+        "inet_nsap_ntoa", c_ptr[UInt8], Int32, c_ptr[UInt8], c_ptr[UInt8]
+    ](nbytes, cp, buf)

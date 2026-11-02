@@ -6,7 +6,7 @@ the bottom.
 
 | Module | C header | Symbols |
 | --- | --- | --- |
-| `libc.math` | `<math.h>` | 131 |
+| `libc.math` | `<math.h>` | 133 |
 | `libc.stdlib` | `<stdlib.h>` | 75 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.unistd` | `<unistd.h>` | 200 |
@@ -38,7 +38,7 @@ the bottom.
 | `libc.sys.wait` | `<sys/wait.h>` | 25 |
 | `libc.inttypes` | `<inttypes.h>` | 7 |
 | `libc.sys.resource` | `<sys/resource.h>` | 15 |
-| `libc.network` | `<arpa/inet.h>` byte order and address conversion | 14 |
+| `libc.network` | `<arpa/inet.h>` byte order and address conversion | 16 |
 | `libc.netdb` | `<netdb.h>` name and service lookup | 50 |
 | `libc.netif` | `<net/if.h>` interface names and numbers | 9 |
 | `libc.regex` | `<regex.h>` POSIX regular expressions | 29 |
