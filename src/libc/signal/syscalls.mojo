@@ -578,3 +578,68 @@ def siginterrupt(sig: Int32, interrupt: Int32) -> Int32:
         is set and not before.
     """
     return external_call["siginterrupt", Int32, Int32, Int32](sig, interrupt)
+
+
+struct siginfo_t:
+    """A C `siginfo_t`: what a signal, or a wait, says happened.
+
+    Kept as bytes and read by offset, because the members sit at
+    different offsets on the two platforms: `si_pid` is at 16 on Linux
+    and 12 on Darwin, `si_uid` 20 and 16, `si_status` 24 and 20. The
+    first three — `si_signo`, `si_errno` and `si_code` — are at 0, 4
+    and 8 on both.
+
+    Nothing here writes one: a `siginfo_t` is something the library
+    fills in and the caller reads, and the six below are the part of
+    it that is worth reading. The block is 128 bytes, which is what
+    glibc's is and more than the 104 Darwin asks for, so there is room
+    either way.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man2/waitid.2.html).
+    """
+
+    # Eight-byte slots rather than bytes: C says this one is 8-aligned,
+    # and an `Array[UInt8]` would take its alignment down to 1.
+    var _slots: Array[UInt64, 16]
+
+    def __init__(out self):
+        """Zeroes the whole block, which is what C leaves in one that
+        has just been declared.
+        """
+        self._slots = Array[UInt64, 16](fill=0)
+
+    def _u32(self, off: Int) -> UInt32:
+        """Four little-endian bytes at `off`, which every offset in
+        here keeps inside one slot.
+        """
+        var slot = self._slots[off // 8]
+        return UInt32((slot >> UInt64((off % 8) * 8)) & 0xFFFFFFFF)
+
+    def si_signo(self) -> Int32:
+        """The signal number the call was about."""
+        return Int32(self._u32(0))
+
+    def si_errno(self) -> Int32:
+        """Whatever `errno` was when it happened, 0 where nothing went
+        wrong.
+        """
+        return Int32(self._u32(4))
+
+    def si_code(self) -> Int32:
+        """Why it happened, one of the `CLD_*` codes for a child."""
+        return Int32(self._u32(8))
+
+    def si_pid(self) -> Int32:
+        """The process it was about: the child, for a wait."""
+        return Int32(self._u32(16 if not CompilationTarget.is_macos() else 12))
+
+    def si_uid(self) -> UInt32:
+        """The real user id of whoever sent it, or of the child."""
+        return self._u32(20 if not CompilationTarget.is_macos() else 16)
+
+    def si_status(self) -> Int32:
+        """The number the child left with, or the signal it died of,
+        whichever `si_code` says it was.
+        """
+        return Int32(self._u32(24 if not CompilationTarget.is_macos() else 20))

@@ -7,6 +7,7 @@ from std.ffi import external_call
 from std.sys import CompilationTarget
 from std.memory import Pointer
 from libc.constant import c_ptr
+from libc.signal import siginfo_t
 
 
 # What `waitpid` is asked for. `WNOHANG` and `WUNTRACED` are the same
@@ -14,6 +15,24 @@ from libc.constant import c_ptr
 comptime WNOHANG: Int32 = 1
 comptime WUNTRACED: Int32 = 2
 comptime WCONTINUED: Int32 = 16 if CompilationTarget.is_macos() else 8
+
+# What `waitid` is asked for, which is a different set from the three
+# above. `P_ALL`, `P_PID` and `P_PGID` say which children and are 0, 1
+# and 2 on both platforms, and `WEXITED` is 4 on both. `WSTOPPED` and
+# `WNOWAIT` are not the same: `WSTOPPED` is 2 here and 8 there, and
+# `WNOWAIT` is 0x01000000 here and 0x20 there.
+comptime P_ALL: Int32 = 0
+comptime P_PID: Int32 = 1
+comptime P_PGID: Int32 = 2
+comptime WEXITED: Int32 = 4
+comptime WSTOPPED: Int32 = 8 if CompilationTarget.is_macos() else 2
+comptime WNOWAIT: Int32 = 32 if CompilationTarget.is_macos() else 16777216
+
+# What the `si_code` of a child says: that it left of its own accord,
+# that it was killed, and that it was killed and a core file written.
+comptime CLD_EXITED: Int32 = 1
+comptime CLD_KILLED: Int32 = 2
+comptime CLD_DUMPED: Int32 = 3
 
 
 struct rusage(TrivialRegisterPassable):
@@ -84,6 +103,47 @@ def waitpid(pid: Int32, status: c_ptr[Int32], options: Int32) -> Int32:
     return external_call["waitpid", Int32, Int32, c_ptr[Int32], Int32](
         pid, status, options
     )
+
+
+def waitid(
+    idtype: Int32, id: Int32, infop: c_ptr[siginfo_t], options: Int32
+) -> Int32:
+    """Libc POSIX `waitid`, which waits for a child and says what it
+    did in a `siginfo_t` rather than in a status word.
+
+    Args:
+        idtype: `P_PID` for the child `id` names, `P_PGID` for any in
+            the process group `id` names, or `P_ALL` for any child at
+            all, in which case `id` is not looked at.
+        id: The pid or the process group, which `P_ALL` ignores.
+        infop: Where the answer is written: `si_pid`, `si_uid`,
+            `si_status` and `si_code` are the four that say something.
+        options: `WEXITED`, `WSTOPPED`, `WCONTINUED`, `WNOWAIT` or any
+            combination of them, and at least one of the first three.
+
+    Returns:
+        0 where a child was reported on, or -1 with `errno` set. It is
+        the one in here that does not answer with the pid, the pid
+        being in the `siginfo_t` instead.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man2/waitid.2.html).
+        Fn signature: `int waitid(idtype_t idtype, id_t id, siginfo_t *infop, int options)`.
+
+        `WNOWAIT` is what makes it more than another way of saying
+        `waitpid`: the child is reported on and left there, so the
+        same child can be waited for again — by a second `waitid`, or
+        by `waitpid`, which is then the one that takes it back.
+
+        `si_pid` and 0 are how the two ways of failing tell
+        themselves apart: a successful call zeroes the whole of the
+        `siginfo_t` before filling it in, and `WNOHANG` given to a
+        `waitid` that has nothing to report leaves `si_pid` at 0 and
+        answers 0 rather than -1, which no other call in here does.
+    """
+    return external_call[
+        "waitid", Int32, Int32, Int32, c_ptr[siginfo_t], Int32
+    ](idtype, id, infop, options)
 
 
 def wait(status: c_ptr[Int32]) -> Int32:

@@ -934,6 +934,7 @@ def bring_in_libc_signal():
         killpg,
         psignal,
         sigaction,
+        siginfo_t,
         sigaddset,
         sigaltstack,
         sigdelset,
@@ -1438,13 +1439,22 @@ def bring_in_libc_sys_utsname():
 
 def bring_in_libc_sys_wait():
     from libc.sys.wait import (
+        CLD_DUMPED,
+        CLD_EXITED,
+        CLD_KILLED,
+        P_ALL,
+        P_PGID,
+        P_PID,
         WCONTINUED,
         WCOREDUMP,
         WEXITSTATUS,
+        WEXITED,
         WIFEXITED,
         WIFSIGNALED,
         WIFSTOPPED,
         WNOHANG,
+        WNOWAIT,
+        WSTOPPED,
         WSTOPSIG,
         WTERMSIG,
         WUNTRACED,
@@ -1452,6 +1462,7 @@ def bring_in_libc_sys_wait():
         wait,
         wait3,
         wait4,
+        waitid,
         waitpid,
     )
 
