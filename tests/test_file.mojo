@@ -2,9 +2,9 @@
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import AT_FDCWD, SEEK_END, SEEK_SET, c_ptr
+from libc.constant import AT_FDCWD, SEEK_CUR, SEEK_END, SEEK_SET, c_ptr
 from libc.fcntl import O_CREAT, O_RDONLY, O_WRONLY, open as open_with_mode
-from libc.stdio import remove
+from libc.stdio import fileno, remove, tmpfile
 from libc.file import (
     clearerr,
     creat,
@@ -24,12 +24,16 @@ from libc.file import (
     ftell,
     ftello,
     getline,
+    lseek,
+    preadv,
     printf,
+    pwritev,
     snprintf,
     sprintf,
     sscanf,
 )
 from libc.stdlib import free
+from libc.sys.socket import iovec
 from libc.unistd import close, unlink
 from libc.utils import char_ptr_to_string, null_ptr, string_to_char_ptr
 
@@ -231,10 +235,101 @@ def test_the_scanf_family_asked_for_nothing() raises:
     text.unsafe_free()
 
 
+def test_pieces_at_an_offset() raises:
+    """`pwritev` and `preadv` on a stream that was opened for something
+    else: two pieces are handed to the file at offset 8 and read back the
+    same way, and the stream's own position is still zero on either side
+    of both calls.
+
+    That last part is the whole of what these two are. `writev` writes
+    where the stream is and moves it; `pwritev` writes where it is told
+    and leaves it alone, which is why the same offset read twice gives
+    the same bytes — a test that only compared the bytes would pass
+    against `writev` and `lseek` put together.
+
+    The eight bytes before the pieces are read too, because writing past
+    the end of a file makes a hole rather than a gap: nothing fills it,
+    nothing reports it, and a caller that reads it back gets zeroes.
+    """
+    var f = tmpfile()
+    var fd = fileno(f)
+
+    var head = unsafe_alloc[UInt8](3)
+    head.unsafe_store(0, 97)
+    head.unsafe_store(1, 98)
+    head.unsafe_store(2, 99)
+    var tail = unsafe_alloc[UInt8](2)
+    tail.unsafe_store(0, 100)
+    tail.unsafe_store(1, 101)
+
+    var pieces = unsafe_alloc[iovec](2)
+    pieces.unsafe_offset(0)[] = iovec(head, UInt64(3))
+    pieces.unsafe_offset(1)[] = iovec(tail, UInt64(2))
+
+    assert_equal(
+        Int(pwritev(fd, pieces, 2, 8)),
+        5,
+        "five bytes went out over two pieces, and the count is the sum",
+    )
+    assert_equal(
+        Int(lseek(fd, 0, SEEK_CUR)),
+        0,
+        "and the stream did not move to meet them",
+    )
+
+    var first = unsafe_alloc[UInt8](3)
+    var second = unsafe_alloc[UInt8](2)
+    var gathered = unsafe_alloc[iovec](2)
+    gathered.unsafe_offset(0)[] = iovec(first, UInt64(3))
+    gathered.unsafe_offset(1)[] = iovec(second, UInt64(2))
+
+    assert_equal(
+        Int(preadv(fd, gathered, 2, 8)), 5, "and five came back the same way"
+    )
+    assert_equal(
+        first.unsafe_load(0), UInt8(97), "the first piece where it was put"
+    )
+    assert_equal(
+        first.unsafe_load(2), UInt8(99), "filled to its own length exactly"
+    )
+    assert_equal(second.unsafe_load(0), UInt8(100), "and the second follows it")
+    assert_equal(second.unsafe_load(1), UInt8(101), "to the far end")
+    assert_equal(
+        Int(lseek(fd, 0, SEEK_CUR)), 0, "with the stream still where it was"
+    )
+
+    assert_equal(
+        Int(preadv(fd, gathered, 2, 8)), 5, "the second read is the same read"
+    )
+    assert_equal(
+        first.unsafe_load(0), UInt8(97), "because the offset did not advance"
+    )
+
+    var hole = unsafe_alloc[UInt8](8)
+    var one = unsafe_alloc[iovec](1)
+    one.unsafe_offset(0)[] = iovec(hole, UInt64(8))
+    assert_equal(Int(preadv(fd, one, 1, 0)), 8, "the eight bytes before them")
+    assert_equal(hole.unsafe_load(0), UInt8(0), "are a hole")
+    assert_equal(
+        hole.unsafe_load(7), UInt8(0), "that reads as zeroes right up to them"
+    )
+
+    _ = fclose(f)
+    head.unsafe_free()
+    tail.unsafe_free()
+    first.unsafe_free()
+    second.unsafe_free()
+    hole.unsafe_free()
+    pieces.unsafe_free()
+    gathered.unsafe_free()
+    one.unsafe_free()
+
+
 def main() raises:
     test_the_scanf_family_asked_for_nothing()
     test_a_stream_back_and_forth()
     test_streams_from_other_things()
     test_getline_reads_to_the_newline()
     test_the_printf_family()
+    test_pieces_at_an_offset()
     print("test_file: ok")

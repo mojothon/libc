@@ -5,6 +5,7 @@
 # ----------------------------------
 from libc.constant import *
 from std.ffi import external_call
+from libc.sys.socket import iovec
 
 
 struct FILE(TrivialRegisterPassable):
@@ -838,6 +839,73 @@ def pwrite(
     return external_call[
         "pwrite", c_ssize_t, c_int, c_ptr[c_void], c_size_t, off_t
     ](fildes, buf, nbyte, offset)
+
+
+def preadv(
+    fildes: c_int, iov: c_ptr[iovec], iovcnt: c_int, offset: off_t
+) -> c_ssize_t:
+    """Libc POSIX `preadv` function.
+
+    Args:
+        fildes: A File Descriptor to open the file with.
+        iov: The pieces to fill, `iovcnt` of them, each one a buffer and
+            how much of it to read into.
+        iovcnt: How many pieces there are, which is at most 1024.
+        offset: Where in the file to read from, counted in bytes from the
+            start. Where the stream was is left alone, as with `pread`.
+
+    Returns:
+        How many bytes were read in total across the pieces, which is
+        fewer than were asked for at the end of the file, or -1 on
+        failure with `errno` set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/readv.3p.html).
+        Fn signature: `ssize_t preadv(int fd, const struct iovec *iov,
+            int iovcnt, off_t offset)`.
+
+        `pread` across several buffers at once: the pieces are filled in
+        the order they are given, and the total is one number rather than
+        one per piece, so a caller adds up the lengths and compares.
+
+        It is the newer half of the header and `readv` is the older one;
+        Darwin has had it only since 11.0, which is late enough that a
+        header of its own from before then does not declare it at all.
+    """
+    return external_call[
+        "preadv", c_ssize_t, c_int, c_ptr[iovec], c_int, off_t
+    ](fildes, iov, iovcnt, offset)
+
+
+def pwritev(
+    fildes: c_int, iov: c_ptr[iovec], iovcnt: c_int, offset: off_t
+) -> c_ssize_t:
+    """Libc POSIX `pwritev` function.
+
+    Args:
+        fildes: A File Descriptor to open the file with.
+        iov: The pieces to write, `iovcnt` of them, each one a buffer and
+            how much of it to write.
+        iovcnt: How many pieces there are, which is at most 1024.
+        offset: Where in the file to write, counted in bytes from the
+            start. Where the stream was is left alone, as with `pwrite`.
+
+    Returns:
+        How many bytes were written in total across the pieces, or -1 on
+        failure with `errno` set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/writev.3p.html).
+        Fn signature: `ssize_t pwritev(int fd, const struct iovec *iov,
+            int iovcnt, off_t offset)`.
+
+        Writing past the end of the file leaves a hole, and the hole
+        reads back as zeroes — nothing here fills it in, and nothing
+        reports that it was made.
+    """
+    return external_call[
+        "pwritev", c_ssize_t, c_int, c_ptr[iovec], c_int, off_t
+    ](fildes, iov, iovcnt, offset)
 
 
 def write(fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint) -> Int:
