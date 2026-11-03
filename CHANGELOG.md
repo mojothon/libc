@@ -7,6 +7,32 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **A Recipes page: five complete programs for the things a caller wants
+  first.** Every `mojo` block in the docs is already compiled by
+  `check-examples`, so the examples could not rot — but there were twelve
+  of them across the whole package and none longer than four lines, which
+  is enough to show a name is real and not enough to copy a working
+  program out of.
+
+  The five new ones each do one whole task end to end — say why a call
+  failed (`opendir` + `get_errno` + `strerror`), read a file (`fopen` /
+  `fread` with a `malloc` buffer), run a program and wait for it (`fork` /
+  `execvp` / `waitpid`, with the `char **` argument list built by hand and
+  the status read through `WIFEXITED`), write the time out
+  (`clock_gettime` → `localtime_r` → `strftime`), and ask where a symbol
+  is (`dlopen` / `dlsym` / `dladdr`, the pair bound last round, shown
+  doing what they are for).
+
+  Being compiled is a claim about the API, not about behaviour, so each
+  one was also run before it was written down: the child echoes, the
+  clock reads today, `dladdr` names `getpid` in libc. The page says so
+  about itself, and the last recipe carries the two-spellings warning —
+  `getpid` on one build, `__getpid` on another — where a reader who runs
+  it will otherwise think it lied.
+
+  `usage.md` points at the page from its end, and `mkdocs.yml` puts it
+  after Usage in the nav. `check-examples` now compiles 17.
+
 - **`libc.dlfcn` binds `dladdr`, which is `dlsym` the other way round.**
   `dlsym` takes a name and answers an address; `dladdr` takes an address and
   answers which object it is in, where that object was loaded, and the name

@@ -124,3 +124,6 @@ from libc.constant import O_CREAT, O_RDWR, SEEK_END
 
 Most wrappers return the raw C value: `-1` (or `NULL`) on failure with `errno`
 set. Read it with `libc.errno.get_errno()`.
+
+For complete programs — reading a file, running a child process, asking
+where a symbol lives — see the [Recipes](recipes.md) page.
