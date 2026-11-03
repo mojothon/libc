@@ -143,11 +143,16 @@ def test_mmap_hands_back_memory() raises:
     # The other half of the same distinction: `posix_madvise` answers with the
     # error number itself and `madvise` answers -1 and puts it in errno, so an
     # advice neither of them knows comes back as two different numbers.
-    assert_equal(
-        posix_madvise(p, SIZE, 999),
-        Int32(EINVAL),
-        "an advice nobody knows comes back as the number, not as -1",
-    )
+    # Where the two shapes of answer differ: POSIX has this one hand back the
+    # error number itself, and the implementation on the other platform
+    # answered -1 like `madvise` instead -- measured on that platform's runner,
+    # so the assertion is made where it holds.
+    comptime if not CompilationTarget.is_macos():
+        assert_equal(
+            posix_madvise(p, SIZE, 999),
+            Int32(EINVAL),
+            "an advice nobody knows comes back as the number, not as -1",
+        )
 
     var vec = unsafe_alloc[UInt8](1)
     vec.unsafe_store(0, 0)
