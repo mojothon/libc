@@ -20,6 +20,7 @@ from test_mutex import main as run_mutex
 from test_dlfcn import main as run_dlfcn
 from test_sched import main as run_sched
 from test_pthread import main as run_pthread
+from test_prctl import main as run_prctl
 from test_eventfd import main as run_eventfd
 from test_epoll import main as run_epoll
 from test_sysinfo import main as run_sysinfo
@@ -96,6 +97,7 @@ def main() raises:
     run_dlfcn()
     run_sched()
     run_pthread()
+    run_prctl()
     run_eventfd()
     run_epoll()
     run_sysinfo()

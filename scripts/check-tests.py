@@ -46,7 +46,6 @@ def load(name: str):
 CANNOT_ASK = {
     "pthread_atfork": "the suite is run just-in-time, and the JIT run does not resolve this one — a built binary links and answers fine",
     "putwchar": "standard output is process-wide and narrow-oriented by the suite already, and a forked child inherits that orientation — a wide write to it is not defined by C",
-    "prctl": "Linux only, and the interesting requests change the running process",
     "ioctl": "variadic: what it does is decided by its second argument",
     "sched_getcpucount": "glibc does not export it, so calling it would not link",
     "isascii_l": "glibc does not export it, so calling it would not link",

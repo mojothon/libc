@@ -102,21 +102,20 @@ Mojo has no 80-bit type.
 
 ## What the suite does not ask
 
-Six bindings are not asked anything, and every one of them has a reason that
+Five bindings are not asked anything, and every one of them has a reason that
 is about the call rather than about the suite:
 
 - `ioctl` is variadic with the request deciding what the arguments mean.
 - `putwchar` writes to a stream the whole process shares, and orients it:
   forking a child does not get a fresh stream to try it on, only the one the
   suite has already written to as bytes.
-- `prctl` is Linux's, and changes the process it is called on.
 - `pthread_atfork` registers a fork handler that the just-in-time run this
   suite uses cannot resolve; a built binary links and answers fine.
 - `sched_getcpucount` and `isascii_l` are names glibc does not export at all.
 
 None of them is known to be broken; they are simply not asked.
 
-994 bindings are asked something, and the 6 that are not have a reason
+995 bindings are asked something, and the 5 that are not have a reason
 each. Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -141,7 +140,7 @@ releases, and every other check in this repository green. That list is
 **empty** now, and empty is not the same as gone: it still fails if it
 grows, which is the thing it was written for.
 
-Five have left the list above. Three of them needed no handler: `scanf` takes a format and no conversion, so a child's pipe with a word
+Six have left the list above. Three of them needed no handler: `scanf` takes a format and no conversion, so a child's pipe with a word
 in it — closed at the write end, which is what gives the input an end — is
 enough to ask it for 0 and then for `EOF`. `sigsuspend` waits under a mask
 of its own, so a signal blocked and sent to itself is pending until the swap
@@ -161,6 +160,14 @@ with cancellation left enabled, which does not come back from the next
 cancellation point, and one that disabled it first, which does. The pair is
 the assertion, because either half alone is passed by a cancel that does
 nothing at all.
+
+`prctl` left by being asked only what it answers without changing the
+process: `PR_GET_DUMPABLE` and `PR_GET_TIMERSLACK` are reads, and the one
+write, `PR_SET_NAME`, renames the calling thread and is undone before the
+test returns. The name coming back as the name that was put is what shows
+the pointer in the second argument arrived as a pointer. Its refusals are
+asked as well: an option number that is not one comes back -1 with
+`EINVAL`.
 
 ## API reference
 

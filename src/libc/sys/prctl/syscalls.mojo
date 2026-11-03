@@ -49,18 +49,13 @@ def prctl(
             one, that a narrower type would not hold them.
 
     Description:
-        prctl() performs a privileged operation on the calling process.
-        It is used to get and set various options controlling the behavior of the kernel.
-        The operation is specified in the `option` argument, and additional arguments may be required depending on the operation.
-        The `option` argument is a number, and no `PR_*` constant is bound
-        here. On Linux `PR_SET_PDEATHSIG` is 1, `PR_GET_PDEATHSIG` 2,
-        `PR_GET_DUMPABLE` 3, `PR_SET_DUMPABLE` 4, `PR_GET_UNALIGN` 5,
-        `PR_SET_UNALIGN` 6, `PR_GET_TIMING` 13, `PR_SET_TIMING` 14,
-        `PR_SET_NAME` 15, `PR_GET_NAME` 16, `PR_GET_SECCOMP` 21,
-        `PR_SET_SECCOMP` 22, `PR_GET_TSC` 25, `PR_SET_TSC` 26,
-        `PR_GET_SECUREBITS` 27, `PR_SET_SECUREBITS` 28, `PR_SET_TIMERSLACK`
-        29 and `PR_GET_TIMERSLACK` 30, and there are more besides, so the
-        header is the place to check.
+        prctl() asks the kernel to get or set one of the options that decide
+        what a process is and what it is allowed to do. `option` names the
+        operation, and how many of the four arguments after it mean anything
+        is that operation's business: `PR_GET_DUMPABLE` reads none of them,
+        `PR_GET_NAME` reads a `char *` out of `arg2` and writes at most
+        sixteen bytes there. The numbers are bound beside this call, since
+        the header they come from is not on the other platform to include.
 
         `prctl` is Linux's own: there is no `<sys/prctl.h>` on Darwin, and
         a call there does not link.

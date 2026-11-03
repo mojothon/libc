@@ -7,6 +7,29 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **`prctl` asked the questions it answers without changing anything.** It
+  was on the cannot-ask list as Linux's own and as a call that changes the
+  process it is made on. The second half is only true of some of its options:
+  `PR_GET_DUMPABLE` and `PR_GET_TIMERSLACK` read, and the one write that is
+  asked — setting the kernel's name for the calling thread — is put back the
+  way it was found before the test returns, so the rest of the suite sees
+  what it started with.
+
+  `PR_SET_NAME` followed by `PR_GET_NAME` gives back the name that was put,
+  and that round trip is what shows the `char *` in the second argument
+  arrived as a pointer rather than as the address written down as a number.
+  `PR_GET_DUMPABLE` answers 0 or 1 and is not pinned to either, since a
+  process started set-user-ID may not dump core; `PR_GET_TIMERSLACK` answers
+  a positive count of nanoseconds, and which count is the kernel's to choose.
+  The last question is the refusal: an option number that is not one of
+  `prctl`'s own comes back -1 with `EINVAL`, and without it "returned 0"
+  would only mean "returned".
+
+  The docstring had said that no `PR_*` constant was bound beside this call,
+  and eighteen of them were; it now says what the arguments mean instead.
+  Five reasons are left on the list, and the count on the modules page moved
+  from 994 asked and 6 not to 995 and 5.
+
 - **The last two bindings that needed a second thread: `pthread_cond_wait`
   and `pthread_cancel`.** Both were on the cannot-ask list because the suite
   runs one thread, and neither needed one started — a forked child is enough
