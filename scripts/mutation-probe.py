@@ -124,6 +124,12 @@ SAME_ORDER = {
         "set and message it is asked for; one with rows in it is a binary "
         "`.cat` file, which is a thing to ship rather than a path to point at"
     ),
+    "sscanf:s <-> format": (
+        "the format it is given has no conversion in it, because the places a "
+        "conversion writes to are in the variadic part and this FFI cannot "
+        "pass them -- and a format with nothing to convert answers 0 for any "
+        "input at all, so both orders answer 0"
+    ),
     "bcmp:s1 <-> s2": (
         "it answers zero or not and nothing else: BSD documents the return as "
         "zero when the blocks are the same and non-zero otherwise, so both "

@@ -8,6 +8,7 @@ from libc.fcntl import (
     FD_CLOEXEC,
     F_GETFD,
     F_GETFL,
+    F_TEST,
     LOCK_EX,
     LOCK_NB,
     LOCK_UN,
@@ -31,15 +32,32 @@ from libc.utils import string_to_char_ptr
 
 
 def test_lockf_on_what_is_not_open() raises:
-    """`lockf` asked about a range in a file that is not open.
+    """`lockf` asked about a range in a file that is not open, and then
+    about one that is.
 
     Taking a lock on a real file from a test would leave the lock behind
-    if the test were to fail, so this asks about a descriptor that does
-    not exist, and the answer to that is no. The 3 is `F_TEST`, which
-    asks whether a range is free rather than locking it, and it is 3 on
-    both platforms.
+    if the test were to fail, so the real file is asked with `F_TEST`,
+    which asks whether a range is free rather than locking it.
+
+    That second call is also what tells the two arguments apart. `-1` is
+    refused before the command is read, so a binding handing them over
+    swapped answers `-1` there as well; a descriptor that exists is read,
+    and `F_TEST` on a range nobody holds is 0. The swap asks for
+    descriptor `F_TEST` -- 3, which this process has, having two files
+    open -- with the second file's own number as the command, which is
+    not a command.
     """
-    assert_equal(lockf(-1, 3, 0), -1, "no such descriptor")
+    assert_equal(lockf(-1, F_TEST, 0), -1, "no such descriptor")
+
+    var path = string_to_char_ptr("/tmp/libc-lockf-test")
+    _ = unlink(path)
+    var first = openat(Int32(AT_FDCWD), path, O_CREAT | O_RDWR, 0o600)
+    var second = openat(Int32(AT_FDCWD), path, O_RDWR)
+    assert_true(first >= 0 and second >= 0, "a file was made to ask about")
+    assert_equal(lockf(second, F_TEST, 0), 0, "a range nobody holds is free")
+    _ = close(second)
+    _ = close(first)
+    _ = unlink(path)
 
 
 def test_open_with_the_flags() raises:

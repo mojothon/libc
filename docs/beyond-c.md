@@ -323,6 +323,15 @@ neither argument is looked at past the descriptor, so both positions answered
 read, so `-1` answers `EBADF` where the swap asks for descriptor `TCOOFF` — 0
 on glibc, 1 on Darwin — and gets `ENOTTY` or `EINVAL` back instead.
 
+A fifth sample came back 17 caught, 2 that took the process down, 3 that are
+the same call and 2 that passed. `lockf(-1, 3, 0)` is the descriptor lesson
+again — `-1` is refused before the command is read — and is asked about a real
+file now, where `F_TEST` on a range nobody holds is 0. `sscanf` is the first
+one that no input can separate: the format it is given has no conversion in it,
+because the places a conversion writes to are in the variadic part this cannot
+pass, and a format with nothing to convert answers 0 for any input at all. That
+one is written down as the same call, with the reason.
+
 Seven of the survivors across those samples were one shape: an assertion that
 is true whichever way round the two arguments went. `!= 0` on two strings that
 differ, `== 0` on two that agree, a bound above and a bound below — each is the

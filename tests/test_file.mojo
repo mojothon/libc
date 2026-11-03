@@ -216,8 +216,11 @@ def test_the_scanf_family_asked_for_nothing() raises:
     of what they can be asked here.
     """
     var text = string_to_char_ptr("hello")
+    var format = string_to_char_ptr("abc")
     assert_equal(
-        Int(sscanf(text, text)), 0, "sscanf took nothing from what it was given"
+        Int(sscanf(text, format)),
+        0,
+        "sscanf took nothing from what it was given",
     )
 
     var path = string_to_char_ptr("/tmp/mojo_libc_scanf")

@@ -839,6 +839,17 @@ All notable changes to this project are documented here. The format follows
   because this FFI cannot hand C a function address, and `fchownat`'s call is
   refused before the two ids are read.
 
+- **Two more from the fifth sample of `--kind order`.** That sample came back
+  17 caught, 2 crashed, 3 that are the same call and 2 that passed. `lockf` was
+  asked with `-1`, which is refused before the command is read, so the swap
+  answered `-1` too; it is asked about a real file now, where `F_TEST` on a
+  range nobody holds is 0 and the swap asks for descriptor `F_TEST` with the
+  file's own number as a command. `sscanf` is the first survivor that no input
+  can separate: the places a conversion writes to are in the variadic part this
+  FFI cannot pass, so the format has no conversion in it, and a format with
+  nothing to convert answers 0 for any input — which is written into
+  `SAME_ORDER` rather than asserted differently.
+
 - **`scripts/check-comparisons.py` asks every comparison which way it leans.**
   Seven of the survivors across four samples were one shape: an assertion that
   is true whichever way round the two arguments went — `!= 0` on two strings
