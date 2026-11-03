@@ -5,6 +5,8 @@ from std.testing import assert_equal, assert_true
 
 from libc.fcntl import O_CREAT, O_RDWR
 from libc.constant import (
+    EINVAL,
+    ENOMEM,
     MADV_WILLNEED,
     MCL_CURRENT,
     MAP_ANONYMOUS,
@@ -15,6 +17,8 @@ from libc.constant import (
     PROT_WRITE,
     MS_SYNC,
 )
+from libc.errno import get_errno, set_errno
+from libc.signal import SIGSEGV, signal
 from libc.sys.mman import (
     madvise,
     mincore,
@@ -32,7 +36,10 @@ from libc.sys.mman import (
     shm_open,
     shm_unlink,
 )
-from libc.unistd import close, ftruncate
+from libc.stdlib import exit
+from libc.sys.resource import RLIMIT_MEMLOCK, Rlimit, getrlimit, setrlimit
+from libc.sys.wait import WIFSIGNALED, WTERMSIG, waitpid
+from libc.unistd import close, fork, ftruncate
 from libc.utils import null_ptr, string_to_char_ptr
 
 
@@ -67,6 +74,36 @@ def test_mmap_hands_back_memory() raises:
     assert_equal(
         p.unsafe_load(0), UInt8(65), "and what was written can still be read"
     )
+    # Whether that protection is in force cannot be asked from here -- a write
+    # that is refused would end this process rather than answer it -- so it is
+    # asked from a child, which is what a process is for. `madvise` takes the
+    # same three arguments and `PROT_READ` is a valid advice, so a binding
+    # pointed at it leaves the page writable and the child lives.
+    assert_equal(mprotect(p, SIZE, PROT_READ), 0, "the page is made read-only")
+    var child = fork()
+    if child == 0:
+        # The run time has a `SIGSEGV` handler of its own that writes out a
+        # report, and the default is put back so that the fault ends the child
+        # quietly. `SIG_DFL` is a null handler, so this is
+        # `signal(SIGSEGV, SIG_DFL)`.
+        _ = signal(SIGSEGV, null_ptr[UInt8]())
+        p.unsafe_store(0, UInt8(67))
+        _ = exit(0)
+    assert_true(child > 0, "there is a child to try the write")
+    var status = unsafe_alloc[Int32](1)
+    status.unsafe_store(0, 0)
+    assert_equal(waitpid(child, status, 0), child, "and it is waited for")
+    assert_true(
+        WIFSIGNALED(status.unsafe_load()),
+        "the write it tried ended it, rather than landing",
+    )
+    assert_equal(
+        WTERMSIG(status.unsafe_load()),
+        SIGSEGV,
+        "which is what a write to a read-only page is",
+    )
+    status.unsafe_free()
+
     assert_equal(
         mprotect(p, SIZE, RW), 0, "and the writing of it is given back"
     )
@@ -74,11 +111,31 @@ def test_mmap_hands_back_memory() raises:
     assert_equal(
         msync(p, SIZE, MS_SYNC), 0, "msync takes the same two, and flags"
     )
+    # The flags are the one argument the three of them do not share, and what
+    # says so is a number that is a flag to one of them and not to the other:
+    # 8 is `MADV_FREE` to `madvise`, and no `MS_` bit at all to `msync`, which
+    # refuses it. A binding pointed at `madvise` answers 0.
+    set_errno(0)
+    assert_equal(msync(p, SIZE, 8), -1, "msync refuses flags it does not know")
+    assert_equal(
+        get_errno(),
+        Int32(EINVAL),
+        "and says which of them it minded, rather than answering 0",
+    )
+
     assert_equal(madvise(p, SIZE, MADV_WILLNEED), 0, "madvise takes an advice")
     assert_equal(
         posix_madvise(p, SIZE, POSIX_MADV_NORMAL),
         0,
         "and posix_madvise takes one of its own",
+    )
+    # The other half of the same distinction: `posix_madvise` answers with the
+    # error number itself and `madvise` answers -1 and puts it in errno, so an
+    # advice neither of them knows comes back as two different numbers.
+    assert_equal(
+        posix_madvise(p, SIZE, 999),
+        Int32(EINVAL),
+        "an advice nobody knows comes back as the number, not as -1",
     )
 
     var vec = unsafe_alloc[UInt8](1)
@@ -89,6 +146,22 @@ def test_mmap_hands_back_memory() raises:
     vec.unsafe_free()
 
     assert_equal(munmap(p, SIZE), 0, "and munmap takes the two back")
+
+    # The address is not a mapping any more, and asking to change its
+    # protection is the way that shows: `munmap` has the same signature as
+    # `mlock` and the same answer of 0, and what a lock would have left behind
+    # is exactly the mapping this asks after.
+    set_errno(0)
+    assert_equal(
+        mprotect(p, SIZE, PROT_READ),
+        -1,
+        "the address munmap gave back is not a mapping to protect",
+    )
+    assert_equal(
+        get_errno(),
+        Int32(ENOMEM),
+        "which is what the range not being mapped is called",
+    )
 
 
 def test_shm_open_makes_an_object() raises:
@@ -128,6 +201,31 @@ def test_mlock_keeps_a_page_and_munlock_lets_it_go() raises:
 
     assert_equal(mlock(p, SIZE), 0, "mlock keeps it in")
     assert_equal(munlock(p, SIZE), 0, "and munlock lets it go")
+
+    # What separates the two is what they do when the lock cannot be granted:
+    # `mlock` asks for something and is refused, and `munlock` gives back what
+    # was never taken and answers 0 all the same. The limit on how much of a
+    # process may be kept in is what makes the first one refuse, and it is put
+    # back to what it was before anything else is asked.
+    var before = unsafe_alloc[Rlimit](1)
+    before.unsafe_offset(0)[] = Rlimit()
+    assert_equal(getrlimit(RLIMIT_MEMLOCK, before), 0, "the lock limit is read")
+    var nothing = unsafe_alloc[Rlimit](1)
+    nothing.unsafe_offset(0)[] = before.unsafe_offset(0)[]
+    nothing.unsafe_offset(0)[].rlim_cur = 0
+    assert_equal(
+        setrlimit(RLIMIT_MEMLOCK, nothing), 0, "and brought down to nothing"
+    )
+    assert_true(
+        mlock(p, SIZE) != 0, "nothing may be kept in, so mlock is refused"
+    )
+    assert_equal(
+        munlock(p, SIZE), 0, "and munlock lets go of what was never held"
+    )
+    assert_equal(setrlimit(RLIMIT_MEMLOCK, before), 0, "the limit is put back")
+
+    nothing.unsafe_free()
+    before.unsafe_free()
     _ = munmap(p, SIZE)
 
 
@@ -171,6 +269,28 @@ def test_the_two_that_are_linux_only() raises:
 
         assert_equal(mlock2(p, SIZE, 0), 0, "mlock2 with no flags keeps it in")
         assert_equal(munlock(p, SIZE), 0, "and munlock lets it go")
+
+        # With nothing allowed to be kept in, `mlock2` refuses and `madvise`
+        # -- the call it would be swapped for, taking the same three arguments
+        # -- does not, having no such notion.
+        var was = unsafe_alloc[Rlimit](1)
+        was.unsafe_offset(0)[] = Rlimit()
+        assert_equal(
+            getrlimit(RLIMIT_MEMLOCK, was), 0, "the lock limit is read"
+        )
+        var none = unsafe_alloc[Rlimit](1)
+        none.unsafe_offset(0)[] = was.unsafe_offset(0)[]
+        none.unsafe_offset(0)[].rlim_cur = 0
+        assert_equal(
+            setrlimit(RLIMIT_MEMLOCK, none), 0, "and brought down to nothing"
+        )
+        assert_true(
+            mlock2(p, SIZE, 0) != 0, "so mlock2 is refused and madvise is not"
+        )
+        assert_equal(madvise(p, SIZE, 0), 0, "which the same limits allow")
+        assert_equal(setrlimit(RLIMIT_MEMLOCK, was), 0, "the limit is put back")
+        none.unsafe_free()
+        was.unsafe_free()
 
         assert_equal(
             remap_file_pages(p, SIZE, PROT_READ, 0, 0),

@@ -259,14 +259,58 @@ def test_setting_times_in_microseconds() raises:
         st.unsafe_offset(0)[].mtime(), 3000000, "mtime is the one that was set"
     )
 
-    # The same two, given without a path.
+    # The same two, given without a path, but this time on a link: on a plain
+    # file `lutimes` and `utimes` are the same call, and a link is the one thing
+    # that tells them apart. The file and the link to it are given different
+    # times, and each is asked back where it lives -- `stat` follows the link
+    # and `lstat` does not.
+    var target = string_to_char_ptr("/tmp/libc_times_us_target")
+    var link = string_to_char_ptr("/tmp/libc_times_us_link")
+    _ = unlink(link)
+    var tfd = open(target, O_CREAT | O_RDWR, 0o644)
+    assert_true(tfd >= 0, "there is a file for the link to name")
+    assert_equal(symlink(target, link), 0, "and a link to it")
+
     tv.unsafe_offset(0)[].tv_sec = 4000000
     tv.unsafe_offset(1)[].tv_sec = 4000000
-    assert_equal(lutimes(path, tv), 0, "lutimes sets them too")
-    assert_equal(stat(path, st), 0, "asked again")
+    assert_equal(utimes(target, tv), 0, "the file is given one time")
+    tv.unsafe_offset(0)[].tv_sec = 4500000
+    tv.unsafe_offset(1)[].tv_sec = 4500000
+    assert_equal(lutimes(link, tv), 0, "and the link another")
+    assert_equal(stat(target, st), 0, "the file is asked after")
     assert_equal(
-        st.unsafe_offset(0)[].mtime(), 4000000, "and mtime moved again"
+        st.unsafe_offset(0)[].mtime(),
+        4000000,
+        "and kept the time it was given rather than the link's",
     )
+    assert_equal(lstat(link, st), 0, "the link is asked after in its own right")
+    assert_equal(
+        st.unsafe_offset(0)[].mtime(), 4500000, "and has the time it was given"
+    )
+
+    # And the same question the other way round: `utimes` on the link follows
+    # it, so the time lands on the file the link names and the link keeps its
+    # own. A binding that did not follow would move the link's time instead,
+    # which is the assertion above, and leave the file where it was.
+    tv.unsafe_offset(0)[].tv_sec = 4600000
+    tv.unsafe_offset(1)[].tv_sec = 4600000
+    assert_equal(utimes(link, tv), 0, "utimes on the link follows it")
+    assert_equal(stat(target, st), 0, "so the file is asked after")
+    assert_equal(
+        st.unsafe_offset(0)[].mtime(), 4600000, "and has the newer time"
+    )
+    assert_equal(lstat(link, st), 0, "and the link is asked after again")
+    assert_equal(
+        st.unsafe_offset(0)[].mtime(),
+        4500000,
+        "having kept the time that was set on it",
+    )
+
+    _ = close(tfd)
+    _ = unlink(link)
+    _ = unlink(target)
+    link.unsafe_free()
+    target.unsafe_free()
 
     # And again, by descriptor.
     tv.unsafe_offset(0)[].tv_sec = 5000000

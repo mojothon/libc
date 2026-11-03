@@ -28,7 +28,10 @@ from libc.sys.sysinfo import (
     get_phys_pages,
     sysinfo,
 )
+from libc.constant import MAP_ANONYMOUS, MAP_PRIVATE, PROT_READ, PROT_WRITE
+from libc.sys.mman import mmap, munmap
 from libc.unistd import SC_NPROCESSORS_ONLN, SC_PAGESIZE, sysconf
+from libc.utils import null_ptr
 
 
 def test_the_number_of_processors_is_the_one_sysconf_gives() raises:
@@ -73,6 +76,30 @@ def test_the_memory_pages_and_the_memory_bytes_are_one_amount() raises:
         assert_true(
             available <= pages,
             "but no more than there is, which is the whole of it",
+        )
+
+        # Which of the two counts what, asked by taking memory away: a quarter
+        # of a gigabyte, touched page by page so that it is really taken, and
+        # the two numbers read again. What the machine has does not move; what
+        # can still be had goes down. Swapped, one of those two says the other
+        # thing.
+        comptime BITE = 256 << 20
+        comptime RW: Int32 = PROT_READ | PROT_WRITE
+        comptime PRIVATE_ANON: Int32 = MAP_PRIVATE | MAP_ANONYMOUS
+
+        var had = Int(get_phys_pages())
+        var could = Int(get_avphys_pages())
+        var bite = mmap(null_ptr[UInt8](), BITE, RW, PRIVATE_ANON, -1, 0)
+        assert_true(Int(UInt(bite)) > 0, "there is memory to take")
+        for i in range(0, BITE, pagesize):
+            bite.unsafe_store(i, UInt8(1))
+        var has = Int(get_phys_pages())
+        var can = Int(get_avphys_pages())
+        _ = munmap(bite, BITE)
+
+        assert_equal(has, had, "what the machine has does not move")
+        assert_true(
+            can < could, "and what can still be had is less for the taking"
         )
 
         var info = unsafe_alloc[Sysinfo](1)

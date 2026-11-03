@@ -38,7 +38,7 @@ the bottom.
 | `libc.dirent` | `<dirent.h>` | 18 |
 | `libc.sys.wait` | `<sys/wait.h>` | 25 |
 | `libc.inttypes` | `<inttypes.h>` | 7 |
-| `libc.sys.resource` | `<sys/resource.h>` | 14 |
+| `libc.sys.resource` | `<sys/resource.h>` | 15 |
 | `libc.network` | `<arpa/inet.h>` byte order and address conversion | 16 |
 | `libc.netdb` | `<netdb.h>` name and service lookup | 66 |
 | `libc.netif` | `<net/if.h>` interface names and numbers | 9 |

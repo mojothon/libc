@@ -88,12 +88,14 @@ def test_a_which_that_is_not_one_of_the_three_is_refused() raises:
     assert_equal(get_errno(), EINVAL, "and says the same thing")
 
 
-def test_setrlimit_asked_for_the_limit_already_there() raises:
+def test_setrlimit_asked_for_a_limit_one_lower() raises:
     """`setrlimit` sets a limit, which makes it an awkward thing to
-    try: what is asked of it here is the limit that is already
-    there, read first, so that setting it changes nothing. The hard
-    limit cannot be raised by an ordinary process in any case, so
-    there is nothing else it could safely be asked for.
+    try: what is asked of it here is the limit that is there minus
+    one, which is a lowering and so always allowed, and then read back
+    to see it took. The number is put back where it was afterwards. A
+    binding pointed at `getrlimit` -- same signature, same answer of 0
+    -- reads the old limit into the argument and leaves the process
+    with what it already had.
 
     `prlimit` is the setting and the reading in one call, and can be
     asked of another process — pid 0 meaning this one. Given nothing
@@ -104,13 +106,25 @@ def test_setrlimit_asked_for_the_limit_already_there() raises:
     here.unsafe_offset(0)[] = Rlimit()
     assert_equal(getrlimit(RLIMIT_NOFILE, here), 0, "the limit is read")
 
+    var lower = unsafe_alloc[Rlimit](1)
+    lower.unsafe_offset(0)[] = here.unsafe_offset(0)[]
+    lower.unsafe_offset(0)[].rlim_cur = here.unsafe_offset(0)[].rlim_cur - 1
     assert_equal(
-        setrlimit(RLIMIT_NOFILE, here), 0, "and set to what it already was"
+        setrlimit(RLIMIT_NOFILE, lower), 0, "and set to one lower than that"
     )
 
     var after = unsafe_alloc[Rlimit](1)
     after.unsafe_offset(0)[] = Rlimit()
     assert_equal(getrlimit(RLIMIT_NOFILE, after), 0, "and read again")
+    assert_equal(
+        Int(after.unsafe_offset(0)[].rlim_cur),
+        Int(lower.unsafe_offset(0)[].rlim_cur),
+        "and what comes back is what was set, not what was there before",
+    )
+    assert_equal(setrlimit(RLIMIT_NOFILE, here), 0, "and the limit is put back")
+    after.unsafe_offset(0)[] = Rlimit()
+    assert_equal(getrlimit(RLIMIT_NOFILE, after), 0, "read once more")
+    lower.unsafe_free()
 
     comptime if not CompilationTarget.is_macos():
         var asked = unsafe_alloc[Rlimit](1)
@@ -135,5 +149,5 @@ def main() raises:
     test_getpriority_and_nice_agree_on_who_the_caller_is()
     test_setpriority_can_only_be_moved_this_way()
     test_a_which_that_is_not_one_of_the_three_is_refused()
-    test_setrlimit_asked_for_the_limit_already_there()
+    test_setrlimit_asked_for_a_limit_one_lower()
     print("resource ok")

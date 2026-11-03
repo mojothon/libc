@@ -19,6 +19,10 @@ from libc.unistd import nice
 # Which limit is meant. The two platforms number them differently:
 # Linux has RLIMIT_NOFILE at 7 and RLIMIT_AS at 9, Darwin at 8 and 5.
 comptime RLIMIT_NOFILE: Int32 = 8 if CompilationTarget.is_macos() else 7
+# How much of a process may be kept in memory rather than written out. This is
+# what `mlock` is refused against, which is the only way a test can tell it from
+# `munlock` without reading the kernel's own bookkeeping.
+comptime RLIMIT_MEMLOCK: Int32 = 6 if CompilationTarget.is_macos() else 8
 comptime RLIMIT_AS: Int32 = 5 if CompilationTarget.is_macos() else 9
 
 comptime RUSAGE_SELF: Int32 = 0

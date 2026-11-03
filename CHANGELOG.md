@@ -924,6 +924,25 @@ All notable changes to this project are documented here. The format follows
   gets a second round in the cross-process test with `_broadcast` in the child,
   because with one waiter `_signal` and `_broadcast` are the same wake-up.
 
+- **`sys` had fourteen survivors and thirteen of them are now caught.**
+  `munmap` was leaving nothing to observe, so the test asks `mprotect` on the
+  address it gave back -- not a mapping any more, which is `ENOMEM`. `mlock`
+  and `munlock` are separated by the one condition that tells them apart: with
+  `RLIMIT_MEMLOCK` brought down to nothing the first is refused and the second
+  still answers 0. `mprotect` is asked from a child that writes to the page it
+  made read-only, which is the only way to see a refusal that would end the
+  process asking; `msync` by flags only it validates, `posix_madvise` by the
+  error number it returns rather than puts in errno, `epoll_create1` by being
+  called with no flags at all (a size of 0 is what `epoll_create` refuses),
+  `lutimes` and `utimes` on a link rather than a plain file, `setrlimit` by
+  lowering the limit by one and reading it back, and `get_avphys_pages` by
+  taking a quarter of a gigabyte and watching which of the two numbers moves.
+  `get_nprocs` against `get_nprocs_conf` is the one left, and it needs a
+  machine with a processor taken offline.
+
+- **`RLIMIT_MEMLOCK` is bound**, on both platforms, so that a lock can be asked
+  for where it cannot be granted.
+
 - **The wide-character calls, asked where a count and a string differ.**
   `wchar` had fourteen survivors and seven of them were the `wmem` family:
   a count and a string are the same thing until something in the middle is a

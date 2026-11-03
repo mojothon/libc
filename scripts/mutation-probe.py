@@ -519,6 +519,13 @@ NO_OBSERVATION = {
         "there. The `_l` forms are separated by a locale object the test "
         "makes; this one has no such argument to hold the difference"
     ),
+    "get_nprocs->get_nprocs_conf": (
+        "measured on a machine with every processor online, which is the only "
+        "kind this suite can run on: a configured processor that has been "
+        "taken offline is the whole of the difference between the two, and "
+        "arranging one is not something a test can do without the machine to "
+        "itself"
+    ),
     "pthread_cond_destroy->pthread_cond_signal": (
         "glibc's `pthread_cond_destroy` changes nothing and answers 0 -- "
         "measured, with a waiter sitting on the condition -- so there is no "

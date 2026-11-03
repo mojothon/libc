@@ -38,6 +38,14 @@ def test_watching_a_pipe() raises:
         var ep = epoll_create1(EPOLL_CLOEXEC)
         assert_true(ep >= 0, "epoll_create1 makes an instance")
 
+        # And once with no flags at all, which is the call that has a different
+        # signature: `epoll_create` takes a size, and a size of 0 is the one
+        # number it refuses. A binding that had the two swapped would answer -1
+        # here, having handed the kernel a size it will not accept.
+        var plain = epoll_create1(0)
+        assert_true(plain >= 0, "and one with no flags at all")
+        assert_equal(close(plain), 0, "which closes like the other")
+
         var ends = unsafe_alloc[Int32](2)
         assert_equal(pipe(ends), 0, "a pipe to watch")
         var reader = ends.unsafe_load(0)

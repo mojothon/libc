@@ -416,6 +416,17 @@ answer 0, and what separates them is what may be done with the object
 afterwards, which after a destroy is undefined. Calling that "the same answer"
 would have been the kind of entry that reads as an answer when it is a hole.
 
+`sys` had fourteen, and they were not one habit but five. A call that only
+promises it worked is untestable until something else is asked about its
+effect: `munmap` is asked through a `mprotect` on the address it gave back,
+`mprotect` through a child that writes to the page it took away -- the only way
+to see a refusal that would end the process asking. `mlock` and `munlock` are
+separated by the one condition that tells them apart, a lock limit of nothing,
+where the first is refused and the second still answers 0. `msync` is told from
+`madvise` by a number that is a flag to one and an advice to the other, and
+`posix_madvise` from `madvise` by where the error goes: the number itself from
+one, -1 and errno from the other.
+
 The rest was `answer - expected < epsilon`, which is the one-sided bound the
 `pow` test had above, written as a tolerance. Eight lines were like that, and
 one of them was in `test_stdlib` where no probe sample had ever landed:
