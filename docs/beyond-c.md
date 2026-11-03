@@ -329,6 +329,10 @@ the same call and 20 that passed — and the twenty are worth reading as one
 number, because five samples of twenty-four had found eleven between them. The
 remaining nine were in candidates no sample had happened to draw.
 
+After the twenty were dealt with the same sweep comes back 152 caught, 11 that
+took the process down, 27 that are the same call and none unaccounted for — the
+axis, not a sample of it, with every swap either caught or written down.
+
 Five of the twenty had an assertion to write, and two of those are the same
 mistake as the ulp — `powf` was asserted as `powf(2, 10) - 1024 < 1e-6`, which
 is true of every answer below 1024 and so is true of `powf(10, 2)`, and

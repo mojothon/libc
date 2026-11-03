@@ -854,7 +854,8 @@ All notable changes to this project are documented here. The format follows
   caught, 11 crashed, 13 that are the same call and 20 that passed. Five
   samples of twenty-four had found eleven of those twenty; the other nine were
   in candidates no sample happened to draw, which is the measure of what
-  sampling was leaving on the table.
+  sampling was leaving on the table. With those dealt with the same sweep comes
+  back 152 caught, 11 crashed, 27 the same call and none unaccounted for.
 
   Five had an assertion to write. `powf(2, 10) - 1024 < 1e-6` is true of every
   answer below 1024 and therefore of `powf(10, 2)`, and `nextafterf` was
