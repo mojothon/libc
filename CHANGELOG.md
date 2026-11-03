@@ -924,6 +924,21 @@ All notable changes to this project are documented here. The format follows
   gets a second round in the cross-process test with `_broadcast` in the child,
   because with one waiter `_signal` and `_broadcast` are the same wake-up.
 
+- **`file`, `fenv`, `netdb` and `unistd`: ten more caught.** `clearerr` was
+  asked whether it cleared the flag and not whether it left the stream where it
+  was -- which is what `rewind` does not; `feholdexcept` was asked to answer 0
+  with no flag standing, and the flags being quiet is the whole difference
+  between it and `fegetenv`; `hstrerror` and `gai_strerror` are asked to say
+  different things about the same number; `sleep` is timed either side of a
+  second, since its answer of 0 is `close`'s answer too; `fchdir` is asked
+  where the process is afterwards -- from `/` rather than from `/tmp`, which it
+  was already standing in; `gettid` is asked to equal `getpid`, and `fork` is
+  what it would otherwise have been; `execv` and `execvp` are asked in a child
+  about a bare name, which is the one shape they disagree on; and
+  `getusershell` is asked for a path, which `getlogin` does not hand back.
+  `setusershell` against `endusershell` is unobservable and measured: the walk
+  starts again either way.
+
 - **`string`, `sched`, `network` and `time`: nineteen survivors, and only one
   of them left.** `memcpy` was called for its side effect and not asked what it
   answered, which is the one thing `mempcpy` answers differently; `strcmp` was

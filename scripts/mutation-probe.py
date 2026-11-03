@@ -597,6 +597,12 @@ NO_OBSERVATION = {
         "there. The `_l` forms are separated by a locale object the test "
         "makes; this one has no such argument to hold the difference"
     ),
+    "setusershell->endusershell": (
+        "measured: the walk over the shells starts again whether the list is "
+        "put back at its beginning or shut, because the next `getusershell` "
+        "reads the file again from the top in either case. Both answer "
+        "nothing, and the walk after them is the same walk"
+    ),
     "strcoll->strcmp": (
         "measured in the C locale, which is the one this suite runs in: "
         "collation there is code-point order, and `strcoll` answers the same "

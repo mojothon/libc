@@ -4,6 +4,7 @@ from std.testing import assert_equal, assert_true
 
 from libc.fenv import (
     FE_ALL_EXCEPT,
+    FE_DIVBYZERO,
     FE_DOWNWARD,
     FE_INEXACT,
     FE_INVALID,
@@ -124,7 +125,17 @@ def test_environment_round_trip() raises:
     # feholdexcept saves the environment and quiets the flags, and feupdateenv
     # puts the environment back while keeping whatever was raised meanwhile.
     assert_equal(feclearexcept(FE_ALL_EXCEPT), 0, "the flags start out clear")
+    # One of them is raised first, because the difference between holding the
+    # environment and saving it is this: `fegetenv` writes the environment down
+    # and leaves the flags as it found them, and `feholdexcept` writes it down
+    # and then quiets them.
+    assert_equal(feraiseexcept(FE_DIVBYZERO), 0, "one of the flags is raised")
     assert_equal(feholdexcept(env), 0, "the environment was saved and quieted")
+    assert_equal(
+        fetestexcept(FE_ALL_EXCEPT),
+        0,
+        "and the flags are quiet, which saving alone would not have made them",
+    )
     assert_equal(fesetround(FE_UPWARD), 0, "the mode was changed")
     assert_equal(feraiseexcept(FE_INEXACT), 0, "an exception was raised")
     assert_equal(feupdateenv(env), 0, "the environment was restored")

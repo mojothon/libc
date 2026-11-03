@@ -487,6 +487,15 @@ def test_the_resolver_says_what_a_number_meant() raises:
     is called because it is there: it says nothing back and so cannot
     be asked anything.
     """
+    # And they are a resolver's words rather than a name service's, which is
+    # the call one letter away: `gai_strerror` has the same signature and hands
+    # back the same kind of pointer, and for a number it does know says
+    # something else.
+    assert_true(
+        char_ptr_to_string(hstrerror(1)) != char_ptr_to_string(gai_strerror(1)),
+        "a resolver's words are not the name service's",
+    )
+
     for err in range(5):
         var words = hstrerror(Int32(err))
         assert_true(

@@ -83,6 +83,12 @@ def test_a_stream_back_and_forth() raises:
 
     _ = clearerr(back)
     assert_equal(feof(back), 0, "clearerr puts the flag back")
+    # And puts nothing else anywhere: the stream is still at the end, so the
+    # next read finds the same end. `rewind` clears the same flag and puts the
+    # stream back at its beginning -- the two take the same stream and answer
+    # nothing at all, and the byte that comes back is what says which ran.
+    assert_equal(fgetc(back), -1, "and the stream is still at the end")
+    assert_equal(feof(back), 1, "which reading found again")
     assert_equal(fclose(back), 0, "and the stream closes")
     _ = unlink(path)
     path.unsafe_free()

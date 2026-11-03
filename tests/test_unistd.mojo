@@ -18,6 +18,7 @@ from libc.constant import (
 )
 from libc.signal import SIGALRM, SIGKILL, kill
 from libc.stdlib import _Exit, exit, grantpt, posix_openpt, ptsname, unlockpt
+from libc.time import CLOCK_MONOTONIC, clock_gettime, timespec
 from libc.sys.stat import Stat, fchmod, fstat, stat
 from libc.sys.utsname import Utsname, uname
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, WIFSIGNALED, WTERMSIG, waitpid
@@ -227,6 +228,27 @@ def test_alarm_and_sleep() raises:
     """
     assert_equal(alarm(0), 0, "no alarm was set, so none was replaced")
     assert_equal(sleep(0), 0, "and there was nothing to sleep through")
+
+    # And a second is a second: the clock is read either side of it, since
+    # `sleep`'s own answer of 0 is what `close` answers too, and `close` is one
+    # line away in the module with the same argument and the same answer.
+    var before = unsafe_alloc[timespec](1)
+    before.unsafe_offset(0)[] = timespec()
+    assert_equal(clock_gettime(CLOCK_MONOTONIC, before), 0, "the clock is read")
+    assert_equal(sleep(1), 0, "a second is asked for")
+    var after = unsafe_alloc[timespec](1)
+    after.unsafe_offset(0)[] = timespec()
+    assert_equal(clock_gettime(CLOCK_MONOTONIC, after), 0, "and read again")
+    var waited = (
+        Int(after.unsafe_offset(0)[].tv_sec)
+        - Int(before.unsafe_offset(0)[].tv_sec)
+    ) * 1000000000 + (
+        Int(after.unsafe_offset(0)[].tv_nsec)
+        - Int(before.unsafe_offset(0)[].tv_nsec)
+    )
+    assert_true(waited >= 900000000, "which took about a second to be over")
+    before.unsafe_free()
+    after.unsafe_free()
 
     assert_equal(alarm(10), 0, "ten seconds are asked for, and none was there")
     var left = alarm(0)
@@ -635,9 +657,27 @@ def test_chdir_and_fchdir() raises:
     var tmp = string_to_char_ptr("/tmp")
     assert_equal(chdir(tmp), 0, "chdir takes a path")
 
-    var fd = open(string_to_char_ptr("/tmp"), O_RDONLY)
+    # The root rather than the directory the process is already standing in:
+    # from `/tmp` a descriptor on `/tmp` would move nothing, and `close` -- the
+    # call one line away, taking the same descriptor and answering the same 0
+    # -- would look exactly like a move.
+    var fd = open(string_to_char_ptr("/"), O_RDONLY)
     assert_true(fd >= 0, "the directory opens")
     assert_equal(fchdir(fd), 0, "fchdir takes a descriptor")
+    # And it is a move rather than an answer: where the process is now is
+    # `/tmp`, which is asked of it. `close` takes the same descriptor and
+    # answers the same 0 and moves nothing.
+    var now_here = unsafe_alloc[UInt8](256)
+    now_here.unsafe_store(0, 0)
+    assert_true(
+        Int(UInt(getcwd(now_here, 256))) != 0, "where it is now is known"
+    )
+    assert_equal(
+        char_ptr_to_string(now_here),
+        "/",
+        "and it is where the descriptor was",
+    )
+    now_here.unsafe_free()
     _ = close(fd)
 
     assert_equal(chdir(start), 0, "and it comes back")
@@ -648,7 +688,12 @@ def test_chdir_and_fchdir() raises:
 def test_the_ids_and_the_terminal() raises:
     assert_true(getppid() > 0, "there is a parent process")
     comptime if not CompilationTarget.is_macos():
-        assert_true(gettid() > 0, "and this thread has an id")
+        # The main thread of a process has that process's own number, and
+        # `fork` -- the call one line away with the same answer of a positive
+        # number -- would have made a process instead of answering.
+        assert_equal(
+            Int(gettid()), Int(getpid()), "and it is this process's own"
+        )
 
     # Not standard input, which is a terminal when somebody is watching
     # and not when they are not: `/dev/null` is never one.
@@ -851,6 +896,53 @@ def test_the_exec_family_refuses_what_is_not_there() raises:
     envp.unsafe_free()
     argv.unsafe_free()
     name.unsafe_free()
+
+    # The bare name of a program that is on the path, which is the one shape
+    # that tells `execv` from `execvp`: one is told a path and refuses a name
+    # with no slash in it, and the other goes and looks. Both are asked in a
+    # child, because the one that succeeds does not come back.
+    var shell = string_to_char_ptr("sh")
+    var args = unsafe_alloc[c_ptr[UInt8]](4)
+    args.unsafe_offset(0)[] = shell
+    args.unsafe_offset(1)[] = string_to_char_ptr("-c")
+    args.unsafe_offset(2)[] = string_to_char_ptr("exit 7")
+    args.unsafe_offset(3)[] = null_ptr[UInt8]()
+
+    var child = fork()
+    if child == 0:
+        _ = execv(shell, args)
+        # It came back, which is the answer under test: `execv` was handed a
+        # name rather than a path.
+        _ = exit(3)
+    assert_true(child > 0, "there is a child for `execv` to be tried in")
+    var status = unsafe_alloc[Int32](1)
+    status.unsafe_store(0, 0)
+    assert_equal(waitpid(child, status, 0), child, "and it is waited for")
+    assert_equal(
+        Int(WEXITSTATUS(status.unsafe_load())),
+        3,
+        "execv refuses a name with no path in it",
+    )
+    status.unsafe_free()
+
+    var second = fork()
+    if second == 0:
+        _ = execvp(shell, args)
+        _ = exit(3)
+    assert_true(second > 0, "and one for `execvp`")
+    var second_status = unsafe_alloc[Int32](1)
+    second_status.unsafe_store(0, 0)
+    assert_equal(
+        waitpid(second, second_status, 0), second, "which is waited for"
+    )
+    assert_equal(
+        Int(WEXITSTATUS(second_status.unsafe_load())),
+        7,
+        "execvp goes and looks, and the shell runs",
+    )
+    second_status.unsafe_free()
+    args.unsafe_free()
+    shell.unsafe_free()
 
 
 def test_execve_hands_over_the_arguments_and_the_environment() raises:
@@ -1056,6 +1148,14 @@ def test_walking_the_shells_a_user_may_have() raises:
     assert_true(
         char_ptr_to_string(first).byte_length() > 0,
         "it is a path and not nothing",
+    )
+    # A path, and this is what says so: `getlogin` hands back a name instead,
+    # being the call next to it in the module with the same answer of a
+    # pointer, and the name of somebody on the machine does not begin at the
+    # root.
+    assert_true(
+        char_ptr_to_string(first).startswith("/"),
+        "and it begins at the root, which is where a path begins",
     )
     endusershell()
 
