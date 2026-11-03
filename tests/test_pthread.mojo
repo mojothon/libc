@@ -570,70 +570,108 @@ def test_detaching_the_thread_that_is_asking() raises:
     )
 
 
-def test_what_cancelling_this_thread_from_a_child_does() raises:
-    """PROBE: `pthread_cancel` asked of the only thread there is, in a
-    child, so that whatever it does is done to the child.
+def _ask_to_be_cancelled_from_a_child(disabled: Bool, fds: c_ptr[Int32]) raises:
+    """The child's half: ask for this thread to be cancelled, wait at a
+    cancellation point, and write a byte if it comes back.
 
-    Two cancellation points are offered in turn -- `usleep` and a
-    `read` that runs out of input -- and a byte is written after each
-    one that is survived, so the parent can say which one, if either,
-    took the child. This test asserts nothing about the outcome yet: it
-    prints it, so that a platform whose cancellation is not there can
-    say so before an assertion is written.
+    With cancellation disabled the request is held rather than dropped,
+    which is the state a caller sets when it must not be interrupted
+    part-way through something -- so the byte is written and the child
+    leaves with 0. With cancellation left at its default the byte is
+    what is never written.
     """
-    var fds = unsafe_alloc[Int32](2)
-    assert_equal(pipe(fds), 0, "a pipe to report down")
-    var input_fds = unsafe_alloc[Int32](2)
-    assert_equal(pipe(input_fds), 0, "a pipe to read from")
+    if disabled:
+        var old = unsafe_alloc[Int32](1)
+        assert_equal(
+            pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, old),
+            0,
+            "this child will not be interrupted part-way",
+        )
+        old.unsafe_free()
 
-    var child = fork()
-    if child == 0:
-        _ = close(fds.unsafe_offset(0)[])
-        var asked = pthread_cancel(pthread_self())
-        var said = unsafe_alloc[UInt8](1)
+    _ = pthread_cancel(pthread_self())
 
-        _ = usleep(50000)
-        said.unsafe_store(0, UInt8(1))
-        _ = write(fds.unsafe_offset(1)[], said, 1)
-
-        var got = unsafe_alloc[UInt8](1)
-        _ = read(input_fds.unsafe_offset(0)[], got, 1)
-        said.unsafe_store(0, UInt8(2))
-        _ = write(fds.unsafe_offset(1)[], said, 1)
-
-        said.unsafe_store(0, UInt8(asked + 3))
-        _ = write(fds.unsafe_offset(1)[], said, 1)
-        _ = exit(7)
-
-    _ = close(fds.unsafe_offset(1)[])
-    _ = close(input_fds.unsafe_offset(0)[])
-    var status = unsafe_alloc[Int32](1)
-    status.unsafe_offset(0)[] = 0
-    assert_equal(waitpid(child, status, 0), child, "the child is waited for")
-    _ = close(input_fds.unsafe_offset(1)[])
+    # A cancellation point: `usleep` is on the list, so a request that
+    # is enabled is taken here and the code below never runs.
+    _ = usleep(50000)
 
     var said = unsafe_alloc[UInt8](1)
-    var survived = ""
-    while read(fds.unsafe_offset(0)[], said, 1) == 1:
-        if said.unsafe_load(0) == UInt8(1):
-            survived += "usleep "
-        elif said.unsafe_load(0) == UInt8(2):
-            survived += "read "
-        else:
-            survived += "returned-" + String(Int(said.unsafe_load(0)) - 3) + " "
+    said.unsafe_store(0, UInt8(1))
+    _ = write(fds.unsafe_offset(1)[], said, 1)
     said.unsafe_free()
-    print(
-        "cancel probe:",
-        "exited" if WIFEXITED(status.unsafe_load()) else "not-exited",
-        WEXITSTATUS(status.unsafe_load()),
-        "signalled" if WIFSIGNALED(status.unsafe_load()) else "not-signalled",
-        WTERMSIG(status.unsafe_load()),
-        "survived:",
-        survived,
-    )
-    status.unsafe_free()
-    fds.unsafe_free()
-    input_fds.unsafe_free()
+    _ = exit(0)
+
+
+def test_cancelling_this_thread_ends_it_unless_it_is_disabled() raises:
+    """`pthread_cancel` asked of the only thread there is, in a child, so
+    that what it does is done to the child.
+
+    Two children ask, and the difference between them is one call.
+    `pthread_setcancelstate(DISABLE)` is what a caller uses to say "not
+    part-way through this", and a cancellation point reached with the
+    request held comes back: the child writes a byte and leaves with 0.
+    The child that asked with cancellation left enabled never writes
+    anything at all, which is the whole of what the parent can see of it
+    -- how the run ends is the platform's business (glibc ends this
+    process with status 0, Darwin ends it on a signal), and neither is
+    asserted.
+
+    The pair is what makes it a question with an answer. A cancel that
+    did nothing would leave both children writing; a cancel that killed
+    outright would leave neither, and would also fail the first one,
+    which is asked to survive it.
+    """
+    for which in range(2):
+        var disabled = which == 1
+        var fds = unsafe_alloc[Int32](2)
+        assert_equal(pipe(fds), 0, "a pipe for the child to answer down")
+
+        var child = fork()
+        if child == 0:
+            _ = close(fds.unsafe_offset(0)[])
+            _ask_to_be_cancelled_from_a_child(disabled, fds)
+
+        _ = close(fds.unsafe_offset(1)[])
+        var status = unsafe_alloc[Int32](1)
+        status.unsafe_offset(0)[] = 0
+        assert_equal(
+            waitpid(child, status, 0), child, "the child is waited for"
+        )
+
+        var said = unsafe_alloc[UInt8](1)
+        said.unsafe_store(0, UInt8(0))
+        var came_back = read(fds.unsafe_offset(0)[], said, 1)
+        said.unsafe_free()
+
+        if disabled:
+            assert_equal(
+                came_back,
+                1,
+                (
+                    "with cancellation disabled the child comes back from the"
+                    " point"
+                ),
+            )
+            assert_true(
+                WIFEXITED(status.unsafe_load()), "and leaves of its own accord"
+            )
+            assert_equal(
+                Int(WEXITSTATUS(status.unsafe_load())), 0, "having written it"
+            )
+        else:
+            assert_equal(
+                came_back,
+                0,
+                "with cancellation enabled it does not come back at all",
+            )
+            assert_true(
+                WIFEXITED(status.unsafe_load())
+                or WIFSIGNALED(status.unsafe_load()),
+                "and the run has ended it, one way or the other",
+            )
+
+        status.unsafe_free()
+        fds.unsafe_free()
 
 
 def main() raises:
@@ -645,5 +683,5 @@ def main() raises:
     test_the_one_that_is_left()
     test_a_thread_can_be_asked_for_and_keeps_its_own_mask()
     test_detaching_the_thread_that_is_asking()
-    test_what_cancelling_this_thread_from_a_child_does()
+    test_cancelling_this_thread_ends_it_unless_it_is_disabled()
     print("test_pthread: ok")
