@@ -11,6 +11,9 @@ from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
 from libc.constant import EINVAL, c_ptr
+from libc.stdlib import exit
+from libc.sys.wait import WEXITSTATUS, WIFEXITED, WIFSIGNALED, WTERMSIG, waitpid
+from libc.unistd import close, fork, pipe, read, usleep, write
 from libc.pthread import (
     PTHREAD_CANCEL_ASYNCHRONOUS,
     PTHREAD_CANCEL_DEFERRED,
@@ -273,10 +276,9 @@ def test_which_thread_and_whether_it_may_end() raises:
     taken back once asked, and so a test that asked it of itself would
     end at that line rather than go on to the next.
 
-    `pthread_cancel` and `pthread_detach` are bound and not called. The
-    first is a request that cannot be withdrawn, and the second, asked
-    of the thread that is running the tests, leaves nothing after it
-    for the rest of them to go on with.
+    `pthread_cancel` is a request that cannot be withdrawn, so it is
+    asked below of a child rather than of the thread that is running
+    the tests; `pthread_detach` is asked further down, of this thread.
     """
     var me = pthread_self()
     var again = pthread_self()
@@ -568,6 +570,72 @@ def test_detaching_the_thread_that_is_asking() raises:
     )
 
 
+def test_what_cancelling_this_thread_from_a_child_does() raises:
+    """PROBE: `pthread_cancel` asked of the only thread there is, in a
+    child, so that whatever it does is done to the child.
+
+    Two cancellation points are offered in turn -- `usleep` and a
+    `read` that runs out of input -- and a byte is written after each
+    one that is survived, so the parent can say which one, if either,
+    took the child. This test asserts nothing about the outcome yet: it
+    prints it, so that a platform whose cancellation is not there can
+    say so before an assertion is written.
+    """
+    var fds = unsafe_alloc[Int32](2)
+    assert_equal(pipe(fds), 0, "a pipe to report down")
+    var input_fds = unsafe_alloc[Int32](2)
+    assert_equal(pipe(input_fds), 0, "a pipe to read from")
+
+    var child = fork()
+    if child == 0:
+        _ = close(fds.unsafe_offset(0)[])
+        var asked = pthread_cancel(pthread_self())
+        var said = unsafe_alloc[UInt8](1)
+
+        _ = usleep(50000)
+        said.unsafe_store(0, UInt8(1))
+        _ = write(fds.unsafe_offset(1)[], said, 1)
+
+        var got = unsafe_alloc[UInt8](1)
+        _ = read(input_fds.unsafe_offset(0)[], got, 1)
+        said.unsafe_store(0, UInt8(2))
+        _ = write(fds.unsafe_offset(1)[], said, 1)
+
+        said.unsafe_store(0, UInt8(asked + 3))
+        _ = write(fds.unsafe_offset(1)[], said, 1)
+        _ = exit(7)
+
+    _ = close(fds.unsafe_offset(1)[])
+    _ = close(input_fds.unsafe_offset(0)[])
+    var status = unsafe_alloc[Int32](1)
+    status.unsafe_offset(0)[] = 0
+    assert_equal(waitpid(child, status, 0), child, "the child is waited for")
+    _ = close(input_fds.unsafe_offset(1)[])
+
+    var said = unsafe_alloc[UInt8](1)
+    var survived = ""
+    while read(fds.unsafe_offset(0)[], said, 1) == 1:
+        if said.unsafe_load(0) == UInt8(1):
+            survived += "usleep "
+        elif said.unsafe_load(0) == UInt8(2):
+            survived += "read "
+        else:
+            survived += "returned-" + String(Int(said.unsafe_load(0)) - 3) + " "
+    said.unsafe_free()
+    print(
+        "cancel probe:",
+        "exited" if WIFEXITED(status.unsafe_load()) else "not-exited",
+        WEXITSTATUS(status.unsafe_load()),
+        "signalled" if WIFSIGNALED(status.unsafe_load()) else "not-signalled",
+        WTERMSIG(status.unsafe_load()),
+        "survived:",
+        survived,
+    )
+    status.unsafe_free()
+    fds.unsafe_free()
+    input_fds.unsafe_free()
+
+
 def main() raises:
     test_the_attribute_object()
     test_the_scheduling_settings()
@@ -577,4 +645,5 @@ def main() raises:
     test_the_one_that_is_left()
     test_a_thread_can_be_asked_for_and_keeps_its_own_mask()
     test_detaching_the_thread_that_is_asking()
+    test_what_cancelling_this_thread_from_a_child_does()
     print("test_pthread: ok")

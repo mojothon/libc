@@ -102,25 +102,21 @@ Mojo has no 80-bit type.
 
 ## What the suite does not ask
 
-One of the bindings would stop the run rather than fail it, which is a
-worse trade than no test at all:
+Six bindings are not asked anything, and every one of them has a reason that
+is about the call rather than about the suite:
 
-| Call | Why not |
-|---|---|
-| `libc.pthread.pthread_cond_wait` | Waits for another thread to signal a condition, and there is one thread here to wait with. |
+- `ioctl` is variadic with the request deciding what the arguments mean.
+- `putwchar` writes to a stream the whole process shares, and orients it:
+  forking a child does not get a fresh stream to try it on, only the one the
+  suite has already written to as bytes.
+- `prctl` is Linux's, and changes the process it is called on.
+- `pthread_atfork` registers a fork handler that the just-in-time run this
+  suite uses cannot resolve; a built binary links and answers fine.
+- `sched_getcpucount` and `isascii_l` are names glibc does not export at all.
 
-The other seven are not about waiting. `ioctl` is variadic with the request
-deciding what the arguments mean. `putwchar` writes to a stream the whole
-process shares, and orients it: forking a child does not get a fresh stream
-to try it on, only the one the suite has already written to as bytes.
-`prctl` is Linux's and changes the process it is called on.
-`pthread_cancel` would cancel a thread the suite is sharing, and
-`pthread_atfork` registers a fork handler that the just-in-time run this
-suite uses cannot link. `sched_getcpucount` and `isascii_l` are names glibc
-does not export at all. None of them is known to be broken; they are simply
-not asked.
+None of them is known to be broken; they are simply not asked.
 
-992 bindings are asked something, and the 8 that are not have a reason
+994 bindings are asked something, and the 6 that are not have a reason
 each. Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -145,14 +141,23 @@ releases, and every other check in this repository green. That list is
 **empty** now, and empty is not the same as gone: it still fails if it
 grows, which is the thing it was written for.
 
-Three have left the list above, and none of them needed a handler to do
-it. `scanf` takes a format and no conversion, so a child's pipe with a word
+Five have left the list above. Three of them needed no handler: `scanf` takes a format and no conversion, so a child's pipe with a word
 in it — closed at the write end, which is what gives the input an end — is
 enough to ask it for 0 and then for `EOF`. `sigsuspend` waits under a mask
 of its own, so a signal blocked and sent to itself is pending until the swap
 delivers it: no waiting at all. `pause` has no such mask, and is asked
 instead with an alarm it never armed a handler for: the child is ended by
 the signal it went to wait for, which is what says it waited.
+
+The other two needed the second thread the suite does not have, and found
+it in a child. A condition variable and its lock can be put in a page both
+sides address and made for sharing (`PTHREAD_PROCESS_SHARED`), which is
+what `pthread_cond_wait` is asked with: the child takes the lock, and it
+cannot take it until the parent is inside the wait and has let go of it, so
+the signal cannot be sent before there is anyone to receive it — no sleep
+stands in for the ordering. Cancelling a thread cannot be taken back, so
+`pthread_cancel` is asked of a child as well, and the child is the one that
+ends.
 
 ## API reference
 

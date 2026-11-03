@@ -7,18 +7,26 @@ a function pointer, which is the one thing a Mojo binding cannot make
 thread: making each object, using it where using it does not wait,
 and giving it back.
 
-`pthread_cond_wait` is bound but not called. It waits until somebody
-wakes it, and with no second thread nobody will, so calling it in a
-test would stop the test rather than fail it. `pthread_cond_timedwait`
-is the same call with a time on it, and a time already past comes
-straight back — which is the one waiting call in this file that is
-safe to make.
+Nothing here starts a thread, and one call does not need a thread to
+be woken by: `pthread_cond_wait` waits until somebody signals the
+condition, and a condition variable and the lock beside it can live in
+a page both a process and its child see (`PTHREAD_PROCESS_SHARED`).
+The child is that second waiter's other half — it takes the lock,
+signals, and lets go. `pthread_cond_timedwait` is the same call with a
+time on it, and a time already past comes straight back.
 """
 from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget, size_of
 from std.testing import assert_equal, assert_true
 
-from libc.constant import ETIMEDOUT, c_ptr
+from libc.constant import (
+    ETIMEDOUT,
+    MAP_ANONYMOUS,
+    MAP_SHARED,
+    PROT_READ,
+    PROT_WRITE,
+    c_ptr,
+)
 from libc.pthread import (
     PTHREAD_PROCESS_PRIVATE,
     PTHREAD_PROCESS_SHARED,
@@ -27,6 +35,7 @@ from libc.pthread import (
     pthread_cond_init,
     pthread_cond_signal,
     pthread_cond_t,
+    pthread_cond_wait,
     pthread_cond_timedwait,
     pthread_condattr_destroy,
     pthread_condattr_getpshared,
@@ -34,6 +43,8 @@ from libc.pthread import (
     pthread_condattr_setpshared,
     pthread_condattr_t,
     pthread_mutex_destroy,
+    pthread_mutexattr_init,
+    pthread_mutexattr_setpshared,
     pthread_mutexattr_t,
     pthread_mutex_init,
     pthread_mutex_lock,
@@ -53,7 +64,11 @@ from libc.pthread import (
     pthread_rwlockattr_setpshared,
     pthread_rwlockattr_t,
 )
+from libc.stdlib import exit
+from libc.sys.mman import mmap, munmap
+from libc.sys.wait import WEXITSTATUS, WIFEXITED, waitpid
 from libc.time import CLOCK_REALTIME, clock_gettime, timespec
+from libc.unistd import alarm, fork
 from libc.utils import null_ptr
 
 
@@ -194,6 +209,111 @@ def test_the_condition_attributes_go_both_ways() raises:
     attr.unsafe_free()
 
 
+def test_a_condition_wait_is_woken_by_the_process_that_holds_the_lock() raises:
+    """`pthread_cond_wait` waits until the condition is signalled. The
+    only thread here is this one, so the signaller is a child — and for
+    the two to be waiting on the same condition they have to be looking
+    at the same bytes, which a fork does not give them: it copies the
+    page, and a copy of a condition variable is a different condition
+    variable. So the lock and the condition are made in a page that is
+    shared (`MAP_SHARED`) and made for sharing
+    (`PTHREAD_PROCESS_SHARED`), and both sides address it.
+
+    The order is what makes the wake-up impossible to miss rather than
+    merely unlikely. This process takes the lock **before** the fork,
+    and a condition variable is waited on with the lock held. The child
+    therefore cannot get the lock until this process is inside
+    `pthread_cond_wait`, where the lock is let go — so the signal
+    cannot be sent to a condition nobody is waiting on yet, and no
+    sleep is standing in for the ordering that guarantees it.
+
+    What comes back is 0, and the lock is held again on the way out,
+    which is checked by unlocking it. The child leaves with 0 after
+    having said the same about its own three calls, so a child that
+    never signalled is a red run and not a passing one.
+
+    Ten seconds of `alarm` is there for the case this test is written
+    against: a wait with no wake-up is a run that hangs, and a run that
+    hangs is one that holds a job open until it times out. It is
+    cancelled as soon as the wait comes back.
+    """
+    comptime PAGE = 4096
+    comptime RW: Int32 = PROT_READ | PROT_WRITE
+    comptime SHARED_ANON: Int32 = MAP_SHARED | MAP_ANONYMOUS
+
+    var page = mmap(null_ptr[UInt8](), PAGE, RW, SHARED_ANON, -1, 0)
+    assert_true(
+        Int(UInt(page)) > 0, "there is a page the child will also be looking at"
+    )
+    var mutex = page.unsafe_bitcast[pthread_mutex_t]()
+    var cond = page.unsafe_offset(128).unsafe_bitcast[pthread_cond_t]()
+    mutex.unsafe_offset(0)[] = pthread_mutex_t()
+    cond.unsafe_offset(0)[] = pthread_cond_t()
+
+    var mutex_attr = unsafe_alloc[pthread_mutexattr_t](1)
+    mutex_attr.unsafe_offset(0)[] = pthread_mutexattr_t()
+    assert_equal(pthread_mutexattr_init(mutex_attr), 0, "the lock attributes")
+    assert_equal(
+        pthread_mutexattr_setpshared(mutex_attr, PTHREAD_PROCESS_SHARED),
+        0,
+        "for a lock two processes share",
+    )
+    assert_equal(pthread_mutex_init(mutex, mutex_attr), 0, "and the lock")
+
+    var cond_attr = _a_cond_attribute()
+    assert_equal(
+        pthread_condattr_setpshared(cond_attr, PTHREAD_PROCESS_SHARED),
+        0,
+        "the condition is made for sharing too",
+    )
+    assert_equal(pthread_cond_init(cond, cond_attr), 0, "and it is made")
+
+    # Taken before the fork, so the child's own attempt waits for the
+    # one moment this process is inside the wait.
+    assert_equal(pthread_mutex_lock(mutex), 0, "this process holds the lock")
+
+    var child = fork()
+    if child == 0:
+        assert_equal(
+            pthread_mutex_lock(mutex),
+            0,
+            "the child gets it when the wait starts",
+        )
+        assert_equal(pthread_cond_signal(cond), 0, "and signals the condition")
+        assert_equal(pthread_mutex_unlock(mutex), 0, "then lets go of the lock")
+        _ = exit(0)
+
+    assert_true(child > 0, "there is a child to be woken by")
+    _ = alarm(10)
+    assert_equal(
+        pthread_cond_wait(cond, mutex),
+        0,
+        "the wait comes back when it is signalled",
+    )
+    _ = alarm(0)
+    assert_equal(pthread_mutex_unlock(mutex), 0, "holding the lock again")
+
+    var status = unsafe_alloc[Int32](1)
+    status.unsafe_offset(0)[] = 0
+    assert_equal(waitpid(child, status, 0), child, "the child is waited for")
+    assert_true(
+        WIFEXITED(status.unsafe_load()), "and it left of its own accord"
+    )
+    assert_equal(
+        Int(WEXITSTATUS(status.unsafe_load())),
+        0,
+        "having locked, signalled and unlocked",
+    )
+    status.unsafe_free()
+
+    _ = pthread_cond_destroy(cond)
+    _ = pthread_mutex_destroy(mutex)
+    _ = pthread_condattr_destroy(cond_attr)
+    _ = munmap(page, PAGE)
+    cond_attr.unsafe_free()
+    mutex_attr.unsafe_free()
+
+
 def test_a_read_write_lock_takes_for_reading_and_writing() raises:
     """A `pthread_rwlock_t` taken to read and to write, one at a
     time.
@@ -294,6 +414,7 @@ def test_the_rwlock_attribute_object_is_the_size_it_has_to_be() raises:
 
 def main() raises:
     test_a_condition_makes_and_goes_away()
+    test_a_condition_wait_is_woken_by_the_process_that_holds_the_lock()
     test_a_condition_can_be_made_from_attributes()
     test_waking_nobody_is_not_an_error()
     test_waiting_for_a_time_that_has_gone()
