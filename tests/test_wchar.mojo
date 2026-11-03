@@ -153,8 +153,19 @@ def test_length_and_compare() raises:
     )
     assert_true(Int(wcsncmp(ho, hi, 2)) > 0, "and ho after it")
 
+    # Case is what tells the two comparisons from their case-folding
+    # neighbours, which have the same signature and answer 0 for a pair that
+    # differs only in case: hi and ho differ in their second character and not
+    # in its case, so they answer the same for either call.
+    var caps = wide("HI")
+    assert_true(Int(wcscmp(hi, caps)) > 0, "and lower case sorts after upper")
+    assert_true(
+        Int(wcsncmp(hi, caps, 2)) > 0, "which two characters are enough to see"
+    )
+
     hi.unsafe_free()
     ho.unsafe_free()
+    caps.unsafe_free()
 
 
 def test_search() raises:
@@ -177,10 +188,15 @@ def test_search() raises:
 def test_copy() raises:
     var src = wide("abc")
     var dest = unsafe_alloc[c_wchar](16)
-    dest.unsafe_store(0, 0)
+    # Started with something in it, because from an empty string a copy and an
+    # append answer the same five characters. `wcscat` is the one that has the
+    # same signature and the same answer of a pointer.
+    dest.unsafe_store(0, 120)
+    dest.unsafe_store(1, 121)
+    dest.unsafe_store(2, 0)
 
     _ = wcscpy(dest, src)
-    assert_equal(wide_to_string(dest), "abc")
+    assert_equal(wide_to_string(dest), "abc", "wcscpy replaces what was there")
 
     # wcsncpy only writes a terminator when it does not fill the buffer.
     # Here it fills two of three slots and leaves the third one alone.
@@ -709,10 +725,49 @@ def test_wide_memory() raises:
     assert_true(wmemcmp(abc, wide("abd"), 3) < 0, "and orders abc before abd")
     assert_true(wmemcmp(wide("abd"), abc, 3) > 0, "and after it the other way")
 
+    # A terminator in the middle, where the two calls part ways: `wmemcmp` is
+    # given a count and looks at all of it, and `wcsncmp` given the same count
+    # stops at the nothing. Built by hand because `wide` cannot make one.
+    var withnul = unsafe_alloc[c_wchar](3)
+    withnul.unsafe_store(0, 97)
+    withnul.unsafe_store(1, 0)
+    withnul.unsafe_store(2, 99)
+    var other_nul = unsafe_alloc[c_wchar](3)
+    other_nul.unsafe_store(0, 97)
+    other_nul.unsafe_store(1, 0)
+    other_nul.unsafe_store(2, 100)
+    assert_true(
+        wmemcmp(withnul, other_nul, 3) < 0,
+        "wmemcmp counts characters and does not stop at the nothing",
+    )
+    withnul.unsafe_free()
+    other_nul.unsafe_free()
+
     var room = unsafe_alloc[c_wchar](4)
     _ = wmemcpy(room, abc, 3)
     room.unsafe_store(3, 0)
     assert_equal(wide_to_string(room), "abc", "wmemcpy copies three characters")
+
+    # And a copy of fewer than it is told to make: `wmemcpy` writes the count
+    # it was given and nothing else, where `wcsncpy` fills the rest of the
+    # count with terminators. The tail is what says which of them ran.
+    var tail = unsafe_alloc[c_wchar](5)
+    tail.unsafe_store(0, 97)
+    tail.unsafe_store(1, 98)
+    tail.unsafe_store(2, 99)
+    tail.unsafe_store(3, 0)
+    tail.unsafe_store(4, 122)
+    var padded = unsafe_alloc[c_wchar](5)
+    for i in range(5):
+        padded.unsafe_store(i, 121)
+    _ = wmemcpy(padded, tail, 5)
+    assert_equal(
+        Int(padded.unsafe_load(4)),
+        122,
+        "wmemcpy moves the count it was given, terminator and all",
+    )
+    padded.unsafe_free()
+    tail.unsafe_free()
 
     # Onto a place that overlaps where they came from.
     var shifted = wide("abcd")
@@ -723,6 +778,27 @@ def test_wide_memory() raises:
         "aabc",
         "wmemmove brings a run over itself whole",
     )
+
+    # Moved by a count that runs past the terminator, onto a place that starts
+    # out full: the `wcs` copy of this pads the rest of the count with
+    # nothings, and the `mem` one moves exactly what it was told to.
+    var source = unsafe_alloc[c_wchar](5)
+    source.unsafe_store(0, 97)
+    source.unsafe_store(1, 98)
+    source.unsafe_store(2, 99)
+    source.unsafe_store(3, 0)
+    source.unsafe_store(4, 122)
+    var onto = unsafe_alloc[c_wchar](5)
+    for i in range(5):
+        onto.unsafe_store(i, 121)
+    _ = wmemmove(onto, source, 5)
+    assert_equal(
+        Int(onto.unsafe_load(4)),
+        122,
+        "wmemmove moves the whole count, terminator and all",
+    )
+    onto.unsafe_free()
+    source.unsafe_free()
 
     var filled = unsafe_alloc[c_wchar](4)
     _ = wmemset(filled, 88, 3)
@@ -985,6 +1061,14 @@ def test_the_l_variants_ask_a_locale_object() raises:
 
     var hello = wide("Hello")
     var shout = wide("hELLO")
+    # The same pair before the case is folded away: `wcscoll_l` orders by the
+    # characters, so H and h are two of them, and its case-folding neighbour --
+    # same signature, same locale argument, same 0 for a pair that agrees --
+    # answers 0 for this one.
+    assert_true(
+        wcscoll_l(hello, shout, loc) < 0,
+        "collation sees the case that folding takes away",
+    )
     assert_equal(wcscasecmp_l(hello, shout, loc), 0, "case is folded away")
     # Folding is what makes those two equal, and equality is the answer either
     # way round. These two differ, so the order they are asked in shows.

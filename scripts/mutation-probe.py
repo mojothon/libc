@@ -117,6 +117,16 @@ SAME_ANSWER = {
         "same value under a declared width that happens to agree: a difference "
         "only ILP32 would show, for the reason `llrintf->lrintf` is here"
     ),
+    "fputwc->putwc": (
+        "glibc's header spells `putwc` as `fputwc` -- the macro is the whole "
+        "of it -- and the symbol the library exports under that name writes "
+        "the same wide character to the same stream and answers it back"
+    ),
+    "fgetwc->getwc": (
+        "the same spelling the other way: `getwc` is `fgetwc` in the header, "
+        "and the exported symbol reads the same character with the same lock "
+        "held"
+    ),
     "ldexpf->scalbnf": (
         "`ldexpf(x, n)` is `scalbnf(x, n)` with FLT_RADIX written as 2, and "
         "FLT_RADIX is 2 on both platforms: the same call under two names, the "
@@ -494,6 +504,20 @@ NO_OBSERVATION = {
     "pthread_condattr_destroy->pthread_condattr_init": (
         "the same pair again for the condition's attributes, for the same "
         "reason and with the same measurement behind it"
+    ),
+    "btowc->wctob": (
+        "measured in the C locale, which is the one this suite runs in: both "
+        "answer the byte itself for ASCII, both answer EOF for everything "
+        "else, and the two are inverses of one another over exactly that "
+        "range. A locale where a byte above 0x7F maps to a wide character "
+        "would separate them, and setting one is a different question from "
+        "this one"
+    ),
+    "wcscoll->wcscmp": (
+        "also measured: under the C locale, `wcscoll` answers the same -1 "
+        "that `wcscmp` answers, because code-point order is the collation "
+        "there. The `_l` forms are separated by a locale object the test "
+        "makes; this one has no such argument to hold the difference"
     ),
     "pthread_cond_destroy->pthread_cond_signal": (
         "glibc's `pthread_cond_destroy` changes nothing and answers 0 -- "

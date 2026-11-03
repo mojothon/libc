@@ -924,6 +924,20 @@ All notable changes to this project are documented here. The format follows
   gets a second round in the cross-process test with `_broadcast` in the child,
   because with one waiter `_signal` and `_broadcast` are the same wake-up.
 
+- **The wide-character calls, asked where a count and a string differ.**
+  `wchar` had fourteen survivors and seven of them were the `wmem` family:
+  a count and a string are the same thing until something in the middle is a
+  terminator or the count runs past it, so `wmemcmp` is asked about a run with
+  a nothing inside it and `wmemcpy` and `wmemmove` about counts that run past
+  the end, where the `wcs` copy would start filling with nothings. `wcscmp` and
+  `wcsncmp` are asked about a pair that differs only in case, which is the one
+  thing the case-folding neighbours fold away. `wcscpy` is asked to copy onto
+  something, since from empty a copy and an append are the same five
+  characters. Four are the same call under two spellings (`putwc` and
+  `fputwc`, `getwc` and `fgetwc`), and three cannot be separated under the C
+  locale at all -- `btowc` against `wctob` and `wcscoll` against `wcscmp`,
+  both measured rather than assumed.
+
 - **A third table in the probe, for pairs that no defined observation
   separates.** `pthread_attr_destroy` and `_init` answer the same 0 and differ
   in what may be done with the object afterwards, which after a destroy is
