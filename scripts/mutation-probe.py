@@ -76,6 +76,13 @@ TIMEOUT = 120
 # Pairs that survive because the two symbols answer the same thing, not because
 # nothing is looking. Each one was read and decided, the way `CANNOT_ASK` is in
 # `check-tests.py`: a survivor that is not here is a test to write.
+#
+# The key is written one way round and read both: the claim it carries is that
+# these two are the same call, and that claim has no direction. It is read
+# this way because the probe points each member of a group at one other, so a
+# group of two makes two mutants -- writing the reason twice would say the same
+# thing twice, and writing it once, as this table did, left the other direction
+# excused by nothing.
 SAME_ANSWER = {
     "scalbn->ldexp": (
         "`ldexp(x, n)` is `scalbn(x, n)` with FLT_RADIX written as 2, and "
@@ -444,6 +451,30 @@ def key_of(mutant: Mutant) -> str:
     return f"{mutant.name}:{mutant.what}"
 
 
+def reverse_key(key: str) -> str:
+    """The same pair the other way round, which is the same claim.
+
+    `a->b` and `b->a` are two mutants of one group -- each member points at the
+    other -- and `x <-> y` is one mutant that would be the same mutant if the
+    two names were written the other way round. A reason says the two are the
+    same call, so it excuses both directions or neither.
+    """
+    if "->" in key:
+        left, _, right = key.partition("->")
+        return f"{right}->{left}"
+    if " <-> " in key:
+        left, _, right = key.partition(" <-> ")
+        return f"{right} <-> {left}"
+    return key
+
+
+def reason_for(mutant: Mutant) -> str:
+    """The reason this mutant is excused, from either direction."""
+    table = SAME_ANSWER if mutant.kind == "symbol" else SAME_ORDER
+    key = key_of(mutant)
+    return table.get(key) or table.get(reverse_key(key), "")
+
+
 def classify(result: subprocess.CompletedProcess) -> str:
     if result.returncode == 0:
         return "survived"
@@ -524,7 +555,7 @@ def check_tables() -> int:
     if not stale:
         print(
             f"all {len(SAME_ANSWER)} symbol and {len(SAME_ORDER)} order reasons "
-            "are about pairs that can still be made"
+            "are about pairs that can still be made, each read both ways round"
         )
         return 0
 
@@ -643,8 +674,7 @@ def main() -> int:
             where = f"{Path(mutant.path).relative_to(SRC / 'libc')}:{mutant.name}"
             if mutant.kind == "order":
                 where += f" ({mutant.what})"
-            table = SAME_ANSWER if mutant.kind == "symbol" else SAME_ORDER
-            known = table.get(key_of(mutant))
+            known = reason_for(mutant)
             if verdict == "survived" and known:
                 verdict = "same"
             if verdict == "caught" and known:
