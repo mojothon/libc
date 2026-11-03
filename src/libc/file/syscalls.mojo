@@ -7,6 +7,15 @@ from libc.constant import *
 from std.ffi import external_call
 from libc.sys.socket import iovec
 
+# The descriptor-level calls this module is asked for are not bound here:
+# `read`, `write`, `lseek`, `pread`, `pwrite` and `close` are `libc.unistd`'s,
+# `openat`, `creat` and `fcntl` are `libc.fcntl`'s, and they are imported so
+# that there is one signature for each rather than two that look alike. A
+# caller reaching for `libc.file` gets the same call as one reaching for
+# `libc.unistd`, and the two cannot drift apart because there is only one.
+from libc.fcntl import creat, fcntl, openat
+from libc.unistd import close, lseek, pread, pwrite, read, write
+
 
 # Two of `<stdio.h>`'s calls are not in this file, and it is not for want of a
 # signature: the Mojo standard library declares `fflush` and `fdopen` itself,
@@ -35,45 +44,6 @@ struct FILE(TrivialRegisterPassable):
     pass
 
 
-def fcntl(fildes: c_int, cmd: c_int) -> c_int:
-    """Libc POSIX `fcntl` function.
-
-    Args:
-        fildes: A File Descriptor to close.
-        cmd: A command to execute.
-
-    Returns:
-        0 if succesful, otherwise -1 and errno set to indicate the error.
-
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/close.3p.html).
-        Fn signature: `int fcntl(int fildes, int cmd, ...)`.
-    Notes:
-        C's is a variadic call and Mojo cannot pass a variadic
-        argument, so the ones after the listed ones are not handed
-        over; what libc reads instead is whatever is next to them.
-
-    """
-
-    return external_call["fcntl", c_int, c_int, c_int](fildes, cmd)
-
-
-def close(fildes: c_int) -> c_int:
-    """Libc POSIX `close` function.
-
-    Args:
-        fildes: A File Descriptor to close.
-
-    Returns:
-        0 if succesful, otherwise -1 and errno set to indicate the error.
-
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/close.3p.html).
-        Fn signature: `int close(int fildes)`.
-    """
-    return external_call["close", c_int, c_int](fildes)
-
-
 def open(path: c_ptr[c_char], oflag: c_int) -> c_int:
     """Libc POSIX `open` function.
 
@@ -95,36 +65,6 @@ def open(path: c_ptr[c_char], oflag: c_int) -> c_int:
     """
 
     return external_call["open", c_int, c_ptr[c_char], c_int](path, oflag)
-
-
-def openat(fd: c_int, path: c_ptr[c_char], oflag: c_int) -> c_int:
-    """Libc POSIX `openat` function.
-
-    Description:
-        Opens `path` relative to a directory rather than to where the
-        process stands, `fd` being that directory's descriptor. `open` is
-        the special case of this where nothing is given to be relative to.
-
-    Args:
-        fd: A File Descriptor to open the file with.
-        path: A path to a file.
-        oflag: A flag to open the file with.
-
-    Returns:
-        A File Descriptor or -1 in case of failure
-
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/open.3p.html).
-        Fn signature: `int openat(int fd, const char *path, int oflag, ...)`.
-    Notes:
-        C's is a variadic call and Mojo cannot pass a variadic
-        argument, so the ones after the listed ones are not handed
-        over; what libc reads instead is whatever is next to them.
-
-    """
-    return external_call["openat", c_int, c_int, c_ptr[c_char], c_int](
-        fd, path, oflag
-    )
 
 
 def fopen(pathname: c_ptr[c_char], mode: c_ptr[c_char]) -> c_ptr[FILE]:
@@ -206,23 +146,6 @@ def fmemopen(
     ](buf, size, mode)
 
 
-def creat(path: c_ptr[c_char], mode: mode_t) -> c_int:
-    """Libc POSIX `creat` function.
-
-    Args:
-        path: A path to a file.
-        mode: A mode to open the file with.
-
-    Returns:
-        A File Descriptor or -1 in case of failure.
-
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/creat.3p.html).
-        Fn signature: `int creat(const char *path, mode_t mode)`.
-    """
-    return external_call["creat", c_int, c_ptr[c_char], mode_t](path, mode)
-
-
 def fseek(stream: c_ptr[FILE], offset: c_long, whence: c_int) -> c_int:
     """Libc POSIX `fseek` function.
 
@@ -262,28 +185,6 @@ def fseeko(stream: c_ptr[FILE], offset: off_t, whence: c_int) -> c_int:
     """
     return external_call["fseeko", c_int, c_ptr[FILE], off_t, c_int](
         stream, offset, whence
-    )
-
-
-def lseek(fildes: c_int, offset: off_t, whence: c_int) -> off_t:
-    """Libc POSIX `lseek` function.
-
-    Args:
-        fildes: A File Descriptor to open the file with.
-        offset: An offset to seek to.
-        whence: A pointer to a buffer to store the length of the address of the
-            accepted socket.
-
-    Returns:
-    Where it got to, counted in bytes from the start of the file,
-        or -1 with `errno` set.
-
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/lseek.3p.html).
-        Fn signature: `off_t lseek(int fildes, off_t offset, int whence)`.
-    """
-    return external_call["lseek", off_t, c_int, off_t, c_int](
-        fildes, offset, whence
     )
 
 
@@ -736,88 +637,6 @@ def getdelim(
     ](lineptr, n, delimiter, stream)
 
 
-def pread(
-    fildes: c_int, buf: c_ptr[c_void], nbyte: c_size_t, offset: off_t
-) -> c_ssize_t:
-    """Libc POSIX `pread` function.
-
-    Args:
-        fildes: A File Descriptor to open the file with.
-        buf: A pointer to a buffer to store the read string.
-        nbyte: The maximum number of characters to read.
-        offset: Where in the file to read from, counted in bytes
-            from the
-            start. Where the stream was is left alone: this one does not
-            move it, which is what makes it different from reading after
-            `lseek`.
-
-    Returns:
-    How many bytes it read, which is fewer than were asked for at the
-        end of the file, or -1 on failure with `errno` set.
-
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/read.3p.html).
-        Fn signature: `ssize_t pread(int fildes, void *buf, size_t nbyte,
-        off_t offset)`.
-    """
-    return external_call[
-        "pread", c_ssize_t, c_int, c_ptr[c_void], c_size_t, off_t
-    ](fildes, buf, nbyte, offset)
-
-
-def read(fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint) -> Int:
-    """Libc POSIX `read` function.
-
-    Args:
-        fildes: A File Descriptor to open the file with.
-        buf: A pointer to a buffer to store the read string.
-        nbyte: The maximum number of characters to read.
-
-    Returns:
-        Amount of bytes read.
-
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/read.3p.html).
-        Fn signature: `sssize_t read(int fildes, void *buf, size_t nbyte)`.
-    """
-    # `buf` is a `c_ptr[UInt8]` and is handed over as one. It was once
-    # bitcast to `NoneType` first, which makes the call a pointer with
-    # no type at all, and a call like that is one the compiler will
-    # not lower: `write` is bound in the standard library too, and
-    # where the two are compiled together the untyped one is the one
-    # that is thrown out. A pointer to bytes is what it is.
-    return external_call["read", Int, Int, c_ptr[UInt8], Int](
-        Int(fildes), buf, Int(nbyte)
-    )
-
-
-def pwrite(
-    fildes: c_int, buf: c_ptr[c_void], nbyte: c_size_t, offset: off_t
-) -> c_ssize_t:
-    """Libc POSIX `pwrite` function.
-
-    Args:
-        fildes: A File Descriptor to open the file with.
-        buf: A pointer to a buffer to store the read string.
-        nbyte: The maximum number of characters to read.
-        offset: Where in the file to write, counted in bytes from the
-            start. Where the stream was is left alone: this one does not
-            move it, which is what makes it different from writing after
-            `lseek`.
-
-    Returns:
-        Amount of bytes written.
-
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/write.3p.html).
-        Fn signature: `ssize_t pwrite(int fildes, const void *buf, size_t nbyte,
-            off_t offset)`.
-    """
-    return external_call[
-        "pwrite", c_ssize_t, c_int, c_ptr[c_void], c_size_t, off_t
-    ](fildes, buf, nbyte, offset)
-
-
 def preadv(
     fildes: c_int, iov: c_ptr[iovec], iovcnt: c_int, offset: off_t
 ) -> c_ssize_t:
@@ -883,27 +702,6 @@ def pwritev(
     return external_call[
         "pwritev", c_ssize_t, c_int, c_ptr[iovec], c_int, off_t
     ](fildes, iov, iovcnt, offset)
-
-
-def write(fildes: c_int, buf: c_ptr[c_void], nbyte: c_uint) -> Int:
-    """Libc POSIX `write` function.
-
-    Args:
-        fildes: A File Descriptor to open the file with.
-        buf: A pointer to a buffer to store the read string.
-        nbyte: The maximum number of characters to read.
-
-    Returns:
-        Amount of bytes written.
-
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/write.3p.html).
-        Fn signature: `ssize_t write(int fildes, const void *buf,
-            size_t nbyte)`.
-    """
-    return external_call["write", Int, Int, c_ptr[UInt8], Int](
-        Int(fildes), buf, Int(nbyte)
-    )
 
 
 def fclose(stream: c_ptr[FILE]) -> c_int:

@@ -6,9 +6,10 @@
 # The <stdio.h> entry points that `libc.file` does not already cover.
 #
 # `libc.file` owns the stream lifecycle (`fopen`, `fclose`, `fread`,
-# `fgets`, `fputs`, `fseek`, ...) together with the descriptor-level
-# calls (`open`, `read`, `write`). This module holds the rest: output,
-# buffering, temporary files and pipes.
+# `fgets`, `fputs`, `fseek`, ...) and answers for the descriptor-level
+# calls (`open`, `read`, `write`) by importing them from `libc.unistd`
+# and `libc.fcntl`, which are where their headers put them. This module
+# holds the rest: output, buffering, temporary files and pipes.
 #
 # The `printf`/`scanf` families are in `libc.file`, not here, and only
 # without variadic arguments.
@@ -17,6 +18,11 @@ from std.ffi import external_call
 
 from libc.constant import c_char, c_int, c_ptr, c_size_t, c_void
 from libc.file import FILE
+
+# `fputc` is `libc.file`'s, with the rest of the stream lifecycle, and is
+# imported here so that `libc.stdio` still answers for it: two modules
+# offering the same call wanted one definition between them.
+from libc.file import fputc
 
 
 # How big the buffer is that `setvbuf` and `setbuf` are handed. Every C
@@ -227,29 +233,6 @@ def fwrite(
     return external_call[
         "fwrite", c_size_t, c_ptr[c_void], c_size_t, c_size_t, c_ptr[FILE]
     ](ptr, size, nmemb, stream)
-
-
-def fputc(c: c_int, stream: c_ptr[FILE]) -> c_int:
-    """C library <stdio.h> function `fputc`.
-
-    Reference:
-        https://man7.org/linux/man-pages/man3/fputc.3.html
-
-    Prototype:
-        int fputc(int c, FILE *stream)
-
-    Description:
-        Writes one byte to `stream`.
-
-    Args:
-        c: The byte, converted to an `unsigned char`.
-        stream: The output stream.
-
-    Returns:
-        The byte written, or `EOF` on error.
-    """
-
-    return external_call["fputc", c_int, c_int, c_ptr[FILE]](c, stream)
 
 
 def putc(c: c_int, stream: c_ptr[FILE]) -> c_int:

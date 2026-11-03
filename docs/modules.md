@@ -6,14 +6,14 @@ the bottom.
 
 | Module | C header | Symbols |
 | --- | --- | --- |
-| `libc.math` | `<math.h>` | 133 |
-| `libc.stdlib` | `<stdlib.h>` | 74 |
+| `libc.math` | `<math.h>` | 124 |
+| `libc.stdlib` | `<stdlib.h>` | 76 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.limits` | `<limits.h>` the widths of the integer types, and what a process may have | 24 |
 | `libc.unistd` | `<unistd.h>` | 206 |
-| `libc.file` | `<stdio.h>` file operations | 40 |
+| `libc.file` | `<stdio.h>` file operations | 31 |
 | `libc.ctype` | `<ctype.h>` | 30 |
-| `libc.sys.socket` | `<sys/socket.h>` | 36 |
+| `libc.sys.socket` | `<sys/socket.h>` | 35 |
 | `libc.sys.stat` | `<sys/stat.h>` | 36 |
 | `libc.sys.times` | `<sys/times.h>` | 2 |
 | `libc.time` | `<time.h>` | 38 |
@@ -26,8 +26,8 @@ the bottom.
 | `libc.sys.sysinfo` | `<sys/sysinfo.h>` | 18 |
 | `libc.sys.timer` | `<time.h>` the timers Darwin does not have | 12 |
 | `libc.pthread` | `<pthread.h>` | 100 |
-| `libc.string` | `<string.h>` | 50 |
-| `libc.stdio` | `<stdio.h>` output, buffering, pipes | 44 |
+| `libc.string` | `<string.h>` | 48 |
+| `libc.stdio` | `<stdio.h>` output, buffering, pipes | 43 |
 | `libc.complex` | `<complex.h>` | 46 |
 | `libc.sched` | `<sched.h>` | 15 |
 | `libc.signal` | `<signal.h>` | 53 |
@@ -38,7 +38,7 @@ the bottom.
 | `libc.dirent` | `<dirent.h>` | 18 |
 | `libc.sys.wait` | `<sys/wait.h>` | 25 |
 | `libc.inttypes` | `<inttypes.h>` | 7 |
-| `libc.sys.resource` | `<sys/resource.h>` | 15 |
+| `libc.sys.resource` | `<sys/resource.h>` | 14 |
 | `libc.network` | `<arpa/inet.h>` byte order and address conversion | 16 |
 | `libc.netdb` | `<netdb.h>` name and service lookup | 66 |
 | `libc.netif` | `<net/if.h>` interface names and numbers | 9 |
@@ -133,7 +133,7 @@ is about the call rather than about the suite:
 
 None of them is known to be broken; they are simply not asked.
 
-999 bindings are asked something, and the 3 that are not have a reason
+997 bindings are asked something, and the 3 that are not have a reason
 each. Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -162,6 +162,20 @@ reading the other: `scripts/check-symbols.py` asks
 `scripts/check-prototypes.py` which names no header here declares, and a
 name excused by both lists is one that neither the headers nor the
 libraries say is there.
+
+One thing was in two places at once, which none of the checks above could
+see either. `strlen` was bound in `libc.string` answering `UInt64` and in
+`libc.utils` answering `Int`; `read` took `c_ptr[c_void]` in `libc.file`
+and `c_ptr[UInt8]` in `libc.unistd`; `ldiv` read `long` in `libc.stdlib`
+and `Int64` in `libc.math`, with a `ldiv_t` of its own in each. Every copy
+compiled, and every copy was asked something by a test, so nothing
+compared them: the copy a bug was found in got fixed and the other kept
+it. `scripts/check-duplicates.py` asks one question — one file per C
+symbol — and the answer is a re-export. A module that wants to offer a
+call another module owns imports it, and the two names are then one
+function rather than two that agree today, which is how `libc.file` still
+answers for `read` without binding it and how `libc.math` still answers
+for `abs`.
 
 `scripts/check-tests.py` keeps the full list, with a reason each, and fails
 when a binding is added with neither a test nor a reason. It also keeps the

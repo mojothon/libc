@@ -147,7 +147,7 @@ counted rather than asked, which is what the count is for.
 | what a struct does with its members | how many |
 | --- | --- |
 | places one by hand, at an offset listed in `OFFSETS` | 111 |
-| declares them in order and leaves the layout to Mojo | 191 |
+| declares them in order and leaves the layout to Mojo | 185 |
 | reads none of them, and claims only a size | 17 |
 | has a struct only Linux has | 13 |
 

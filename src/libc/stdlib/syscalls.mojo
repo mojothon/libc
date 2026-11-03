@@ -46,6 +46,51 @@ comptime HUGE_VALF: Float32 = Float32(1e400)
 # fills a `PATH_MAX` buffer. One copy, in the module whose header has them.
 
 
+# -------------------------------------------------------
+#  整数的绝对值与除法
+# -------------------------------------------------------
+def abs(j: c_int) -> c_int:
+    """The absolute value of an `int`.
+
+    What C calls `abs`, and what the language calls `abs` only for
+    floating point: this is the whole-number one, and it is declared in
+    `<stdlib.h>` rather than `<math.h>`, which is where `fabs` lives.
+
+    Args:
+        j: The number.
+
+    Returns:
+        `j` without its sign. `abs(INT_MIN)` has no answer -- the
+        positive counterpart of the lowest `int` is not an `int` -- and
+        C leaves it undefined; both platforms hand back `INT_MIN`.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/abs.3.html).
+        Fn signature: `int abs(int j)`.
+    """
+    return external_call["abs", c_int, c_int](j)
+
+
+def labs(j: c_long) -> c_long:
+    """The absolute value of a `long`.
+
+    `abs` one width up. A `long` is eight bytes on both platforms, so
+    this and `llabs` answer the same range.
+
+    Args:
+        j: The number.
+
+    Returns:
+        `j` without its sign, and `LONG_MIN` back as it came, for the
+        reason `abs` gives.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/abs.3.html).
+        Fn signature: `long labs(long j)`.
+    """
+    return external_call["labs", c_long, c_long](j)
+
+
 struct div_t(TrivialRegisterPassable):
     """The quotient and the remainder of one `int` divided by another.
 

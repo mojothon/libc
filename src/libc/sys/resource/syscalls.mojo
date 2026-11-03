@@ -9,6 +9,11 @@ from std.memory import Pointer
 from libc.constant import c_ptr
 from libc.sys.wait import rusage
 
+# `nice` is `libc.unistd`'s, and said so in its own docstring while this file
+# bound a second copy of it; the copy is gone and the name is imported, so
+# both modules answer with one call.
+from libc.unistd import nice
+
 
 # Whose usage `getrusage` is asked about. The same on both platforms.
 # Which limit is meant. The two platforms number them differently:
@@ -197,33 +202,3 @@ def setpriority(which: Int32, who: UInt32, prio: Int32) -> Int32:
     return external_call["setpriority", Int32, Int32, UInt32, Int32](
         which, who, prio
     )
-
-
-def nice(inc: Int32) -> Int32:
-    """C library <unistd.h> function `nice`.
-
-    Reference:
-        https://man7.org/linux/man-pages/man2/nice.2.html
-
-    Prototype:
-        int nice(int inc)
-
-    Description:
-        The nice() function moves this process's niceness by `inc`, which is
-        the older and smaller way of doing what `setpriority` does: it can
-        only reach the caller, it can only be told how far to move rather
-        than where to land, and a negative `inc` asks for privileges and is
-        answered with EPERM on failure. `getpriority` is how the result is
-        read afterwards, this having nothing to say about it.
-
-    Arguments:
-        inc: How much to add to the niceness. Zero asks for no change and
-            so reads it, in the roundabout way this allows.
-
-    Return Value:
-        The new niceness on success, or -1 with errno set on failure, which
-        is the same trouble `getpriority` has: -1 being both one of the
-        answers and the failure signal is why errno has to be zeroed before
-        and read after, to know which of the two this was.
-    """
-    return external_call["nice", Int32, Int32](inc)

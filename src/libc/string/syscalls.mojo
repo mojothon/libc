@@ -223,63 +223,6 @@ def memset(s: c_ptr[NoneType], c: Int32, n: UInt64) -> c_ptr[NoneType]:
 
 
 @inline(.nodebug)
-def strcopy(dest: c_ptr[UInt8], src: c_ptr[UInt8]) -> c_ptr[UInt8]:
-    """C library <string.h> function `strcpy` under another name.
-
-    Reference:
-        https://pubs.opengroup.org/onlinepubs/9699919799/functions/strcpy.html
-
-    Prototype:
-        char *strcpy(char *dest, const char *src)
-
-    Description:
-        `strcpy` as it is above, the binding being the same one and
-        only the names of the arguments differing: what is called is
-        `strcpy` either way. It is kept so that a call can be spelled
-        with dest and src.
-
-    Arguments:
-        dest: Where the string goes, which wants room for all of src
-            and the null that ends it.
-        src: The string to copy, null and all.
-
-    Return Value:
-        The function returns dest.
-    """
-    return external_call["strcpy", c_ptr[UInt8], c_ptr[UInt8], c_ptr[UInt8]](
-        dest, src
-    )
-
-
-@inline(.nodebug)
-def strncopy(dest: c_ptr[UInt8], src: c_ptr[UInt8], n: UInt64) -> c_ptr[UInt8]:
-    """C library <string.h> function `strncpy` under another name.
-
-    Reference:
-        https://pubs.opengroup.org/onlinepubs/9699919799/functions/strncpy.html
-
-    Prototype:
-        char *strncpy(char *dest, const char *src, size_t n)
-
-    Description:
-        `strncpy` as it is above, the binding being the same one and
-        only the names of the arguments differing. It is kept so that
-        a call can be spelled with dest and src.
-
-    Arguments:
-        dest: Where the characters go, which wants room for n of them.
-        src: The string to copy from.
-        n: How many characters at most to copy.
-
-    Return Value:
-        The function returns dest.
-    """
-    return external_call[
-        "strncpy", c_ptr[UInt8], c_ptr[UInt8], c_ptr[UInt8], UInt64
-    ](dest, src, n)
-
-
-@inline(.nodebug)
 def strdup(s: c_ptr[UInt8]) -> c_ptr[UInt8]:
     """C library <string.h> function `strdup`.
 

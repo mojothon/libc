@@ -633,6 +633,21 @@ All notable changes to this project are documented here. The format follows
   it. The tests take five small command lines apart and check what
   came back against what was handed in. `libc.getopt` starts at 12.
 
+- **`scripts/check-duplicates.py`, one file per C symbol.** Two modules can
+  bind the same call to two signatures that look alike and are not, and
+  both compile, so nothing here ever compared them. Twenty bindings were
+  like that: `strlen` answered `UInt64` in `libc.string` and `Int` in
+  `libc.utils`; `read` took `c_ptr[c_void]` in `libc.file` and
+  `c_ptr[UInt8]` in `libc.unistd`; `ldiv` read `long` in `libc.stdlib` and
+  `Int64` in `libc.math`, and each module had its own `ldiv_t` to go with
+  it. The check asks the one question a copy cannot answer — which file
+  binds this symbol — and the fix is a re-export, so a module that wants to
+  offer a call another module owns imports it and the two names are one
+  function rather than two that agree today. An alias inside one file is
+  still allowed, because `gamma` and `lgamma` are the same symbol under two
+  names deliberately and whoever reads that file can see both; the same
+  pair in two files is what this refuses.
+
 ### Removed
 
 - **Two bindings that could be called on neither platform: `isascii_l` and
@@ -662,6 +677,34 @@ All notable changes to this project are documented here. The format follows
   5 not to 995 and 3.
 
 ### Changed
+
+- **Every C symbol is bound in one file now**, and the name is imported
+  where a second door was wanted:
+
+  - `libc.file` still answers for `read`, `write`, `close`, `lseek`,
+    `pread`, `pwrite`, `fcntl`, `openat` and `creat` without binding any of
+    them. They are `libc.unistd`'s and `libc.fcntl`'s, and the module that
+    promises "the descriptor-level calls" now imports them, so a caller
+    gets the same signature whichever module they came through.
+  - `libc.stdio` keeps `fputc` the same way: it belongs to `libc.file`
+    with the rest of the stream lifecycle, and is imported there.
+  - `libc.math` no longer binds the integer arithmetic. `abs` and `labs`
+    are declared in `<stdlib.h>` and have moved to `libc.stdlib`;
+    `ldiv` and `lldiv` were already there, and `imaxabs` and `imaxdiv`
+    were already in `libc.inttypes`, with a `ldiv_t`, a `lldiv_t` and an
+    `imaxdiv_t` of their own on this side of the wall. All six names are
+    still exported from `libc.math`, because a whole number is not a
+    reason to send someone to another module for its absolute value.
+  - `libc.sys.resource`'s `nice` said `<unistd.h>` in its own docstring
+    while `libc.unistd` bound the same call. The copy is gone.
+  - `libc.sys.socket`'s copy of `close` is gone, which leaves the
+    descriptor calls where their header is.
+  - `libc.string` offered `strcopy` and `strncopy` as second names for
+    `strcpy` and `strncpy` in the same file, with the source and
+    destination named more helpfully and no way to tell from the outside
+    which one a caller should reach for. The C names are what is left; the
+    test that used to assert the alias now asserts that `strncpy` pads to
+    the count with NULs.
 
 - **`scripts/check-layouts.py` checks field offsets now, for the members
   this package places by hand.** Size and alignment reach Mojo without

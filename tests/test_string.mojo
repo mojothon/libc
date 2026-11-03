@@ -28,7 +28,6 @@ from libc.string import (
     strcmp,
     strcoll,
     strcoll_l,
-    strcopy,
     strcpy,
     strcspn,
     strdup,
@@ -38,7 +37,6 @@ from libc.string import (
     strncasecmp_l,
     strncat,
     strncmp,
-    strncopy,
     strncpy,
     strndup,
     strnlen,
@@ -349,7 +347,7 @@ def test_copying() raises:
     var cat = unsafe_alloc[UInt8](16)
     for i in range(16):
         cat.unsafe_store(i, 0)
-    _ = strcopy(cat, string_to_char_ptr("hello, "))
+    _ = strcpy(cat, string_to_char_ptr("hello, "))
     _ = strcat(cat, string_to_char_ptr("libc"))
     assert_equal(
         char_ptr_to_string(cat), "hello, libc", "strcat joins onto the end"
@@ -381,11 +379,11 @@ def test_copying() raises:
     var again = unsafe_alloc[UInt8](8)
     for i in range(8):
         again.unsafe_store(i, 0)
-    _ = strncopy(again, src, 7)
+    _ = strncpy(again, src, 7)
     assert_equal(
         char_ptr_to_string(again),
         "abcdef",
-        "strncopy is strncpy under another name",
+        "strncpy pads with NULs up to the count, and stops at the NUL",
     )
 
     dst.unsafe_free()

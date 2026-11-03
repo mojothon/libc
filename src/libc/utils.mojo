@@ -10,34 +10,12 @@ from std.sys.info import is_64bit
 
 from .constant import c_char, c_int, c_ptr, c_schar, c_void
 
-
-def strlen(s: c_ptr[UInt8]) -> Int:
-    """
-    Libc POSIX `strlen` function.
-
-    Reference: https://man7.org/linux/man-pages/man3/strlen.3p.html
-    Fn signature: size_t strlen(const char *s)
-
-    Args: s: A pointer to a C string.
-    Returns: The length of the string.
-    """
-    return external_call["strlen", Int, c_ptr[UInt8]](s)
-
-
-def exit(status: c_int):
-    """Libc POSIX `exit` function.
-
-    Reference: https://man7.org/linux/man-pages/man3/exit.3.html
-    Fn signature: void exit(int status)
-
-    Args:
-        status: The exit status.
-    Returns:
-        Nothing: this one does not come back. What is buffered is
-        written out and the process is over by the time it would
-        have.
-    """
-    _ = external_call["exit", c_void, c_int](status)
+# `strlen` and `exit` used to be bound here as well, before `libc.string`
+# and `libc.stdlib` existed to bind them; both were a second signature for
+# a call that already had one, and `strlen` answered `Int` here where the
+# string module answers `size_t`. The one below is imported for
+# `char_ptr_to_string` and is the string module's.
+from libc.string import strlen
 
 
 def string_to_char_ptr(s: String) -> c_ptr[UInt8]:
@@ -82,7 +60,7 @@ def char_ptr_to_string(c: c_ptr[UInt8]) -> String:
     Returns:
         The bytes up to the NUL, as a `String` that borrows them.
     """
-    var length = strlen(c)
+    var length = Int(strlen(c))
     return String(unsafe_from_utf8=Span[UInt8](unsafe_ptr=c, length=length))
 
 
@@ -140,7 +118,9 @@ struct CString(TrivialRegisterPassable, Writable):
         """
         var bytes = self.data.unsafe_bitcast[UInt8]()
         return String(
-            unsafe_from_utf8=Span[UInt8](unsafe_ptr=bytes, length=strlen(bytes))
+            unsafe_from_utf8=Span[UInt8](
+                unsafe_ptr=bytes, length=Int(strlen(bytes))
+            )
         )
 
     def write_to[W: Writer](self, mut writer: W):

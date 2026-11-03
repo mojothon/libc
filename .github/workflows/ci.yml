@@ -23,6 +23,12 @@ jobs:
         run: pixi run format-check
       - name: C prototypes
         run: pixi run check-prototypes
+      # A binding is a string and a signature, and two modules can hold the
+      # same string with two signatures that agree today: `strlen` answered
+      # `UInt64` in one and `Int` in the other. One file per symbol, and a
+      # re-export where a second door is wanted.
+      - name: Check that each symbol is bound once
+        run: pixi run check-duplicates
       # The docs are the one place a call is written and nothing compiles it:
       # a rename leaves an example a reader finds before a test does.
       - name: Check that the examples in the docs compile

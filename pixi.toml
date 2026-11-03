@@ -21,6 +21,15 @@ format-check = "bash scripts/format-check.sh"
 # count or a misspelled symbol still compiles. This checks them against
 # the real prototypes read out of the headers with `gcc -aux-info`.
 check-prototypes = "python3 scripts/check-prototypes.py"
+# One file per C symbol. Two modules can bind the same call to two
+# signatures that look alike and are not: `strlen` answered `UInt64` in
+# `libc.string` and `Int` in `libc.utils`, `read` took `c_ptr[c_void]` in
+# one place and `c_ptr[UInt8]` in another, and `ldiv` read `long` in one
+# module and `Int64` in the other, each with a `ldiv_t` of its own. Every
+# copy compiled and every copy was tested, so nothing compared them, and
+# the copy a bug was found in got fixed while the other kept it. A module
+# that wants to offer a call another module owns imports it instead.
+check-duplicates = "python3 scripts/check-duplicates.py"
 # Every numeric constant here was read out of `gcc -dM` by eye, once, and
 # a number nobody rechecks is a number nothing stops from being wrong: 55
 # of them were Darwin's values with no platform branch at all, which is

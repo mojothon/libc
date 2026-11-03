@@ -5,54 +5,23 @@
 # ----------------------------------
 from std.ffi import external_call
 from std.memory import Pointer
+
 from libc.constant import c_ptr
+
+# The integer arithmetic is not this header's: `abs`, `labs`, `ldiv` and
+# `lldiv` are declared in `<stdlib.h>` and `imaxabs`/`imaxdiv` in
+# `<inttypes.h>`, and they are bound in those modules now. They are
+# imported back here because a number being whole is not a reason to send
+# a caller to another module for its absolute value -- and because the
+# copies that used to be here were a second signature to keep in step,
+# with `ldiv` reading `long` in one module and `Int64` in the other.
+from libc.inttypes import imaxabs, imaxdiv, imaxdiv_t
+from libc.stdlib import abs, labs, ldiv, ldiv_t, lldiv, lldiv_t
 
 
 # -------------------------------------------------------
 #  计算整数值的绝对值
 # -------------------------------------------------------
-def abs(j: Int32) -> Int32:
-    """C library <math.h> function `abs`.
-
-    Link:
-        https://man7.org/linux/man-pages/man3/abs.3.html
-
-    Prototype:
-        int abs(int j)
-
-    Description:
-        Computes the absolute value of j.
-
-    Arguments:
-        j: The number for which the absolute value is to be computed.
-
-    Return value:
-        The absolute value of j.
-    """
-    return external_call["abs", Int32, Int32](j)
-
-
-def labs(j: Int64) -> Int64:
-    """C library <math.h> function `labs`.
-
-    Link:
-        https://man7.org/linux/man-pages/man3/abs.3.html
-
-    Prototype:
-        long labs(long j)
-
-    Description:
-        Computes the absolute value of j.
-
-    Arguments:
-        j: The number for which the absolute value is to be computed.
-
-    Return value:
-        The absolute value of j.
-    """
-    return external_call["labs", Int64, Int64](j)
-
-
 def llabs(j: Int64) -> Int64:
     """C library <stdlib.h> function `llabs`.
 
@@ -72,27 +41,6 @@ def llabs(j: Int64) -> Int64:
         The absolute value of j.
     """
     return external_call["llabs", Int64, Int64](j)
-
-
-def imaxabs(j: Int64) -> Int64:
-    """C library <inttypes.h> function `imaxabs`.
-
-    Link:
-        https://man7.org/linux/man-pages/man3/abs.3.html
-
-    Prototype:
-        intmax_t imaxabs(intmax_t j)
-
-    Description:
-        Computes the absolute value of j.
-
-    Arguments:
-        j: The number for which the absolute value is to be computed.
-
-    Return value:
-        The absolute value of j.
-    """
-    return external_call["imaxabs", Int64, Int64](j)
 
 
 # -------------------------------------------------------
@@ -145,87 +93,6 @@ def fabsf(x: Float32) -> Float32:
 struct div_t(TrivialRegisterPassable):
     var quot: Int32
     var rem: Int32
-
-
-struct ldiv_t(TrivialRegisterPassable):
-    var quot: Int64
-    var rem: Int64
-
-
-struct lldiv_t(TrivialRegisterPassable):
-    var quot: Int64
-    var rem: Int64
-
-
-struct imaxdiv_t(TrivialRegisterPassable):
-    var quot: Int64
-    var rem: Int64
-
-
-def ldiv(numer: Int64, denom: Int64) -> ldiv_t:
-    """C library <math.h> function `ldiv`.
-
-    Link:
-        https://man7.org/linux/man-pages/man3/ldiv.3.html
-
-    Prototype:
-        ldiv_t ldiv(long numer, long denom)
-
-    Description:
-        Computes the quotient and remainder of  the division of the numerator numer by the denominator denom.
-
-    Arguments:
-        numer: the numerator
-        denom: the denominator
-
-    Return value:
-        The quotient and remainder of  the division of the numerator numer by the denominator denom.
-    """
-    return external_call["ldiv", ldiv_t, Int64, Int64](numer, denom)
-
-
-def lldiv(numer: Int64, denom: Int64) -> lldiv_t:
-    """C library <math.h> function `lldiv`.
-
-    Link:
-        https://man7.org/linux/man-pages/man3/ldiv.3.html
-
-    Prototype:
-        lldiv_t lldiv(long long numer, long long denom)
-
-    Description:
-        Computes the quotient and remainder of  the division of the numerator numer by the denominator denom.
-
-    Arguments:
-        numer: the numerator
-        denom: the denominator
-
-    Return value:
-        The quotient and remainder of  the division of the numerator numer by the denominator denom.
-    """
-    return external_call["lldiv", lldiv_t, Int64, Int64](numer, denom)
-
-
-def imaxdiv(numer: Int64, denom: Int64) -> imaxdiv_t:
-    """C library <math.h> function `imaxdiv`.
-
-    Link:
-        https://man7.org/linux/man-pages/man3/ldiv.3.html
-
-    Prototype:
-        imaxdiv_t imaxdiv(intmax_t numer, intmax_t denom)
-
-    Description:
-        Computes the quotient and remainder of  the division of the numerator numer by the denominator denom.
-
-    Arguments:
-        numer: the numerator
-        denom: the denominator
-
-    Return value:
-        The quotient and remainder of  the division of the numerator numer by the denominator denom.
-    """
-    return external_call["imaxdiv", imaxdiv_t, Int64, Int64](numer, denom)
 
 
 # ------------------------------------------

@@ -692,25 +692,6 @@ def shutdown(socket: Int32, how: Int32) -> Int32:
     ](socket, how)
 
 
-def close(socket: Int32) -> Int32:
-    """Libc POSIX `close` function.
-
-    Reference: https://man7.org/linux/man-pages/man3/close.3p.html
-    Fn signature: int close(int socket)
-
-    Args:
-        socket: Which socket, by its descriptor.
-
-    Returns:
-        0, or -1 with `errno` set. The descriptor is gone either way once
-        this comes back, so what it says is whether the last of it was
-        done and not whether to keep using it.
-    """
-    return external_call["close", Int32, Int32](  # FnName, RetType  # Args
-        socket
-    )
-
-
 def accept4(
     socket: Int32,
     address: c_ptr[socketaddr],
