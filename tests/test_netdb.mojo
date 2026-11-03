@@ -28,6 +28,10 @@ from libc.netdb import (
     NI_NUMERICSERV,
     addrinfo,
     endhostent,
+    endnetent,
+    getnetbyaddr,
+    getnetbyname,
+    getnetent,
     endprotoent,
     endservent,
     freeaddrinfo,
@@ -47,6 +51,7 @@ from libc.netdb import (
     herror,
     hostent,
     hstrerror,
+    setnetent,
     sethostent,
     setprotoent,
     setservent,
@@ -469,6 +474,87 @@ def test_the_resolver_says_what_a_number_meant() raises:
     doing.unsafe_free()
 
 
+def test_the_network_database_three_ways() raises:
+    """The networks walk and the two lookups that read the same rows.
+
+    `/etc/networks` is not on every machine, and this writes down
+    nothing about what is in it: a first call that answers null is a
+    correct answer and the test takes it. What is asked when there is a
+    row is that the three ways of getting at it agree -- `getnetent`
+    walking to it, `getnetbyname` asking by its name, `getnetbyaddr`
+    asking by its number -- and that `setnetent` puts the walk back at
+    the top, which is the only thing distinguishing it from a walk that
+    simply ran on.
+
+    The rows all come out of one buffer, so a name is copied before the
+    next call overwrites it; that is the shape of the call and not a
+    quirk of this test. Nothing is asserted about what a row is called
+    or which number it carries, only that the three answers are the
+    same one.
+    """
+    setnetent(1)
+    var first = getnetent()
+    if is_null(first):
+        endnetent()
+        var absent = string_to_char_ptr("no-such-network-name")
+        assert_true(
+            is_null(getnetbyname(absent)),
+            "a name that is not there answers null",
+        )
+        absent.unsafe_free()
+        return
+
+    var name = char_ptr_to_string(first.unsafe_offset(0)[].n_name)
+    var number = first.unsafe_offset(0)[].n_net
+    assert_true(name.byte_length() > 0, "a row has a name")
+    assert_equal(
+        first.unsafe_offset(0)[].n_addrtype, AF_INET, "and is an IPv4 network"
+    )
+
+    var rows = 1
+    for _ in range(64):
+        var row = getnetent()
+        if is_null(row):
+            break
+        assert_equal(
+            row.unsafe_offset(0)[].n_addrtype, AF_INET, "every row is IPv4"
+        )
+        assert_true(
+            char_ptr_to_string(row.unsafe_offset(0)[].n_name).byte_length() > 0,
+            "and every row has a name",
+        )
+        rows += 1
+    assert_true(rows >= 1, "the walk read the row it started at")
+
+    setnetent(1)
+    var again = getnetent()
+    assert_true(not is_null(again), "winding back finds a row again")
+    assert_equal(
+        char_ptr_to_string(again.unsafe_offset(0)[].n_name),
+        name,
+        "and it is the row the walk started at",
+    )
+    assert_equal(again.unsafe_offset(0)[].n_net, number, "with the same number")
+
+    var by_name_bytes = string_to_char_ptr(name)
+    var by_name = getnetbyname(by_name_bytes)
+    by_name_bytes.unsafe_free()
+    assert_true(not is_null(by_name), "the row's own name finds it")
+    assert_equal(
+        by_name.unsafe_offset(0)[].n_net, number, "and gives the same number"
+    )
+
+    var by_number = getnetbyaddr(number, AF_INET)
+    assert_true(not is_null(by_number), "the row's own number finds it")
+    assert_equal(
+        char_ptr_to_string(by_number.unsafe_offset(0)[].n_name),
+        name,
+        "and gives the same name",
+    )
+
+    endnetent()
+
+
 def main() raises:
     test_a_numeric_address_needs_no_name_service()
     test_a_name_that_is_not_a_number_is_refused()
@@ -477,6 +563,7 @@ def main() raises:
     test_walking_the_protocol_database()
     test_walking_the_service_database()
     test_the_service_database_by_name_and_by_port()
+    test_the_network_database_three_ways()
     test_the_host_database_read_row_by_row()
     test_a_host_asked_for_by_name_answers_with_the_kind_it_was_asked_by()
     test_the_resolver_says_what_a_number_meant()

@@ -571,6 +571,29 @@ All notable changes to this project are documented here. The format follows
   both answer zero, and a zero handle classifies nothing. `beyond-c.md`
   says 964 symbols, 961 among the four libraries, 26.9%; `modules.md`
   says `libc.wctype` has 5.
+- **The networks database, the third row family in `<netdb.h>`.**
+  `protoent` and `servent` each had both ends of their walk bound and
+  the row defined; the networks walk had neither. `getnetent`,
+  `setnetent` and `endnetent` are now bound together with `getnetbyname`
+  and `getnetbyaddr`, and `struct netent` with them — a name, a list of
+  aliases, the family and the number at 0, 8, 16 and 20, twenty-four
+  bytes and eight-aligned on both platforms, the one layout in the
+  header that needed no platform branch at all.
+
+  The symbols are not in Apple's `Libc` — there is no `getnetent.c`
+  anywhere in it — but in `libsystem_info.tbd`, alongside the
+  `getprotoent` and `getservent` already bound from there. That file is
+  what settled the question without spending a CI round trip on it.
+
+  The test writes nothing down about `/etc/networks`, which is not on
+  every machine: a null first row is taken as an answer and the walk
+  stops there. Where there is a row it asks that `setnetent` winds the
+  walk back to that row, and that the row's name and number find the
+  same row through the two lookups — three ways into one buffer, with
+  nothing said about the contents except that every row is `AF_INET`
+  and every row has a name. `beyond-c.md` says 969 symbols, 966 among
+  the four libraries, 27.0%, and 183 members laid out in order;
+  `modules.md` says `libc.netdb` has 56.
 - **The list of bindings a test could ask and has not is empty.** Five of
   the last six debts were not blocked by anything, which is the point: four
   of the reasons said a privilege, a thread or a policy was needed, and

@@ -900,3 +900,180 @@ def herror(text: c_ptr[UInt8]) -> None:
         resolver and so says nothing about this.
     """
     external_call["herror", NoneType, c_ptr[UInt8]](text)
+
+
+struct netent:
+    """A C `struct netent`: one row of the network database.
+
+    Four members -- a name, a list of aliases, the address family, and the
+    network number -- at 0, 8, 16 and 20 on glibc and on Darwin both,
+    twenty-four bytes and eight-aligned either way. This is the third row
+    in `netdb.h` the two platforms agree about all the way through, after
+    `protoent` and `servent`.
+
+    libc owns the object this points at, and may hand every caller the
+    same one: two calls overwrite each other's answer, and nothing here
+    frees it. `n_aliases` is a `char **` the same allocator owns, a list
+    of other names ended by a null, and it comes with the row.
+
+    `n_net` is in the order this machine counts in, which is the order
+    `getnetbyaddr` is asked by and not the wire order a port is in: the
+    row for the loopback network comes back as 127, not as the 127 that
+    a byte-reversal would make of it. `n_addrtype` says which family
+    that number is in, and every row `/etc/networks` holds is `AF_INET`.
+    """
+
+    var n_name: c_ptr[UInt8]
+    var n_aliases: c_ptr[c_ptr[UInt8]]
+    var n_addrtype: Int32
+    var n_net: UInt32
+
+    def __init__(out self):
+        """Zeroes every member, which is the state of one nothing has filled."""
+        self.n_name = null_ptr[UInt8]()
+        self.n_aliases = null_ptr[c_ptr[UInt8]]()
+        self.n_addrtype = 0
+        self.n_net = 0
+
+    def aliased_as(self) raises -> String:
+        """The first other name the network goes by.
+
+        Notes:
+            The first entry of `n_aliases`, read as a string. A network
+            with no other name has an empty list, and what comes back
+            then is the empty string.
+        """
+        var first = self.n_aliases.unsafe_offset(0)[]
+        if is_null(first):
+            return String("")
+        return char_ptr_to_string(first)
+
+
+def setnetent(stayopen: Int32) -> None:
+    """Libc POSIX `setnetent` function.
+
+    Description:
+        Opens the network database, or winds it back to the top where it
+        is already open.
+
+    Args:
+        stayopen: Non-zero to keep it open between calls rather than
+            shutting it after each one.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getnetent.3.html).
+        Fn signature: `void setnetent(int stayopen)`.
+
+        This is the one end of the walk over every network there is,
+        `getnetent` reading the rows and `endnetent` the other end. It
+        is also the only way back to the top: a walk that has run out
+        stays run out until this is asked again, which is what the
+        finding calls below rely on rather than a rule of their own.
+
+        The database is `/etc/networks`, which not every machine has;
+        where it is not there the walk answers null at once, and that
+        is an answer rather than a failure.
+    """
+    external_call["setnetent", NoneType, Int32](stayopen)
+
+
+def endnetent() -> None:
+    """Libc POSIX `endnetent` function.
+
+    Description:
+        Closes the network database, which is the walk `setnetent`
+        opens and `getnetent` reads.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getnetent.3.html).
+        Fn signature: `void endnetent(void)`.
+
+        Nothing is said back, and nothing has to be: a walk that is
+        never closed is closed by the process ending, so the only thing
+        this buys is not holding the file open. Asking for a row after
+        it opens the database again from the top.
+    """
+    external_call["endnetent", NoneType]()
+
+
+def getnetent() -> c_ptr[netent]:
+    """Libc POSIX `getnetent` function.
+
+    Description:
+        Reads the next row of the network database, which is the walk
+        `setnetent` opens and `endnetent` closes.
+
+    Returns:
+        The next row, or a null pointer at the end of it.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getnetent.3.html).
+        Fn signature: `struct netent *getnetent(void)`.
+
+        Every row is read into the same storage, so the pointer is the
+        position in the walk rather than a copy of the row: read what
+        is wanted out of it before asking for the next one, and copy
+        anything that has to outlive the call.
+
+        Asking here is the only way to see every row: the two lookups
+        below find one row by what it is called or by its number, and
+        neither can say what else is in the file.
+    """
+    return external_call["getnetent", c_ptr[netent]]()
+
+
+def getnetbyname(name: c_ptr[UInt8]) -> c_ptr[netent]:
+    """Libc POSIX `getnetbyname` function.
+
+    Description:
+        Looks a network up by the name it goes by.
+
+    Args:
+        name: The name to look for, as bytes with a nil on the end.
+
+    Returns:
+        The row for that network, or a null pointer where there is no
+        such name.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getnetbyname.3.html).
+        Fn signature: `struct netent *getnetbyname(const char *name)`.
+
+        What comes back is the same row `getnetent` walks, in the same
+        storage, so a lookup between two reads of the walk loses the
+        walk's place in that storage even though the walk itself
+        carries on from where it was.
+    """
+    return external_call["getnetbyname", c_ptr[netent], c_ptr[UInt8]](name)
+
+
+def getnetbyaddr(net: UInt32, addrtype: Int32) -> c_ptr[netent]:
+    """Libc POSIX `getnetbyaddr` function.
+
+    Description:
+        Looks a network up by its number, in a family of addresses.
+
+    Args:
+        net: The network number, in the order this machine counts in.
+        addrtype: The family the number is in, which is `AF_INET` for
+            every row `/etc/networks` holds.
+
+    Returns:
+        The row for that network, or a null pointer where there is no
+        such number in that family.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getnetbyaddr.3.html).
+        Fn signature: `struct netent *getnetbyaddr(uint32_t net, int type)`.
+
+        The number is the one `n_net` carries, not one in wire order:
+        passing it back as it came out of a row is what finds that row
+        again, and `htonl` would not.
+
+        The family is asked for as well as the number because a number
+        means nothing without one; `AF_INET` is the only family the
+        file has rows in.
+    """
+    return external_call["getnetbyaddr", c_ptr[netent], UInt32, Int32](
+        net, addrtype
+    )
