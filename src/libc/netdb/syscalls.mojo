@@ -1077,3 +1077,179 @@ def getnetbyaddr(net: UInt32, addrtype: Int32) -> c_ptr[netent]:
     return external_call["getnetbyaddr", c_ptr[netent], UInt32, Int32](
         net, addrtype
     )
+
+
+struct rpcent:
+    """A C `struct rpcent`: one row of the RPC program database.
+
+    Three members -- a name, a list of aliases, and the program number --
+    at 0, 8 and 16 on glibc and on Darwin both, twenty-four bytes and
+    eight-aligned either way. The row needed no branch: the number is an
+    `int` on both, even though the argument `getrpcbynumber` takes is a
+    `long` on a 32-bit Darwin build and an `int` everywhere else.
+
+    libc owns the object this points at, and may hand every caller the
+    same one: two calls overwrite each other's answer, and nothing here
+    frees it. `r_aliases` is a `char **` the same allocator owns, a list
+    of other names ended by a null, and it comes with the row.
+
+    The number is an RPC program number and not a port. Ports are what a
+    portmapper turns these into, which is the whole of what the database
+    is for: 100000 is the portmapper itself, and a caller that reads the
+    number as a port will look for a server that is not there.
+    """
+
+    var r_name: c_ptr[UInt8]
+    var r_aliases: c_ptr[c_ptr[UInt8]]
+    var r_number: Int32
+    var _pad: Int32
+
+    def __init__(out self):
+        """Zeroes every member, which is the state of one nothing has filled."""
+        self.r_name = null_ptr[UInt8]()
+        self.r_aliases = null_ptr[c_ptr[UInt8]]()
+        self.r_number = 0
+        self._pad = 0
+
+    def aliased_as(self) raises -> String:
+        """The first other name the program goes by.
+
+        Notes:
+            The first entry of `r_aliases`, read as a string. A program
+            with no other name has an empty list, and what comes back
+            then is the empty string.
+        """
+        var first = self.r_aliases.unsafe_offset(0)[]
+        if is_null(first):
+            return String("")
+        return char_ptr_to_string(first)
+
+
+def setrpcent(stayopen: Int32) -> None:
+    """Libc BSD `setrpcent` function.
+
+    Description:
+        Opens the RPC program database, or winds it back to the top where
+        it is already open.
+
+    Args:
+        stayopen: Non-zero to keep it open between calls rather than
+            shutting it after each one.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getrpcent.3.html).
+        Fn signature: `void setrpcent(int stayopen)`.
+
+        This is the one end of the walk over every RPC program there is,
+        `getrpcent` reading the rows and `endrpcent` the other end, and
+        it is the only way back to the top: a walk that has run out stays
+        run out until this is asked again.
+
+        The database is `/etc/rpc`, which is not on every machine and is
+        empty on many that have it; where there is nothing the walk
+        answers null at once, and that is an answer rather than a
+        failure.
+    """
+    external_call["setrpcent", NoneType, Int32](stayopen)
+
+
+def endrpcent() -> None:
+    """Libc BSD `endrpcent` function.
+
+    Description:
+        Closes the RPC program database, which is the walk `setrpcent`
+        opens and `getrpcent` reads.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getrpcent.3.html).
+        Fn signature: `void endrpcent(void)`.
+
+        Nothing is said back, and nothing has to be: a walk that is never
+        closed is closed by the process ending, so the only thing this
+        buys is not holding the file open. Asking for a row after it
+        opens the database again from the top.
+    """
+    external_call["endrpcent", NoneType]()
+
+
+def getrpcent() -> c_ptr[rpcent]:
+    """Libc BSD `getrpcent` function.
+
+    Description:
+        Reads the next row of the RPC program database, which is the walk
+        `setrpcent` opens and `endrpcent` closes.
+
+    Returns:
+        The next row, or a null pointer at the end of it.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getrpcent.3.html).
+        Fn signature: `struct rpcent *getrpcent(void)`.
+
+        Every row is read into the same storage, so the pointer is the
+        position in the walk rather than a copy of the row: read what is
+        wanted out of it before asking for the next one.
+
+        This is the only way to see every row: the two lookups below find
+        one row by what it is called or by its number, and neither can
+        say what else is in the file.
+    """
+    return external_call["getrpcent", c_ptr[rpcent]]()
+
+
+def getrpcbyname(name: c_ptr[UInt8]) -> c_ptr[rpcent]:
+    """Libc BSD `getrpcbyname` function.
+
+    Description:
+        Looks an RPC program up by the name it goes by.
+
+    Args:
+        name: The name to look for, as bytes with a nil on the end.
+
+    Returns:
+        The row for that program, or a null pointer where there is no
+        such name.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getrpcbyname.3.html).
+        Fn signature: `struct rpcent *getrpcbyname(const char *name)`.
+
+        What comes back is the same row `getrpcent` walks, in the same
+        storage, so a lookup between two reads of the walk loses the
+        walk's place in that storage even though the walk itself carries
+        on from where it was.
+
+        A name here is a program name and not a host: nothing is
+        resolved, and no name service is consulted.
+    """
+    return external_call["getrpcbyname", c_ptr[rpcent], c_ptr[UInt8]](name)
+
+
+def getrpcbynumber(number: Int32) -> c_ptr[rpcent]:
+    """Libc BSD `getrpcbynumber` function.
+
+    Description:
+        Looks an RPC program up by its program number.
+
+    Args:
+        number: The program number to look for, which is 100000 for the
+            portmapper.
+
+    Returns:
+        The row for that program, or a null pointer where there is no
+        such number.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getrpcbynumber.3.html).
+        Fn signature: `struct rpcent *getrpcbynumber(int number)`.
+
+        The number is an RPC program number and not a port, which is the
+        mistake the name invites: a portmapper is what turns one into the
+        other, and this database is what tells the portmapper what the
+        numbers are called.
+
+        Darwin writes the argument down as a `long` on a 32-bit build and
+        as an `int` on a 64-bit one, and every machine this is built for
+        is a 64-bit one, so the `int` is the only signature there is.
+    """
+    return external_call["getrpcbynumber", c_ptr[rpcent], Int32](number)

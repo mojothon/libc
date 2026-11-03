@@ -39,7 +39,7 @@ the bottom.
 | `libc.inttypes` | `<inttypes.h>` | 7 |
 | `libc.sys.resource` | `<sys/resource.h>` | 15 |
 | `libc.network` | `<arpa/inet.h>` byte order and address conversion | 16 |
-| `libc.netdb` | `<netdb.h>` name and service lookup | 56 |
+| `libc.netdb` | `<netdb.h>` name and service lookup | 62 |
 | `libc.netif` | `<net/if.h>` interface names and numbers | 9 |
 | `libc.regex` | `<regex.h>` POSIX regular expressions | 29 |
 | `libc.glob` | `<glob.h>` pathname matching | 23 |

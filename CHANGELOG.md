@@ -594,6 +594,32 @@ All notable changes to this project are documented here. The format follows
   and every row has a name. `beyond-c.md` says 969 symbols, 966 among
   the four libraries, 27.0%, and 183 members laid out in order;
   `modules.md` says `libc.netdb` has 56.
+- **The RPC program database, the fourth row family in `<netdb.h>`.**
+  `getrpcent`, `setrpcent` and `endrpcent` are bound with
+  `getrpcbyname` and `getrpcbynumber`, and `struct rpcent` with them --
+  a name, a list of aliases and the program number at 0, 8 and 16,
+  twenty-four bytes and eight-aligned on both platforms. Again no
+  branch: `r_number` is an `int` on both, even though the argument
+  `getrpcbynumber` takes is written down as a `long` on a 32-bit Darwin
+  build, and every machine this is built for is a 64-bit one.
+
+  glibc declares these in `<rpc/netdb.h>` rather than `<netdb.h>`; the
+  latter includes the former under `__USE_MISC`, so a translation unit
+  that includes `<netdb.h>` sees them, which is what the prototype
+  check reads and why nothing had to be added to its header list.
+
+  The row is a program number and not a port, which the name invites
+  getting wrong: 100000 is the portmapper, and the portmapper is what
+  turns a number into a port.
+
+  The test has the same shape as the networks one and writes nothing
+  down about `/etc/rpc`, which is empty on many machines that have it:
+  a null first row is an answer. Where there is a row, `setrpcent` has
+  to wind the walk back to it, and the row's own name and number have
+  to find that same row through the two lookups.
+  `beyond-c.md` says 974 symbols, 971 among the four libraries, 27.2%,
+  and 187 members laid out in order; `modules.md` says `libc.netdb` has
+  62.
 - **The list of bindings a test could ask and has not is empty.** Five of
   the last six debts were not blocked by anything, which is the point: four
   of the reasons said a privilege, a thread or a policy was needed, and

@@ -29,9 +29,13 @@ from libc.netdb import (
     addrinfo,
     endhostent,
     endnetent,
+    endrpcent,
     getnetbyaddr,
     getnetbyname,
     getnetent,
+    getrpcbyname,
+    getrpcbynumber,
+    getrpcent,
     endprotoent,
     endservent,
     freeaddrinfo,
@@ -52,6 +56,7 @@ from libc.netdb import (
     hostent,
     hstrerror,
     setnetent,
+    setrpcent,
     sethostent,
     setprotoent,
     setservent,
@@ -555,6 +560,83 @@ def test_the_network_database_three_ways() raises:
     endnetent()
 
 
+def test_the_rpc_database_three_ways() raises:
+    """The RPC program walk and the two lookups that read the same rows.
+
+    `/etc/rpc` is not on every machine and is empty on many that have
+    it, and this writes down nothing about which programs are in it: a
+    first call that answers null is a correct answer and the test takes
+    it. What is asked where there is a row is that the three ways of
+    getting at it agree -- `getrpcent` walking to it, `getrpcbyname`
+    asking by its name, `getrpcbynumber` asking by its number -- and
+    that `setrpcent` puts the walk back at the top rather than leaving
+    it where it stopped.
+
+    The number is a program number and not a port, which is why nothing
+    here compares it against anything the socket layer would recognise.
+
+    The rows all come out of one buffer, so a name is copied before the
+    next call overwrites it.
+    """
+    setrpcent(1)
+    var first = getrpcent()
+    if is_null(first):
+        endrpcent()
+        var absent = string_to_char_ptr("no-such-rpc-program")
+        assert_true(
+            is_null(getrpcbyname(absent)),
+            "a name that is not there answers null",
+        )
+        absent.unsafe_free()
+        return
+
+    var name = char_ptr_to_string(first.unsafe_offset(0)[].r_name)
+    var number = first.unsafe_offset(0)[].r_number
+    assert_true(name.byte_length() > 0, "a row has a name")
+
+    var rows = 1
+    for _ in range(64):
+        var row = getrpcent()
+        if is_null(row):
+            break
+        assert_true(
+            char_ptr_to_string(row.unsafe_offset(0)[].r_name).byte_length() > 0,
+            "every row has a name",
+        )
+        rows += 1
+    assert_true(rows >= 1, "the walk read the row it started at")
+
+    setrpcent(1)
+    var again = getrpcent()
+    assert_true(not is_null(again), "winding back finds a row again")
+    assert_equal(
+        char_ptr_to_string(again.unsafe_offset(0)[].r_name),
+        name,
+        "and it is the row the walk started at",
+    )
+    assert_equal(
+        again.unsafe_offset(0)[].r_number, number, "with the same number"
+    )
+
+    var by_name_bytes = string_to_char_ptr(name)
+    var by_name = getrpcbyname(by_name_bytes)
+    by_name_bytes.unsafe_free()
+    assert_true(not is_null(by_name), "the row's own name finds it")
+    assert_equal(
+        by_name.unsafe_offset(0)[].r_number, number, "and gives the same number"
+    )
+
+    var by_number = getrpcbynumber(number)
+    assert_true(not is_null(by_number), "the row's own number finds it")
+    assert_equal(
+        char_ptr_to_string(by_number.unsafe_offset(0)[].r_name),
+        name,
+        "and gives the same name",
+    )
+
+    endrpcent()
+
+
 def main() raises:
     test_a_numeric_address_needs_no_name_service()
     test_a_name_that_is_not_a_number_is_refused()
@@ -564,6 +646,7 @@ def main() raises:
     test_walking_the_service_database()
     test_the_service_database_by_name_and_by_port()
     test_the_network_database_three_ways()
+    test_the_rpc_database_three_ways()
     test_the_host_database_read_row_by_row()
     test_a_host_asked_for_by_name_answers_with_the_kind_it_was_asked_by()
     test_the_resolver_says_what_a_number_meant()
