@@ -20,6 +20,7 @@ from std.sys import CompilationTarget, size_of
 from std.testing import assert_equal, assert_true
 
 from libc.constant import (
+    EBUSY,
     ETIMEDOUT,
     MAP_ANONYMOUS,
     MAP_SHARED,
@@ -204,6 +205,14 @@ def test_the_condition_attributes_go_both_ways() raises:
     assert_equal(pthread_condattr_getpshared(attr, out), 0, "and reads back")
     assert_equal(out.unsafe_offset(0)[], PTHREAD_PROCESS_SHARED, "as shared")
 
+    # `_init` puts the defaults back, which is what tells it from `_destroy`:
+    # same signature, same answer of 0, and the object left as it was found.
+    assert_equal(pthread_condattr_init(attr), 0, "init puts them back")
+    assert_equal(pthread_condattr_getpshared(attr, out), 0)
+    assert_equal(
+        out.unsafe_offset(0)[], PTHREAD_PROCESS_PRIVATE, "for one process again"
+    )
+
     out.unsafe_free()
     _ = pthread_condattr_destroy(attr)
     attr.unsafe_free()
@@ -306,6 +315,59 @@ def test_a_condition_wait_is_woken_by_the_process_that_holds_the_lock() raises:
     )
     status.unsafe_free()
 
+    # The same question asked with `pthread_cond_broadcast`, which with one
+    # waiter wakes exactly the one `_signal` wakes and is a different call
+    # besides: same signature, same answer of 0. A child that destroyed the
+    # condition instead of broadcasting leaves this process waiting, and the
+    # ten seconds of `alarm` is what turns that into a red run.
+    assert_equal(pthread_mutex_lock(mutex), 0, "the lock is taken again")
+    var second = fork()
+    if second == 0:
+        assert_equal(pthread_mutex_lock(mutex), 0, "the second child gets it")
+        assert_equal(
+            pthread_cond_broadcast(cond),
+            0,
+            "and wakes everybody who is waiting",
+        )
+        assert_equal(pthread_mutex_unlock(mutex), 0, "then lets go of the lock")
+        _ = exit(0)
+
+    assert_true(second > 0, "there is a second child to be woken by")
+    # A time ten seconds out rather than `_wait`, and not the `alarm` the round
+    # above uses: a signal that a handler elsewhere in the suite catches leaves
+    # this waiting rather than ending it, and a wake-up that never comes should
+    # be an `ETIMEDOUT` this file can read rather than a run that hangs.
+    var when = unsafe_alloc[timespec](1)
+    when.unsafe_offset(0)[] = timespec()
+    assert_equal(clock_gettime(CLOCK_REALTIME, when), 0)
+    when.unsafe_offset(0)[] = timespec(
+        when.unsafe_offset(0)[].tv_sec + 10, when.unsafe_offset(0)[].tv_nsec
+    )
+    assert_equal(
+        pthread_cond_timedwait(cond, mutex, when),
+        0,
+        "the wait comes back when everybody is woken",
+    )
+    when.unsafe_free()
+    assert_equal(pthread_mutex_unlock(mutex), 0, "holding the lock again")
+
+    var second_status = unsafe_alloc[Int32](1)
+    second_status.unsafe_offset(0)[] = 0
+    assert_equal(
+        waitpid(second, second_status, 0),
+        second,
+        "the second child is waited for",
+    )
+    assert_true(
+        WIFEXITED(second_status.unsafe_load()), "and it left of its own accord"
+    )
+    assert_equal(
+        Int(WEXITSTATUS(second_status.unsafe_load())),
+        0,
+        "having locked, broadcast and unlocked",
+    )
+    second_status.unsafe_free()
+
     _ = pthread_cond_destroy(cond)
     _ = pthread_mutex_destroy(mutex)
     _ = pthread_condattr_destroy(cond_attr)
@@ -342,6 +404,14 @@ def test_a_read_write_lock_takes_for_reading_and_writing() raises:
     assert_equal(pthread_rwlock_tryrdlock(rwlock), 0, "it takes to read")
     assert_equal(pthread_rwlock_unlock(rwlock), 0, "and gives up")
     assert_equal(pthread_rwlock_trywrlock(rwlock), 0, "it takes to write")
+    # Which is what a writer holds: a read taken now waits for it. Without
+    # this, `trywrlock` and `_destroy` -- the two calls with no arguments and
+    # the same answer of 0 -- are the same call in a process with one thread.
+    assert_equal(
+        pthread_rwlock_tryrdlock(rwlock),
+        Int32(EBUSY),
+        "and a reader cannot get in while it is held",
+    )
     assert_equal(pthread_rwlock_unlock(rwlock), 0, "and gives up")
 
     assert_equal(pthread_rwlock_destroy(rwlock), 0, "and it goes away")
@@ -373,12 +443,36 @@ def test_a_read_write_lock_can_be_made_from_attributes() raises:
     )
     assert_equal(pthread_rwlockattr_getpshared(attr, out), 0, "and reads back")
     assert_equal(out.unsafe_offset(0)[], PTHREAD_PROCESS_SHARED, "as shared")
+
+    # As with the condition's: `_init` puts the default back, and `_destroy`
+    # leaves it there, so the reset is the only thing that tells the two
+    # apart. Done before the lock is made, since the lock is to be private.
+    assert_equal(pthread_rwlockattr_init(attr), 0, "init puts it back")
+    assert_equal(pthread_rwlockattr_getpshared(attr, out), 0)
+    assert_equal(
+        out.unsafe_offset(0)[], PTHREAD_PROCESS_PRIVATE, "for one process again"
+    )
+    assert_equal(
+        pthread_rwlockattr_setpshared(attr, PTHREAD_PROCESS_SHARED),
+        0,
+        "and shareable again, for the lock below",
+    )
     out.unsafe_free()
 
     var rwlock = unsafe_alloc[pthread_rwlock_t](1)
     rwlock.unsafe_offset(0)[] = pthread_rwlock_t()
     assert_equal(pthread_rwlock_init(rwlock, attr), 0, "the lock takes them")
     assert_equal(pthread_rwlock_destroy(rwlock), 0, "and goes away")
+    # Destroyed means nothing is held any more, so a write can be taken at
+    # once. That is what tells `_destroy` from `_rdlock`, which has the same
+    # signature and answers the same 0 but leaves a read lock held: the try
+    # below would answer EBUSY.
+    assert_equal(
+        pthread_rwlock_trywrlock(rwlock),
+        0,
+        "and nothing is held on it any more",
+    )
+    assert_equal(pthread_rwlock_unlock(rwlock), 0)
     rwlock.unsafe_free()
 
     _ = pthread_rwlockattr_destroy(attr)

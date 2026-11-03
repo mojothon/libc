@@ -107,29 +107,67 @@ def test_roots_and_exponentials() raises:
 
 
 def test_trigonometric() raises:
-    assert_cdouble(csin(cdouble(0.0, 0.0)), 0.0, 0.0)
-    assert_cdouble(ccos(cdouble(0.0, 0.0)), 1.0, 0.0)
-    assert_cdouble(ctan(cdouble(0.0, 0.0)), 0.0, 0.0)
+    """Asked at a half of a half, and that is the point of the function.
+
+    Every one of these was asked at nothing, where the answer is nothing
+    and `conj` answers nothing too: a whole family of complex functions
+    could have been pointed at the conjugate and the suite would not have
+    said a word -- and in the full sweep they all were. At a half plus a
+    half of i the answer has an imaginary part that is not nothing, so
+    the conjugate of the argument answers a different number, and the
+    two components are asked for separately.
+    """
+    assert_cdouble(
+        csin(cdouble(0.5, 0.5)), 0.5406126857131534, 0.4573041531842493
+    )
+    assert_cdouble(
+        ccos(cdouble(0.5, 0.5)), 0.9895848833999199, -0.24982639750046154
+    )
+    assert_cdouble(
+        ctan(cdouble(0.5, 0.5)), 0.40389645531602586, 0.5640831412674986
+    )
 
     # The float half of the same three, of which only `csinf` had no test:
     # `ccosf` and `ctanf` are asked below with the rest of the `f` pair, and
     # this one was left out, so the name went unchecked while its neighbours
     # did not.
-    assert_cfloat(csinf(cfloat(0.0, 0.0)), 0.0, 0.0)
+    assert_cfloat(
+        csinf(cfloat(0.5, 0.5)), 0.5406126857131534, 0.4573041531842493
+    )
 
-    assert_cdouble(casin(cdouble(0.0, 0.0)), 0.0, 0.0)
-    assert_true(abs(cacos(cdouble(0.0, 0.0)).re - 1.5707963267948966) < EPS_D)
-    assert_cdouble(catan(cdouble(0.0, 0.0)), 0.0, 0.0)
+    assert_cdouble(
+        casin(cdouble(0.5, 0.5)), 0.45227844715119064, 0.5306375309525178
+    )
+    assert_cdouble(
+        cacos(cdouble(0.5, 0.5)), 1.1185178796437059, -0.5306375309525178
+    )
+    assert_cdouble(
+        catan(cdouble(0.5, 0.5)), 0.5535743588970452, 0.40235947810852507
+    )
 
 
 def test_hyperbolic() raises:
-    assert_cdouble(csinh(cdouble(0.0, 0.0)), 0.0, 0.0)
-    assert_cdouble(ccosh(cdouble(0.0, 0.0)), 1.0, 0.0)
-    assert_cdouble(ctanh(cdouble(0.0, 0.0)), 0.0, 0.0)
+    # The same point for the same reason, and `cacosh` at two rather than at
+    # one, where it starts and answers nothing either way.
+    assert_cdouble(
+        csinh(cdouble(0.5, 0.5)), 0.4573041531842493, 0.5406126857131534
+    )
+    assert_cdouble(
+        ccosh(cdouble(0.5, 0.5)), 0.9895848833999199, 0.24982639750046154
+    )
+    assert_cdouble(
+        ctanh(cdouble(0.5, 0.5)), 0.5640831412674986, 0.40389645531602586
+    )
 
-    assert_cdouble(casinh(cdouble(0.0, 0.0)), 0.0, 0.0)
-    assert_cdouble(cacosh(cdouble(1.0, 0.0)), 0.0, 0.0)
-    assert_cdouble(catanh(cdouble(0.0, 0.0)), 0.0, 0.0)
+    assert_cdouble(
+        casinh(cdouble(0.5, 0.5)), 0.5306375309525178, 0.45227844715119064
+    )
+    assert_cdouble(
+        cacosh(cdouble(2.0, 0.5)), 1.3618009008578458, 0.27775425655771396
+    )
+    assert_cdouble(
+        catanh(cdouble(0.5, 0.5)), 0.40235947810852507, 0.5535743588970452
+    )
 
 
 def test_float_variants() raises:
@@ -139,21 +177,43 @@ def test_float_variants() raises:
     where a `cdouble` is two `Float64`, and the two are not the same
     type and cannot be told apart by anything else.
     """
-    assert_cfloat(ccosf(cfloat(0.0, 0.0)), 1.0, 0.0)
-    assert_cfloat(ctanf(cfloat(0.0, 0.0)), 0.0, 0.0)
-    assert_cfloat(casinf(cfloat(0.0, 0.0)), 0.0, 0.0)
-    assert_true(
-        abs(Float64(cacosf(cfloat(0.0, 0.0)).re) - 1.5707963267948966) < EPS_F,
-        "cacosf of nothing is a quarter turn",
+    # At a half plus a half of i, as the double half of these are: the
+    # imaginary part is what tells each one from the conjugate of its
+    # argument, and at nothing there is none.
+    assert_cfloat(
+        ccosf(cfloat(0.5, 0.5)), 0.9895848833999199, -0.24982639750046154
     )
-    assert_cfloat(catanf(cfloat(0.0, 0.0)), 0.0, 0.0)
+    assert_cfloat(
+        ctanf(cfloat(0.5, 0.5)), 0.40389645531602586, 0.5640831412674986
+    )
+    assert_cfloat(
+        casinf(cfloat(0.5, 0.5)), 0.45227844715119064, 0.5306375309525178
+    )
+    assert_cfloat(
+        cacosf(cfloat(0.5, 0.5)), 1.1185178796437059, -0.5306375309525178
+    )
+    assert_cfloat(
+        catanf(cfloat(0.5, 0.5)), 0.5535743588970452, 0.40235947810852507
+    )
 
-    assert_cfloat(ccoshf(cfloat(0.0, 0.0)), 1.0, 0.0)
-    assert_cfloat(csinhf(cfloat(0.0, 0.0)), 0.0, 0.0)
-    assert_cfloat(ctanhf(cfloat(0.0, 0.0)), 0.0, 0.0)
-    assert_cfloat(casinhf(cfloat(0.0, 0.0)), 0.0, 0.0)
-    assert_cfloat(cacoshf(cfloat(1.0, 0.0)), 0.0, 0.0)
-    assert_cfloat(catanhf(cfloat(0.0, 0.0)), 0.0, 0.0)
+    assert_cfloat(
+        ccoshf(cfloat(0.5, 0.5)), 0.9895848833999199, 0.24982639750046154
+    )
+    assert_cfloat(
+        csinhf(cfloat(0.5, 0.5)), 0.4573041531842493, 0.5406126857131534
+    )
+    assert_cfloat(
+        ctanhf(cfloat(0.5, 0.5)), 0.5640831412674986, 0.40389645531602586
+    )
+    assert_cfloat(
+        casinhf(cfloat(0.5, 0.5)), 0.5306375309525178, 0.45227844715119064
+    )
+    assert_cfloat(
+        cacoshf(cfloat(2.0, 0.5)), 1.3618009008578458, 0.27775425655771396
+    )
+    assert_cfloat(
+        catanhf(cfloat(0.5, 0.5)), 0.40235947810852507, 0.5535743588970452
+    )
 
     assert_cfloat(clogf(cfloat(1.0, 0.0)), 0.0, 0.0)
 

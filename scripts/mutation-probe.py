@@ -471,6 +471,39 @@ def key_of(mutant: Mutant) -> str:
     return f"{mutant.name}:{mutant.what}"
 
 
+# Not the same call, and that is the point of keeping them apart from the table
+# above: these are calls whose *effect* differs and whose answer is the same, in
+# a case where no use of the object afterwards is defined. `pthread_attr_destroy`
+# and `pthread_attr_init` both answer 0; what separates them is that one leaves
+# an object that may not be used and the other leaves one that may -- and using
+# the object after a destroy is undefined, so there is nothing to assert. Saying
+# so is not the same as saying the two are the same call, and a table that said
+# it would be the kind of entry that reads as an answer when it is a hole.
+NO_OBSERVATION = {
+    "pthread_attr_destroy->pthread_attr_init": (
+        "`_destroy` gives the object back and `_init` fills it in, and both "
+        "answer 0. The difference is what may be done with the object after, "
+        "and after a destroy nothing is defined -- so every observation this "
+        "suite is allowed to make is the same one"
+    ),
+    "pthread_rwlockattr_destroy->pthread_rwlockattr_init": (
+        "the same pair as the attribute object above: glibc's `_destroy` for a "
+        "read-write lock's attributes is a return of 0 and nothing else, and "
+        "the object it leaves behind is not one that may be read"
+    ),
+    "pthread_condattr_destroy->pthread_condattr_init": (
+        "the same pair again for the condition's attributes, for the same "
+        "reason and with the same measurement behind it"
+    ),
+    "pthread_cond_destroy->pthread_cond_signal": (
+        "glibc's `pthread_cond_destroy` changes nothing and answers 0 -- "
+        "measured, with a waiter sitting on the condition -- so there is no "
+        "call left in this package that can see the difference, and any use of "
+        "a destroyed condition is undefined in any case"
+    ),
+}
+
+
 def reverse_key(key: str) -> str:
     """The same pair the other way round, which is the same claim.
 
@@ -493,6 +526,14 @@ def reason_for(mutant: Mutant) -> str:
     table = SAME_ANSWER if mutant.kind == "symbol" else SAME_ORDER
     key = key_of(mutant)
     return table.get(key) or table.get(reverse_key(key), "")
+
+
+def unobservable_for(mutant: Mutant) -> str:
+    """The reason no defined observation separates this one, from either end."""
+    if mutant.kind != "symbol":
+        return ""
+    key = key_of(mutant)
+    return NO_OBSERVATION.get(key) or NO_OBSERVATION.get(reverse_key(key), "")
 
 
 def classify(result: subprocess.CompletedProcess) -> str:
@@ -568,14 +609,19 @@ def build(kind: str) -> list[Mutant]:
 def check_tables() -> int:
     """Every reason in the two tables still has a mutant to be a reason about."""
     stale = []
-    for kind, table in (("symbol", SAME_ANSWER), ("order", SAME_ORDER)):
+    for kind, table in (
+        ("symbol", SAME_ANSWER),
+        ("order", SAME_ORDER),
+        ("symbol", NO_OBSERVATION),
+    ):
         keys = {key_of(mutant) for mutant in build(kind)}
         stale += [(kind, key) for key in table if key not in keys]
 
     if not stale:
         print(
-            f"all {len(SAME_ANSWER)} symbol and {len(SAME_ORDER)} order reasons "
-            "are about pairs that can still be made, each read both ways round"
+            f"all {len(SAME_ANSWER)} symbol, {len(SAME_ORDER)} order and"
+            f" {len(NO_OBSERVATION)} unobservable reasons are about pairs that"
+            " can still be made, each read both ways round"
         )
         return 0
 
@@ -662,6 +708,7 @@ def main() -> int:
             "crashed": 0,
             "hung": 0,
             "same": 0,
+            "unobservable": 0,
             "survived": 0,
             "error": 0,
         }
@@ -716,12 +763,16 @@ def main() -> int:
                 known = reason_for(mutant)
                 if verdict == "survived" and known:
                     verdict = "same"
+                unseen = unobservable_for(mutant)
+                if verdict == "survived" and unseen:
+                    verdict = "unobservable"
+                    known = unseen
                 with say:
                     tally[verdict] += 1
                     if mutant.kind == "symbol":
-                        print(f"  {verdict:9} {where:44} {mutant.what}")
+                        print(f"  {verdict:12} {where:44} {mutant.what}")
                     else:
-                        print(f"  {verdict:9} {where}")
+                        print(f"  {verdict:12} {where}")
                     if known:
                         print(f"            {known}")
                     if verdict == "caught" and known:
@@ -744,6 +795,7 @@ def main() -> int:
         print(
             f"  caught {tally['caught']}, crashed {tally['crashed']},"
             f" hung {tally['hung']}, same answer {tally['same']},"
+            f" unobservable {tally['unobservable']},"
             f" survived {tally['survived']}, did not build {tally['error']}"
         )
         if answered:

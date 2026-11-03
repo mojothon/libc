@@ -256,6 +256,25 @@ def test_a_new_attribute_object_is_private_and_normal() raises:
         out.unsafe_offset(0)[], PTHREAD_PRIO_NONE, "and takes no priority"
     )
 
+    # Moved off two of those defaults and `init` again: they come back. That
+    # is the half of `pthread_mutexattr_init` that answers something other
+    # than 0 -- glibc's `_destroy` leaves every one of these as it found it,
+    # so the two calls have the same signature, the same answer, and only
+    # this tells them apart.
+    assert_equal(pthread_mutexattr_settype(attr, PTHREAD_MUTEX_ERRORCHECK), 0)
+    assert_equal(pthread_mutexattr_setpshared(attr, PTHREAD_PROCESS_SHARED), 0)
+    assert_equal(pthread_mutexattr_init(attr), 0, "and init puts them back")
+    assert_equal(pthread_mutexattr_gettype(attr, out), 0)
+    assert_equal(
+        out.unsafe_offset(0)[], PTHREAD_MUTEX_DEFAULT, "the default kind again"
+    )
+    assert_equal(pthread_mutexattr_getpshared(attr, out), 0)
+    assert_equal(
+        out.unsafe_offset(0)[],
+        PTHREAD_PROCESS_PRIVATE,
+        "and for one process again",
+    )
+
     out.unsafe_free()
     _ = pthread_mutexattr_destroy(attr)
     attr.unsafe_free()

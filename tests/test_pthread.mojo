@@ -71,7 +71,7 @@ from libc.signal import (
     sigemptyset,
     sigismember,
 )
-from libc.sched import SCHED_OTHER, sched_param
+from libc.sched import SCHED_FIFO, SCHED_OTHER, sched_param
 from libc.utils import is_null, null_ptr
 
 # A megabyte of stack and one page in front of it: more than any of them
@@ -96,6 +96,27 @@ def test_the_attribute_object() raises:
 
     var state = unsafe_alloc[Int32](1)
     assert_equal(pthread_attr_getdetachstate(attr, state), 0)
+
+    # `_init` is not only a call that answers 0: it puts the defaults in, and
+    # a stack size is the one of them that is not 0 on either platform, so it
+    # is what says the object was filled in rather than left as found.
+    var fresh = unsafe_alloc[Int](1)
+    assert_equal(pthread_attr_getstacksize(attr, fresh), 0)
+    assert_true(
+        Int(fresh.unsafe_load()) > 0,
+        "a stack size is filled in, not left at nothing",
+    )
+    # And it puts them back: moved off the default, `init` again, and the
+    # default is what is there. That is what tells it from `_destroy`, which
+    # has the same signature, the same answer of 0, and leaves the object as
+    # it found it -- measurably so: the detach state stays where it was put.
+    assert_equal(pthread_attr_setdetachstate(attr, PTHREAD_CREATE_DETACHED), 0)
+    assert_equal(pthread_attr_init(attr), 0, "and init puts them back")
+    assert_equal(pthread_attr_getdetachstate(attr, state), 0)
+    assert_equal(
+        state.unsafe_load(), PTHREAD_CREATE_JOINABLE, "the default state again"
+    )
+    fresh.unsafe_free()
     # POSIX does not say what number either state is, so what is asked is
     # not which number detached is but whether what went in comes out.
     var got: Int32 = state.unsafe_load()
@@ -177,29 +198,42 @@ def test_the_scheduling_settings() raises:
     param.unsafe_offset(0)[] = sched_param()
     var again = unsafe_alloc[sched_param](1)
     again.unsafe_offset(0)[] = sched_param()
+
+    # A priority of nothing is what a new object has, so reading it and then
+    # writing it back says nothing about which of the two calls did which: a
+    # `set` that only read would leave the same nothing behind and the pair
+    # would look right. What is written is seven, which glibc refuses under
+    # the ordinary policy -- EINVAL -- so the policy goes to FIFO first.
+    var policy = unsafe_alloc[Int32](1)
     assert_equal(
-        pthread_attr_getschedparam(attr, param), 0, "the priority reads out"
+        pthread_attr_setschedpolicy(attr, SCHED_FIFO),
+        0,
+        "the policy goes to FIFO",
     )
+    param.unsafe_offset(0)[] = sched_param(7)
     assert_equal(
         pthread_attr_setschedparam(attr, param),
         0,
-        "and the same one is taken back",
+        "and a priority of seven is written",
     )
     assert_equal(pthread_attr_getschedparam(attr, again), 0)
     assert_equal(
         again.unsafe_offset(0)[].sched_priority(),
-        param.unsafe_offset(0)[].sched_priority(),
+        7,
         "and it is the one that was written",
     )
 
-    var policy = unsafe_alloc[Int32](1)
+    # FIFO is on the object now, so a `get` that read the detach state instead
+    # -- 1 against 0 and the two told apart on both platforms -- answers the
+    # other one of them. And a `set` that wrote the detach state leaves the
+    # policy where it was, which is the assertion after the write.
     assert_equal(
         pthread_attr_getschedpolicy(attr, policy), 0, "the policy reads out"
     )
     assert_equal(
         policy.unsafe_offset(0)[],
-        SCHED_OTHER,
-        "and a new one is on the ordinary policy",
+        SCHED_FIFO,
+        "and it is the one that was written",
     )
     assert_equal(
         pthread_attr_setschedpolicy(attr, SCHED_OTHER),
@@ -240,15 +274,18 @@ def test_the_scheduling_settings() raises:
     )
 
     # `PTHREAD_CREATE_JOINABLE` and `PTHREAD_SCOPE_SYSTEM` are the same
-    # number on both platforms -- 0 on Linux, 1 on macOS -- so a binding
-    # that called `pthread_attr_getdetachstate` would write exactly the
-    # value the assert below wants and nothing would say so. The detach
-    # state is moved to the other of the two first, which leaves the scope
-    # alone and makes the two answers different.
+    # number on both platforms, so a binding that called
+    # `pthread_attr_getdetachstate` would write exactly the value the assert
+    # below wants unless the detach state is the other one. It is put on
+    # DETACHED here, which is not SYSTEM on glibc, and the assertion after
+    # the scope call reads it back: a `setscope` that moved the detach state
+    # instead leaves it at SYSTEM, which is where this notices. On Darwin the
+    # two numbers are both 1, so that half of the question has one answer
+    # there and it is the one that says nothing.
     assert_equal(
         pthread_attr_setdetachstate(attr, PTHREAD_CREATE_DETACHED),
         0,
-        "the detach state is set away from the scope's own number",
+        "the detach state is put away from the scope's own number",
     )
 
     var scope = unsafe_alloc[Int32](1)
@@ -261,6 +298,20 @@ def test_the_scheduling_settings() raises:
     assert_equal(
         scope.unsafe_offset(0)[], PTHREAD_SCOPE_SYSTEM, "and that comes back"
     )
+    # That answer is not the one this test can rest on: both platforms
+    # implement one scope, and `pthread_attr_getscope` answers SYSTEM
+    # whatever is on the object, so a `setscope` that wrote somewhere else
+    # entirely would leave the same SYSTEM behind. What it would have moved
+    # is the detach state -- the two calls have the same signature -- and
+    # that one is JOINABLE here and readable, so it is what is asked.
+    var detach = unsafe_alloc[Int32](1)
+    assert_equal(pthread_attr_getdetachstate(attr, detach), 0)
+    assert_equal(
+        detach.unsafe_load(),
+        PTHREAD_CREATE_DETACHED,
+        "and setting the scope moved nothing else",
+    )
+    detach.unsafe_free()
 
     assert_equal(
         pthread_attr_destroy(attr), 0, "pthread_attr_destroy takes it back"
@@ -327,6 +378,16 @@ def test_which_thread_and_whether_it_may_end() raises:
         "the one that was there before comes back, the two told apart",
     )
 
+    # The type and the state are the two calls with the same signature, the
+    # same two values 0 and 1, and the same answer of 0. What tells them
+    # apart is which of the two is written back into `old`: so the state is
+    # put on the value the type is not, before each of them. Left on the
+    # other one, the answer would be the same number either way.
+    assert_equal(
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, old),
+        0,
+        "the state goes to DISABLE, which the type is not",
+    )
     assert_equal(
         pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, old),
         0,
@@ -336,6 +397,11 @@ def test_which_thread_and_whether_it_may_end() raises:
         old.unsafe_offset(0)[],
         PTHREAD_CANCEL_DEFERRED,
         "and waiting for a point is what it was before",
+    )
+    assert_equal(
+        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, old),
+        0,
+        "the state goes back to ENABLE, which the type is not",
     )
     assert_equal(
         pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, old),

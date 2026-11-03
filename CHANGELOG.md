@@ -912,6 +912,27 @@ All notable changes to this project are documented here. The format follows
   its first argument when it is the smaller. Two of the thirty-one are the same
   call (`llround`/`lround`, `ldexpf`/`scalbnf`) and are written down as such.
 
+- **The symbol axis, second pass: `complex` and `pthread` are down to four
+  unexplainable survivors between them.** `complex` was sixteen functions all
+  answered by `conj` if asked at the origin, and they are asked at a half plus
+  a half of i now, where every answer has an imaginary part that is not
+  nothing. `pthread` was the `_init`/`_destroy` pairs -- both answer 0, and
+  `_destroy` leaves the object as it found it -- and the `get`/`set` pairs
+  asked for what a new object has. The resets are what is asserted now, and the
+  pairs are asked with values no default has: a `FIFO` policy, a priority of
+  seven, a detach state that is not the scope's number. The condition variable
+  gets a second round in the cross-process test with `_broadcast` in the child,
+  because with one waiter `_signal` and `_broadcast` are the same wake-up.
+
+- **A third table in the probe, for pairs that no defined observation
+  separates.** `pthread_attr_destroy` and `_init` answer the same 0 and differ
+  in what may be done with the object afterwards, which after a destroy is
+  undefined; calling that "the same answer" would have made the table read as
+  an answer when it was a hole. `NO_OBSERVATION` asks for the same kind of
+  written reason and is checked for staleness the same way, so the four entries
+  in it are four things somebody measured rather than four things nobody
+  looked at.
+
 - **`scripts/check-magnitudes.py` asks every tolerance which side it holds.**
   A tolerance written as `answer - expected < epsilon` is a one-sided bound
   with a `fabs` missing, and it passes for every answer below the expected one.

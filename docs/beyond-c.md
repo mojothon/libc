@@ -396,6 +396,26 @@ The trigonometry was asked at nothing, where six of the functions answer
 nothing and two answer one, so most of the twelve could have been pointed at
 `fabs` without a test saying otherwise. They are asked at a half now.
 
+The complex half of the same family was asked the same way: `csin` and its
+neighbours all at nothing, where each answers nothing and `conj` answers nothing
+too, so sixteen of them could have been pointed at the conjugate. At a half plus
+a half of i every one of them answers a number whose imaginary part is not
+nothing, and the conjugate cannot stand in.
+
+`pthread` had eighteen, and they were of two shapes. The `_init` calls were
+asserted for their return of 0, which `_destroy` also answers, and the `get`
+calls were asked for what a new object has -- so a `get` that wrote instead of
+reading left the same number behind. Both are answered now by moving the object
+off its default and asking `_init` for it back, and by writing a value no
+default has: a priority of seven under FIFO, a policy of FIFO, FIFO against the
+detach state's 1.
+
+Four of the eighteen are not the same call and cannot be told apart either, and
+there is a third table for those now: `pthread_attr_destroy` and `_init` both
+answer 0, and what separates them is what may be done with the object
+afterwards, which after a destroy is undefined. Calling that "the same answer"
+would have been the kind of entry that reads as an answer when it is a hole.
+
 The rest was `answer - expected < epsilon`, which is the one-sided bound the
 `pow` test had above, written as a tolerance. Eight lines were like that, and
 one of them was in `test_stdlib` where no probe sample had ever landed:
