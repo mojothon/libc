@@ -1693,6 +1693,15 @@ def bring_in_libc_utmpx():
     )
 
 
+def bring_in_libc_uchar():
+    from libc.uchar import (
+        c16rtomb,
+        c32rtomb,
+        mbrtoc16,
+        mbrtoc32,
+    )
+
+
 def bring_in_libc_wchar():
     from libc.wchar import (
         btowc,
@@ -1848,6 +1857,7 @@ def main() raises:
     bring_in_libc_sys_sigqueue()
     bring_in_libc_sys_timer()
     bring_in_libc_sys_epoll()
+    bring_in_libc_uchar()
     bring_in_libc_sys_ipc()
     bring_in_libc_sys_mman()
     bring_in_libc_sys_msg()

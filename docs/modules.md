@@ -56,6 +56,7 @@ the bottom.
 | `libc.wchar` | `<wchar.h>` | 85 |
 | `libc.wordexp` | `<wordexp.h>` shell-style word splitting | 6 |
 | `libc.wctype` | `<wctype.h>` | 5 |
+| `libc.uchar` | `<uchar.h>` the UTF-16 and UTF-32 conversions | 4 |
 | `libc.sys.statvfs` | `<sys/statvfs.h>` | 15 |
 | `libc.sys.select` | `<sys/select.h>` | 9 |
 | `libc.sys.shm` | `<sys/shm.h>` shared memory | 7 |
@@ -87,9 +88,12 @@ because Mojo has no type to pass: on x86-64 the C type is the 80-bit x87
 format. `libc.locale` has no `FE_DFL_ENV`, see `fenv_t`.
 
 `libc.sys.epoll`, `libc.sys.prctl`, `libc.sys.sendfile`, `libc.sys.eventfd`,
-`libc.sys.inotify`, `libc.sys.sigqueue`, `libc.sys.timer` and `libc.sys.auxv`
+`libc.sys.inotify`, `libc.sys.sigqueue`, `libc.sys.timer`, `libc.sys.auxv`
+and `libc.uchar`
 wrap Linux-only
-calls; importing them on Darwin will not link.
+calls; importing them on Darwin will not link. `libc.uchar` is there because
+Darwin has no `<uchar.h>` — not in the 10.15 SDK, not in 14.4, and not in
+Apple's Libc sources — rather than because one call is missing from it.
 `libc.sys.random` holds one of each: `getentropy`, which both platforms
 have, and `getrandom`, which answers -1 on Darwin rather than going
 missing.
@@ -114,7 +118,7 @@ is about the call rather than about the suite:
 
 None of them is known to be broken; they are simply not asked.
 
-995 bindings are asked something, and the 3 that are not have a reason
+999 bindings are asked something, and the 3 that are not have a reason
 each. Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.

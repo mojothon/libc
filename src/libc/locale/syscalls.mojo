@@ -169,8 +169,12 @@ def newlocale(
     """Libc `newlocale`, which builds a locale object you can pass around.
 
     Args:
-        category_mask: A bitwise OR of the `LC_*` macros, the parts to take
-            from `locale`.
+        category_mask: A bitwise OR of the `LC_*_MASK` macros, the parts to
+            take from `locale`. Note the name: the categories `setlocale`
+            takes are not these numbers, and the masks are not bound here,
+            so one is spelled `1 << LC_CTYPE`. A category handed to this
+            builds an object that changes nothing and answers a good
+            pointer while doing it, which is how it fails.
         locale: The locale name to read those parts from.
         base: An existing object to start from, or `null_ptr[Locale]()` to
             build on the current global locale.

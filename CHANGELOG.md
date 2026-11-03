@@ -7,6 +7,39 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **`libc.uchar`, the C11 conversions between the locale's encoding and
+  UTF-16 or UTF-32.** Four calls — `mbrtoc16`, `mbrtoc32`, `c16rtomb`,
+  `c32rtomb` — and Linux only, because glibc has `<uchar.h>` and Darwin has
+  no such header at all: not in the 10.15 SDK, not in 14.4, and not in
+  Apple's Libc sources.
+
+  Two of the four are why this is worth having. A character above U+FFFF is
+  one UTF-32 character, four UTF-8 bytes and two UTF-16 code units, and C11
+  splits that work over two calls: `mbrtoc16` consumes the four bytes and
+  writes the high surrogate, and the next call writes the low one and
+  answers `(size_t) -3` with nothing read. `c16rtomb` is the same pair the
+  other way round — the high half answers 0 and writes nothing, and the four
+  bytes arrive with the low half. A loop that takes every answer for a byte
+  count drops half of every character outside the BMP, and `-3` is the only
+  thing that says so.
+
+  The tests ask both directions on U+1D11E, and the answers that are not a
+  character: `-2` for bytes split across two reads, and `-1` with `EILSEQ`
+  for a byte that starts nothing. Two places glibc differs from C11 are
+  written down, and both are asserted: a null output pointer answers 1 for
+  every character rather than the length it would take, and clears the
+  state on the way; and a code point above U+10FFFF is encoded rather than
+  refused, as the old four byte form — U+110000 comes back `F4 90 80 80`,
+  which no UTF-8 decoder reads back.
+
+  The conversions read the calling thread's locale, and the suite runs in
+  `C`, where nothing above ASCII converts, so the tests move this thread
+  into `C.UTF-8` with `newlocale` and `uselocale` and put it back
+  afterwards. That cost a run: `newlocale` takes `LC_CTYPE_MASK`, which is
+  `1 << LC_CTYPE`, and the category `LC_CTYPE` itself builds an object that
+  changes nothing without returning an error. `newlocale`'s docstring now
+  says so, since the masks are not bound and a caller has to spell one.
+
 - **`prctl` asked the questions it answers without changing anything.** It
   was on the cannot-ask list as Linux's own and as a call that changes the
   process it is made on. The second half is only true of some of its options:

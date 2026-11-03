@@ -64,6 +64,10 @@ KNOWN_MISSING = {
     "inotify_rm_watch": "Linux only; <sys/inotify.h> is not on the other side",
     "mlock2": "Linux only; mlock2(2) is a Linux-specific call",
     "prctl": "Linux only; prctl(2) is a Linux-specific call",
+    "mbrtoc16": "Linux only; Darwin has no <uchar.h> at all",
+    "mbrtoc32": "Linux only; Darwin has no <uchar.h> at all",
+    "c16rtomb": "Linux only; Darwin has no <uchar.h> at all",
+    "c32rtomb": "Linux only; Darwin has no <uchar.h> at all",
     "ppoll": "Linux only; ppoll(2) is a Linux-specific call",
     "remap_file_pages": "Linux only; the man page is gone and the call is no-op on the other side",
 }
