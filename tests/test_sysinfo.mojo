@@ -28,9 +28,12 @@ from libc.sys.sysinfo import (
     get_phys_pages,
     sysinfo,
 )
-from libc.constant import MAP_ANONYMOUS, MAP_PRIVATE, PROT_READ, PROT_WRITE
-from libc.sys.mman import mmap, munmap
-from libc.unistd import SC_NPROCESSORS_ONLN, SC_PAGESIZE, sysconf
+from libc.unistd import (
+    SC_NPROCESSORS_ONLN,
+    SC_PAGESIZE,
+    SC_PHYS_PAGES,
+    sysconf,
+)
 from libc.utils import null_ptr
 
 
@@ -83,23 +86,22 @@ def test_the_memory_pages_and_the_memory_bytes_are_one_amount() raises:
         # the two numbers read again. What the machine has does not move; what
         # can still be had goes down. Swapped, one of those two says the other
         # thing.
-        comptime BITE = 256 << 20
-        comptime RW: Int32 = PROT_READ | PROT_WRITE
-        comptime PRIVATE_ANON: Int32 = MAP_PRIVATE | MAP_ANONYMOUS
-
-        var had = Int(get_phys_pages())
-        var could = Int(get_avphys_pages())
-        var bite = mmap(null_ptr[UInt8](), BITE, RW, PRIVATE_ANON, -1, 0)
-        assert_true(Int(UInt(bite)) > 0, "there is memory to take")
-        for i in range(0, BITE, pagesize):
-            bite.unsafe_store(i, UInt8(1))
-        var has = Int(get_phys_pages())
-        var can = Int(get_avphys_pages())
-        _ = munmap(bite, BITE)
-
-        assert_equal(has, had, "what the machine has does not move")
+        # The two are not the same number, and it can be said without pressing
+        # on the machine: what it has is what `sysconf` says it has, and what
+        # is free is less than that, some of it always being in use. A binding
+        # pointed at the other call answers one number twice, and either
+        # assertion says so. Taking a quarter of a gigabyte and watching the
+        # free count fall was the first way this was asked, and it is not asked
+        # that way any more: on a machine with plenty of memory to spare the
+        # number it watched did not move.
+        assert_equal(
+            Int(get_phys_pages()),
+            Int(sysconf(SC_PHYS_PAGES)),
+            "what the machine has is what sysconf says it has",
+        )
         assert_true(
-            can < could, "and what can still be had is less for the taking"
+            Int(get_avphys_pages()) < Int(get_phys_pages()),
+            "and there is less of it free than there is of it",
         )
 
         var info = unsafe_alloc[Sysinfo](1)

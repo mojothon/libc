@@ -119,13 +119,20 @@ def test_mmap_hands_back_memory() raises:
     # says so is a number that is a flag to one of them and not to the other:
     # 8 is `MADV_FREE` to `madvise`, and no `MS_` bit at all to `msync`, which
     # refuses it. A binding pointed at `madvise` answers 0.
-    set_errno(0)
-    assert_equal(msync(p, SIZE, 8), -1, "msync refuses flags it does not know")
-    assert_equal(
-        get_errno(),
-        Int32(EINVAL),
-        "and says which of them it minded, rather than answering 0",
-    )
+    # Linux checks them and Darwin does not, which was measured there: the
+    # macOS runner answered 0 for the same call, so the assertion is only made
+    # where it holds, and the one platform where the two calls differ is
+    # enough for the sweep.
+    comptime if not CompilationTarget.is_macos():
+        set_errno(0)
+        assert_equal(
+            msync(p, SIZE, 8), -1, "msync refuses flags it does not know"
+        )
+        assert_equal(
+            get_errno(),
+            Int32(EINVAL),
+            "and says which of them it minded, rather than answering 0",
+        )
 
     assert_equal(madvise(p, SIZE, MADV_WILLNEED), 0, "madvise takes an advice")
     assert_equal(
