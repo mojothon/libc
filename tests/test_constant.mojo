@@ -44,11 +44,6 @@ from libc.time import CLOCKS_PER_SEC
 from libc.unistd import SC_PAGESIZE
 
 
-def test_int_bounds() raises:
-    assert_equal(Int(INT_MIN), -2147483648)
-    assert_equal(Int(INT_MAX), 2147483647)
-
-
 def test_c_types() raises:
     assert_equal(Int(c_schar(-1)), -1)
     assert_equal(Int(c_uchar(255)), 255)
@@ -152,7 +147,6 @@ def test_the_rest() raises:
 
 
 def main() raises:
-    test_int_bounds()
     test_c_types()
     test_stdio_constants()
     test_signal_constants()

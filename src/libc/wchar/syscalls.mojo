@@ -1814,8 +1814,8 @@ def wcstoll(
         base of 16 the `0x` is read as part of the number rather than
         as a say-so, which this package's `wcstol` notes too.
 
-        Take `LONG_LONG_MAX` and `LONG_LONG_MIN` from `libc.constant`
-        rather than writing the numbers out.
+        Take `LLONG_MAX` and `LLONG_MIN` from `libc.limits` rather than
+        writing the numbers out.
     """
     return external_call[
         "wcstoll", c_longlong, c_ptr[c_wchar], c_ptr[c_ptr[c_wchar]], c_int

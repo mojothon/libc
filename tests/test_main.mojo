@@ -23,6 +23,7 @@ from test_pthread import main as run_pthread
 from test_prctl import main as run_prctl
 from test_eventfd import main as run_eventfd
 from test_epoll import main as run_epoll
+from test_limits import main as run_limits
 from test_sysinfo import main as run_sysinfo
 from test_uchar import main as run_uchar
 from test_socket import main as run_socket
@@ -131,6 +132,7 @@ def main() raises:
     run_langinfo()
     run_layout()
     run_libgen()
+    run_limits()
     run_locale()
     run_math()
     run_msg()

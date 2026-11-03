@@ -42,7 +42,3 @@ comptime ptrdiff_t = Int64
 comptime intptr_t = Int64
 comptime uintptr_t = UInt64
 comptime ssize_t = UInt64
-
-
-comptime INT_MIN: c_int = -2147483648
-comptime INT_MAX: c_int = 2147483647

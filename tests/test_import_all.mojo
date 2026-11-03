@@ -555,6 +555,35 @@ def bring_in_libc_locale():
     )
 
 
+def bring_in_libc_limits():
+    from libc.limits import (
+        CHAR_BIT,
+        CHAR_MAX,
+        CHAR_MIN,
+        INT_MAX,
+        INT_MIN,
+        LLONG_MAX,
+        LLONG_MIN,
+        LONG_MAX,
+        LONG_MIN,
+        MAX_CANON,
+        MAX_INPUT,
+        NAME_MAX,
+        NGROUPS_MAX,
+        PATH_MAX,
+        PIPE_BUF,
+        SCHAR_MAX,
+        SCHAR_MIN,
+        SHRT_MAX,
+        SHRT_MIN,
+        UCHAR_MAX,
+        UINT_MAX,
+        ULLONG_MAX,
+        ULONG_MAX,
+        USHRT_MAX,
+    )
+
+
 def bring_in_libc_logging():
     from libc.logging import (
         LOG_MASK,
@@ -1840,6 +1869,7 @@ def main() raises:
     bring_in_libc_inttypes()
     bring_in_libc_langinfo()
     bring_in_libc_libgen()
+    bring_in_libc_limits()
     bring_in_libc_locale()
     bring_in_libc_logging()
     bring_in_libc_math()

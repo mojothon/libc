@@ -7,8 +7,9 @@ the bottom.
 | Module | C header | Symbols |
 | --- | --- | --- |
 | `libc.math` | `<math.h>` | 133 |
-| `libc.stdlib` | `<stdlib.h>` | 79 |
+| `libc.stdlib` | `<stdlib.h>` | 74 |
 | `libc.float` | `<float.h>` | 30 |
+| `libc.limits` | `<limits.h>` the widths of the integer types, and what a process may have | 24 |
 | `libc.unistd` | `<unistd.h>` | 206 |
 | `libc.file` | `<stdio.h>` file operations | 40 |
 | `libc.ctype` | `<ctype.h>` | 30 |

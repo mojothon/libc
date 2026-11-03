@@ -7,6 +7,42 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **`libc.limits`, the numbers in `<limits.h>`.** Twenty-four constants of
+  two kinds. The widths of the integer types — `CHAR_BIT`, `INT_MAX`,
+  `LONG_MIN`, `ULLONG_MAX` and the rest — which are the same on both
+  platforms here and are what a caller reads to decide what to cast into.
+  And the limits the system puts on a process, which are not the same:
+  `PATH_MAX` is 4096 on Linux and 1024 on Darwin, `PIPE_BUF` is 4096 and
+  512, `NGROUPS_MAX` is 65536 and 16, `MAX_CANON` and `MAX_INPUT` are 255
+  and 1024. A buffer sized from the Linux answer is a buffer that overflows
+  on the other machine, which is the reason these are worth asking for
+  rather than writing down.
+
+  `MB_LEN_MAX` is deliberately absent. It bounds the bytes a multibyte
+  character can take — 16 on glibc and 6 on Darwin — and it is not a number
+  a caller sizes anything from; `MB_CUR_MAX`, which is a call and not a
+  constant, answers that for the encoding actually in use.
+
+  Five of these were already somewhere else. `PATH_MAX`, `LONG_MAX`,
+  `LONG_MIN`, `ULONG_MAX` and `ULLONG_MAX` sat in `libc.stdlib`, a module
+  for `<stdlib.h>`, which is not the header that defines them; they moved
+  here and `libc.stdlib` imports them back, so `from libc.stdlib import
+  PATH_MAX` keeps working and answers the same number. `INT_MIN` and
+  `INT_MAX` left `libc.constant` for the same reason. And `wcstoll`'s
+  docstring told the reader to take `LONG_LONG_MAX` and `LONG_LONG_MIN`
+  from `libc.constant` — a name C does not have, in a module that did not
+  export it; it now points at `LLONG_MAX` and `LLONG_MIN` here.
+
+  The tests do not repeat the numbers, because `scripts/check-constants.py`
+  already asks C for every one of them on every platform the suite runs on.
+  They assert what the numbers mean instead: every unsigned max is
+  `2 * signed_max + 1` and every signed min is `-signed_max - 1`, in
+  arithmetic one type wider so the check cannot overflow; `char` is signed
+  and `long` is as wide as `long long`; and the two calls the file limits
+  are for work — a `PATH_MAX` buffer holds what `getcwd` writes, and
+  `PIPE_BUF` bytes go into a pipe in one `write` that is neither short nor
+  split.
+
 - **`libc.uchar`, the C11 conversions between the locale's encoding and
   UTF-16 or UTF-32.** Four calls — `mbrtoc16`, `mbrtoc32`, `c16rtomb`,
   `c32rtomb` — and Linux only, because glibc has `<uchar.h>` and Darwin has
