@@ -7,6 +7,38 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **Two more things the docs say, made able to fail.** `docs/modules.md`
+  ends with what the suite does not ask, and that section had drifted a long
+  way: it still named `sigwait` and `getchar` as unasked after both had been
+  asked two rounds ago, still called `_Exit`, `system`, `getchar_unlocked`
+  and `getwchar` unaskable, and still counted 977 asked and 17 not when the
+  numbers were 989 and 11. Prose about calls is prose about state, so
+  `scripts/check-tests.py` reads that section back now: every call it names
+  has to be one the file is still holding as unasked, and the two numbers it
+  states have to be the two just counted. The section was rewritten to say
+  what is true — four bindings would stop the run rather than fail it
+  (`scanf`, `sigsuspend`, `pause`, `pthread_cond_wait`), and the other seven
+  are not about waiting — and split from the history that had grown into it,
+  which is now under a heading of its own.
+
+- **`pixi run check-release`, for the numbers a release moves.** The version
+  is stated in five places — `pixi.toml`, `recipe/recipe.yaml`,
+  `src/libc/version.mojo`, the table on the version page, and the specifier
+  the install page tells a reader to ask conda for — and the Mojo range in
+  four. Nothing about the package breaks when one is left behind, which is
+  why nothing noticed: the docs build, the tests pass, and the install page
+  goes on sending readers to a release that is two bumps old. The script
+  compares them; the specifier is not compared as a string but asked whether
+  the version this checkout actually is satisfies it, since `>=0.12.0,<0.13`
+  is a claim about which releases can be installed rather than a restatement
+  of the number.
+
+  Both guards were checked by breaking what they guard: the old 977/17
+  sentence, a table row naming `sigwait`, a renamed section heading, a
+  `version.mojo` left one bump behind, an install specifier that excludes the
+  version being shipped, and a Mojo range changed in one place only. Each
+  fails the run and says which of them it was.
+
 - **Six of the seventeen "a test cannot ask this" reasons were not
   reasons.** The suite has had, for a while now, a way to fork a child,
   point a pipe at one of its standard streams with `dup2`, and have it

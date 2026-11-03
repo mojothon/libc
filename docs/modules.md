@@ -100,33 +100,35 @@ already own; see the note at the top of `src/libc/stdio/syscalls.mojo`.
 structs the ABI actually passes; `long double complex` is left out because
 Mojo has no 80-bit type.
 
-## The six that would stop the suite
+## What the suite does not ask
 
-Six of the bindings would stop the run rather than fail it, which is a
+Four of the bindings would stop the run rather than fail it, which is a
 worse trade than no test at all:
 
 | Call | Why not |
 |---|---|
-| `libc.file.ioctl` | Variadic: which device it is and what it is asked to do both come after the arguments that can be given. |
-| `libc.file.scanf` | Reads from standard input, which a test cannot promise will ever come to an end. |
+| `libc.file.scanf` | Reads standard input, which a test cannot promise will ever come to an end, and the arguments it fills come after the format. |
 | `libc.signal.sigsuspend` | Waits for a signal to arrive. A test that waits is a test that stops. |
-| `libc.signal.sigwait` | The same. Given a set with nothing in it, glibc waits rather than refusing. |
-| `libc.stdio.getchar` | Reads from standard input, as `scanf` does. |
-| `libc.unistd.pause` | Waits for a signal. |
+| `libc.unistd.pause` | The same wait, with no mask to put in place for it. |
+| `libc.pthread.pthread_cond_wait` | Waits for another thread to signal a condition, and there is one thread here to wait with. |
 
-None of them is known to be broken; they are simply not asked. Twelve more
-cannot be asked for a reason that is not about waiting: `getchar_unlocked`
-and `getwchar` read standard input as well, `_Exit` ends the process the
-suite is running in, `system` starts a shell, `setsid` takes the process out
-of its terminal session, `pthread_atfork` asks for a fork, `pthread_cancel`
-and `pthread_cond_wait` need a thread the suite is sharing, `prctl` is
-Linux's and changes the process it is called on, `isascii_l` and
-`sched_getcpucount` are symbols glibc does not export at all, and
-`putwchar` orients standard output to wide characters for the rest of the
-process. That last one is not about the terminal — the suite points fd 1 at
-a file when it needs to — but about the stream: after one wide write, the
-next byte write to it answers `EOF` and writes nothing, and there is no
-`stdout` object here to reopen and clear it.
+The other seven are not about waiting. `ioctl` is variadic with the request
+deciding what the arguments mean. `putwchar` writes to a stream the whole
+process shares, and orients it: forking a child does not get a fresh stream
+to try it on, only the one the suite has already written to as bytes.
+`prctl` is Linux's and changes the process it is called on.
+`pthread_cancel` would cancel a thread the suite is sharing, and
+`pthread_atfork` registers a fork handler that the just-in-time run this
+suite uses cannot link. `sched_getcpucount` and `isascii_l` are names glibc
+does not export at all. None of them is known to be broken; they are simply
+not asked.
+
+989 bindings are asked something, and the 11 that are not have a reason
+each. Both numbers are read back out of this page by
+`scripts/check-tests.py`, and so is every call named above: the page fails
+the run as soon as it says a call is not asked and a test starts asking it.
+
+## What keeps it honest
 
 Two calls are not bound at all, which is a different thing from not being
 asked: `fflush` and `fdopen` cannot be declared from Mojo while the standard
@@ -143,9 +145,8 @@ when a binding is added with neither a test nor a reason. It also keeps the
 opposite list — bindings that could be asked something and have not been —
 because that is where `gl_flags` was: called by nothing, wrong for three
 releases, and every other check in this repository green. That list is
-**empty** now: 977 bindings are asked something, and the 17 that are not
-each have a reason written down. Empty is not the same as gone; it still
-fails if it grows, which is the thing it was written for.
+**empty** now, and empty is not the same as gone: it still fails if it
+grows, which is the thing it was written for.
 
 ## API reference
 

@@ -32,6 +32,11 @@ jobs:
       # `gl_flags` was on the wrong side of.
       - name: Check that every binding is asked something
         run: pixi run check-tests
+      # A release bumps the version in the five places that state it. Four
+      # of them remembered is a package that builds and an install page
+      # that sends readers to a release that is no longer the one shipped.
+      - name: Check that the version is said the same everywhere
+        run: pixi run check-release
 
   test:
     name: Test (${{ matrix.os }})

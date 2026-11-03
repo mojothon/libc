@@ -67,6 +67,55 @@ CANNOT_ASK = {
 # and a process whose policy it could ask to keep.
 NOT_YET = {}
 
+# `docs/modules.md` ends with what the suite does not ask, and it names calls
+# while it says it. That section had drifted a long way: it was still calling
+# `sigwait` and `getchar` unasked after both had been asked, and it still
+# counted 977 asked and 17 not when the numbers were 989 and 11. Prose about
+# calls is prose about state, so it is read back here: every call named in
+# that section has to be one `CANNOT_ASK` is holding, and the two numbers it
+# states have to be the two counted above. The section is found by heading,
+# so a page that stops having one fails rather than silently unhooks.
+STATED_ASKED = re.compile(
+    r"(\d+) bindings are asked something, and the (\d+) that are not"
+)
+BACKTICKED = re.compile(r"`([\w.]+)`")
+
+
+def stale_page(names: set[str], asked: list[str], unasked: list[str]) -> list[str]:
+    """Where `docs/modules.md` and this file disagree about what is unasked."""
+    text = (ROOT / "docs" / "modules.md").read_text()
+    start = text.find("## What the suite does not ask")
+    if start < 0:
+        return ["no longer has a section saying what the suite does not ask"]
+    end = text.find("\n## ", start + 1)
+    section = text[start:] if end < 0 else text[start:end]
+
+    wrong = []
+    named = 0
+    for token in BACKTICKED.findall(section):
+        call = token.rsplit(".", 1)[-1]
+        if call not in names and call not in CANNOT_ASK:
+            continue
+        named += 1
+        if call in asked:
+            wrong.append(f"{call}: the page says it is not asked, and a test asks it")
+    if named == 0:
+        wrong.append("names no call, so the section is not saying anything")
+
+    said = STATED_ASKED.search(section)
+    if said is None:
+        wrong.append("no longer says how many bindings are asked")
+    else:
+        if int(said.group(1)) != len(asked):
+            wrong.append(
+                f"says {said.group(1)} bindings are asked, and {len(asked)} are"
+            )
+        if int(said.group(2)) != len(unasked):
+            wrong.append(
+                f"says {said.group(2)} are not asked, and {len(unasked)} are not"
+            )
+    return wrong
+
 
 def called_by_tests() -> set[str]:
     """Every name a test calls, with the imports taken out."""
@@ -168,6 +217,13 @@ def main() -> int:
             print(f"    {name}")
 
     print()
+    page = stale_page(names, asked, unasked)
+    if page:
+        print("  *** docs/modules.md and this file disagree ***")
+        for line in page:
+            print(f"    {line}")
+        print("  the page says what is not asked, and this is where it is counted")
+        return 1
     if unexplained:
         print("  *** bindings with no test and no reason ***")
         for name in unexplained:

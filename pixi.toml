@@ -72,6 +72,14 @@ check-examples = "python3 scripts/check-examples.py"
 # testable and untested — is a list with a number on it, and fails only if
 # it grows.
 check-tests = "python3 scripts/check-tests.py"
+# Five places state the version and four state the Mojo range, and a
+# release is where a number gets bumped in the four somebody remembered.
+# Nothing about the package breaks when one is left behind, which is why
+# nothing caught it: the docs build, the tests pass, and the install page
+# goes on telling readers to ask for a release that is two bumps old.
+# This compares them, and asks whether the version this checkout is
+# actually satisfies what the install page says to ask for.
+check-release = "python3 scripts/check-release.py"
 
 [feature.build.dependencies]
 rattler-build = ">=0.40,<0.41"
