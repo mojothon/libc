@@ -839,6 +839,17 @@ All notable changes to this project are documented here. The format follows
   because this FFI cannot hand C a function address, and `fchownat`'s call is
   refused before the two ids are read.
 
+- **Three more from the third sample of `--kind order`.** That sample came back
+  18 caught, 2 crashed, 1 that is the same call and 3 that passed. `fchown`
+  was asked with `-1`, which is refused before the two ids are read, so the
+  swap was answered `-1` as well; a descriptor that exists is what tells them
+  apart — a file given to the owner it already has answers 0, and the swap asks
+  for descriptor 1000, which no process has. `wcscoll(one, two) != 0` and
+  `wcscasecmp_l(hello, shout) == 0` are one failure wearing two names: an
+  answer that is the same either way round. Two strings that differ do not stop
+  differing when asked in the other order, so the sign of the answer is what is
+  asserted now, in both directions.
+
 - **Three tests now fail when the binding underneath them calls the wrong
   function, and the mutation probe has a verdict for a test that waits instead
   of failing.** A third sample of twenty-four mutants found `pow` held to a

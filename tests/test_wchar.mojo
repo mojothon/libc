@@ -558,7 +558,11 @@ def test_the_order_the_locale_asks_for() raises:
     var two = wide("abd")
 
     assert_equal(wcscoll(one, one), 0, "a string against itself is 0")
-    assert_true(wcscoll(one, two) != 0, "two that differ are not")
+    # Which of two strings comes first is a property of the locale; that asking
+    # the other way round answers the other way round is not. A binding that
+    # hands the two over swapped answers one of these two the wrong way.
+    assert_true(wcscoll(one, two) < 0, "abc sorts before abd")
+    assert_true(wcscoll(two, one) > 0, "and after it the other way")
 
     var room = unsafe_alloc[c_wchar](16)
     var needed = wcsxfrm(room, one, 16)
@@ -961,6 +965,15 @@ def test_the_l_variants_ask_a_locale_object() raises:
     var hello = wide("Hello")
     var shout = wide("hELLO")
     assert_equal(wcscasecmp_l(hello, shout, loc), 0, "case is folded away")
+    # Folding is what makes those two equal, and equality is the answer either
+    # way round. These two differ, so the order they are asked in shows.
+    assert_true(
+        wcscasecmp_l(apple, banana, loc) < 0,
+        "apple sorts before banana, case or not",
+    )
+    assert_true(
+        wcscasecmp_l(banana, apple, loc) > 0, "and after it the other way"
+    )
 
     var abc_x = wide("abcX")
     var abc_y = wide("ABCY")

@@ -297,6 +297,22 @@ on the same product, `scandir`'s two callbacks are both NULL because this FFI
 cannot hand C a function address, and `fchownat`'s call is refused before the
 two ids are read.
 
+Two more samples of the same size followed. The second one's survivors were
+`fmaxf`, which is commutative, and `sigaction`, which was not a weak assertion
+but a struct that was not there — that one is in `sigaction_t`. The third came
+back 18 caught, 2 that took the process down, 1 that is the same call and 3
+that passed, and all three had an assertion to write.
+
+`fchown(-1, ...)` is refused before the two ids are read, so the swap answered
+`-1` as well; a descriptor that exists is what tells them apart, and a file
+given to the owner it already has answers 0 where the swap asks for descriptor
+1000, which no process has. `wcscoll(one, two) != 0` and `wcscasecmp_l(hello,
+shout) == 0` are the same failure twice: an answer that is the same either way
+round. `abc` and `abd` do not stop differing when asked in the other order, and
+`Hello` and `hELLO` do not stop agreeing, so what is asked now is which way
+each leans — in both directions, and a binding that swaps the two gets the
+first one backwards.
+
 glibc, for its part, does not come with anything that checks glibc.
 
 ## Next to Rust's `libc`

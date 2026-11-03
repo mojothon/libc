@@ -262,6 +262,20 @@ def test_chown_on_what_is_not_there() raises:
     assert_equal(chown(nowhere, getuid(), getgid()), -1)
     assert_equal(lchown(nowhere, getuid(), getgid()), -1)
     assert_equal(fchown(-1, getuid(), getgid()), -1, "no such descriptor")
+    # `-1` is refused before the two ids are read, so a swap answers `-1` too.
+    # A descriptor that exists is what tells them apart: a file given to the
+    # owner it already has is a change to nothing and answers 0, and the swap
+    # asks for descriptor 501 or 1000 -- the uid read as a number -- which no
+    # process has.
+    var owned = string_to_char_ptr("/tmp/libc_fchown")
+    _ = unlink(owned)
+    var fd = open_with_mode(owned, O_CREAT | O_RDONLY, 0o600)
+    assert_true(fd >= 0, "a file was made to be owned")
+    assert_equal(
+        fchown(fd, getuid(), getgid()), 0, "it is given to the owner it has"
+    )
+    _ = close(fd)
+    _ = unlink(owned)
     assert_equal(fchownat(-1, nowhere, getuid(), getgid(), 0), -1)
 
     var link = string_to_char_ptr("/tmp/libc_dangling_link")
