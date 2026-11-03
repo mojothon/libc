@@ -111,6 +111,17 @@ SAME_ANSWER = {
         "and the descriptor that differs between them is not something the "
         "API hands out"
     ),
+    "llround->lround": (
+        "`long` and `long long` are both 64 bits on the two platforms this is "
+        "built for, and both round a half away from zero, so the answer is the "
+        "same value under a declared width that happens to agree: a difference "
+        "only ILP32 would show, for the reason `llrintf->lrintf` is here"
+    ),
+    "ldexpf->scalbnf": (
+        "`ldexpf(x, n)` is `scalbnf(x, n)` with FLT_RADIX written as 2, and "
+        "FLT_RADIX is 2 on both platforms: the same call under two names, the "
+        "way `scalbn->ldexp` above is"
+    ),
     "llrintf->lrintf": (
         "`long` and `long long` are both 64 bits on the two platforms this is "
         "built for, and the two round the same way, so the answer is the same "

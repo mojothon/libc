@@ -12,6 +12,7 @@ from libc.constant import (
     c_wchar,
 )
 from libc.fcntl import O_RDWR, open
+from libc.math import fabs
 from libc.file import close, read, write
 from libc.stdio import remove
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, WIFSIGNALED, waitpid
@@ -124,8 +125,8 @@ def test_conversions() raises:
     n.unsafe_free()
 
     var f = string_to_char_ptr("3.5")
-    assert_true((atof(f) - 3.5) < 1e-12)
-    assert_true((strtod(f) - 3.5) < 1e-12)
+    assert_true(fabs(atof(f) - 3.5) < 1e-12)
+    assert_true(fabs(strtod(f) - 3.5) < 1e-12)
     f.unsafe_free()
 
     var hex = string_to_char_ptr("ff")

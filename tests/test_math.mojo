@@ -138,10 +138,15 @@ def test_abs() raises:
 
 
 def test_sqrt_and_rounding() raises:
-    assert_true((sqrt(16.0) - 4.0) < 1e-12)
-    assert_true((fabs(-2.5) - 2.5) < 1e-12)
-    assert_true((ceil(2.1) - 3.0) < 1e-12)
-    assert_true((floor(2.9) - 2.0) < 1e-12)
+    # Every one of these was `answer - expected < epsilon`, which is true of
+    # every answer below the expected one: `fabs(-2.5)` answers 2.5 and so does
+    # the `ceil` three lines down, and `ceil(2.1)` answered by `fabs` is 2.1,
+    # which is under 3 by more than the epsilon allows for. The distance is
+    # what is asked for, and a distance has no sign.
+    assert_true(fabs(sqrt(16.0) - 4.0) < 1e-12)
+    assert_true(fabs(fabs(-2.5) - 2.5) < 1e-12)
+    assert_true(fabs(ceil(2.1) - 3.0) < 1e-12)
+    assert_true(fabs(floor(2.9) - 2.0) < 1e-12)
 
 
 def test_pow() raises:
@@ -210,17 +215,21 @@ def test_arguments_in_order() raises:
     # from either end, so what is asked for is the size of the step: one ulp
     # past the argument that is stepped away from, which is 1 past the one and
     # under the four the other way round.
-    assert_true(after - 1.0 < 1e-15, "one step, not a jump")
+    assert_true(fabs(after - 1.0) < 1e-15, "one step, not a jump")
     assert_true(
-        4.0 - nextafter(4.0, 1.0) < 1e-15, "and the same from the other end"
+        fabs(4.0 - nextafter(4.0, 1.0)) < 1e-15,
+        "and the same from the other end",
     )
 
-    assert_true((fma(2.0, 3.0, 4.0) - 10.0) < 1e-9, "2*3+4, the 4 added last")
+    assert_true(
+        fabs(fma(2.0, 3.0, 4.0) - 10.0) < 1e-9, "2*3+4, the 4 added last"
+    )
     assert_true(fdim(1.0, 4.0) == 0.0, "the positive difference, or zero")
     assert_true(
-        (fdim(4.0, 1.0) - 3.0) < 1e-12, "which is not the same both ways"
+        fabs(fdim(4.0, 1.0) - 3.0) < 1e-12, "which is not the same both ways"
     )
-    assert_true((hypot(3.0, 4.0) - 5.0) < 1e-9, "a 3-4-5 triangle")
+    # A distance again: `fmod(3, 4)` answers 3, and 3 - 5 is under 1e-9.
+    assert_true(fabs(hypot(3.0, 4.0) - 5.0) < 1e-9, "a 3-4-5 triangle")
 
     var d = ldiv(10, 3)
     assert_equal(d.quot, 3, "10 over 3 goes 3 times")
@@ -242,37 +251,45 @@ def test_nan() raises:
 def test_trigonometry() raises:
     """Not one of the sines, cosines or tangents had been called, nor
     their inverses, nor the hyperbolic ones, and each has the same name
-    as the one twice its size. So each is asked about a number whose
-    answer is known: the sine of nothing is nothing, the cosine of
-    nothing is one, and each inverse undoes what it is the inverse of.
+    as the one twice its size.
+
+    They are each asked about a half, and that is the point of the
+    function: at nothing, six of these answer nothing and two answer
+    one, so every one of the twelve could be answered by `fabs` and the
+    suite would not know -- which is where they all stood. At a half they
+    answer twelve different numbers, none of them a half, and a call
+    pointed at its neighbour answers the neighbour's number instead.
     """
-    assert_true(fabs(sin(0.0) - 0.0) < 1e-12)
-    assert_true(fabs(Float64(sinf(0.0)) - 0.0) < 1e-6)
-    assert_true(fabs(cos(0.0) - 1.0) < 1e-12)
-    assert_true(fabs(Float64(cosf(0.0)) - 1.0) < 1e-6)
-    assert_true(fabs(tan(0.0) - 0.0) < 1e-12)
-    assert_true(fabs(Float64(tanf(0.0)) - 0.0) < 1e-6)
+    assert_true(
+        fabs(sin(0.5) - 0.479425538604203) < 1e-12, "the sine of a half"
+    )
+    assert_true(fabs(Float64(sinf(0.5)) - 0.479425538604203) < 1e-6)
+    assert_true(fabs(cos(0.5) - 0.8775825618903728) < 1e-12, "the cosine")
+    assert_true(fabs(Float64(cosf(0.5)) - 0.8775825618903728) < 1e-6)
+    assert_true(fabs(tan(0.5) - 0.5463024898437905) < 1e-12, "the tangent")
+    assert_true(fabs(Float64(tanf(0.5)) - 0.5463024898437905) < 1e-6)
 
-    assert_true(fabs(asin(0.0) - 0.0) < 1e-12)
-    assert_true(fabs(Float64(asinf(0.0)) - 0.0) < 1e-6)
-    assert_true(fabs(acos(1.0) - 0.0) < 1e-12)
-    assert_true(fabs(Float64(acosf(1.0)) - 0.0) < 1e-6)
-    assert_true(fabs(atan(0.0) - 0.0) < 1e-12)
-    assert_true(fabs(Float64(atanf(0.0)) - 0.0) < 1e-6)
+    assert_true(fabs(asin(0.5) - 0.5235987755982989) < 1e-12, "and back")
+    assert_true(fabs(Float64(asinf(0.5)) - 0.5235987755982989) < 1e-6)
+    assert_true(fabs(acos(0.5) - 1.0471975511965979) < 1e-12)
+    assert_true(fabs(Float64(acosf(0.5)) - 1.0471975511965979) < 1e-6)
+    assert_true(fabs(atan(0.5) - 0.4636476090008061) < 1e-12)
+    assert_true(fabs(Float64(atanf(0.5)) - 0.4636476090008061) < 1e-6)
 
-    assert_true(fabs(sinh(0.0) - 0.0) < 1e-12)
-    assert_true(fabs(Float64(sinhf(0.0)) - 0.0) < 1e-6)
-    assert_true(fabs(cosh(0.0) - 1.0) < 1e-12)
-    assert_true(fabs(Float64(coshf(0.0)) - 1.0) < 1e-6)
-    assert_true(fabs(tanh(0.0) - 0.0) < 1e-12)
-    assert_true(fabs(Float64(tanhf(0.0)) - 0.0) < 1e-6)
+    assert_true(fabs(sinh(0.5) - 0.5210953054937474) < 1e-12, "the hyperbolic")
+    assert_true(fabs(Float64(sinhf(0.5)) - 0.5210953054937474) < 1e-6)
+    assert_true(fabs(cosh(0.5) - 1.1276259652063807) < 1e-12)
+    assert_true(fabs(Float64(coshf(0.5)) - 1.1276259652063807) < 1e-6)
+    assert_true(fabs(tanh(0.5) - 0.46211715726000974) < 1e-12)
+    assert_true(fabs(Float64(tanhf(0.5)) - 0.46211715726000974) < 1e-6)
 
-    assert_true(fabs(asinh(0.0) - 0.0) < 1e-12)
-    assert_true(fabs(Float64(asinhf(0.0)) - 0.0) < 1e-6)
-    assert_true(fabs(acosh(1.0) - 0.0) < 1e-12)
-    assert_true(fabs(Float64(acoshf(1.0)) - 0.0) < 1e-6)
-    assert_true(fabs(atanh(0.0) - 0.0) < 1e-12)
-    assert_true(fabs(Float64(atanhf(0.0)) - 0.0) < 1e-6)
+    assert_true(fabs(asinh(0.5) - 0.48121182505960347) < 1e-12, "and back")
+    assert_true(fabs(Float64(asinhf(0.5)) - 0.48121182505960347) < 1e-6)
+    # `acosh` starts at one, which is why this one is asked at two.
+    assert_true(fabs(acosh(2.0) - 1.3169578969248166) < 1e-12)
+    assert_true(fabs(Float64(acoshf(2.0)) - 1.3169578969248166) < 1e-6)
+    assert_true(fabs(atanh(0.5) - 0.5493061443340548) < 1e-12)
+    assert_true(fabs(Float64(atanhf(0.5)) - 0.5493061443340548) < 1e-6)
 
 
 def test_exponentials_and_logarithms() raises:
@@ -283,8 +300,11 @@ def test_exponentials_and_logarithms() raises:
     """
     assert_true(fabs(exp(0.0) - 1.0) < 1e-12)
     assert_true(fabs(Float64(expf(0.0)) - 1.0) < 1e-6)
-    assert_true(fabs(expm1(0.0) - 0.0) < 1e-12)
-    assert_true(fabs(Float64(expm1f(0.0)) - 0.0) < 1e-6)
+    # At nothing, `expm1` answers nothing and so does `log1p` -- and so does
+    # every other function that is zero at zero. At a half they answer two
+    # different numbers, neither of them the argument.
+    assert_true(fabs(expm1(0.5) - 0.6487212707001282) < 1e-12)
+    assert_true(fabs(Float64(expm1f(0.5)) - 0.6487212707001282) < 1e-6)
 
     assert_true(fabs(log(1.0) - 0.0) < 1e-12)
     assert_true(fabs(Float64(logf(1.0)) - 0.0) < 1e-6)
@@ -292,8 +312,8 @@ def test_exponentials_and_logarithms() raises:
     assert_true(fabs(Float64(log2f(2.0)) - 1.0) < 1e-6)
     assert_true(fabs(log10(100.0) - 2.0) < 1e-12)
     assert_true(fabs(Float64(log10f(100.0)) - 2.0) < 1e-6)
-    assert_true(fabs(log1p(0.0) - 0.0) < 1e-12)
-    assert_true(fabs(Float64(log1pf(0.0)) - 0.0) < 1e-6)
+    assert_true(fabs(log1p(0.5) - 0.4054651081081644) < 1e-12)
+    assert_true(fabs(Float64(log1pf(0.5)) - 0.4054651081081644) < 1e-6)
 
     assert_true(fabs(Float64(sqrtf(4.0)) - 2.0) < 1e-6)
     assert_true(fabs(cbrt(8.0) - 2.0) < 1e-12)
@@ -316,10 +336,13 @@ def test_rounding_and_remainders() raises:
     assert_true(fabs(Float64(rintf(2.6)) - 3.0) < 1e-6)
 
     assert_true(fabs(Float64(fabsf(-3.0)) - 3.0) < 1e-6)
-    assert_true(fabs(fmax(1.0, 2.0) - 2.0) < 1e-12)
-    assert_true(fabs(Float64(fmaxf(1.0, 2.0)) - 2.0) < 1e-6)
-    assert_true(fabs(fmin(1.0, 2.0) - 1.0) < 1e-12)
-    assert_true(fabs(Float64(fminf(1.0, 2.0)) - 1.0) < 1e-6)
+    # Five and three rather than one and two: `fmod(x, y)` answers `x` when `x`
+    # is under `y`, which is both of one and two, so the smaller of the pair and
+    # the remainder of it were the same number.
+    assert_true(fabs(fmax(5.0, 3.0) - 5.0) < 1e-12)
+    assert_true(fabs(Float64(fmaxf(5.0, 3.0)) - 5.0) < 1e-6)
+    assert_true(fabs(fmin(5.0, 3.0) - 3.0) < 1e-12)
+    assert_true(fabs(Float64(fminf(5.0, 3.0)) - 3.0) < 1e-6)
 
     assert_true(fabs(Float64(copysignf(3.0, -1.0)) + 3.0) < 1e-6)
     assert_true(fabs(Float64(copysignf(-3.0, 1.0)) - 3.0) < 1e-6)
@@ -350,6 +373,9 @@ def test_the_three_whose_neighbour_was_asked() raises:
     )
     # `fmod` truncates instead, and answers 1 for the same two numbers.
     assert_true(fabs(fmod(3.0, 2.0) - 1.0) < 1e-12, "while fmod does not")
+    assert_true(
+        fabs(Float64(fmodf(3.0, 2.0)) - 1.0) < 1e-6, "and its float twin"
+    )
 
     assert_true(fabs(Float64(erff(0.0))) < 1e-7, "erf of nothing is nothing")
     assert_true(Float64(erff(1.0)) > 0.84, "and erf of 1 is a little over 0.84")
@@ -509,6 +535,14 @@ def test_the_four_that_round_a_double_to_a_whole_number() raises:
     What these four answer with is a whole number, so what is asked
     of them can be asked exactly, with no room for nearly.
     """
+    # At a half the two disagree, which is the only place they do: rounding
+    # by the mode in force goes to the even number and `lround` goes away from
+    # zero, so `lround(2.5)` is 3 and `lrint(2.5)` is 2.
+    assert_equal(lround(2.5), 3, "a half rounds away from zero")
+    assert_equal(llround(2.5), 3, "and asked for a long long")
+    assert_equal(lrint(2.5), 2, "while the mode in force goes to the even one")
+    assert_equal(llrint(2.5), 2, "and so it does asked for a long long")
+
     assert_equal(lround(2.4), 2, "two and a bit rounds to two")
     assert_equal(llround(2.4), 2, "and so it does asked for a long long")
     assert_equal(lrint(2.4), 2, "and asked by the way rounding is set")
