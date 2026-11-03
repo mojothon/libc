@@ -232,37 +232,6 @@ struct Termios:
         self._set_byte(TERMIOS_CC_OFFSET + at, to)
 
 
-struct Winsize:
-    """A C `struct winsize`: how big a terminal is, in characters and pixels.
-
-    Four `unsigned short`s in the order they are read here -- eight bytes,
-    two to a member. Unlike `Termios`, the two platforms lay this one out the
-    same way, so Mojo is left to do it rather than four slots of bits being
-    read by hand; `scripts/check-layouts.py` asks C whether they still agree.
-
-    It is not read or written by anything here: it is filled in by `ioctl`
-    with `TIOCGWINSZ` and handed to it with `TIOCSWINSZ`, which is why the
-    members are public and why nothing validates them.
-    """
-
-    # Rows, in characters.
-    var ws_row: UInt16
-    # Columns, in characters.
-    var ws_col: UInt16
-    # Horizontal size in pixels, zero where the terminal does not say.
-    var ws_xpixel: UInt16
-    # Vertical size in pixels, zero where the terminal does not say.
-    var ws_ypixel: UInt16
-
-    def __init__(out self):
-        """A size of nothing, which is what a terminal that has not been
-        asked or told anything is."""
-        self.ws_row = 0
-        self.ws_col = 0
-        self.ws_xpixel = 0
-        self.ws_ypixel = 0
-
-
 def tcgetattr(fildes: c_int, termios_p: c_ptr[Termios]) -> c_int:
     """C library <termios.h> function `tcgetattr`.
 

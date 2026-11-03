@@ -3,7 +3,7 @@
 # email: rontomai@gmail.com
 # github: github.com/llango
 # ----------------------------------
-from libc.constant.ctype import c_int, c_ulong
+from libc.constant.ctype import c_int
 from std.sys import CompilationTarget
 
 comptime off_t = Int64
@@ -77,12 +77,3 @@ comptime AT_SYMLINK_FOLLOW: Int32 = 64 if CompilationTarget.is_macos() else 1024
 comptime AT_NO_AUTOMOUNT = 2048
 comptime AT_EMPTY_PATH = 4096
 comptime AT_RECURSIVE = 32768
-
-# from sys/ioctl.h. Both platforms build these numbers out of parts -- a
-# direction, a letter, an ordinal, and on Darwin a size -- but they do not
-# build them the same way, so they are written down per platform rather than
-# derived: glibc's `TIOCGWINSZ` is a letter and an ordinal with nothing about
-# the size in it, and Darwin's carries all four.
-comptime FIONREAD: c_ulong = 0x4004667F if CompilationTarget.is_macos() else 0x541B
-comptime TIOCGWINSZ: c_ulong = 0x40087468 if CompilationTarget.is_macos() else 0x5413
-comptime TIOCSWINSZ: c_ulong = 0x80087467 if CompilationTarget.is_macos() else 0x5414

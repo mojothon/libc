@@ -7,30 +7,23 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
-- **An `ioctl` that can be given the address its request is about, and
-  `fprintf`.** C's `ioctl` is `(int, unsigned long, ...)` and the binding had
-  only the two fixed arguments, so the third was never handed over: libc read
-  whatever happened to sit next to them, which made every request that writes
-  something down — which is nearly all of them — a call no test could ask and
-  no caller should make. The address is a parameter now, `c_ptr[NoneType]`,
-  C's `void *`, and the two-argument form stays for the requests that carry
-  nothing. That retires one of the three bindings the suite had never asked:
-  `FIONREAD` on a pipe — 0, then 5, then 2 as three bytes are read out of it —
-  and `TIOCGWINSZ` on a pty after `TIOCSWINSZ` put 24 by 80 into it are what
-  ask it now, and the two requests pass different things through the one
-  address.
-  - `Winsize`, the four `unsigned short`s C fills in for a window size, in
-    `libc.termios`. Both platforms lay it out the same way, so Mojo does the
-    laying out and `scripts/check-layouts.py` compares all four members
-    against C rather than the size alone.
-  - `FIONREAD`, `TIOCGWINSZ` and `TIOCSWINSZ` in `libc.constant`, written per
-    platform because the two libcs build the number differently: glibc's is a
-    letter and an ordinal, and Darwin's carries the direction and the size as
-    well.
-  - `fprintf`, which was missing while `printf`, `dprintf`, `sprintf` and
-    `snprintf` were all here. Like those it writes a format with nothing to
-    fill in; what it adds is the stream, which is what a `tmpfile` gives a
-    test to read the line back out of.
+- **`fprintf`, which was missing while `printf`, `dprintf`, `sprintf` and
+  `snprintf` were all here.** Like them it writes a format with nothing to
+  fill in — a conversion lives in the variadic part and `external_call` cannot
+  hand one over — and what it adds is the stream: a `tmpfile` takes the line
+  and gives it back byte by byte, which is what the test reads.
+
+- **What the variadic wall costs is written down now.** `ioctl`'s third
+  argument is the address nearly every request writes its answer through, and
+  it cannot be passed: `external_call` emits a call whose arguments are all in
+  registers, and on arm64 a variadic callee reads its anonymous arguments from
+  the stack instead. `FIONREAD` through the binding answers 0 on Apple silicon
+  and leaves the integer it was asked about untouched — a probe on a runner
+  showed it, and the same probe showed `fcntl`'s three-argument form losing
+  its argument the same way. Both docstrings say so now, `modules.md`'s list
+  of what the suite cannot ask carries the reason rather than "variadic", and
+  `docs/beyond-c.md` has the paragraph. Nothing about the bindings changed;
+  what changed is that two of them no longer read as if they worked.
 
 - **`libc.limits`, the numbers in `<limits.h>`.** Twenty-four constants of
   two kinds. The widths of the integer types — `CHAR_BIT`, `INT_MAX`,

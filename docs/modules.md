@@ -11,7 +11,7 @@ the bottom.
 | `libc.float` | `<float.h>` | 30 |
 | `libc.limits` | `<limits.h>` the widths of the integer types, and what a process may have | 24 |
 | `libc.unistd` | `<unistd.h>` | 206 |
-| `libc.file` | `<stdio.h>` file operations | 33 |
+| `libc.file` | `<stdio.h>` file operations | 32 |
 | `libc.ctype` | `<ctype.h>` | 30 |
 | `libc.sys.socket` | `<sys/socket.h>` | 35 |
 | `libc.sys.stat` | `<sys/stat.h>` | 36 |
@@ -72,7 +72,7 @@ the bottom.
 | `libc.sys.auxv` | `<sys/auxv.h>` | 3 |
 | `libc.errno` | `<errno.h>` | 6 |
 | `libc.pwd` | `<pwd.h>` | 18 |
-| `libc.termios` | `<termios.h>` how a terminal line is set | 55 |
+| `libc.termios` | `<termios.h>` how a terminal line is set | 54 |
 | `libc.sys.ipc` | `<sys/ipc.h>` keys for System V objects | 9 |
 | `libc.sys.msg` | `<sys/msg.h>` message queues | 6 |
 | `libc.utmpx` | `<utmpx.h>` who is logged in, and where | 29 |
@@ -121,111 +121,25 @@ Mojo has no 80-bit type.
 
 ## What the suite does not ask
 
-Two bindings are not asked anything, and each has a reason that is about the
-call rather than about the suite:
+Three bindings are not asked anything, and every one of them has a reason that
+is about the call rather than about the suite:
 
+- `ioctl` is variadic, and its third argument is the address that nearly every
+  request writes its answer through. `external_call` emits a call whose
+  arguments are all in registers, and arm64 hands a variadic callee its
+  anonymous arguments on the stack instead: what the callee reads is a slot
+  nobody wrote. `FIONREAD` through this binding answers 0 on Apple silicon and
+  leaves the integer it was asked about untouched. It is the same wall that
+  makes the call that opens a file here be openat rather than open.
 - `putwchar` writes to a stream the whole process shares, and orients it:
   forking a child does not get a fresh stream to try it on, only the one the
   suite has already written to as bytes.
 - `pthread_atfork` registers a fork handler that the just-in-time run this
   suite uses cannot resolve; a built binary links and answers fine.
 
-ioctl was the third of them until it could be asked something. It is variadic
-with the request deciding what the arguments mean, and the binding had only
-the two fixed ones: the address a request writes through never reached libc,
-so what a request read was whatever happened to sit next to the first two
-arguments, and no test could say what that was. It has that address now — C's
-`void *`, as `c_ptr[NoneType]` — and what asks it is `FIONREAD` on a pipe,
-before and after the bytes in it change, and `TIOCGWINSZ` on a pty after a
-`TIOCSWINSZ` has put a size in it.
+None of them is known to be broken; they are simply not asked.
 
-Neither of the two is known to be broken; they are simply not asked.
-
-999 bindings are asked something, and the 2 that are not have a reason
+998 bindings are asked something, and the 3 that are not have a reason
 each. Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
-
-## What keeps it honest
-
-Two calls are not bound at all, which is a different thing from not being
-asked: `fflush` and `fdopen` cannot be declared from Mojo while the standard
-library declares them. `std.io` has a `FILE *` of its own and a second
-declaration of either name is refused at compile time — `existing function
-with conflicting signature` — in whichever module makes the call and nowhere
-else, so a binding for one compiles, sits in the package looking bound, and
-fails when a caller touches it. Both were in that state until a test asked
-them something; they are gone, and `scripts/check-symbols.py` fails if either
-name comes back.
-
-Two more names are gone for a quieter reason: nothing exports them.
-`isascii_l` is a macro on glibc over `__isascii_l`, which is a macro over
-`__isascii`, so there is no symbol to call, and Darwin's `xlocale/_ctype.h`
-does not have the name at all. `sched_getcpucount` is FreeBSD's: glibc does
-not declare it, and Darwin's `<sched.h>` holds only `sched_yield` and the
-two priority bounds. Both were bound, compiled, and could not be called on
-either platform — a test could not have caught it, since a test that calls
-one fails to load rather than to assert. What catches it is one check
-reading the other: `scripts/check-symbols.py` asks
-`scripts/check-prototypes.py` which names no header here declares, and a
-name excused by both lists is one that neither the headers nor the
-libraries say is there.
-
-One thing was in two places at once, which none of the checks above could
-see either. `strlen` was bound in `libc.string` answering `UInt64` and in
-`libc.utils` answering `Int`; `read` took `c_ptr[c_void]` in `libc.file`
-and `c_ptr[UInt8]` in `libc.unistd`; `ldiv` read `long` in `libc.stdlib`
-and `Int64` in `libc.math`, with a `ldiv_t` of its own in each. Every copy
-compiled, and every copy was asked something by a test, so nothing
-compared them: the copy a bug was found in got fixed and the other kept
-it. `scripts/check-duplicates.py` asks one question — one file per C
-symbol — and the answer is a re-export. A module that wants to offer a
-call another module owns imports it, and the two names are then one
-function rather than two that agree today, which is how `libc.file` still
-answers for `read` without binding it and how `libc.math` still answers
-for `abs`.
-
-`scripts/check-tests.py` keeps the full list, with a reason each, and fails
-when a binding is added with neither a test nor a reason. It also keeps the
-opposite list — bindings that could be asked something and have not been —
-because that is where `gl_flags` was: called by nothing, wrong for three
-releases, and every other check in this repository green. That list is
-**empty** now, and empty is not the same as gone: it still fails if it
-grows, which is the thing it was written for.
-
-Six have left the list above. Three of them needed no handler: `scanf` takes a format and no conversion, so a child's pipe with a word
-in it — closed at the write end, which is what gives the input an end — is
-enough to ask it for 0 and then for `EOF`. `sigsuspend` waits under a mask
-of its own, so a signal blocked and sent to itself is pending until the swap
-delivers it: no waiting at all. `pause` has no such mask, and is asked
-instead with an alarm it never armed a handler for: the child is ended by
-the signal it went to wait for, which is what says it waited.
-
-The other two needed the second thread the suite does not have, and found
-it in a child. A condition variable and its lock can be put in a page both
-sides address and made for sharing (`PTHREAD_PROCESS_SHARED`), which is
-what `pthread_cond_wait` is asked with: the child takes the lock, and it
-cannot take it until the parent is inside the wait and has let go of it, so
-the signal cannot be sent before there is anyone to receive it — no sleep
-stands in for the ordering. Cancelling a thread cannot be taken back, so
-`pthread_cancel` is asked of a child as well — two of them, in fact: one
-with cancellation left enabled, which does not come back from the next
-cancellation point, and one that disabled it first, which does. The pair is
-the assertion, because either half alone is passed by a cancel that does
-nothing at all.
-
-`prctl` left by being asked only what it answers without changing the
-process: `PR_GET_DUMPABLE` and `PR_GET_TIMERSLACK` are reads, and the one
-write, `PR_SET_NAME`, renames the calling thread and is undone before the
-test returns. The name coming back as the name that was put is what shows
-the pointer in the second argument arrived as a pointer. Its refusals are
-asked as well: an option number that is not one comes back -1 with
-`EINVAL`.
-
-## API reference
-
-Generate the docstring reference for any module with the Mojo toolchain:
-
-```bash
-mojo doc src/libc/unistd/syscalls.mojo
-```

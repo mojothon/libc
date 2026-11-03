@@ -2,15 +2,7 @@
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import (
-    AT_FDCWD,
-    FIONREAD,
-    SEEK_CUR,
-    SEEK_END,
-    SEEK_SET,
-    c_int,
-    c_ptr,
-)
+from libc.constant import AT_FDCWD, SEEK_CUR, SEEK_END, SEEK_SET, c_ptr
 from libc.fcntl import O_CREAT, O_RDONLY, O_WRONLY, open as open_with_mode
 from libc.stdio import fileno, remove, tmpfile
 from libc.file import (
@@ -33,7 +25,6 @@ from libc.file import (
     ftell,
     ftello,
     getline,
-    ioctl,
     lseek,
     preadv,
     printf,
@@ -46,7 +37,7 @@ from libc.file import (
 from libc.stdlib import exit, free
 from libc.sys.socket import iovec
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, waitpid
-from libc.unistd import close, dup2, fork, pipe, read, unlink, write
+from libc.unistd import close, dup2, fork, pipe, unlink, write
 from libc.utils import char_ptr_to_string, is_null, null_ptr, string_to_char_ptr
 
 
@@ -436,69 +427,6 @@ def test_fprintf_writes_the_format_as_it_stands() raises:
     _ = fclose(stream)
 
 
-def test_ioctl_asks_a_pipe_how_much_is_waiting() raises:
-    """`ioctl` with `FIONREAD` asks a descriptor how many bytes are in it.
-
-    `FIONREAD` is the shape the third argument of `ioctl` has: C writes a
-    `c_int` through the address and that number is the whole answer. A
-    pipe is the one descriptor a test can fill by an amount it knows, so
-    five bytes go in and three come out, and the question is asked a
-    third time to find the two that are left.
-
-    What this says about the binding is that the address reached libc.
-    An `ioctl` bound with its two fixed arguments and no third reads
-    whatever happens to sit next to them where the address should be, and
-    a pipe asked that way answers something nothing can predict -- so the
-    three answers here are the binding, not the pipe.
-    """
-    var fds = unsafe_alloc[c_int](2)
-    assert_equal(pipe(fds), 0, "a pipe to be asked")
-    var waiting = unsafe_alloc[c_int](1)
-    waiting[] = -1
-
-    assert_equal(
-        ioctl(
-            fds.unsafe_offset(0)[], FIONREAD, waiting.unsafe_bitcast[NoneType]()
-        ),
-        0,
-        "an empty pipe answers, and",
-    )
-    assert_equal(Int(waiting[]), 0, "it is empty")
-
-    var five = string_to_char_ptr("hello")
-    assert_equal(
-        write(fds.unsafe_offset(1)[], five, 5), 5, "five bytes go in, and"
-    )
-    assert_equal(
-        ioctl(
-            fds.unsafe_offset(0)[], FIONREAD, waiting.unsafe_bitcast[NoneType]()
-        ),
-        0,
-        "the question is asked again, and",
-    )
-    assert_equal(Int(waiting[]), 5, "all five are waiting")
-
-    var room = unsafe_alloc[UInt8](3)
-    assert_equal(
-        read(fds.unsafe_offset(0)[], room, 3), 3, "three come back out, and"
-    )
-    assert_equal(
-        ioctl(
-            fds.unsafe_offset(0)[], FIONREAD, waiting.unsafe_bitcast[NoneType]()
-        ),
-        0,
-        "the pipe is asked a third time, and",
-    )
-    assert_equal(Int(waiting[]), 2, "two are left")
-
-    five.unsafe_free()
-    room.unsafe_free()
-    waiting.unsafe_free()
-    _ = close(fds.unsafe_offset(0)[])
-    _ = close(fds.unsafe_offset(1)[])
-    fds.unsafe_free()
-
-
 def main() raises:
     test_the_scanf_family_asked_for_nothing()
     test_a_stream_back_and_forth()
@@ -508,5 +436,4 @@ def main() raises:
     test_pieces_at_an_offset()
     test_scanf_reads_the_standard_input_it_is_given()
     test_fprintf_writes_the_format_as_it_stands()
-    test_ioctl_asks_a_pipe_how_much_is_waiting()
     print("test_file: ok")

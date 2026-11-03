@@ -147,7 +147,7 @@ counted rather than asked, which is what the count is for.
 | what a struct does with its members | how many |
 | --- | --- |
 | places one by hand, at an offset listed in `OFFSETS` | 111 |
-| declares them in order and leaves the layout to Mojo | 189 |
+| declares them in order and leaves the layout to Mojo | 185 |
 | reads none of them, and claims only a size | 17 |
 | has a struct only Linux has | 13 |
 
@@ -237,6 +237,20 @@ does not share that opinion, and a call that fails answers with NULL
 whatever the type says, so NULL is what arrives — a pointer whose address
 is 0. `check_ptr` turns it into an exception, and `Int` is how it sees it,
 being the one way left to ask.
+
+The other awkward one is C's `...`. `external_call` wants every type written
+out, so a call whose C declaration ends in a variadic parameter is bound with
+the arguments in front of it and none of it: a conversion, or the address a
+request answers through, is not something the binding can be given. Writing
+the extra type out anyway is not a way round it — on arm64 a variadic callee
+reads its anonymous arguments from the stack, while a call that describes
+itself that way passes them in registers, so what the callee reads is a slot
+nobody wrote. `open` is bound as `openat` here because of it; `FIONREAD`
+through `ioctl` answers 0 on Apple silicon and leaves the integer it was asked
+about untouched, which is what a probe on a runner showed; and `fcntl`'s
+three-argument form is dependable only where that slot happens to hold what
+was meant, which is not a thing to promise. Everything the suite cannot ask,
+and why, is in [Modules](modules.md).
 
 ## What C does and this does not
 

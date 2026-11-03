@@ -838,7 +838,7 @@ def ferror(stream: c_ptr[FILE]) -> c_int:
 
 
 def ioctl(fildes: c_int, request: c_ulong) -> c_int:
-    """Libc POSIX `ioctl` function, for the requests that take no argument.
+    """Libc POSIX `ioctl` function, bound without the argument it asks about.
 
     Args:
         fildes: A File Descriptor to ask something of.
@@ -856,45 +856,17 @@ def ioctl(fildes: c_int, request: c_ulong) -> c_int:
         [Reference](https://man7.org/linux/man-pages/man3/ioctl.3p.html).
         Fn signature: `int ioctl(int fildes, unsigned long request, ...)`.
 
-        C's call is variadic and `external_call` cannot pass a variadic
-        argument, so the address that most requests are about is passed by
-        the three-argument form below instead of being left off here. This
-        one is for the requests that carry nothing of their own --
-        `TIOCNOTTY` is one -- where there is no third thing to hand over.
+        C's third parameter is the variadic one, it is a `void *`, and it
+        is where nearly every request puts its answer. It cannot be passed
+        from here: `external_call` emits a call whose arguments are all in
+        registers, and Apple's arm64 ABI hands a variadic function its
+        anonymous arguments on the stack instead, so the callee reads a
+        slot nobody wrote. That is the same wall `open` is bound around by
+        being `openat` here. `FIONREAD` through this form answers 0 on
+        Apple silicon and leaves the integer it was asked about untouched,
+        which is why the calls that carry an address are not bound at all.
+
+        What is left is the requests that take no argument of their own --
+        `TIOCNOTTY` is one -- where there is no third thing to be lost.
     """
     return external_call["ioctl", c_int, c_int, c_ulong](fildes, request)
-
-
-def ioctl(fildes: c_int, request: c_ulong, argument: c_ptr[NoneType]) -> c_int:
-    """Libc POSIX `ioctl` function, with the address a request is about.
-
-    C's third parameter is the variadic one, and it is a `void *`: an
-    address the request reads or writes. `FIONREAD` writes a `c_int` there,
-    which is how many bytes are waiting to be read, and `TIOCGWINSZ` writes
-    a `Winsize`; which of those it is is the request's business, so what
-    the address points at is not something this binding can check.
-
-    Args:
-        fildes: A File Descriptor to ask something of.
-        request: What to ask. Each thing that answers to `ioctl` has its
-            own set of these, and they are numbers written down in
-            `<sys/ioctl.h>`: there is no saying what one means without
-            knowing what it is being asked of.
-        argument: The address the request reads or writes, which C calls
-            `arg`. `c_ptr[NoneType]` is C's `void *`, and a
-            `c_ptr[c_int]` or a `c_ptr[Winsize]` reaches it through
-            `unsafe_bitcast[NoneType]()`: the bytes are the same and the
-            request is what knows what they are.
-
-    Returns:
-        0, or -1 with `errno` set, for the requests that answer with
-        whether they worked. What comes back is up to the request, and
-        some hand back a value of their own.
-
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/ioctl.3p.html).
-        Fn signature: `int ioctl(int fildes, unsigned long request, ...)`.
-    """
-    return external_call["ioctl", c_int, c_int, c_ulong, c_ptr[NoneType]](
-        fildes, request, argument
-    )

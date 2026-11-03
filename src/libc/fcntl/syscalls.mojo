@@ -114,6 +114,16 @@ def fcntl(fildes: Int32, cmd: Int32, arg: Int32) -> Int32:
     `F_GETFL` and the commands that set a descriptor. A command that wants
     a pointer or a lock has nothing here to give it one.
 
+    On Apple silicon this form is not dependable, and the reason is the
+    ABI rather than the command: arm64 hands a variadic callee its
+    anonymous arguments on the stack, `external_call` emits a call whose
+    arguments are all in registers, and what the callee reads is a stack
+    slot nobody wrote. A `F_SETFL` made that way returns 0 and the flag is
+    not there afterwards -- `F_GETFL` came back without it when this was
+    asked on a runner -- so the value arrives only when the slot happens
+    to hold it. The two-argument form asks and answers nothing of the
+    kind and is unaffected.
+
     Args:
         fildes: A File Descriptor to close.
         cmd: A command to execute.
