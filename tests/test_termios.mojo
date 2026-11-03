@@ -9,9 +9,20 @@ machine has.
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import AT_FDCWD, ENODEV, ENOTTY, O_RDONLY, c_ptr
+from libc.constant import (
+    AT_FDCWD,
+    ENODEV,
+    ENOTTY,
+    O_RDONLY,
+    O_RDWR,
+    TIOCGWINSZ,
+    TIOCSWINSZ,
+    c_ptr,
+)
 from libc.errno import get_errno, set_errno
 from libc.fcntl import openat
+from libc.file import ioctl
+from libc.stdlib import posix_openpt
 from libc.termios import (
     B9600,
     NCCS,
@@ -23,6 +34,7 @@ from libc.termios import (
     TCOFLUSH,
     TCOOFF,
     Termios,
+    Winsize,
     cfgetispeed,
     cfgetospeed,
     cfmakeraw,
@@ -203,6 +215,46 @@ def test_the_queue_and_action_constants_are_which_they_say() raises:
     )
 
 
+def test_ioctl_sets_and_reads_the_size_of_a_terminal() raises:
+    """The size of the window goes in and comes back out through two
+    `ioctl`s, which is the only way a `Winsize` is ever used.
+
+    A pty is opened and then used for nothing else: `TIOCSWINSZ` writes a
+    `Winsize` into it, `TIOCGWINSZ` reads one back. The round trip is what
+    says the struct is the four shorts C has, in the order C has them, and
+    that the two request numbers mean set and get the way round they are
+    written here. A binding that swapped them, or one whose third
+    argument never reached libc, answers with the 0 by 0 that a terminal
+    nobody has told anything starts at.
+    """
+    var master = posix_openpt(O_RDWR)
+    assert_true(master >= 0, "a terminal to be told how big it is, and")
+
+    var wanted = unsafe_alloc[Winsize](1)
+    wanted[] = Winsize()
+    wanted[].ws_row = 24
+    wanted[].ws_col = 80
+    assert_equal(
+        ioctl(master, TIOCSWINSZ, wanted.unsafe_bitcast[NoneType]()),
+        0,
+        "24 by 80 is set on it, and",
+    )
+
+    var told = unsafe_alloc[Winsize](1)
+    told[] = Winsize()
+    assert_equal(
+        ioctl(master, TIOCGWINSZ, told.unsafe_bitcast[NoneType]()),
+        0,
+        "the size is asked for, and",
+    )
+    assert_equal(Int(told[].ws_row), 24, "24 rows come back by")
+    assert_equal(Int(told[].ws_col), 80, "80 columns")
+
+    wanted.unsafe_free()
+    told.unsafe_free()
+    _ = close(master)
+
+
 def main() raises:
     test_cfsetospeed_then_cfgetospeed()
     test_cfsetispeed_then_cfgetispeed()
@@ -211,4 +263,5 @@ def main() raises:
     test_tcgetattr_refuses_what_is_not_a_terminal()
     test_the_tc_calls_all_refuse_the_same_file()
     test_the_queue_and_action_constants_are_which_they_say()
+    test_ioctl_sets_and_reads_the_size_of_a_terminal()
     print("test_termios: ok")

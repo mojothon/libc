@@ -46,7 +46,6 @@ def load(name: str):
 CANNOT_ASK = {
     "pthread_atfork": "the suite is run just-in-time, and the JIT run does not resolve this one — a built binary links and answers fine",
     "putwchar": "standard output is process-wide and narrow-oriented by the suite already, and a forked child inherits that orientation — a wide write to it is not defined by C",
-    "ioctl": "variadic: what it does is decided by its second argument",
 }
 
 # Bindings that could be asked something and have not been. This is the list

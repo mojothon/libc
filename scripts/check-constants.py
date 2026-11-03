@@ -106,6 +106,9 @@ MORE_HEADERS = [
     "sys/types.h",
     "sys/select.h",
     "sys/utsname.h",
+    # The three `ioctl` requests are numbers C builds rather than writes down,
+    # so they are only checkable against the header that builds them.
+    "sys/ioctl.h",
     "sys/sysmacros.h",
     # The `LC_*_MASK` numbers are in Darwin's `xlocale.h` and in glibc's
     # `locale.h`, and glibc has no `xlocale.h`, so the exists() below skips

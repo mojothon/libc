@@ -3,7 +3,7 @@
 This is a binding, so what it can call is a subset of what C can call and
 will stay that way. The count says how much of a subset: `libc`, `libm`,
 `libdl` and `librt` publish 3574 functions between them, and this binds
-998 C symbols, 990 of which are among those — **27.7%**. C offers more, and
+999 C symbols, 991 of which are among those — **27.7%**. C offers more, and
 calling more of it is not what this is for.
 
 Both numbers move with the machine they are taken on, which is worth saying
@@ -147,7 +147,7 @@ counted rather than asked, which is what the count is for.
 | what a struct does with its members | how many |
 | --- | --- |
 | places one by hand, at an offset listed in `OFFSETS` | 111 |
-| declares them in order and leaves the layout to Mojo | 185 |
+| declares them in order and leaves the layout to Mojo | 189 |
 | reads none of them, and claims only a size | 17 |
 | has a struct only Linux has | 13 |
 

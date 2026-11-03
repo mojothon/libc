@@ -11,7 +11,7 @@ the bottom.
 | `libc.float` | `<float.h>` | 30 |
 | `libc.limits` | `<limits.h>` the widths of the integer types, and what a process may have | 24 |
 | `libc.unistd` | `<unistd.h>` | 206 |
-| `libc.file` | `<stdio.h>` file operations | 31 |
+| `libc.file` | `<stdio.h>` file operations | 33 |
 | `libc.ctype` | `<ctype.h>` | 30 |
 | `libc.sys.socket` | `<sys/socket.h>` | 35 |
 | `libc.sys.stat` | `<sys/stat.h>` | 36 |
@@ -72,7 +72,7 @@ the bottom.
 | `libc.sys.auxv` | `<sys/auxv.h>` | 3 |
 | `libc.errno` | `<errno.h>` | 6 |
 | `libc.pwd` | `<pwd.h>` | 18 |
-| `libc.termios` | `<termios.h>` how a terminal line is set | 54 |
+| `libc.termios` | `<termios.h>` how a terminal line is set | 55 |
 | `libc.sys.ipc` | `<sys/ipc.h>` keys for System V objects | 9 |
 | `libc.sys.msg` | `<sys/msg.h>` message queues | 6 |
 | `libc.utmpx` | `<utmpx.h>` who is logged in, and where | 29 |
@@ -121,19 +121,27 @@ Mojo has no 80-bit type.
 
 ## What the suite does not ask
 
-Three bindings are not asked anything, and every one of them has a reason that
-is about the call rather than about the suite:
+Two bindings are not asked anything, and each has a reason that is about the
+call rather than about the suite:
 
-- `ioctl` is variadic with the request deciding what the arguments mean.
 - `putwchar` writes to a stream the whole process shares, and orients it:
   forking a child does not get a fresh stream to try it on, only the one the
   suite has already written to as bytes.
 - `pthread_atfork` registers a fork handler that the just-in-time run this
   suite uses cannot resolve; a built binary links and answers fine.
 
-None of them is known to be broken; they are simply not asked.
+ioctl was the third of them until it could be asked something. It is variadic
+with the request deciding what the arguments mean, and the binding had only
+the two fixed ones: the address a request writes through never reached libc,
+so what a request read was whatever happened to sit next to the first two
+arguments, and no test could say what that was. It has that address now — C's
+`void *`, as `c_ptr[NoneType]` — and what asks it is `FIONREAD` on a pipe,
+before and after the bytes in it change, and `TIOCGWINSZ` on a pty after a
+`TIOCSWINSZ` has put a size in it.
 
-997 bindings are asked something, and the 3 that are not have a reason
+Neither of the two is known to be broken; they are simply not asked.
+
+999 bindings are asked something, and the 2 that are not have a reason
 each. Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.

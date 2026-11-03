@@ -268,6 +268,35 @@ def fgets(s: c_ptr[c_char], n: c_int, stream: c_ptr[FILE]) -> c_ptr[c_char]:
     ](s, n, stream)
 
 
+def fprintf(stream: c_ptr[FILE], format: c_ptr[c_char]) -> c_int:
+    """Libc POSIX `fprintf` function.
+
+    Args:
+        stream: A pointer to a stream to write to.
+        format: What to write, which goes to the stream exactly as it
+            stands.
+
+    Returns:
+        How many bytes it wrote, or a negative number on failure.
+
+    Notes:
+        C's takes `...` after the format and this takes none of it: there is
+        no way through `external_call` to hand over what comes after it. A
+        conversion, `%d` and the rest, is therefore not something it can
+        write, and neither is a bare `%`, which C reads as the start of one.
+        What goes through is the format as it stands -- which is enough for
+        a line with nothing to fill in, and is why `sprintf` and `snprintf`
+        are here for the ones that have something.
+
+        [Reference](https://man7.org/linux/man-pages/man3/fprintf.3p.html).
+        Fn signature: `int fprintf(FILE *restrict stream,
+        const char *restrict format, ...)`.
+    """
+    return external_call["fprintf", c_int, c_ptr[FILE], c_ptr[c_char]](
+        stream, format
+    )
+
+
 def dprintf(fildes: c_int, format: c_ptr[c_char]) -> c_int:
     """Libc POSIX `dprintf` function.
 
@@ -809,28 +838,63 @@ def ferror(stream: c_ptr[FILE]) -> c_int:
 
 
 def ioctl(fildes: c_int, request: c_ulong) -> c_int:
-    """Libc POSIX `ioctl` function.
+    """Libc POSIX `ioctl` function, for the requests that take no argument.
 
     Args:
-        fildes: A File Descriptor to open the file with.
-        request: What to ask for. Each thing that answers to
-            `ioctl` has
-            its own set of these, and they are numbers written down in
+        fildes: A File Descriptor to ask something of.
+        request: What to ask. Each thing that answers to `ioctl` has its
+            own set of these, and they are numbers written down in
             `<sys/ioctl.h>`: there is no saying what one means without
             knowing what it is being asked of.
 
     Returns:
-    0, or -1 with `errno` set, for the requests that answer with
+        0, or -1 with `errno` set, for the requests that answer with
         whether they worked. What comes back is up to the request, and
         some hand back a value of their own.
 
     Notes:
         [Reference](https://man7.org/linux/man-pages/man3/ioctl.3p.html).
-        Fn signature: `int ioctl(int fildes, int request, ... /* arg */)`.
-    Notes:
-        C's is a variadic call and Mojo cannot pass a variadic
-        argument, so the ones after the listed ones are not handed
-        over; what libc reads instead is whatever is next to them.
+        Fn signature: `int ioctl(int fildes, unsigned long request, ...)`.
 
+        C's call is variadic and `external_call` cannot pass a variadic
+        argument, so the address that most requests are about is passed by
+        the three-argument form below instead of being left off here. This
+        one is for the requests that carry nothing of their own --
+        `TIOCNOTTY` is one -- where there is no third thing to hand over.
     """
     return external_call["ioctl", c_int, c_int, c_ulong](fildes, request)
+
+
+def ioctl(fildes: c_int, request: c_ulong, argument: c_ptr[NoneType]) -> c_int:
+    """Libc POSIX `ioctl` function, with the address a request is about.
+
+    C's third parameter is the variadic one, and it is a `void *`: an
+    address the request reads or writes. `FIONREAD` writes a `c_int` there,
+    which is how many bytes are waiting to be read, and `TIOCGWINSZ` writes
+    a `Winsize`; which of those it is is the request's business, so what
+    the address points at is not something this binding can check.
+
+    Args:
+        fildes: A File Descriptor to ask something of.
+        request: What to ask. Each thing that answers to `ioctl` has its
+            own set of these, and they are numbers written down in
+            `<sys/ioctl.h>`: there is no saying what one means without
+            knowing what it is being asked of.
+        argument: The address the request reads or writes, which C calls
+            `arg`. `c_ptr[NoneType]` is C's `void *`, and a
+            `c_ptr[c_int]` or a `c_ptr[Winsize]` reaches it through
+            `unsafe_bitcast[NoneType]()`: the bytes are the same and the
+            request is what knows what they are.
+
+    Returns:
+        0, or -1 with `errno` set, for the requests that answer with
+        whether they worked. What comes back is up to the request, and
+        some hand back a value of their own.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/ioctl.3p.html).
+        Fn signature: `int ioctl(int fildes, unsigned long request, ...)`.
+    """
+    return external_call["ioctl", c_int, c_int, c_ulong, c_ptr[NoneType]](
+        fildes, request, argument
+    )
