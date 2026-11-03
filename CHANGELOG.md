@@ -7,6 +7,33 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **`libc.signal.sigaction_t` — the `struct sigaction` the binding said did not
+  exist.** Third sample of `--kind order`: 19 caught, 2 crashed, 1 already
+  explained, and 2 survivors — `fmaxf`, which is commutative, and `sigaction`,
+  which had been called with two NULLs because this package had nothing to
+  hand it. A `sigaction` is a handler union, a mask and flags, and the union is
+  where the whole thing turns: two of the three things that can go in it are
+  numbers, `SIG_DFL` (0) and `SIG_IGN` (1), so a handler of one's own being out
+  of reach does not take the other two with it. The struct keeps that word as
+  a number and offers the flags behind the mask as the second claim about C.
+
+  It is sized per platform rather than generously, which is the one place in
+  the package that is done: 152 bytes on glibc, 16 on Darwin. Handing Darwin a
+  152-byte block would not fail — the kernel reads the first 16 and writes the
+  same — but this process would have written 136 bytes of somebody else's
+  memory into a call. Both offsets (`sa_handler`, `sa_flags`) and both sizes
+  are asked of C by `check-layouts`.
+
+  `sigaction` takes `c_ptr[sigaction_t]` now, and the test installs `SIG_IGN`
+  with `SA_RESTART`, reads it back, and puts the default back. Reading it back
+  is what the survivor was about: with the two arguments swapped the install
+  becomes a read and the read an install, and the answer is the default the
+  signal had before. `SA_RESTART` came back with a bit that was not asked for,
+  `SA_RESTORER` (0x04000000), which glibc adds when it installs an action —
+  so the test asks whether the bit it wanted is among them rather than whether
+  it is alone. `SIGWINCH` is the signal borrowed for it: nothing sends one, its
+  default is to be thrown away, and it is put back at the end.
+
 - **`scripts/mutation-probe.py` asks a second question: two arguments handed
   over the other way round.** Pointing a binding at a sibling's symbol tests
   which function ran; it says nothing about the order the arguments went in,

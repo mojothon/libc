@@ -146,10 +146,18 @@ counted rather than asked, which is what the count is for.
 
 | what a struct does with its members | how many |
 | --- | --- |
-| places one by hand, at an offset listed in `OFFSETS` | 111 |
-| declares them in order and leaves the layout to Mojo | 185 |
+| places one by hand, at an offset listed in `OFFSETS` | 113 |
+| declares them in order and leaves the layout to Mojo | 186 |
 | reads none of them, and claims only a size | 17 |
 | has a struct only Linux has | 13 |
+
+One struct is sized the other way round from the rest. Most of the blocks
+here are as wide as the wider platform wants, because they are written *by*
+libc and a generous buffer costs nothing; a `sigaction_t` is handed *to* libc,
+so it is 152 bytes on glibc and 16 on Darwin, counting its slots per platform.
+Being 152 bytes on Darwin would not fail — the kernel would read the first 16
+and write the same — it would just mean this process wrote 136 bytes of its own
+memory into a call it had no business writing to.
 
 Those four numbers are the state of the whole exercise, and they are in a
 table because a number in a paragraph is a number that goes stale quietly.
@@ -358,7 +366,12 @@ Being fair about the other direction:
   call has to name every type it passes, and C's own variadic convention
   on arm64 Darwin passes on the stack, where the call cannot reach.
 - **Callbacks.** Nothing here can hand C a function pointer, so `qsort`,
-  `bsearch` and signal handlers are out.
+  `bsearch` and a signal handler of one's own are out. A struct that carries
+  one is not always out with it, though: `struct sigaction` is here as
+  `sigaction_t`, with the handler kept as the number C stores there, because
+  two of the three things that can go in that union are not addresses at all —
+  `SIG_DFL` is 0 and `SIG_IGN` is 1. So a signal can be told to be ignored,
+  asked what it is doing, and put back; it cannot be given a function to run.
 - **Bodies that live in another library.** `<arpa/inet.h>` declares
   `inet_net_pton`, `inet_net_ntop`, `inet_neta` and the two `inet_nsap_*`
   on both platforms, and on Linux they are not in libc: they are in

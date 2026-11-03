@@ -124,6 +124,10 @@ SAME_ORDER = {
         "set and message it is asked for; one with rows in it is a binary "
         "`.cat` file, which is a thing to ship rather than a path to point at"
     ),
+    "fmaxf:x <-> y": (
+        "the larger of two numbers does not know which was written first, for "
+        "the reason `fmax` does not"
+    ),
     "fminf:x <-> y": (
         "the smaller of two numbers does not know which was written first, for "
         "the reason `fmax` does not"

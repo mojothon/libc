@@ -4,8 +4,12 @@ from std.testing import assert_equal, assert_true
 from libc.constant import EINTR, EINVAL, c_ptr
 from libc.errno import get_errno, set_errno
 from libc.signal import (
+    SA_RESTART,
     SIGALRM,
     SIGINT,
+    SIGWINCH,
+    SIG_DFL,
+    SIG_IGN,
     SIG_UNBLOCK,
     SIGUSR1,
     SIGUSR2,
@@ -15,6 +19,7 @@ from libc.signal import (
     killpg,
     psignal,
     sigaction,
+    sigaction_t,
     sigaddset,
     sigblock,
     sigaltstack,
@@ -181,20 +186,96 @@ def test_sigaction_asked_and_told_nothing() raises:
     """`sigaction` given nothing to install and nowhere to put what
     is already there has nothing to do but check the signal is one
     there is such a thing as, which is what it answers about.
-
-    Installing a handler wants a C function pointer, which is why
-    this is as far as it goes.
     """
     assert_equal(
-        sigaction(SIGINT, null_ptr[UInt8](), null_ptr[UInt8]()),
+        sigaction(SIGINT, null_ptr[sigaction_t](), null_ptr[sigaction_t]()),
         0,
         "sigaction answers for a signal there is such a thing as",
     )
     assert_equal(
-        sigaction(0, null_ptr[UInt8](), null_ptr[UInt8]()),
+        sigaction(0, null_ptr[sigaction_t](), null_ptr[sigaction_t]()),
         -1,
         "and refuses one there is not",
     )
+
+
+def test_sigaction_installs_an_ignore_and_puts_it_back() raises:
+    """The two arguments are the easiest pair in this suite to swap: one is
+    what to install, the other is where to write what is already installed,
+    they are the same type, and a call that only reads returns 0 just as a
+    call that only writes does.
+
+    So the signal is told to be ignored, then asked what it is doing, and the
+    two answers have to agree with each other and disagree with what it was
+    before. `SIGWINCH` is borrowed for it: nothing sends one, its default is
+    to be thrown away, and it is given back at the end -- the disposition
+    belongs to the process and the suite runs in one.
+    """
+    var before = unsafe_alloc[sigaction_t](1)
+    before.unsafe_offset(0)[] = sigaction_t()
+    assert_equal(
+        sigaction(SIGWINCH, null_ptr[sigaction_t](), before),
+        0,
+        "a signal can be asked what it is doing without being changed",
+    )
+    assert_equal(
+        before[].handler(), UInt64(SIG_DFL), "which is the default, untouched"
+    )
+
+    var ignore = unsafe_alloc[sigaction_t](1)
+    ignore.unsafe_offset(0)[] = sigaction_t()
+    ignore[].set_handler(UInt64(SIG_IGN))
+    ignore[].set_flags(SA_RESTART)
+    assert_equal(
+        sigaction(SIGWINCH, ignore, null_ptr[sigaction_t]()),
+        0,
+        "the signal is told to be ignored",
+    )
+
+    var now = unsafe_alloc[sigaction_t](1)
+    now.unsafe_offset(0)[] = sigaction_t()
+    assert_equal(
+        sigaction(SIGWINCH, null_ptr[sigaction_t](), now),
+        0,
+        "and asked what it is doing",
+    )
+
+    # The word at the front is the handler and the word behind the mask is the
+    # flags: both had to make the trip out to the kernel and back for these to
+    # hold, and neither comes back if the two arguments went over the other way
+    # round -- the install would have been a read and the read an install.
+    assert_equal(now[].handler(), UInt64(SIG_IGN), "the ignore is in force")
+    # `SA_RESTART` is asked for and found, but the flags are not echoed back as
+    # they were handed over: glibc adds `SA_RESTORER` (0x04000000) of its own
+    # when it installs an action, because the restorer is part of how it gets
+    # control back. So the question is whether the bit asked for is in there,
+    # not whether it is the only one.
+    assert_true(
+        (now[].flags() & SA_RESTART) != 0,
+        "and the flag asked for is among them",
+    )
+
+    # Put back, and asked once more: the disposition belongs to the process and
+    # the suite runs in one, so leaving a signal ignored is not an option.
+    assert_equal(
+        sigaction(SIGWINCH, before, null_ptr[sigaction_t]()),
+        0,
+        "put back the way it was found",
+    )
+    assert_equal(
+        sigaction(SIGWINCH, null_ptr[sigaction_t](), now),
+        0,
+        "and asked what it is doing now",
+    )
+    assert_equal(
+        now[].handler(),
+        before[].handler(),
+        "which is what the first read said it was",
+    )
+
+    ignore.unsafe_free()
+    now.unsafe_free()
+    before.unsafe_free()
 
 
 def test_craise_with_nothing_to_send() raises:
@@ -459,6 +540,7 @@ def main() raises:
     test_kill_with_nothing_to_send()
     test_sigaltstack_asked_and_told_nothing()
     test_sigaction_asked_and_told_nothing()
+    test_sigaction_installs_an_ignore_and_puts_it_back()
     test_craise_with_nothing_to_send()
     test_the_blocked_set_as_a_word_and_as_bytes()
     test_signal_zero_asks_whether_a_group_is_there()

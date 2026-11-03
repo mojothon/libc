@@ -167,6 +167,8 @@ OFFSETS: dict[tuple[str, str], tuple[str, str]] = {
     ("libc.regex", "REGMATCH_SO_OFFSET"): ("regmatch_t", "rm_so"),
     ("libc.regex", "REGMATCH_EO_OFFSET"): ("regmatch_t", "rm_eo"),
     ("libc.sched", "SCHED_PARAM_PRIORITY_OFFSET"): ("sched_param", "sched_priority"),
+    ("libc.signal", "SIGACTION_HANDLER_OFFSET"): ("sigaction", "sa_handler"),
+    ("libc.signal", "SIGACTION_FLAGS_OFFSET"): ("sigaction", "sa_flags"),
     ("libc.signal", "SIGINFO_SIGNO_OFFSET"): ("siginfo_t", "si_signo"),
     ("libc.signal", "SIGINFO_ERRNO_OFFSET"): ("siginfo_t", "si_errno"),
     ("libc.signal", "SIGINFO_CODE_OFFSET"): ("siginfo_t", "si_code"),

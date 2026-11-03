@@ -30,7 +30,7 @@ the bottom.
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 43 |
 | `libc.complex` | `<complex.h>` | 46 |
 | `libc.sched` | `<sched.h>` | 15 |
-| `libc.signal` | `<signal.h>` | 53 |
+| `libc.signal` | `<signal.h>` an action, and a handler as its number | 59 |
 | `libc.spawn` | `<spawn.h>` start a process without fork | 25 |
 | `libc.locale` | `<locale.h>` | 23 |
 | `libc.sys.epoll` | `<sys/epoll.h>` | 7 |

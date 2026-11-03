@@ -688,6 +688,10 @@ SPELLED_DIFFERENTLY = {
     # glibc leaves the struct unnamed behind the typedef and Darwin tags it
     # `dl_info`, so neither spelling gets there without being told.
     "dl_info": "Dl_info",
+    # `sigaction` is a function and a struct in C, and Mojo will not have one
+    # name mean both in a package, so the struct carries the `_t` that C's own
+    # users write anyway.
+    "sigaction_t": "sigaction",
 }
 
 

@@ -33,6 +33,7 @@ comptime SIGCHLD: Int32 = 20 if CompilationTarget.is_macos() else 17
 comptime SIGCONT: Int32 = 19 if CompilationTarget.is_macos() else 18
 comptime SIGSTOP: Int32 = 17 if CompilationTarget.is_macos() else 19
 comptime SIGTSTP: Int32 = 18 if CompilationTarget.is_macos() else 20
+comptime SIGWINCH: Int32 = 28
 
 # What a signal is answered with, and how a mask is asked for. In C these
 # three are function pointers and these three are plain numbers, and all six
@@ -43,6 +44,12 @@ comptime SIG_ERR: Int32 = -1
 comptime SIG_BLOCK: Int32 = 1 if CompilationTarget.is_macos() else 0
 comptime SIG_UNBLOCK: Int32 = 2 if CompilationTarget.is_macos() else 1
 comptime SIG_SETMASK: Int32 = 3 if CompilationTarget.is_macos() else 2
+
+# The one flag an action can carry that both platforms have and that changes
+# nothing about how this suite runs: a call that was interrupted is restarted
+# rather than answered with -1 and `EINTR`. glibc keeps it at 0x10000000 and
+# XNU at 0x2, which is why it is here twice.
+comptime SA_RESTART: Int32 = 2 if CompilationTarget.is_macos() else 0x10000000
 
 # The least an alternate signal stack wants, which is what `sigaltstack`
 # asks of its size: 131072 there and 8192 here.
@@ -116,7 +123,9 @@ def craise(sig: Int32) -> Int32:
     return external_call["raise", Int32, Int32](sig)
 
 
-def sigaction(sig: Int32, act: c_ptr[UInt8], oldact: c_ptr[UInt8]) -> Int32:
+def sigaction(
+    sig: Int32, act: c_ptr[sigaction_t], oldact: c_ptr[sigaction_t]
+) -> Int32:
     """C library <signal.h> function `sigaction`.
 
     Reference:
@@ -129,27 +138,30 @@ def sigaction(sig: Int32, act: c_ptr[UInt8], oldact: c_ptr[UInt8]) -> Int32:
         The sigaction() function sets the action for the signal specified by signum.
         If the action is SIG_IGN, the signal is ignored.
         If the action is SIG_DFL, the default action for the signal is used.
-        Otherwise, the action is a handler, which is the part that is out of
-        reach here: there is no `struct sigaction` in this package, so `act`
-        is bytes, and a handler is a C function pointer, which Mojo cannot
-        make one of, there being no way to hand C a Mojo function as one.
-        Laying the structure out by hand is not enough, so what this binding
-        can do is limited to what a `struct sigaction` with no handler in it
-        would ask for.
+        Otherwise, the action is a handler, which is the part still out of
+        reach: a handler is a C function pointer, and there is no way to hand
+        C a Mojo function as one. The rest is not: `sigaction_t` is that
+        struct, with its first word kept as a number, which is exactly what
+        `SIG_DFL` (0) and `SIG_IGN` (1) are. So a signal can be told to be
+        ignored here, asked what it is doing, and put back.
+
+        `oldact` is how it is asked: the same call with `act` left NULL
+        writes the current action where `oldact` points and changes nothing.
 
     Arguments:
         sig: The signal, as a number: see `kill`.
-        act: The new action, as bytes.
-        oldact: Where the old one is written, as bytes, or NULL if it
-            is not wanted, which is `null_ptr[UInt8]()`.
+        act: The new action, or NULL, which is `null_ptr[sigaction_t]()`,
+            to leave the signal answering as it did.
+        oldact: Where the action in force is written, or NULL if it is
+            not wanted.
 
     Return Value:
         On success, 0 is returned. On error, -1 is returned, and errno
         is set to indicate the error.
     """
-    return external_call["sigaction", Int32, Int32, c_ptr[UInt8], c_ptr[UInt8]](
-        sig, act, oldact
-    )
+    return external_call[
+        "sigaction", Int32, Int32, c_ptr[sigaction_t], c_ptr[sigaction_t]
+    ](sig, act, oldact)
 
 
 def sigaltstack(ss: c_ptr[UInt8], oss: c_ptr[UInt8]) -> Int32:
@@ -652,6 +664,88 @@ def siginterrupt(sig: Int32, interrupt: Int32) -> Int32:
 
 # Where the members of C's `siginfo_t` that this reads sit. The first
 # three agree on both platforms, and then the two layouts stop agreeing:
+# `struct sigaction` is the other struct here whose layout the two platforms
+# disagree about, and by more than a padding byte: glibc's is a handler, a
+# 128-byte mask, four bytes of flags and a restorer, at 0, 8, 136 and 144 for
+# 152 bytes in all; XNU's is a handler, a four-byte mask and four bytes of
+# flags at 0, 8 and 12 for 16. So this block is sized per platform rather than
+# generously as `siginfo_t` is: a `sigaction` is handed *to* libc, and the
+# bytes after the end of Darwin's are memory this process did not own, which
+# the kernel would not read and a longer mask would have overwritten.
+#
+# The mask is the member left out. It is the one part of the struct whose size
+# is not a word, and nothing in this suite installs one; what is here is the
+# union at the front and the flags behind it, which is what installing
+# `SIG_IGN` and asking for it back needs.
+comptime SIGACTION_HANDLER_OFFSET: Int = 0
+comptime SIGACTION_FLAGS_OFFSET: Int = 12 if CompilationTarget.is_macos() else 136
+comptime SIGACTION_SLOTS: Int = 2 if CompilationTarget.is_macos() else 19
+
+
+struct sigaction_t:
+    """A C `struct sigaction`: the action one signal is given.
+
+    The first eight bytes are a union of `sa_handler` and the three-argument
+    `sa_sigaction`, and they are kept as a number rather than as a pointer,
+    which is what makes most of this struct usable from here: the two actions
+    that are not addresses are `SIG_DFL`, which is 0, and `SIG_IGN`, which is
+    1. Installing one of those and reading it back is the whole of what a
+    handler of one's own would prove, apart from the handler.
+
+    The mask between the handler and the flags is not offered: it is 128 bytes
+    wide on glibc and 4 on Darwin, so a `sigset_t` in here would be either
+    thirty-two times too wide on one of them or a method that knows which
+    platform it is on, and nothing in this suite installs a mask.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man2/sigaction.2.html).
+    """
+
+    # Eight-byte slots, as for `siginfo_t`: this one is 8-aligned in C, and an
+    # `Array[UInt8]` would take its alignment down to 1.
+    var _slots: Array[UInt64, SIGACTION_SLOTS]
+
+    def __init__(out self):
+        """Zeroed, which is what C leaves in one just declared: the default
+        action, no flags, and an empty mask.
+        """
+        self._slots = Array[UInt64, SIGACTION_SLOTS](fill=0)
+
+    def handler(self) -> UInt64:
+        """What the signal is answered with: `SIG_DFL`, `SIG_IGN`, or the
+        address of a function, which is the union's first word.
+        """
+        return self._slots[SIGACTION_HANDLER_OFFSET // 8]
+
+    def set_handler(mut self, value: UInt64):
+        """Answers the signal with `value`: `UInt64(SIG_DFL)`,
+        `UInt64(SIG_IGN)`, or a function's address if one could be had.
+        """
+        self._slots[SIGACTION_HANDLER_OFFSET // 8] = value
+
+    def flags(self) -> Int32:
+        """The `SA_*` bits asked for, `SA_RESTART` being the one this package
+        names.
+        """
+        var shift = UInt64((SIGACTION_FLAGS_OFFSET % 8) * 8)
+        var word = self._slots[SIGACTION_FLAGS_OFFSET // 8]
+        return Int32(UInt32((word >> shift) & 0xFFFFFFFF))
+
+    def set_flags(mut self, value: Int32):
+        """Asks for `value` as the flags, leaving the handler where it is.
+
+        The four bytes are written into the word they share with whatever sits
+        beside them -- the mask's last word on Darwin, padding on glibc -- so
+        the rest of the word is read back first.
+        """
+        var shift = UInt64((SIGACTION_FLAGS_OFFSET % 8) * 8)
+        var word = self._slots[SIGACTION_FLAGS_OFFSET // 8]
+        var bits = UInt64(UInt32(Int64(value) & 0xFFFFFFFF))
+        self._slots[SIGACTION_FLAGS_OFFSET // 8] = (
+            word & ~(UInt64(0xFFFFFFFF) << shift)
+        ) | (bits << shift)
+
+
 # glibc pads `si_code` out to 16 so that the members after it are all
 # word-aligned inside a union of `_pad[SI_PAD_SIZE]`, while XNU packs
 # `si_pid` straight in at 12 and needs no padding for a 64-bit `si_addr`
