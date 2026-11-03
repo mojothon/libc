@@ -486,7 +486,8 @@ def test_a_read_write_lock_can_be_made_from_attributes() raises:
         AFTER_DESTROY,
         "and nothing is held on it any more",
     )
-    assert_equal(pthread_rwlock_unlock(rwlock), 0)
+    # Not unlocked again: on the platform that took the write there is nothing
+    # to give back, and on the other the object is gone.
     rwlock.unsafe_free()
 
     _ = pthread_rwlockattr_destroy(attr)
