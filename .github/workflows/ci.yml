@@ -41,6 +41,11 @@ jobs:
       # imports are dropped and a name that no longer exists goes unnoticed.
       - name: Check that every public name still resolves
         run: pixi run test-imports
+      # A comparison answers a sign, and `!= 0` is the half of that answer
+      # which survives the two arguments being handed over swapped -- the
+      # shape seven of the sampled survivors had. This asks it of all of them.
+      - name: Check that every comparison is asked which way it leans
+        run: pixi run check-comparisons
       # Everything above asks whether a binding is right. This asks whether
       # anything ever calls it, which is a different question and the one
       # `gl_flags` was on the wrong side of.

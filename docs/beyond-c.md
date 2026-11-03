@@ -323,6 +323,22 @@ neither argument is looked at past the descriptor, so both positions answered
 read, so `-1` answers `EBADF` where the swap asks for descriptor `TCOOFF` — 0
 on glibc, 1 on Darwin — and gets `ENOTTY` or `EINVAL` back instead.
 
+Seven of the survivors across those samples were one shape: an assertion that
+is true whichever way round the two arguments went. `!= 0` on two strings that
+differ, `== 0` on two that agree, a bound above and a bound below — each is the
+half of a comparison's answer that survives the swap. A sample that finds the
+same shape seven times in a hundred and twenty is not sampling any more; it is
+finding a rule, and a rule can be asked of the whole family at once.
+
+`scripts/check-comparisons.py` does that. Every binding whose symbol ends in
+`cmp` or `coll` — nineteen of them, `strcoll_l` and `wcsncasecmp` included —
+must have one assertion that compares the answer with zero rather than with
+`!= 0`, because a sign is the part that changes when the arguments do. It found
+`strcasecmp_l` on its first run, which no sample had landed on yet, and it will
+find the next one when a comparison is bound. `bcmp` is in the family by name
+and answers only zero or not, which is written down in the script next to the
+reason.
+
 glibc, for its part, does not come with anything that checks glibc.
 
 ## Next to Rust's `libc`

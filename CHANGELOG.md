@@ -839,6 +839,20 @@ All notable changes to this project are documented here. The format follows
   because this FFI cannot hand C a function address, and `fchownat`'s call is
   refused before the two ids are read.
 
+- **`scripts/check-comparisons.py` asks every comparison which way it leans.**
+  Seven of the survivors across four samples were one shape: an assertion that
+  is true whichever way round the two arguments went — `!= 0` on two strings
+  that differ, `== 0` on two that agree, a bound above and a bound below. That
+  is not a sample any more, it is a rule, and a rule can be asked of the whole
+  family at once: every binding whose symbol ends in `cmp` or `coll` must have
+  one assertion comparing the answer with zero rather than with `!= 0`.
+
+  Nineteen of them do. `bcmp` is in the family by name and answers only zero or
+  not, which is written down in the script beside the reason, and an entry that
+  stops being true fails the run. The script found `strcasecmp_l` on its first
+  run — no sample had landed on it — and closed four more before a sample could:
+  `wcsncmp`, `wcscasecmp`, `wcsncasecmp` and `strcasecmp_l`.
+
 - **Two more from the fourth sample of `--kind order`.** That sample came back
   19 caught, 2 crashed, 1 that is the same call and 2 that passed.
   `wmemcmp(abc, abd, 3) != 0` is the same-either-way-round failure again, and

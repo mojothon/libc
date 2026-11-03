@@ -124,6 +124,12 @@ SAME_ORDER = {
         "set and message it is asked for; one with rows in it is a binary "
         "`.cat` file, which is a thing to ship rather than a path to point at"
     ),
+    "bcmp:s1 <-> s2": (
+        "it answers zero or not and nothing else: BSD documents the return as "
+        "zero when the blocks are the same and non-zero otherwise, so both "
+        "orders answer the same non-zero value and no test can tell them apart "
+        "without asserting something the standard does not promise"
+    ),
     "fmaxf:x <-> y": (
         "the larger of two numbers does not know which was written first, for "
         "the reason `fmax` does not"

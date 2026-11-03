@@ -146,6 +146,12 @@ def test_length_and_compare() raises:
     assert_equal(Int(wcscmp(hi, hi)), 0)
     assert_true(Int(wcscmp(hi, ho)) < 0, "hi sorts before ho")
     assert_equal(Int(wcsncmp(hi, ho, 1)), 0)
+    # One character in, the two are the same; two in, the second decides. Which
+    # way it decides is what a call that handed them over swapped gets wrong.
+    assert_true(
+        Int(wcsncmp(hi, ho, 2)) < 0, "the second character sorts hi first"
+    )
+    assert_true(Int(wcsncmp(ho, hi, 2)) > 0, "and ho after it")
 
     hi.unsafe_free()
     ho.unsafe_free()
@@ -507,11 +513,13 @@ def test_comparing_wide_strings_apart_from_case() raises:
     than so many characters.
 
     Both are asked about two strings that are the same apart from
-    case, which is 0, and about two that are not, which is not. The
-    second is asked the one thing that sets it apart: two strings
-    that differ past a given number of characters, which is 0 for
-    that many and not 0 for more. A call that never looked at its
-    count would have to answer both questions the same way.
+    case, which is 0, and about two that are not, which is not 0 —
+    and which way that goes, because "not 0" is what the answer is
+    with the two handed over either way round. The second is asked
+    the one thing that sets it apart: two strings that differ past a
+    given number of characters, which is 0 for that many and not 0
+    for more. A call that never looked at its count would have to
+    answer both questions the same way.
 
     Under the C locale the ASCII letters are what count as the same,
     and that is all this asks of it.
@@ -522,8 +530,12 @@ def test_comparing_wide_strings_apart_from_case() raises:
         "the same letters apart from case are 0",
     )
     assert_true(
-        wcscasecmp(wide("Hello"), wide("hellp")) != 0,
-        "and different letters are not",
+        wcscasecmp(wide("Hello"), wide("hellp")) < 0,
+        "and different letters sort, o before p",
+    )
+    assert_true(
+        wcscasecmp(wide("hellp"), wide("Hello")) > 0,
+        "and after it the other way",
     )
 
     assert_equal(
@@ -532,8 +544,12 @@ def test_comparing_wide_strings_apart_from_case() raises:
         "the first three agree, and",
     )
     assert_true(
-        wcsncasecmp(wide("Hello"), wide("help"), 4) != 0,
-        "the first four do not",
+        wcsncasecmp(wide("Hello"), wide("help"), 4) < 0,
+        "the first four do not, and l sorts before p",
+    )
+    assert_true(
+        wcsncasecmp(wide("help"), wide("Hello"), 4) > 0,
+        "and after it the other way",
     )
 
 

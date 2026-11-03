@@ -590,6 +590,15 @@ def test_the_l_variants_ask_a_locale_object() raises:
     var hello = string_to_char_ptr("Hello")
     var shout = string_to_char_ptr("hELLO")
     assert_equal(strcasecmp_l(hello, shout, loc), 0, "case is folded away")
+    # Folding is what makes those two equal, and equality is the answer either
+    # way round. These two differ, so the order they are asked in shows.
+    assert_true(
+        strcasecmp_l(apple, banana, loc) < 0,
+        "apple sorts before banana, case or not",
+    )
+    assert_true(
+        strcasecmp_l(banana, apple, loc) > 0, "and after it the other way"
+    )
 
     var abc_x = string_to_char_ptr("abcX")
     var abc_y = string_to_char_ptr("ABCY")

@@ -86,6 +86,7 @@ check-docstrings = "python3 scripts/check-docstrings.py"
 check-examples = "python3 scripts/check-examples.py"
 # Has to be its own process: imported, Mojo drops every import in it.
 test-imports = "mojo run -I src -I tests tests/test_import_all.mojo"
+check-comparisons = "python3 scripts/check-comparisons.py"
 # A binding nobody calls is a binding nothing checks. `gl_flags` was read
 # from the wrong half of a word for three releases while every check here
 # was green: the offset was the one the module named, the symbol was the
