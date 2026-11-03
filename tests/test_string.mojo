@@ -22,6 +22,7 @@ from libc.string import (
     stpncpy,
     strcasecmp,
     strcasecmp_l,
+    strcasestr,
     strcat,
     strchr,
     strcmp,
@@ -605,6 +606,63 @@ def test_the_l_variants_ask_a_locale_object() raises:
     freelocale(loc)
 
 
+def test_finding_a_substring_without_minding_the_case() raises:
+    """`strcasestr` is `strstr` with both sides folded together.
+
+    The pointer that comes back is into the haystack and not into a
+    copy, so what it points at is the text as it was written -- which is
+    the thing a caller has to know and the thing that separates this
+    from a function answering its own folded copy. Both spellings of the
+    needle have to find the same place for the same reason.
+    """
+    var haystack = string_to_char_ptr("Hello World")
+    var lower = string_to_char_ptr("world")
+    var upper = string_to_char_ptr("WORLD")
+    var mixed = string_to_char_ptr("wOrLd")
+    var absent = string_to_char_ptr("planet")
+    var empty = string_to_char_ptr("")
+
+    var found_lower = strcasestr(haystack, lower)
+    assert_true(
+        not is_null(found_lower), "a word in another case is still found"
+    )
+    assert_equal(
+        char_ptr_to_string(found_lower),
+        String("World"),
+        "and what comes back is the haystack as it was written",
+    )
+
+    var found_upper = strcasestr(haystack, upper)
+    assert_true(not is_null(found_upper), "either way round")
+    assert_equal(
+        char_ptr_to_string(found_upper),
+        String("World"),
+        "and the same place in the haystack",
+    )
+    assert_equal(
+        char_ptr_to_string(strcasestr(haystack, mixed)),
+        String("World"),
+        "and a third way of spelling it too",
+    )
+
+    assert_true(
+        is_null(strcasestr(haystack, absent)),
+        "a word that is not there answers null",
+    )
+    assert_equal(
+        char_ptr_to_string(strcasestr(haystack, empty)),
+        String("Hello World"),
+        "and an empty needle is found at the start",
+    )
+
+    haystack.unsafe_free()
+    lower.unsafe_free()
+    upper.unsafe_free()
+    mixed.unsafe_free()
+    absent.unsafe_free()
+    empty.unsafe_free()
+
+
 def main() raises:
     test_strlen()
     test_copying()
@@ -621,6 +679,7 @@ def main() raises:
     test_the_bsd_spellings()
     test_finding_the_first_and_the_last()
     test_the_l_variants_ask_a_locale_object()
+    test_finding_a_substring_without_minding_the_case()
     test_copying_up_to_a_byte()
     test_strsep()
     test_ffs()

@@ -1166,6 +1166,7 @@ def bring_in_libc_string():
         stpncpy,
         strcasecmp,
         strcasecmp_l,
+        strcasestr,
         strcat,
         strchr,
         strcmp,
@@ -1683,7 +1684,6 @@ def bring_in_libc_utmpx():
 
 def bring_in_libc_wchar():
     from libc.wchar import (
-        WEOF,
         btowc,
         fgetwc,
         fgetws,
@@ -1756,9 +1756,12 @@ def bring_in_libc_wchar():
         wcstoul_l,
         wcstoull,
         wcstoull_l,
+        wcswidth,
         wcsxfrm,
         wcsxfrm_l,
         wctob,
+        wcwidth,
+        WEOF,
         wmemchr,
         wmemcmp,
         wmemcpy,

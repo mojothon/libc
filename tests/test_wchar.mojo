@@ -14,7 +14,6 @@ from libc.stdlib import free
 from libc.time import gmtime_r, time, tm
 from libc.stdio import tmpfile
 from libc.wchar import (
-    WEOF,
     btowc,
     fgetwc,
     fgetws,
@@ -87,9 +86,12 @@ from libc.wchar import (
     wcstoul_l,
     wcstoull,
     wcstoull_l,
+    wcswidth,
     wcsxfrm,
     wcsxfrm_l,
     wctob,
+    wcwidth,
+    WEOF,
     wmemchr,
     wmemcmp,
     wmemcpy,
@@ -1091,6 +1093,66 @@ def test_writing_a_time_out_wide_for_a_locale_object() raises:
     freelocale(loc)
 
 
+def test_how_many_columns_a_character_takes() raises:
+    """`wcwidth` answers columns and `wcswidth` adds them up.
+
+    Every assertion here is about ASCII, and that is the point rather
+    than a shortcut: `wcwidth` asks the locale how wide a character is,
+    and the C locale this runs in has nothing to say about anything
+    outside ASCII, so `wcwidth` of a printable `e` with an accent is -1
+    -- not one, and not two. A test that asserted a width for it would
+    be asserting something about whichever locale the machine happened
+    to be in.
+
+    What ASCII does settle is the shape of the thing: every printable
+    character is one column, the nil is none, a control character has
+    no column at all and answers -1 rather than 0, and `wcswidth` of a
+    string is the same one column each -- except that one character
+    with no column makes the whole string -1.
+    """
+    for code in range(0x20, 0x7F):
+        assert_equal(
+            Int(wcwidth(c_wchar(code))),
+            1,
+            "every printable character takes one column",
+        )
+    assert_equal(Int(wcwidth(c_wchar(0))), 0, "and the nil takes none")
+    assert_equal(
+        Int(wcwidth(c_wchar(7))),
+        -1,
+        "while a control character has no column at all",
+    )
+    assert_equal(Int(wcwidth(c_wchar(0x7F))), -1, "nor does delete")
+
+    var line = unsafe_alloc[c_wchar](4)
+    line.unsafe_offset(0)[] = c_wchar(0x61)
+    line.unsafe_offset(1)[] = c_wchar(0x62)
+    line.unsafe_offset(2)[] = c_wchar(0x63)
+    line.unsafe_offset(3)[] = c_wchar(0)
+    assert_equal(
+        Int(wcswidth(line, 3)), 3, "three characters are three columns"
+    )
+    assert_equal(
+        Int(wcswidth(line, 2)),
+        2,
+        "and n is where the counting stops when it stops first",
+    )
+    assert_equal(
+        Int(wcswidth(line, 99)), 3, "and the nil stops it when n is the larger"
+    )
+    assert_equal(
+        Int(wcswidth(line, 0)), 0, "and nothing asked about is no columns"
+    )
+
+    line.unsafe_offset(1)[] = c_wchar(7)
+    assert_equal(
+        Int(wcswidth(line, 3)),
+        -1,
+        "and one character with no column answers for the whole string",
+    )
+    line.unsafe_free()
+
+
 def main() raises:
     test_length_and_compare()
     test_search()
@@ -1114,4 +1176,5 @@ def main() raises:
     test_the_l_variants_ask_a_locale_object()
     test_reading_numbers_for_a_locale_object()
     test_writing_a_time_out_wide_for_a_locale_object()
+    test_how_many_columns_a_character_takes()
     print("test_wchar: ok")

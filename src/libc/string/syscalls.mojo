@@ -1219,3 +1219,39 @@ def memccpy(
     return external_call[
         "memccpy", c_ptr[UInt8], c_ptr[UInt8], c_ptr[UInt8], c_int, c_size_t
     ](dest, src, c, n)
+
+
+def strcasestr(haystack: c_ptr[UInt8], needle: c_ptr[UInt8]) -> c_ptr[UInt8]:
+    """Libc BSD `strcasestr` function.
+
+    Args:
+        haystack: The string to search.
+        needle: The substring to look for, in any case.
+
+    Returns:
+        A pointer into `haystack` where `needle` starts, or a null
+        pointer. An empty `needle` returns `haystack` itself.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/strcasestr.3.html).
+        Fn signature: `char *strcasestr(const char *haystack, const
+        char *needle)`.
+
+        `strstr` with both sides folded to one case, and nothing else
+        about it changes: the pointer is into `haystack` rather than
+        into a copy, so what it points at is the text as it was written
+        and not as it was compared. A caller that wants the folded text
+        has to fold it itself.
+
+        The folding is the C locale's, which for ASCII is the same
+        answer everywhere: a haystack outside ASCII is compared as its
+        bytes are, and letters that only have an upper and a lower case
+        in some other locale are not folded at all.
+
+        This is a BSD extension that glibc only declares with
+        `_GNU_SOURCE`, so it is one of the few things here that a strict
+        C program cannot see even though the library has it.
+    """
+    return external_call[
+        "strcasestr", c_ptr[UInt8], c_ptr[UInt8], c_ptr[UInt8]
+    ](haystack, needle)

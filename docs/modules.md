@@ -25,7 +25,7 @@ the bottom.
 | `libc.sys.sysinfo` | `<sys/sysinfo.h>` | 18 |
 | `libc.sys.timer` | `<time.h>` the timers Darwin does not have | 12 |
 | `libc.pthread` | `<pthread.h>` | 100 |
-| `libc.string` | `<string.h>` | 49 |
+| `libc.string` | `<string.h>` | 50 |
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 44 |
 | `libc.complex` | `<complex.h>` | 46 |
 | `libc.sched` | `<sched.h>` | 16 |
@@ -53,7 +53,7 @@ the bottom.
 | `libc.fcntl` | `<fcntl.h>` | 50 |
 | `libc.getopt` | `<getopt.h>` taking a command line apart | 12 |
 | `libc.dlfcn` | `<dlfcn.h>` | 7 |
-| `libc.wchar` | `<wchar.h>` | 83 |
+| `libc.wchar` | `<wchar.h>` | 85 |
 | `libc.wordexp` | `<wordexp.h>` shell-style word splitting | 6 |
 | `libc.wctype` | `<wctype.h>` | 5 |
 | `libc.sys.statvfs` | `<sys/statvfs.h>` | 15 |

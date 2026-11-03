@@ -2276,3 +2276,70 @@ def wcsftime_l(
         c_ptr[tm],
         locale_t,
     ](s, max, format, timeptr, loc)
+
+
+def wcwidth(wc: c_wchar) -> c_int:
+    """Libc POSIX `wcwidth` function.
+
+    Args:
+        wc: The wide character to measure.
+
+    Returns:
+        How many columns it takes: 0 for one that takes none, -1 for one
+        that cannot be put in a column at all.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcwidth.3.html).
+        Fn signature: `int wcwidth(wchar_t wc)`.
+
+        Columns and not characters, which is why this is not a length:
+        two characters that each take one column and one character that
+        takes two are not the same width, and neither is what `wcslen`
+        counts.
+
+        What it answers depends on the locale, and not only about
+        unusual characters: in the C locale every character outside
+        ASCII answers -1 whether or not it is printable, because that
+        locale has no tables saying how wide anything else is. A caller
+        that wants a width for anything beyond ASCII has to ask in a
+        locale that knows the character.
+
+        -1 is not a complaint about the argument and does not set
+        `errno`: it is the answer for a character with no width, which
+        is every control character there is. The nil character is 0
+        rather than -1, being the one character whose width really is
+        nothing.
+    """
+    return external_call["wcwidth", c_int, c_wchar](wc)
+
+
+def wcswidth(pwcs: c_ptr[c_wchar], n: c_size_t) -> c_int:
+    """Libc POSIX `wcswidth` function.
+
+    Args:
+        pwcs: The wide string to measure.
+        n: How many characters at most to measure.
+
+    Returns:
+        How many columns the characters take, or -1 where any of them
+        cannot be put in a column.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/wcswidth.3.html).
+        Fn signature: `int wcswidth(const wchar_t *pwcs, size_t n)`.
+
+        `n` is a cap and not a length: the string's own nil ends the
+        count first wherever it comes sooner, so asking for more than
+        the string holds measures the whole string rather than reading
+        past it. An empty string is 0 columns and not -1.
+
+        One character that cannot be put in a column settles the whole
+        answer as -1, so this is not a sum to be worked out a character
+        at a time and then repaired: a control character anywhere makes
+        the string unprintable as a whole.
+
+        The locale caveat `wcwidth` carries is this one's as well, and
+        more visibly: in the C locale a string of anything but ASCII is
+        -1 rather than a width.
+    """
+    return external_call["wcswidth", c_int, c_ptr[c_wchar], c_size_t](pwcs, n)

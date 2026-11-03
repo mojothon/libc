@@ -666,6 +666,41 @@ All notable changes to this project are documented here. The format follows
 
   `beyond-c.md` says 982 symbols, 979 among the four libraries, 27.4%;
   `modules.md` says `libc.stdlib` has 79.
+- **`wcwidth` and `wcswidth`: columns, not characters.** A width is
+  what a terminal needs to know and a length is not: two one-column
+  characters and one two-column character are the same width and not
+  the same length. The pair answers that, and the nil is the one
+  character whose width really is nothing, which is 0 and not -1.
+
+  Both are locale-dependent, and more than the name suggests: the C
+  locale has no tables saying how wide anything outside ASCII is, so
+  `wcwidth` of a printable letter with an accent is -1 there -- not
+  one, and not two. That decided the test rather than the binding:
+  every assertion is about ASCII, because anything else would be an
+  assertion about whichever locale the machine happened to be in.
+  What ASCII does settle is the shape -- printable is one column, nil
+  is none, control is none and answers -1 rather than 0, `n` is a cap
+  that the string's own nil can end first, and one character with no
+  column makes the whole string -1.
+
+- **`strcasestr`: `strstr` with both sides folded together.** It
+  answers a pointer into the haystack and not into a copy, so what
+  comes back is the text as it was written rather than as it was
+  compared -- which is what the test asserts, by finding `world` and
+  `WORLD` and `wOrLd` in `Hello World` and checking that all three
+  answer `World`.
+
+  It is a BSD extension that glibc only declares under `_GNU_SOURCE`,
+  which is the same reason `posix_openpt` was missing a while back:
+  `check-prototypes` defines those macros itself, but the ad-hoc scan
+  used to look for gaps does not, so functions behind a feature macro
+  never appear in its list of things to bind. `strcasestr` was found by
+  rescanning every header with the macros defined, which turned up
+  about twelve hundred names the scan had never seen -- most of them
+  glibc-only `*64` and `*_l` variants, but not all.
+
+  `beyond-c.md` says 985 symbols, 982 among the four libraries, 27.5%;
+  `modules.md` says `libc.wchar` has 85 and `libc.string` has 50.
 - **The list of bindings a test could ask and has not is empty.** Five of
   the last six debts were not blocked by anything, which is the point: four
   of the reasons said a privilege, a thread or a policy was needed, and
