@@ -874,15 +874,25 @@ All notable changes to this project are documented here. The format follows
   `aligned_alloc`, `mbsnrtowcs`, `wcsnrtombs`, `sched_setscheduler`).
 
   The twentieth was `sigaltstack`, asked with two NULLs because there was no
-  `stack_t` to give it, which is the `sigaction` story over again. It is bound
-  now, and it is the only struct on the page the two platforms lay out
-  identically — a pointer, four bytes of flags and a size, at 0, 8 and 16 for
-  24 either way. The test installs a stack of `SIGSTKSZ` bytes, reads it back
-  and puts the old one back; a swap installs what the read buffer held, which
-  is no stack at all, and is refused with `EINVAL`. Writing it turned up
-  something worth knowing: the runtime puts a handler on `SIGUSR1` and an
-  alternate stack under it, so the suite's own process has one already and the
-  restore is measured against the first read rather than against zero.
+  `stack_t` to give it, which is the `sigaction` story over again.
+
+  It is bound now, and it is the sharpest of the three, because there was
+  nothing to see: glibc's `stack_t` is a pointer, four bytes of flags and a
+  size, Darwin's is a pointer, a size and four bytes of flags, and both are 24
+  bytes and 8-aligned. Written with glibc's order it agreed with the layout
+  check, which asks one header, and with the tests, which run where that header
+  is — and the macOS job was the first thing to disagree: a stack installed
+  with the size where the flags go has flags of 131072, which is not a flag,
+  and is refused with `EINVAL`. The offsets are two numbers now, and the header
+  checks in the test job run before the suite, so the next one fails in the
+  check that names the member instead of in the test that used it.
+
+  The test installs a stack of `SIGSTKSZ` bytes, reads it back and puts the old
+  one back; a swap installs what the read buffer held, which is no stack at
+  all, and is refused with `EINVAL`. Writing it turned up something else worth
+  knowing: the runtime puts a handler on `SIGUSR1` and an alternate stack under
+  it, so the suite's own process has one already, and the restore is measured
+  against the first read rather than against zero.
 
 - **`scripts/check-comparisons.py` asks every comparison which way it leans.**
   Seven of the survivors across four samples were one shape: an assertion that

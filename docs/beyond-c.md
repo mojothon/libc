@@ -350,10 +350,21 @@ second (`getnetgrent`, `innetgr`, `aligned_alloc`, `mbsnrtowcs`,
 
 The twentieth was the `sigaction` story again, and it closed the same way:
 `sigaltstack` was asked with two NULLs because there was no `stack_t` to give
-it, and there is one now. It is the only struct on the page the two platforms
-lay out identically — a pointer, four bytes of flags and a size, at 0, 8 and 16
-for 24 either way — so it is the only one where the offsets are the same number
-twice. Writing the test turned up something worth knowing: the runtime puts a
+it, and there is one now.
+
+It is also the sharpest lesson of the three, because there was nothing to see.
+glibc's `stack_t` is a pointer, four bytes of flags and a size; Darwin's is a
+pointer, a size and four bytes of flags. Both are 24 bytes, 8-aligned, and the
+same three types — a header read on one platform is a header that looks right.
+The struct was written with glibc's order and the offsets were checked against
+glibc, so the layout check agreed with it, the tests passed, and the first
+sample to say otherwise was the macOS job: a stack installed with the size
+where the flags go is a stack with flags of 131072, which is not a flag, and
+the call answers `EINVAL`. The offsets are two numbers now, and the header
+checks in the test job run before the suite, so that the next one fails in the
+check that names the member rather than in the test that used it.
+
+Writing the test turned up something else worth knowing: the runtime puts a
 handler on `SIGUSR1` and an alternate stack under it, so the process the suite
 runs in is not one that has never set a stack. The test therefore measures the
 restore against the first read rather than against zero.

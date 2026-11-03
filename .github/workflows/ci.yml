@@ -69,19 +69,6 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.11.0
         with:
           cache: true
-      - name: Run the test suite
-        # A test that waits for something never to arrive would hold the
-        # job for six hours, and none of the log is readable until it
-        # lets go — including the line saying which suite it was in.
-        # The whole thing takes a minute here and a few on the runner,
-        # so twenty is room rather than a limit.
-        timeout-minutes: 20
-        run: pixi run test
-      - name: Precompile the package
-        run: pixi run package
-      # Two platforms, because half the work this does is deciding which
-      # side of an `if is_macos()` is the true one: neither job can check
-      # the branch it is not standing on.
       - name: Check constants against the headers
         run: pixi run check-constants
       # Same reason again, and not for the same numbers: a struct that is
@@ -103,6 +90,22 @@ jobs:
       # itself as `atan2`, arguments and all.
       - name: Check docstrings against the call they describe
         run: pixi run check-docstrings
+      # The header checks come first: a struct the two platforms lay out
+      # differently fails here, naming the member, where the suite would fail
+      # somewhere downstream of the same mistake.
+      - name: Run the test suite
+        # A test that waits for something never to arrive would hold the
+        # job for six hours, and none of the log is readable until it
+        # lets go — including the line saying which suite it was in.
+        # The whole thing takes a minute here and a few on the runner,
+        # so twenty is room rather than a limit.
+        timeout-minutes: 20
+        run: pixi run test
+      - name: Precompile the package
+        run: pixi run package
+      # Two platforms, because half the work this does is deciding which
+      # side of an `if is_macos()` is the true one: neither job can check
+      # the branch it is not standing on.
 
   conda-build:
     name: Conda package

@@ -179,10 +179,9 @@ def sigaltstack(ss: c_ptr[stack_t], oss: c_ptr[stack_t]) -> Int32:
         there. Nothing here asks for that, so a stack can be installed, asked
         for and taken away again without a signal ever being delivered on it.
 
-        `stack_t` is here, and it is the one struct on this page the two
-        platforms lay out the same way: a pointer, four bytes of flags and a
-        size, at 0, 8 and 16 for 24 in all. What it wants of the size is at
-        least `SIGSTKSZ`.
+        `stack_t` is here. What it wants of the size is at least `SIGSTKSZ`,
+        and the members are in a different order on each platform, which is
+        why the offsets above are two numbers rather than one.
 
         As with `sigaction`, calling it with NULL where the new stack would go
         writes the stack in force where `oss` points and changes nothing.
@@ -690,13 +689,17 @@ comptime SIGACTION_FLAGS_OFFSET: Int = 12 if CompilationTarget.is_macos() else 1
 comptime SIGACTION_SLOTS: Int = 2 if CompilationTarget.is_macos() else 19
 
 
-# `stack_t` is the third struct here, and the only one the two platforms agree
-# about byte for byte: a pointer, four bytes of flags and a size, at 0, 8 and
-# 16 for 24 in all -- where glibc pads the flags out to eight with four bytes
-# XNU does not have, and both end at the same place anyway.
+# `stack_t` is the third struct on this page whose members the two platforms
+# put in a different order, and the least obvious of the three: both are a
+# pointer, a size and four bytes of flags, both are 24 bytes and 8-aligned, and
+# the size and the flags are in each other's places. glibc has the flags at 8
+# and XNU has the size at 8, so a struct laid out for one is a struct the other
+# refuses -- the flags read 131072, which is not a flag, and the call answers
+# `EINVAL`. Nothing about the two headers looks different until they are
+# compared member by member, which is what `check-layouts` does with these.
 comptime STACK_SP_OFFSET: Int = 0
-comptime STACK_FLAGS_OFFSET: Int = 8
-comptime STACK_SIZE_OFFSET: Int = 16
+comptime STACK_SIZE_OFFSET: Int = 8 if CompilationTarget.is_macos() else 16
+comptime STACK_FLAGS_OFFSET: Int = 16 if CompilationTarget.is_macos() else 8
 
 
 struct stack_t:
@@ -705,6 +708,11 @@ struct stack_t:
     Three members and no union, so this one is written out rather than kept as
     a number the way `sigaction_t`'s handler is: `ss_sp` is an address, and it
     is kept as one, because nothing else can be.
+
+    The two platforms disagree about the order. glibc has the pointer, four
+    bytes of flags and the size; Darwin has the pointer, the size and the
+    flags. Both are 24 bytes, so the size is the same number and the offsets
+    are not, which is why each member here asks the platform where it is.
 
     Notes:
         [Reference](https://man7.org/linux/man-pages/man2/sigaltstack.2.html).
