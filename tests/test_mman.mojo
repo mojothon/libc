@@ -18,7 +18,7 @@ from libc.constant import (
     MS_SYNC,
 )
 from libc.errno import get_errno, set_errno
-from libc.signal import SIGSEGV, signal
+from libc.signal import SIGABRT, SIGSEGV, signal
 from libc.sys.mman import (
     madvise,
     mincore,
@@ -97,10 +97,14 @@ def test_mmap_hands_back_memory() raises:
         WIFSIGNALED(status.unsafe_load()),
         "the write it tried ended it, rather than landing",
     )
-    assert_equal(
-        WTERMSIG(status.unsafe_load()),
-        SIGSEGV,
-        "which is what a write to a read-only page is",
+    # Which signal that is belongs to the run time rather than to the kernel:
+    # Linux lets the fault through as `SIGSEGV`, and on Darwin the crash
+    # reporter catches it and answers with an abort. Either is the write not
+    # landing, which is the thing being asked.
+    var ended_by = WTERMSIG(status.unsafe_load())
+    assert_true(
+        ended_by == SIGSEGV or ended_by == SIGABRT,
+        "which is a write to a read-only page, however the run time reports it",
     )
     status.unsafe_free()
 
