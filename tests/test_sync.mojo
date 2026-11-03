@@ -22,6 +22,7 @@ from std.testing import assert_equal, assert_true
 from libc.constant import (
     EBUSY,
     EDEADLK,
+    EINVAL,
     ETIMEDOUT,
     MAP_ANONYMOUS,
     MAP_SHARED,
@@ -471,13 +472,18 @@ def test_a_read_write_lock_can_be_made_from_attributes() raises:
     rwlock.unsafe_offset(0)[] = pthread_rwlock_t()
     assert_equal(pthread_rwlock_init(rwlock, attr), 0, "the lock takes them")
     assert_equal(pthread_rwlock_destroy(rwlock), 0, "and goes away")
-    # Destroyed means nothing is held any more, so a write can be taken at
-    # once. That is what tells `_destroy` from `_rdlock`, which has the same
-    # signature and answers the same 0 but leaves a read lock held: the try
-    # below would answer EBUSY.
+    # What a destroyed lock answers depends on the platform and both answers
+    # are honest: glibc leaves the object unlocked and a write is taken at
+    # once, and Darwin has taken the lock's own storage away and refuses with
+    # EINVAL. Either is a different answer from the EBUSY that a read lock
+    # still held would give, which is what tells `_destroy` from `_rdlock` --
+    # the two have the same signature and the same answer of 0.
+    comptime AFTER_DESTROY: Int32 = (
+        Int32(EINVAL) if CompilationTarget.is_macos() else 0
+    )
     assert_equal(
         pthread_rwlock_trywrlock(rwlock),
-        0,
+        AFTER_DESTROY,
         "and nothing is held on it any more",
     )
     assert_equal(pthread_rwlock_unlock(rwlock), 0)
