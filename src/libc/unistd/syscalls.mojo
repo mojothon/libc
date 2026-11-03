@@ -2057,6 +2057,113 @@ def endusershell():
     external_call["endusershell", NoneType]()
 
 
+def getlogin() -> c_ptr[UInt8]:
+    """Libc POSIX `getlogin` function.
+
+    Description:
+        Says the name of the user who is logged in on the controlling
+        terminal of this process, as the login accounting file has it.
+
+    Returns:
+        A pointer to the name, or a null pointer where there is no
+        such user to be found, with `errno` saying why.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getlogin.3.html).
+        Fn signature: `char *getlogin(void)`.
+
+        The name is what the accounting file says rather than what
+        `getuid` says: a process that has changed user keeps being
+        answered with the name it was logged in under.
+
+        The pointer is into storage the library keeps, and the next
+        call replaces what is there, so it is read rather than held.
+        A process with no controlling terminal — or one the
+        accounting file says nothing about, which is what a machine
+        running a suite of tests is — is answered with a null pointer,
+        and that is an answer rather than a failure.
+    """
+    return external_call["getlogin", c_ptr[UInt8]]()
+
+
+def getlogin_r(name: c_ptr[UInt8], namesize: c_size_t) -> c_int:
+    """Libc POSIX `getlogin_r` function.
+
+    Description:
+        Says the name of the user who is logged in on the controlling
+        terminal of this process, writing it into the caller's buffer
+        rather than into storage of the library's own.
+
+    Args:
+        name: Where to write the name, as a string with a NUL on its
+            end.
+        namesize: How much room `name` has, in bytes.
+
+    Returns:
+        0 where the name is written, or the error number itself where
+        it is not — this one answers with the number rather than with
+        -1, and leaves `errno` alone.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getlogin_r.3.html).
+        Fn signature: `int getlogin_r(char *name, size_t namesize)`.
+
+        A buffer too small for the name is answered with `ERANGE`, so
+        the room to give is the longest name there can be rather than
+        the name there happens to be.
+    """
+    return external_call["getlogin_r", c_int, c_ptr[UInt8], c_size_t](
+        name, namesize
+    )
+
+
+def sync() raises:
+    """Libc POSIX `sync` function.
+
+    Description:
+        Asks for every write the kernel is holding back — every file
+        on every filesystem — to be started on its way to the disk.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man2/sync.2.html).
+        Fn signature: `void sync(void)`.
+
+        This comes back once the asking is done, not once the writing
+        is: which writes have landed by then is nothing the call
+        promises, and that is the difference between it and `fsync`,
+        which waits for one file and answers for that file. Nothing
+        is reported back, so there is no answer to read.
+    """
+    external_call["sync", NoneType]()
+
+
+def ttyslot() -> c_int:
+    """Libc Legacy `ttyslot` function.
+
+    Description:
+        Says which line of the machine's file of login terminals the
+        controlling terminal of this process is on.
+
+    Returns:
+        The line number, counting from 1, or 0 where there is no
+        controlling terminal to look for or no such file to look in.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/ttyslot.3.html).
+        Fn signature: `int ttyslot(void)`.
+
+        The file is the machine's own to have, and a machine without
+        one — which is most of the ones running the Linux this
+        package is developed against — is answered with 0 whatever
+        terminal the process is on.
+
+        glibc declares this one in `<utmp.h>` and Darwin in
+        `<unistd.h>`, which is the one of the two this package keeps
+        it in.
+    """
+    return external_call["ttyslot", c_int]()
+
+
 def getwd(buf: c_ptr[UInt8]) -> c_ptr[UInt8]:
     """Libc BSD `getwd` function.
 

@@ -815,3 +815,29 @@ def setsockopt(
     return external_call[
         "setsockopt", c_int, c_int, c_int, c_int, c_ptr[NoneType], UInt32
     ](sockfd, level, optname, optval, optlen)
+
+
+def sockatmark(sockfd: Int32) -> Int32:
+    """Libc POSIX `sockatmark` function.
+
+    Reference: https://man7.org/linux/man-pages/man3/sockatmark.3p.html
+    Fn signature: `int sockatmark(int sockfd)`
+
+    Args:
+        sockfd: Which socket to ask.
+
+    Returns:
+        1 where the next thing to be read is the out-of-band mark,
+        0 where it is not, or -1 with `errno` set where `sockfd` is
+        not a socket that can be asked.
+
+    Notes:
+        This is the question the `SIOCATMARK` request asks, spelled
+        as a function: it says whether the read pointer has reached
+        the place in the stream where a byte sent out of band went,
+        which is how a receiver finds the urgent byte without reading
+        past it. The mark survives the urgent byte being read — it is
+        only ordinary reading that moves past it — and reading up to
+        the mark is how the two kinds of data are kept apart.
+    """
+    return external_call["sockatmark", Int32, Int32](sockfd)

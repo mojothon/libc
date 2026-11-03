@@ -7,6 +7,39 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **Five bindings that were missing between the ones already there:
+  `getlogin` and `getlogin_r`, `sync`, `ttyslot` in `libc.unistd`, and
+  `sockatmark` in `libc.sys.socket`.** All of them are declared and
+  exported on both platforms; `strfmon` was looked at alongside them and
+  left out, being variadic in a way that cannot be called — the amount to
+  format comes after the format, and an external call cannot hand it
+  one.
+
+  `getlogin` and `getlogin_r` are the same question asked two ways, and
+  the test asks them together: whichever way the machine answers — most
+  CI machines are logged into by nothing — a name for one is the name
+  for the other, and no name for one is no name for the other. When
+  there is a name, a one-byte buffer is refused with `ERANGE`, which is
+  the answer that says the call counted the room rather than the name.
+
+  `sockatmark` is asked the whole of what it is for, over a loopback
+  TCP connection: two ordinary bytes, one sent with the new
+  `MSG_OOB` constant, one more ordinary byte after it. The answer is 0
+  before the second byte is read, 1 from then on, and still 1 after the
+  marked byte itself has been read — the mark being a place in the
+  stream rather than the byte at it — and 0 again once the read has
+  passed it.
+
+  `sync` has nothing it can report, so the test asks only that the
+  asking comes back; `ttyslot` counts a line in the machine's own login
+  file, so the test asks for the floor — a line number, or the 0 that
+  says there is not one.
+
+  glibc declares `ttyslot` in `<utmp.h>` and Darwin in `<unistd.h>`, so
+  `utmp.h` joins the headers `check-prototypes` parses; the binding
+  lives with the other session questions in `libc.unistd`. The package
+  now binds 996 C symbols, up from 991.
+
 - **A Recipes page: five complete programs for the things a caller wants
   first.** Every `mojo` block in the docs is already compiled by
   `check-examples`, so the examples could not rot — but there were twelve

@@ -6,6 +6,7 @@ from std.testing import assert_equal, assert_true
 from libc.fcntl import O_CREAT, O_RDONLY, open as open_with_mode
 from libc.constant import (
     AT_FDCWD,
+    ERANGE,
     c_ptr,
     c_uint,
     O_NOCTTY,
@@ -69,6 +70,8 @@ from libc.unistd import (
     getgroups,
     gethostid,
     gethostname,
+    getlogin,
+    getlogin_r,
     getopt,
     getpagesize,
     getpgid,
@@ -105,9 +108,11 @@ from libc.unistd import (
     setusershell,
     sleep,
     swab,
+    sync,
     symlinkat,
     syscall,
     sysconf,
+    ttyslot,
     tcgetpgrp,
     tcsetpgrp,
     truncate,
@@ -1207,6 +1212,61 @@ def test_the_foreground_group_of_a_terminal() raises:
     assert_equal(tcsetpgrp(-1, getpgrp()), -1, "nor takes one")
 
 
+def test_getlogin_and_getlogin_r_ask_the_same_question() raises:
+    """`getlogin` answers into storage of the library's own and
+    `getlogin_r` into the caller's buffer, and they are the same
+    question about the same accounting file, so whichever way this
+    machine answers it, the two have to agree: a name for one is the
+    name for the other, and no name for one is no name for the other.
+    """
+    var name = getlogin()
+    var mine = ""
+    if not is_null(name):
+        mine = char_ptr_to_string(name)
+
+    var room = unsafe_alloc[UInt8](256)
+    var written = getlogin_r(room, 256)
+    if mine == "":
+        assert_true(
+            Int(written) != 0,
+            "no name to hand back means the reentrant one fails too",
+        )
+    else:
+        assert_equal(
+            Int(written), 0, "a name means the reentrant one writes it"
+        )
+        assert_equal(char_ptr_to_string(room), mine, "and it is the same name")
+        assert_equal(
+            Int(getlogin_r(room, 1)),
+            Int(ERANGE),
+            "a buffer too small for any name is refused with ERANGE",
+        )
+    room.unsafe_free()
+
+
+def test_sync_comes_back() raises:
+    """`sync` asks for the kernel's held-back writes to be started on
+    their way, waits for the asking rather than for the writing, and
+    reports nothing back — so what a suite can ask of it is that the
+    asking is over when it comes back.
+    """
+    sync()
+
+
+def test_ttyslot_counts_a_line_or_none() raises:
+    """`ttyslot` says which line of the machine's login file the
+    controlling terminal is on. Both of those are the machine's own —
+    this suite has no controlling terminal, and a machine with no
+    login file is answered 0 whatever terminal it is on — so the
+    floor is what can be said anywhere: a line number, or the 0 that
+    says there is not one.
+    """
+    assert_true(
+        Int(ttyslot()) >= 0,
+        "a line number or the 0 that says there is not one",
+    )
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -1223,13 +1283,16 @@ def main() raises:
     test_confstr_answers_for_the_default_path()
     test_getopt()
     test_swab()
+    test_sync_comes_back()
     test_getpid()
     test_gethostname()
+    test_getlogin_and_getlogin_r_ask_the_same_question()
     test_ids()
     test_alarm_and_sleep()
     test_nice_and_pagesize()
     test_chown_on_what_is_not_there()
     test_sysconf()
+    test_ttyslot_counts_a_line_or_none()
     test_usleep()
     test_process_groups()
     test_the_foreground_group_of_a_terminal()

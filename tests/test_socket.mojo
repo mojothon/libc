@@ -13,6 +13,7 @@ from std.testing import assert_equal, assert_true
 from libc.constant import (
     AF_INET,
     AF_UNIX,
+    MSG_OOB,
     MSG_PEEK,
     SHUT_RDWR,
     SOCK_DGRAM,
@@ -35,11 +36,13 @@ from libc.sys.socket import (
     sendmsg,
     sendto,
     shutdown,
+    sockatmark,
     socket,
     socketaddr,
     socketpair,
 )
 from libc.unistd import close
+from libc.utils import null_ptr
 
 comptime ADDRESS_SIZE: UInt32 = 16
 
@@ -453,6 +456,76 @@ def test_recvmsg_gathers_without_taking() raises:
     _ = close(right)
 
 
+def test_the_mark_that_out_of_band_data_leaves() raises:
+    """`sockatmark` says whether the next read is at the mark a byte
+    sent out of band leaves in the stream. Three bytes go over the
+    loopback — two ordinary ones, then the marked one, then one more
+    ordinary — and the mark sits between the second and the last, so
+    the answer is 0 until both ordinary bytes are read, 1 from then
+    on, and 1 still after the marked byte itself has been read, the
+    mark being a place in the stream rather than the byte at it.
+    """
+    var server = socket(AF_INET, SOCK_STREAM, 0)
+    var unspecified = unsafe_alloc[socketaddr](1)
+    loopback(unspecified.unsafe_offset(0)[], 0)
+    assert_equal(bind(server, unspecified, ADDRESS_SIZE), 0, "bound")
+    assert_equal(listen(server, 1), 0, "listening")
+    var port = ask_the_port(server)
+
+    var client = socket(AF_INET, SOCK_STREAM, 0)
+    var there = unsafe_alloc[socketaddr](1)
+    loopback(there.unsafe_offset(0)[], port)
+    assert_equal(connect(client, there, ADDRESS_SIZE), 0, "connected")
+    var taken = accept(server, null_ptr[socketaddr](), null_ptr[UInt32]())
+    assert_true(taken >= 0, "the connection is taken")
+
+    assert_equal(sockatmark(taken), 0, "no mark where none was made")
+
+    var going = unsafe_alloc[UInt8](2)
+    going.unsafe_offset(0)[] = 97  # a
+    going.unsafe_offset(1)[] = 98  # b
+    assert_equal(send(client, going, 2, 0), 2, "two ordinary bytes go")
+    var urgent = unsafe_alloc[UInt8](1)
+    urgent.unsafe_offset(0)[] = 99  # c
+    assert_equal(
+        send(client, urgent, 1, MSG_OOB), 1, "and the marked one after them"
+    )
+    var after = unsafe_alloc[UInt8](1)
+    after.unsafe_offset(0)[] = 100  # d
+    assert_equal(send(client, after, 1, 0), 1, "and an ordinary one last")
+
+    var coming = unsafe_alloc[UInt8](1)
+    assert_equal(recv(taken, coming, 1, 0), 1, "the first byte is read")
+    assert_equal(Int(coming.unsafe_load()), 97, "and it is the first one")
+    assert_equal(sockatmark(taken), 0, "the mark is not reached yet")
+
+    assert_equal(recv(taken, coming, 1, 0), 1, "the second byte is read")
+    assert_equal(Int(coming.unsafe_load()), 98, "and it is the second one")
+    assert_equal(sockatmark(taken), 1, "and the read is at the mark")
+
+    assert_equal(
+        recv(taken, coming, 1, MSG_OOB), 1, "the marked byte is read at it"
+    )
+    assert_equal(Int(coming.unsafe_load()), 99, "and it is the marked one")
+    assert_equal(
+        sockatmark(taken), 1, "reading the marked byte does not move past it"
+    )
+
+    assert_equal(recv(taken, coming, 1, 0), 1, "the last byte is read")
+    assert_equal(Int(coming.unsafe_load()), 100, "and it is the last one")
+    assert_equal(sockatmark(taken), 0, "and the mark is behind the read now")
+
+    assert_equal(close(taken), 0, "the taken socket is closed")
+    assert_equal(close(client), 0, "the client is closed")
+    assert_equal(close(server), 0, "the server is closed")
+    going.unsafe_free()
+    urgent.unsafe_free()
+    after.unsafe_free()
+    coming.unsafe_free()
+    there.unsafe_free()
+    unspecified.unsafe_free()
+
+
 def main() raises:
     test_a_connection_over_the_loopback()
     test_accept4()
@@ -460,4 +533,5 @@ def main() raises:
     test_sendto_and_recvfrom()
     test_sendmsg()
     test_recvmsg_gathers_without_taking()
+    test_the_mark_that_out_of_band_data_leaves()
     print("test_socket: ok")
