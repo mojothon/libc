@@ -156,8 +156,11 @@ what `pthread_cond_wait` is asked with: the child takes the lock, and it
 cannot take it until the parent is inside the wait and has let go of it, so
 the signal cannot be sent before there is anyone to receive it — no sleep
 stands in for the ordering. Cancelling a thread cannot be taken back, so
-`pthread_cancel` is asked of a child as well, and the child is the one that
-ends.
+`pthread_cancel` is asked of a child as well — two of them, in fact: one
+with cancellation left enabled, which does not come back from the next
+cancellation point, and one that disabled it first, which does. The pair is
+the assertion, because either half alone is passed by a cancel that does
+nothing at all.
 
 ## API reference
 

@@ -7,6 +7,40 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **The last two bindings that needed a second thread: `pthread_cond_wait`
+  and `pthread_cancel`.** Both were on the cannot-ask list because the suite
+  runs one thread, and neither needed one started — a forked child is enough
+  if the two of them are looking at the same bytes.
+
+  `pthread_cond_wait` waits on a condition the child signals. A fork copies
+  the page, and a copy of a condition variable is a different condition
+  variable, so the condition and its lock are made in a `MAP_SHARED` page
+  with `PTHREAD_PROCESS_SHARED` set on both. The ordering is what makes the
+  wake-up impossible to miss rather than merely unlikely: the parent takes
+  the lock **before** the fork, so the child's own `pthread_mutex_lock`
+  cannot succeed until the parent is inside the wait, where the lock is let
+  go. Nothing sleeps to stand in for that. The wait answers 0 with the lock
+  held again, which is checked by unlocking it, and a ten-second `alarm`
+  turns "no wake-up" into a failed run rather than a job that hangs until
+  it times out.
+
+  `pthread_cancel` cannot be taken back, so it is asked of a child and the
+  child is what ends. Two children ask, and the difference between them is
+  one call: with cancellation left enabled the child never comes back from
+  `usleep` to write the byte after it, and with
+  `pthread_setcancelstate(DISABLE)` in front of the request it does come
+  back and leaves with 0. Either half alone would be passed by a cancel
+  that did nothing, which is why both are there.
+
+  How the enabled child ends is not asserted, because the platforms do not
+  agree: glibc ends the process with status 0 at the cancellation point and
+  Darwin ends it on a signal. A probe run on both said so before the
+  assertion was written, which is cheaper than guessing and finding out
+  from a red macOS job.
+
+  Six remain, all with reasons that are about the call. The count on the
+  modules page moved from 992 asked and 8 not to 994 and 6.
+
 - **Three of the bindings nothing asked, asked: `scanf`, `sigsuspend` and
   `pause`.** All three were on the list with one reason between them — they
   read standard input or wait for a signal, and a suite that waits is a
