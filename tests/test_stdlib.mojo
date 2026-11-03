@@ -2,11 +2,20 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
-from libc.constant import c_char, c_double, c_ptr, c_uint, c_ushort, c_wchar
-from libc.file import close
+from libc.constant import (
+    c_char,
+    c_double,
+    c_ptr,
+    c_uint,
+    c_ushort,
+    c_void,
+    c_wchar,
+)
+from libc.fcntl import O_RDWR, open
+from libc.file import close, read, write
 from libc.stdio import remove
 from libc.sys.wait import WIFSIGNALED, waitpid
-from libc.unistd import fork, rmdir
+from libc.unistd import fork, isatty, rmdir
 from libc.signal import SIGABRT, signal
 from libc.stdlib import (
     a64l,
@@ -28,6 +37,7 @@ from libc.stdlib import (
     fcvt,
     gcvt,
     getsubopt,
+    grantpt,
     initstate,
     jrand48,
     l64a,
@@ -45,6 +55,8 @@ from libc.stdlib import (
     mrand48,
     nrand48,
     posix_memalign,
+    posix_openpt,
+    ptsname,
     putenv,
     rand,
     rand_r,
@@ -67,6 +79,7 @@ from libc.stdlib import (
     strtoul,
     strtoull,
     strtouq,
+    unlockpt,
     unsetenv,
     valloc,
     wctomb,
@@ -905,6 +918,69 @@ def test_a_name_made_with_a_suffix_left_alone() raises:
     template.unsafe_free()
 
 
+def test_a_pseudo_terminal_comes_in_pairs() raises:
+    """A pseudo-terminal is one pair of descriptors and not two
+    terminals, and what goes in at the master comes out at the far end.
+
+    The chain is four calls and each is asked for on its own, because
+    each fails on its own: `posix_openpt` gives a descriptor, `grantpt`
+    and `unlockpt` make the far end openable, and `ptsname` says where
+    that far end is. Nothing is written down about the name except that
+    it opens and that what opens is a terminal -- glibc answers
+    `/dev/pts/13` and Darwin `/dev/ttys013`, and which one is not the
+    point.
+
+    The byte goes out with a newline after it because the far end is a
+    terminal in canonical mode, and a terminal in canonical mode hands
+    nothing to a reader until a line is finished. That is the
+    terminal's rule and not this binding's, and it is why a line is
+    sent rather than a byte.
+    """
+    var master = posix_openpt(O_RDWR)
+    assert_true(master >= 0, "a pseudo-terminal can be opened")
+    assert_equal(grantpt(master), 0, "and its far end granted")
+    assert_equal(unlockpt(master), 0, "and unlocked")
+    assert_true(isatty(master) != 0, "and the end opened here is a terminal")
+
+    var name = char_ptr_to_string(ptsname(master))
+    assert_true(name.byte_length() > 0, "and the far end has a name")
+
+    var name_bytes = string_to_char_ptr(name)
+    var slave = open(name_bytes, O_RDWR)
+    name_bytes.unsafe_free()
+    assert_true(slave >= 0, "and opening that name works")
+    assert_true(isatty(slave) != 0, "and what opens there is a terminal too")
+
+    var line = unsafe_alloc[UInt8](2)
+    line.unsafe_offset(0)[] = UInt8(65)
+    line.unsafe_offset(1)[] = UInt8(10)
+    assert_equal(
+        write(master, line.unsafe_bitcast[c_void](), c_uint(2)),
+        2,
+        "a line written at the master is taken",
+    )
+
+    var back = unsafe_alloc[UInt8](2)
+    assert_equal(
+        read(slave, back.unsafe_bitcast[c_void](), c_uint(2)),
+        2,
+        "and comes out whole at the far end",
+    )
+    assert_equal(back.unsafe_offset(0)[], UInt8(65), "the byte that went in")
+    assert_equal(back.unsafe_offset(1)[], UInt8(10), "and the newline after it")
+
+    line.unsafe_free()
+    back.unsafe_free()
+    _ = close(slave)
+    _ = close(master)
+
+    assert_equal(
+        grantpt(-1), -1, "a descriptor that is no pty cannot be granted"
+    )
+    assert_equal(unlockpt(-1), -1, "nor unlocked")
+    assert_true(is_null(ptsname(-1)), "nor has a name")
+
+
 def main() raises:
     test_malloc()
     test_the_untried_calls()
@@ -928,5 +1004,6 @@ def main() raises:
     test_the_same_number_counted_from_the_other_end()
     test_writing_a_number_the_way_it_is_written()
     test_a_name_made_with_a_suffix_left_alone()
+    test_a_pseudo_terminal_comes_in_pairs()
     test_the_number_the_rand48s_have_next()
     print("test_stdlib: ok")

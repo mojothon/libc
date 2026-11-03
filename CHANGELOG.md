@@ -644,6 +644,28 @@ All notable changes to this project are documented here. The format follows
 
   `beyond-c.md` says 978 symbols, 975 among the four libraries, 27.3%;
   `modules.md` says `libc.netdb` has 66.
+- **Pseudo-terminals: `posix_openpt`, `grantpt`, `unlockpt`, `ptsname`.**
+  A pty is one pair of descriptors that carry bytes the way a terminal
+  does, and these four are the whole of opening one: the first gives a
+  master, the next two make the far end openable, and the last says
+  where it is. They were missing because they are declared under
+  `_XOPEN_SOURCE` and the gap scan does not define it, not because
+  anything is against them.
+
+  The test asks for the pair to be a pair: a line written at the
+  master has to come out whole at the far end, byte for byte. That is
+  the one assertion here that two unrelated terminals could not pass,
+  and it is why the test does not stop at "the descriptor is not -1".
+  The line goes out with a newline after it because the far end is a
+  terminal in canonical mode, where nothing is handed to a reader until
+  a line is finished -- the terminal's rule, not this binding's.
+
+  Nothing is written down about the name: glibc answers `/dev/pts/13`
+  and Darwin `/dev/ttys013`, so the test asks only that the name opens
+  and that what opens is a terminal.
+
+  `beyond-c.md` says 982 symbols, 979 among the four libraries, 27.4%;
+  `modules.md` says `libc.stdlib` has 79.
 - **The list of bindings a test could ask and has not is empty.** Five of
   the last six debts were not blocked by anything, which is the point: four
   of the reasons said a privilege, a thread or a policy was needed, and

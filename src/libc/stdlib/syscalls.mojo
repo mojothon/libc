@@ -1888,3 +1888,118 @@ def gcvt(value: Float64, ndigit: Int32, buf: c_ptr[c_char]) -> c_ptr[c_char]:
     return external_call["gcvt", c_ptr[c_char], Float64, Int32, c_ptr[c_char]](
         value, ndigit, buf
     )
+
+
+def posix_openpt(oflag: Int32) -> Int32:
+    """Libc POSIX `posix_openpt` function.
+
+    Description:
+        Opens the master end of a pseudo-terminal.
+
+    Args:
+        oflag: `O_RDWR`, and `O_NOCTTY` as well where the caller does
+            not want the terminal it is given to become the controlling
+            one.
+
+    Returns:
+        A descriptor for the master end, or -1 with `errno` set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/posix_openpt.3.html).
+        Fn signature: `int posix_openpt(int oflag)`.
+
+        A pseudo-terminal is a pair of descriptors that carry bytes
+        between them the way a terminal carries them to a program: what
+        is written at the master is read at the far end as input, and
+        what is written at the far end is read at the master as output.
+        This opens one of the two; `ptsname` says where the other is,
+        and `grantpt` and `unlockpt` are what make that name usable.
+
+        The far end does not exist until its name is opened, and opening
+        it is what a terminal session would do rather than what a
+        terminal driver does: nothing is read or written until the
+        caller has opened both ends.
+    """
+    return external_call["posix_openpt", Int32, Int32](oflag)
+
+
+def grantpt(fildes: Int32) -> Int32:
+    """Libc POSIX `grantpt` function.
+
+    Description:
+        Sets the owner and permissions the far end of a pseudo-terminal
+        needs to be opened.
+
+    Args:
+        fildes: The descriptor `posix_openpt` answered with.
+
+    Returns:
+        0 where it worked, or -1 with `errno` set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/grantpt.3.html).
+        Fn signature: `int grantpt(int fildes)`.
+
+        This has to be done before the far end is opened and after it is
+        created, and doing it twice is not an error. Darwin does nothing
+        here and answers 0 anyway, because its pseudo-terminals are
+        created with the right owner already; a caller that skips this
+        on Darwin works, and one that skips it on glibc gets a
+        permission error when it opens the far end.
+    """
+    return external_call["grantpt", Int32, Int32](fildes)
+
+
+def unlockpt(fildes: Int32) -> Int32:
+    """Libc POSIX `unlockpt` function.
+
+    Description:
+        Clears the lock that keeps the far end of a pseudo-terminal from
+        being opened.
+
+    Args:
+        fildes: The descriptor `posix_openpt` answered with.
+
+    Returns:
+        0 where it worked, or -1 with `errno` set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/unlockpt.3.html).
+        Fn signature: `int unlockpt(int fildes)`.
+
+        A pseudo-terminal is born locked, and this is the only thing
+        that unlocks it: without it `ptsname` still answers a name and
+        opening it fails. It is what `grantpt` is not -- one sets who
+        may open the far end, the other says that anyone who may now
+        can.
+    """
+    return external_call["unlockpt", Int32, Int32](fildes)
+
+
+def ptsname(fildes: Int32) -> c_ptr[c_char]:
+    """Libc POSIX `ptsname` function.
+
+    Description:
+        Answers the name of the far end of a pseudo-terminal.
+
+    Args:
+        fildes: The descriptor `posix_openpt` answered with.
+
+    Returns:
+        The path to open for the far end, or a null pointer where the
+        descriptor is not the master of a pseudo-terminal.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/ptsname.3.html).
+        Fn signature: `char *ptsname(int fildes)`.
+
+        The string is libc's rather than the caller's, and the next call
+        to this overwrites it: copy it out before asking again. It is
+        also not a constant across platforms -- glibc answers
+        `/dev/pts/13` where Darwin answers `/dev/ttys013` -- so a name
+        written down in a program is right on one of them.
+
+        This does not open anything, and the name it answers is not
+        usable until `grantpt` and `unlockpt` have both been called.
+    """
+    return external_call["ptsname", c_ptr[c_char], Int32](fildes)
