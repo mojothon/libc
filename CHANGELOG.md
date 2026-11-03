@@ -839,6 +839,17 @@ All notable changes to this project are documented here. The format follows
   because this FFI cannot hand C a function address, and `fchownat`'s call is
   refused before the two ids are read.
 
+- **Two more from the fourth sample of `--kind order`.** That sample came back
+  19 caught, 2 crashed, 1 that is the same call and 2 that passed.
+  `wmemcmp(abc, abd, 3) != 0` is the same-either-way-round failure again, and
+  is asked which way it leans now. `tcflow` is the descriptor lesson in a new
+  place: on a descriptor that is not a terminal neither argument is looked at
+  past the descriptor, so both positions answered `ENOTTY`; a descriptor that
+  is not one at all is refused before the action is read, so `-1` answers
+  `EBADF` where the swap asks for descriptor `TCOOFF` — 0 on glibc, 1 on
+  Darwin — and answers whatever a pipe or a terminal says about an action that
+  is not one.
+
 - **Three more from the third sample of `--kind order`.** That sample came back
   18 caught, 2 crashed, 1 that is the same call and 3 that passed. `fchown`
   was asked with `-1`, which is refused before the two ids are read, so the

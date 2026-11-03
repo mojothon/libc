@@ -686,7 +686,12 @@ def test_wide_memory() raises:
 
     var two = wide("abc")
     assert_equal(wmemcmp(abc, two, 3), 0, "wmemcmp says the same of the same")
-    assert_true(wmemcmp(abc, wide("abd"), 3) != 0, "and not of the different")
+    # Two that differ stay different whichever way round they are asked, so
+    # "not zero" is the answer either way. Which way it leans is not: the first
+    # character that differs is 'c' against 'd', and the two are wide values
+    # rather than collated text, so the order is the number's.
+    assert_true(wmemcmp(abc, wide("abd"), 3) < 0, "and orders abc before abd")
+    assert_true(wmemcmp(wide("abd"), abc, 3) > 0, "and after it the other way")
 
     var room = unsafe_alloc[c_wchar](4)
     _ = wmemcpy(room, abc, 3)

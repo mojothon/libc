@@ -313,6 +313,16 @@ round. `abc` and `abd` do not stop differing when asked in the other order, and
 each leans — in both directions, and a binding that swaps the two gets the
 first one backwards.
 
+A fourth sample of twenty-four came back 19 caught, 2 that took the process
+down, 1 that is the same call and 2 that passed. `wmemcmp(abc, abd, 3) != 0`
+is the "same either way round" failure again — two different strings stay
+different in either order — so it is asked which way it leans now. `tcflow`
+is the descriptor one in a new place: on a descriptor that is not a terminal
+neither argument is looked at past the descriptor, so both positions answered
+`ENOTTY`. A descriptor that is not one at all is refused before the action is
+read, so `-1` answers `EBADF` where the swap asks for descriptor `TCOOFF` — 0
+on glibc, 1 on Darwin — and gets `ENOTTY` or `EINVAL` back instead.
+
 glibc, for its part, does not come with anything that checks glibc.
 
 ## Next to Rust's `libc`

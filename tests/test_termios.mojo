@@ -9,7 +9,7 @@ machine has.
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import AT_FDCWD, ENODEV, ENOTTY, O_RDONLY, c_ptr
+from libc.constant import AT_FDCWD, EBADF, ENODEV, ENOTTY, O_RDONLY, c_ptr
 from libc.errno import get_errno, set_errno
 from libc.fcntl import openat
 from libc.termios import (
@@ -169,6 +169,19 @@ def test_the_tc_calls_all_refuse_the_same_file() raises:
     set_errno(0)
     assert_equal(tcflow(fd, TCOOFF), -1, "tcflow refuses")
     _assert_it_is_not_a_terminal("with that said")
+
+    # The two arguments are one type, and on a descriptor that is not a
+    # terminal neither of them is looked at past the descriptor: the call above
+    # answers the same wherever the action is. A descriptor that is not one is
+    # what tells them apart, because it is refused before the action is read --
+    # `-1` answers EBADF, and a binding handing the two over swapped asks for
+    # descriptor TCOOFF, which is 0 here and 1 there, and answers whatever a
+    # pipe or a terminal says about the action instead.
+    set_errno(0)
+    assert_equal(
+        tcflow(-1, TCOOFF), -1, "tcflow refuses a descriptor that is not one"
+    )
+    assert_equal(get_errno(), EBADF, "and says that was the thing wrong")
 
     set_errno(0)
     assert_equal(tcflush(fd, TCIFLUSH), -1, "tcflush refuses")
