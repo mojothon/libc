@@ -21,6 +21,7 @@ from std.testing import assert_equal, assert_true
 
 from libc.constant import (
     EBUSY,
+    EDEADLK,
     ETIMEDOUT,
     MAP_ANONYMOUS,
     MAP_SHARED,
@@ -407,9 +408,16 @@ def test_a_read_write_lock_takes_for_reading_and_writing() raises:
     # Which is what a writer holds: a read taken now waits for it. Without
     # this, `trywrlock` and `_destroy` -- the two calls with no arguments and
     # the same answer of 0 -- are the same call in a process with one thread.
+    # What it answers is the platform's to say: glibc answers EBUSY and
+    # Darwin answers EDEADLK, having noticed that the thread asking is the
+    # one holding it. Either is the same answer to the question -- no -- and
+    # both are a different answer from the 0 that a destroyed lock gives.
+    comptime WRITER_IS_IN: Int32 = (
+        Int32(EDEADLK) if CompilationTarget.is_macos() else Int32(EBUSY)
+    )
     assert_equal(
         pthread_rwlock_tryrdlock(rwlock),
-        Int32(EBUSY),
+        WRITER_IS_IN,
         "and a reader cannot get in while it is held",
     )
     assert_equal(pthread_rwlock_unlock(rwlock), 0, "and gives up")
