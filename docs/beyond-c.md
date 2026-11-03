@@ -3,7 +3,7 @@
 This is a binding, so what it can call is a subset of what C can call and
 will stay that way. The count says how much of a subset: `libc`, `libm`,
 `libdl` and `librt` publish 3574 functions between them, and this binds
-996 C symbols, 988 of which are among those — **27.7%**. C offers more, and
+994 C symbols, 986 of which are among those — **27.6%**. C offers more, and
 calling more of it is not what this is for.
 
 Both numbers move with the machine they are taken on, which is worth saying
@@ -237,14 +237,25 @@ Being fair about the other direction:
   other platform, both say they are there. So `spawn.h` is bound to 27 of
   its 31, and the four left over are less a gap in this than a gap in the
   platform.
+- **Names that are only a macro.** `isascii_l` is spelled in glibc's
+  `<ctype.h>` as `#define isascii_l(c,l) __isascii_l((c),(l))`, which is
+  itself a macro over `__isascii`, so there is no symbol for a loader to
+  find, and Darwin's `xlocale/_ctype.h` does not carry the name at all.
+  `sched_getcpucount` went with it: that one is FreeBSD's, and neither
+  platform declares it. Both were bound here, compiled, and could be called
+  nowhere — a name in a string can outlive both the header and the compiler
+  while naming nothing. `scripts/check-symbols.py` now reads
+  `NOT_DECLARED_HERE` out of `scripts/check-prototypes.py`, and a name
+  excused by both lists fails the run.
 - **Names that are zero and mean something.** `timer_create` writes a
   `timer_t` that can be 0 and be valid: the kernel numbers its timers
   from zero, so the first one a process makes is named 0. A binding that
   checks the name for NULL throws away a working timer, and a test that
   does it fails on the first timer and passes on the second.
-- **Coverage.** 26.6%, as above. `open` here is bound as `openat` with
-  `AT_FDCWD` filled in, which is what POSIX says the two amount to, and is
-  the sort of thing that happens when the real name cannot be called.
+- **Coverage.** The share above, and no more than that intended. `open` here
+  is bound as `openat` with `AT_FDCWD` filled in, which is what POSIX says
+  the two amount to, and is the sort of thing that happens when the real
+  name cannot be called.
 - **Variadic arguments, and the argument after them.** `openat` is variadic
   too, so the mode is not a named argument on macOS either and does not
   arrive: a file asked for with 0o644 came out as 0o150, which is no umask

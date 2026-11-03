@@ -98,9 +98,9 @@ def test_which_processors() raises:
             "sched_getaffinity fills in a set",
         )
 
-        # Not `sched_getcpucount`, which glibc declares and does not
-        # export: on Linux it is a macro, and the binding cannot be
-        # called here. What was written is counted instead.
+        # The count is taken from the set rather than asked for: no call
+        # here answers it. `sched_getcpucount` is FreeBSD's, and neither
+        # glibc nor Darwin has it. What was written is counted instead.
         var any = False
         for i in range(256):
             if set.unsafe_load(i) != 0:

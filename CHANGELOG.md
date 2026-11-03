@@ -547,6 +547,34 @@ All notable changes to this project are documented here. The format follows
   it. The tests take five small command lines apart and check what
   came back against what was handed in. `libc.getopt` starts at 12.
 
+### Removed
+
+- **Two bindings that could be called on neither platform: `isascii_l` and
+  `sched_getcpucount`.** Both sat on the cannot-ask list with the reason
+  that glibc does not export them, which was true and was half the story:
+  the other half was that Darwin does not have them either, and nobody had
+  asked. `isascii_l` is a macro in glibc's `<ctype.h>` — `#define
+  isascii_l(c,l) __isascii_l((c),(l))`, itself a macro over `__isascii` —
+  so there is no symbol behind the name, and Darwin's `xlocale/_ctype.h`
+  spells only `isascii`. `sched_getcpucount` is FreeBSD's: glibc neither
+  declares nor exports it, and Darwin's `<sched.h>`, which is a link to
+  `pthread/sched.h`, holds `sched_yield` and the two priority bounds and
+  nothing else.
+
+  A binding for either compiled, sat in the package looking bound, and
+  would have failed its first caller at load time — which is also why no
+  test caught it: a test that calls one fails to load rather than to
+  assert. What catches it now is `scripts/check-symbols.py` reading
+  `NOT_DECLARED_HERE` out of `scripts/check-prototypes.py`. A name that no
+  header here declares and no library here exports has nothing on this
+  machine vouching for it, and two whitelists excusing the same name is
+  what the two reasons above amounted to. The pair fails the run, so the
+  next binding in that state has to be removed rather than excused.
+
+  The modules page loses two names from the cannot-ask list — three are
+  left, all of them about the call — and the counts move from 995 asked and
+  5 not to 995 and 3.
+
 ### Changed
 
 - **`scripts/check-layouts.py` checks field offsets now, for the members

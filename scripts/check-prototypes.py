@@ -111,16 +111,11 @@ PLATFORM_ONLY = {"__error"}
 
 # Symbols whose prototypes no header here declares, because glibc spells them
 # as a macro or hides them behind a feature test the toolchain does not set.
-# Both of these were checked by linking against them rather than by taking
-# the header's word for it.
+# Being excused here says nothing about whether the symbol is exported, and
+# `check-symbols` reads this list back for exactly that reason: a name excused
+# by both is one nothing on this machine can vouch for. `isascii_l` and
+# `sched_getcpucount` were both on it and both are gone for that reason.
 NOT_DECLARED_HERE = {
-    # `isascii_l` is a macro on glibc, expanding to `__isascii_l`, but the
-    # symbol is there and exported.
-    "isascii_l",
-    # glibc neither declares nor exports `sched_getcpucount`: the
-    # symbol is internal to libc, so the binding can be checked by
-    # the prototype alone, never by the symbol table.
-    "sched_getcpucount",
     # `mempcpy` is declared as a macro over `__mempcpy` here, but the symbol
     # is exported and links.
     "mempcpy",

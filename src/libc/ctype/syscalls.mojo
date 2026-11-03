@@ -485,33 +485,11 @@ def isascii(c: Int32) -> Int32:
     return external_call["isascii", Int32, Int32](c)
 
 
-@inline(.nodebug)
-def isascii_l(c: Int32, loc: locale_t) -> Int32:
-    """Libc POSIX `isascii_l` function.
-
-    Args:
-        c: The character to ask about. It has to be either what an `unsigned
-            char` holds or `EOF`: anything else, a negative number in
-            particular, is not something C promises to answer for.
-        loc: The locale to answer for, rather than the one the thread is in. It
-            is a `locale_t` from `newlocale`; `uselocale` is how the thread's
-            own is changed.
-
-    Returns:
-        Not 0 when it is an ASCII character, which is one below 128 in `loc`,
-            and 0 when it is not. It is 1 on some systems and other numbers on
-            others, so ask whether it is 0 and not whether it is 1.
-
-    Notes:
-        [Reference](https://man7.org/linux/man-pages/man3/isascii_l.3.html).
-        Fn signature: `int isascii_l(int c, locale_t loc)`.
-    Notes:
-        Darwin and the other BSDs only. glibc exports no such symbol, so on
-        Linux the loader will not find it and this cannot be called at all.
-        `isascii` is the one that is there on both.
-
-    """
-    return external_call["isascii_l", Int32, Int32, locale_t](c, loc)
+# `isascii_l` is not here, and it is not the usual platform difference: glibc
+# spells it as a macro over `__isascii_l`, which is itself a macro over
+# `__isascii`, so there is no symbol to call, and Darwin's `xlocale/_ctype.h`
+# does not have the name at all. A binding compiled on both and linked on
+# neither. `isascii` is the one that is there on both, and it is above.
 
 
 @inline(.nodebug)

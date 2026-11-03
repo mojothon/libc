@@ -1,11 +1,10 @@
 """Check that every symbol this package calls is one the C library exports.
 
 A binding is a name in a string and a signature next to it. Both can be
-right while the symbol itself is not there: `isascii_l` is declared in
-glibc's `<ctype.h>` and exported by the BSDs, and nothing about the call
-says which platform it is standing on. The mistake only shows up when the
-loader goes looking, which is to say at run time, in whichever job happens
-to be the one that calls it.
+right while the symbol itself is not there: `isascii_l` is a macro in
+glibc's `<ctype.h>` with no symbol behind it, and nothing about the call
+says so. The mistake only shows up when the loader goes looking, which is
+to say at run time, in whichever job happens to be the one that calls it.
 
 `check-prototypes` cannot catch this: it reads what the headers declare,
 and a symbol that is only declared is one it has nothing to compare
@@ -17,6 +16,7 @@ supposed to exist here, and one in the `else` of that is not supposed to
 exist there. Only the unbranched ones have to be everywhere.
 """
 
+import importlib.util
 import re
 import subprocess
 import sys
@@ -29,9 +29,14 @@ SOURCES = sorted((ROOT / "src" / "libc").rglob("*.mojo"))
 # platform difference that has been looked at and written up in the
 # docstring of the call, so this says so rather than failing: the point of
 # the check is the next one, not these.
+#
+# Two names used to be excused here on the grounds that the BSDs export
+# them, and the BSD that mattered was not asked: `isascii_l` is a macro on
+# glibc with no symbol behind it and is absent from Darwin's `_ctype.h`,
+# and `sched_getcpucount` is FreeBSD's, absent from both. Both were bound,
+# compiled, and could not be called anywhere. They are gone; the guard at
+# the bottom of this file is what would have said so.
 KNOWN_MISSING = {
-    "isascii_l": "the BSDs export it and glibc does not",
-    "sched_getcpucount": "the BSDs export it and glibc does not",
     # Linux-specific man pages (epoll(7), getrandom(2), mlock2(2), prctl(2))
     # say so on the first line: the symbols are not on the other side at all.
     "epoll_create": "Linux only; Darwin has kqueue instead",
@@ -134,6 +139,25 @@ STDLIB_OWNS = {
 }
 
 
+def load(name: str):
+    """The other check holds half of the answer to this one's question."""
+    path = ROOT / "scripts" / f"{name}.py"
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+# A name excused here and also excused there is one this machine says nothing
+# about: no header declares it, so `check-prototypes` had nothing to compare
+# it against, and no library exports it, so the walk above found nothing.
+# Two silences are not one yes. What they hid was two bindings that could be
+# called on neither of the platforms this package targets — `isascii_l` and
+# `sched_getcpucount` — each sitting in the package looking bound until
+# somebody called it.
+SILENT = "called under a name neither declared nor exported here"
+
+
 def main() -> int:
     have = library_symbols()
     if not have:
@@ -213,9 +237,24 @@ def main() -> int:
             note = f" -- {why}" if why else ""
             print(f"    {name:24} {where}{note}")
 
+    # The other half of the silence: `check-prototypes` keeps the names no
+    # header here declares, and one that is excused by both lists has nothing
+    # on this machine saying it exists at all.
+    silent = sorted(
+        name for name in KNOWN_MISSING if name in load("check-prototypes").NOT_DECLARED_HERE
+    )
+    if silent:
+        print("\n  excused here and excused there:")
+        for name in silent:
+            where, _ = called.get(name, ("", ""))
+            print(f"    {name:24} {where}")
+
     print()
     if unexplained:
         print("  *** symbols that are called everywhere but exported nowhere ***")
+        return 1
+    if silent:
+        print(f"  *** {SILENT}: neither this platform nor a header here says it is there ***")
         return 1
     if owned:
         print("  *** names the standard library owns, which will not compile ***")

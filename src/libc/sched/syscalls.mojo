@@ -159,27 +159,11 @@ def sched_getaffinity(
     ](pid, cpusetsize, cpuset)
 
 
-def sched_getcpucount() -> Int32:
-    """C library <sched.h> function `sched_getcpucount`.
-
-    Reference:
-        https://man7.org/linux/man-pages/man2/sched_getcpucount.2.html
-
-    Prototype:
-        int sched_getcpucount(void);
-
-    Description:
-        The sched_getcpucount() function returns the number of CPUs in the system.
-
-    Return Value:
-        The number of CPUs in the system.
-    Notes:
-        Darwin and the other BSDs only. glibc declares this in <sched.h> but
-        exports no such symbol, there it is a macro over `sched_getaffinity`
-        and `CPU_COUNT`, so on Linux this cannot be called.
-
-    """
-    return external_call["sched_getcpucount", Int32]()
+# `sched_getcpucount` is not here. It is FreeBSD's, and neither platform this
+# package targets has it: glibc's `<sched.h>` does not declare it and exports
+# no such symbol, and Darwin's `<sched.h>` — a link to `pthread/sched.h` — has
+# only `sched_yield` and the two priority bounds. Counting the bits of a set
+# `sched_getaffinity` filled in is what is left, and is what the test does.
 
 
 def sched_getparam(pid: Int32, param: c_ptr[sched_param]) -> Int32:

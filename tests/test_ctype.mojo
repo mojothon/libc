@@ -6,7 +6,6 @@ from libc.ctype import (
     isalpha,
     isalpha_l,
     isascii,
-    isascii_l,
     isblank,
     isblank_l,
     iscntrl,

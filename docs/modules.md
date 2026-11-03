@@ -11,7 +11,7 @@ the bottom.
 | `libc.float` | `<float.h>` | 30 |
 | `libc.unistd` | `<unistd.h>` | 206 |
 | `libc.file` | `<stdio.h>` file operations | 40 |
-| `libc.ctype` | `<ctype.h>` | 31 |
+| `libc.ctype` | `<ctype.h>` | 30 |
 | `libc.sys.socket` | `<sys/socket.h>` | 36 |
 | `libc.sys.stat` | `<sys/stat.h>` | 36 |
 | `libc.sys.times` | `<sys/times.h>` | 2 |
@@ -28,7 +28,7 @@ the bottom.
 | `libc.string` | `<string.h>` | 50 |
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 44 |
 | `libc.complex` | `<complex.h>` | 46 |
-| `libc.sched` | `<sched.h>` | 16 |
+| `libc.sched` | `<sched.h>` | 15 |
 | `libc.signal` | `<signal.h>` | 53 |
 | `libc.spawn` | `<spawn.h>` start a process without fork | 25 |
 | `libc.locale` | `<locale.h>` | 16 |
@@ -102,7 +102,7 @@ Mojo has no 80-bit type.
 
 ## What the suite does not ask
 
-Five bindings are not asked anything, and every one of them has a reason that
+Three bindings are not asked anything, and every one of them has a reason that
 is about the call rather than about the suite:
 
 - `ioctl` is variadic with the request deciding what the arguments mean.
@@ -111,11 +111,10 @@ is about the call rather than about the suite:
   suite has already written to as bytes.
 - `pthread_atfork` registers a fork handler that the just-in-time run this
   suite uses cannot resolve; a built binary links and answers fine.
-- `sched_getcpucount` and `isascii_l` are names glibc does not export at all.
 
 None of them is known to be broken; they are simply not asked.
 
-995 bindings are asked something, and the 5 that are not have a reason
+995 bindings are asked something, and the 3 that are not have a reason
 each. Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -131,6 +130,19 @@ else, so a binding for one compiles, sits in the package looking bound, and
 fails when a caller touches it. Both were in that state until a test asked
 them something; they are gone, and `scripts/check-symbols.py` fails if either
 name comes back.
+
+Two more names are gone for a quieter reason: nothing exports them.
+`isascii_l` is a macro on glibc over `__isascii_l`, which is a macro over
+`__isascii`, so there is no symbol to call, and Darwin's `xlocale/_ctype.h`
+does not have the name at all. `sched_getcpucount` is FreeBSD's: glibc does
+not declare it, and Darwin's `<sched.h>` holds only `sched_yield` and the
+two priority bounds. Both were bound, compiled, and could not be called on
+either platform — a test could not have caught it, since a test that calls
+one fails to load rather than to assert. What catches it is one check
+reading the other: `scripts/check-symbols.py` asks
+`scripts/check-prototypes.py` which names no header here declares, and a
+name excused by both lists is one that neither the headers nor the
+libraries say is there.
 
 `scripts/check-tests.py` keeps the full list, with a reason each, and fails
 when a binding is added with neither a test nor a reason. It also keeps the
