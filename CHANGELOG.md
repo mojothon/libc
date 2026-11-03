@@ -895,6 +895,17 @@ All notable changes to this project are documented here. The format follows
   it, so the suite's own process has one already, and the restore is measured
   against the first read rather than against zero.
 
+- **The probe's two tables of reasons are checked, in the one direction that
+  does not need a suite run.** A reason is read only when its mutant survives,
+  so an entry that has outlived its pair excuses a mistake nothing makes any
+  more. `--check-tables` (`pixi run mutation-tables`, wired into the Lint job)
+  rebuilds the mutant list and reports every entry that no longer names one:
+  a renamed parameter, a third binding added to a file so a different sibling
+  is the first one found, a signature change that stops the call being handed
+  its own parameters. The other direction is reported by a run: a reason whose
+  mutant is caught now is a reason that can be deleted, and `--strict` fails on
+  it. Both directions were made to fail on purpose before either was believed.
+
 - **`scripts/check-comparisons.py` asks every comparison which way it leans.**
   Seven of the survivors across four samples were one shape: an assertion that
   is true whichever way round the two arguments went — `!= 0` on two strings

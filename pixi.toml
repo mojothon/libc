@@ -43,6 +43,7 @@ check-duplicates = "python3 scripts/check-duplicates.py"
 # green against the wrong function. `--limit` for more, `--only` for named
 # bindings, `--strict` to fail on a survivor that is not a known pair.
 mutation-probe = "python3 scripts/mutation-probe.py"
+mutation-tables = "python3 scripts/mutation-probe.py --check-tables"
 # Every numeric constant here was read out of `gcc -dM` by eye, once, and
 # a number nobody rechecks is a number nothing stops from being wrong: 55
 # of them were Darwin's values with no platform branch at all, which is

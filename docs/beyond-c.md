@@ -235,6 +235,19 @@ bits on glibc, where a terminal has one speed and not two, and `endgrent` and
 `setgrent` leave the next `getgrent` at the same row, the descriptor they
 differ over being one the API never hands out.
 
+Explaining one puts it in a table, and a table of reasons is a thing that rots
+in a way nothing notices: the reason is read only when the mutant survives, so
+an entry that has outlived its pair sits there excusing a mistake nothing makes
+any more. `--check-tables` reads both tables back against the mutants that can
+still be built and takes seconds, because the ways an entry goes stale are all
+in the shape of the call rather than in what the suite does: rename a
+parameter, add a third binding to a file so a different sibling is the first
+one found, change a signature so the call is no longer handed its own
+parameters. The other direction only a run can see, and it says so too: an
+entry whose mutant is caught now is an entry that has been answered and can go
+— which is what happens to every reason the day somebody thinks of the input
+that separates the pair.
+
 The fifth verdict came out of that sample too. One mutant — a read lock
 pointed at `pthread_rwlock_destroy` — left the test waiting rather than
 failing, and the script stopped where it stood: the traceback was the last

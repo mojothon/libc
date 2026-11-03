@@ -56,6 +56,11 @@ jobs:
       # that sends readers to a release that is no longer the one shipped.
       - name: Check that the version is said the same everywhere
         run: pixi run check-release
+      # The two tables of reasons in the probe excuse a survivor, so an entry
+      # that outlives the pair it was written for excuses nothing. This asks
+      # only that the pair can still be made, and takes seconds.
+      - name: Check that every reason in the probe still has a pair
+        run: pixi run mutation-tables
 
   test:
     name: Test (${{ matrix.os }})

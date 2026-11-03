@@ -40,6 +40,16 @@ tell them apart -- and a test that passes `getuid()` for both has not.
 `--limit` samples, because each mutant is a full rebuild of the package and a
 suite run. The sample is spread over the modules rather than taken from the
 front, and it is the same sample every run so two runs can be compared.
+
+`--check-tables` asks nothing of the suite and takes seconds: it reads the two
+reasons tables back against the mutants that can still be built, because a
+reason that outlives the pair it was written for is worse than no reason at
+all. Renaming a parameter, adding a third binding to a file, changing a
+signature so a call is no longer handed its own parameters -- any of those
+leaves an entry standing that excuses a mistake nothing makes any more, and the
+table is then a list of things nobody has checked. The same goes the other way
+round and only a run can see it: an entry whose mutant is now caught is an
+entry that has been answered, and the run says so.
 """
 
 import argparse
@@ -427,6 +437,13 @@ def def_block(text: str, name: str) -> tuple[int, int] | None:
     return start.start(), close + nxt.start() if nxt else len(text)
 
 
+def key_of(mutant: Mutant) -> str:
+    """What this mutant is called in `SAME_ANSWER` or `SAME_ORDER`."""
+    if mutant.kind == "symbol":
+        return f"{mutant.symbol}->{mutant.into}"
+    return f"{mutant.name}:{mutant.what}"
+
+
 def classify(result: subprocess.CompletedProcess) -> str:
     if result.returncode == 0:
         return "survived"
@@ -438,24 +455,8 @@ def classify(result: subprocess.CompletedProcess) -> str:
     return "error"
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--limit", type=int, default=12, help="how many mutants")
-    parser.add_argument("--seed", type=int, default=1, help="which sample")
-    parser.add_argument(
-        "--only", default="", help="comma separated binding names to keep"
-    )
-    parser.add_argument(
-        "--kind",
-        default="symbol",
-        choices=("symbol", "order"),
-        help="wrong function, or two arguments the other way round",
-    )
-    parser.add_argument(
-        "--strict", action="store_true", help="fail the run if a mutant survives"
-    )
-    args = parser.parse_args()
-
+def build(kind: str) -> list[Mutant]:
+    """Every mutant of one kind that can still be made."""
     prototypes = load("check-prototypes")
     every = prototypes.bindings()
 
@@ -465,7 +466,7 @@ def main() -> int:
         return given if given.is_absolute() else ROOT / given
 
     mutants: list[Mutant] = []
-    if args.kind == "symbol":
+    if kind == "symbol":
         groups: dict[tuple[str, str, tuple[str, ...]], list[tuple[str, str]]] = {}
         for path, name, symbol, _nargs, ret, argtypes in every:
             groups.setdefault((str(here(path)), ret, tuple(argtypes)), []).append(
@@ -510,6 +511,60 @@ def main() -> int:
                     second=pair + 1,
                 )
             )
+    return mutants
+
+
+def check_tables() -> int:
+    """Every reason in the two tables still has a mutant to be a reason about."""
+    stale = []
+    for kind, table in (("symbol", SAME_ANSWER), ("order", SAME_ORDER)):
+        keys = {key_of(mutant) for mutant in build(kind)}
+        stale += [(kind, key) for key in table if key not in keys]
+
+    if not stale:
+        print(
+            f"all {len(SAME_ANSWER)} symbol and {len(SAME_ORDER)} order reasons "
+            "are about pairs that can still be made"
+        )
+        return 0
+
+    print(f"{len(stale)} reason(s) about a pair that can no longer be made:")
+    for kind, key in stale:
+        print(f"  {kind}: {key}")
+    print()
+    print("  A reason is worth keeping only while the mistake it excuses can still")
+    print("  be made: the pair was renamed, a sibling was added to the file, or the")
+    print("  call is no longer handed its own parameters.")
+    return 1
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--limit", type=int, default=12, help="how many mutants")
+    parser.add_argument("--seed", type=int, default=1, help="which sample")
+    parser.add_argument(
+        "--only", default="", help="comma separated binding names to keep"
+    )
+    parser.add_argument(
+        "--kind",
+        default="symbol",
+        choices=("symbol", "order"),
+        help="wrong function, or two arguments the other way round",
+    )
+    parser.add_argument(
+        "--strict", action="store_true", help="fail the run if a mutant survives"
+    )
+    parser.add_argument(
+        "--check-tables",
+        action="store_true",
+        help="ask nothing of the suite: only that the two tables still apply",
+    )
+    args = parser.parse_args()
+
+    if args.check_tables:
+        return check_tables()
+
+    mutants: list[Mutant] = build(args.kind)
 
     if args.only:
         wanted = {name.strip() for name in args.only.split(",")}
@@ -547,6 +602,7 @@ def main() -> int:
             "survived": 0,
             "error": 0,
         }
+        answered: list[str] = []
         for mutant in picked:
             target = copy / Path(mutant.path).relative_to(SRC)
             pristine = target.read_text()
@@ -587,11 +643,12 @@ def main() -> int:
             where = f"{Path(mutant.path).relative_to(SRC / 'libc')}:{mutant.name}"
             if mutant.kind == "order":
                 where += f" ({mutant.what})"
-            known = SAME_ANSWER.get(f"{mutant.symbol}->{mutant.into}")
-            if mutant.kind == "order":
-                known = SAME_ORDER.get(f"{mutant.name}:{mutant.what}")
+            table = SAME_ANSWER if mutant.kind == "symbol" else SAME_ORDER
+            known = table.get(key_of(mutant))
             if verdict == "survived" and known:
                 verdict = "same"
+            if verdict == "caught" and known:
+                answered.append(where)
             tally[verdict] += 1
             if mutant.kind == "symbol":
                 print(f"  {verdict:9} {where:44} {mutant.what}")
@@ -610,6 +667,17 @@ def main() -> int:
             f" hung {tally['hung']}, same answer {tally['same']},"
             f" survived {tally['survived']}, did not build {tally['error']}"
         )
+        if answered:
+            print()
+            print(
+                f"  {len(answered)} reason(s) in the table are about a mutant that"
+                " is now caught,"
+            )
+            print("  so the reason can go:")
+            for where in answered:
+                print(f"    {where}")
+        if answered:
+            return 1 if args.strict else 0
         if tally["survived"] or tally["hung"]:
             if tally["survived"] and args.kind == "order":
                 print("  a survivor is a call whose two arguments nothing tells apart")
