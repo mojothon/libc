@@ -701,6 +701,46 @@ All notable changes to this project are documented here. The format follows
 
   `beyond-c.md` says 985 symbols, 982 among the four libraries, 27.5%;
   `modules.md` says `libc.wchar` has 85 and `libc.string` has 50.
+- **`tcgetpgrp` and `tcsetpgrp`: which process group a terminal is
+  serving.** A terminal has one group in the foreground of it and that
+  is the group its input and its job-control signals go to, so this is
+  the pair a shell uses to hand a terminal over to a job and take it
+  back. The terminal is what is being asked about rather than the
+  caller, so a process may read the foreground group of a terminal it
+  is not in the foreground of, and the descriptor only has to be one
+  for that terminal.
+
+  The test is a child of its own, because there is no terminal worth
+  asking about here: from CI standard input is a pipe, and from a shell
+  it would be answering about the terminal the shell is on. The child
+  takes a session of its own and opens the far end of a
+  pseudo-terminal, which is enough on both platforms — a session leader
+  with no terminal takes the first one it opens, and the terminal's
+  foreground group becomes the leader's own. Three of the numbers it
+  finds are then the same group seen twice: its own, which a session
+  leader's is its pid, and what the terminal says. The fourth is a
+  different group on purpose, a grandchild put into a group of its own,
+  because setting a terminal to the group it already names would pass
+  whether or not anything was written down. The refused group is one
+  that cannot exist, and what is checked of it is that the answer is
+  -1 and that the terminal still names what it named before.
+
+  **The child was ended by `SIGHUP` before it could report, and the
+  reason is worth writing down**: closing the master hangs up the
+  terminal the child has just made its controlling one, and a hangup is
+  a `SIGHUP` to the session that owns it — which by then is the child.
+  So closing up shop tidily destroys the report. Left to the exit, the
+  descriptors are closed after the exit status is settled, and the same
+  hangup is then asked of a process already on its way out.
+
+  `setsid` comes off the list of things a test cannot ask for. It was
+  there because taking a process out of its session is for every test
+  after it, and that is true of a test that does it in its own process
+  — it is not true of one that does it in a child, which is what this
+  one does and what the docs for the pair describe.
+
+  `beyond-c.md` says 987 symbols, 984 among the four libraries, 27.5%;
+  `modules.md` says `libc.unistd` has 202.
 - **The list of bindings a test could ask and has not is empty.** Five of
   the last six debts were not blocked by anything, which is the point: four
   of the reasons said a privilege, a thread or a policy was needed, and

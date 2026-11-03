@@ -54,7 +54,6 @@ CANNOT_ASK = {
     "pthread_cond_wait": "waits for another thread, and a test that waits is one that hangs",
     "_Exit": "ends the process, so nothing after it in the same suite runs",
     "system": "starts a shell, and hands back its exit status rather than an answer",
-    "setsid": "takes the process out of its terminal session, for every test after it",
     "pthread_cancel": "cancels a thread that the rest of the suite is sharing",
     "pthread_atfork": "asks for a fork, and this suite has one process to lose",
     "prctl": "Linux only, and the interesting requests change the running process",

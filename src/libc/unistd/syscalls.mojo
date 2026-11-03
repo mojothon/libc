@@ -2086,3 +2086,72 @@ def getwd(buf: c_ptr[UInt8]) -> c_ptr[UInt8]:
         this package hands out.
     """
     return external_call["getwd", c_ptr[UInt8], c_ptr[UInt8]](buf)
+
+
+def tcgetpgrp(fildes: c_int) -> c_int:
+    """Libc POSIX `tcgetpgrp` function.
+
+    Args:
+        fildes: A descriptor for the terminal to ask about.
+
+    Returns:
+        The process group in the foreground of that terminal, or -1
+        where the descriptor is not a terminal.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/tcgetpgrp.3p.html).
+        Fn signature: `pid_t tcgetpgrp(int fildes)`.
+
+        A terminal has one foreground group, and it belongs to the
+        terminal rather than to any process: a process may ask about a
+        terminal it is not in the foreground of and be answered rather
+        than refused, and more than one process asking gets the same
+        answer. What is refused is asking about something that is not a
+        terminal at all, which is -1 with `ENOTTY`.
+
+        The descriptor only has to be one for that terminal, so it need
+        not be a standard one and need not be the one the group was set
+        through. A terminal that nothing has been put in the foreground
+        of answers 0 on Linux.
+
+        A session leader with no terminal of its own takes the first one
+        it opens, and that terminal's foreground group becomes the
+        leader's own -- which is how a process ends up with a terminal
+        worth asking about in the first place.
+    """
+    return external_call["tcgetpgrp", c_int, c_int](fildes)
+
+
+def tcsetpgrp(fildes: c_int, pgrp_id: c_int) -> c_int:
+    """Libc POSIX `tcsetpgrp` function.
+
+    Args:
+        fildes: A descriptor for the terminal whose foreground group is
+            to be changed.
+        pgrp_id: The process group to put in the foreground of it.
+
+    Returns:
+        0 where the group was taken, or -1 where it was not.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/tcsetpgrp.3p.html).
+        Fn signature: `int tcsetpgrp(int fildes, pid_t pgrp_id)`.
+
+        The group has to be one in the caller's session. A group in no
+        session at all, or in a different one, is refused with `EPERM`
+        and the terminal is left as it was -- so a call that fails has
+        changed nothing, and that is worth knowing because the caller
+        cannot go back and read what the group used to be after a
+        partial write.
+
+        The caller is expected to be in the foreground of that terminal
+        already. Where it is not, the call raises `SIGTTOU` against the
+        caller's process group before doing anything, and the default
+        for that signal stops the process, so a caller that means to
+        hand the foreground on has to have that signal blocked or
+        ignored first. That is a rule about the signal rather than about
+        the call, and it is why the group that sets this in anger is a
+        shell putting a job in the foreground rather than the job
+        itself.
+    """
+    return external_call["tcsetpgrp", c_int, c_int, c_int](fildes, pgrp_id)

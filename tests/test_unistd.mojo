@@ -4,9 +4,21 @@ from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.fcntl import O_CREAT, O_RDONLY, open as open_with_mode
-from libc.constant import AT_FDCWD, c_ptr, c_uint, SEEK_END, SEEK_SET
+from libc.constant import (
+    AT_FDCWD,
+    c_ptr,
+    c_uint,
+    O_NOCTTY,
+    O_RDWR,
+    SEEK_END,
+    SEEK_SET,
+    c_void,
+)
+from libc.signal import SIGKILL, kill
+from libc.stdlib import exit, grantpt, posix_openpt, ptsname, unlockpt
 from libc.sys.stat import Stat, fchmod, fstat, stat
 from libc.sys.utsname import Utsname, uname
+from libc.sys.wait import WEXITSTATUS, WIFEXITED, waitpid
 from libc.time import ITIMER_REAL, getitimer, itimerval, setitimer
 from libc.unistd import (
     CS_PATH,
@@ -44,6 +56,7 @@ from libc.unistd import (
     fchdir,
     fchown,
     fchownat,
+    fork,
     fpathconf,
     fsync,
     ftruncate,
@@ -68,8 +81,6 @@ from libc.unistd import (
     getusershell,
     getwd,
     isatty,
-    ttyname,
-    ttyname_r,
     lchown,
     link,
     linkat,
@@ -86,9 +97,10 @@ from libc.unistd import (
     setegid,
     seteuid,
     setgid,
+    setpgid,
     setregid,
     setreuid,
-    setpgid,
+    setsid,
     setuid,
     setusershell,
     sleep,
@@ -96,13 +108,17 @@ from libc.unistd import (
     symlinkat,
     syscall,
     sysconf,
+    tcgetpgrp,
+    tcsetpgrp,
     truncate,
+    ttyname,
+    ttyname_r,
+    ualarm,
     unlink,
     unlinkat,
     usleep,
     write,
     writev,
-    ualarm,
 )
 from libc.constant import O_RDWR, c_char, c_ptr
 from libc.errno import get_errno, set_errno
@@ -1028,6 +1044,169 @@ def test_access_dup_and_link() raises:
     path.unsafe_free()
 
 
+def test_the_foreground_group_of_a_terminal() raises:
+    """A terminal has one process group in the foreground of it, and
+    these two calls are how that group is read and how it is set.
+
+    Which group it is cannot be asked of the terminal this process is
+    on, there being none: run from CI, standard input is a pipe, and run
+    from a shell it would be answering about the terminal the shell is
+    on. So the whole of it happens in a child that makes a terminal of
+    its own -- it takes a session of its own, and a session leader with
+    no terminal takes the first one it opens -- and the numbers it finds
+    are handed back down a pipe rather than asserted where they are
+    found, so that a wrong one is reported by the test that asked for it
+    and not lost in a child's own output.
+
+    Two of the numbers are the same group seen twice: the child's own,
+    which a session leader's is its pid, and what the terminal says once
+    it has taken it. The third is a different group on purpose -- a
+    grandchild put into a group of its own -- because setting a terminal
+    to the group it already names would pass whether or not anything was
+    written down. That is the whole difference between this test and one
+    that only checks that the call returned 0.
+
+    The group that is refused is one in no session at all, which is a
+    pid that cannot be there rather than a pid that was looked for. What
+    is checked of it is that the answer is -1 and that the terminal
+    still names the group it named before: a call that fails having
+    changed nothing is the other half of one that succeeds having
+    changed something.
+    """
+    var fds = unsafe_alloc[Int32](2)
+    assert_equal(pipe(fds), 0, "there is a pipe to report down")
+    var read_fd = fds.unsafe_offset(0)[]
+    var report_fd = fds.unsafe_offset(1)[]
+
+    # Every number the child goes to find has a place of its own, so
+    # that one it never reached is a number and not a guess. -9 is not
+    # the id of anything.
+    var found = unsafe_alloc[Int32](8)
+    for slot in range(8):
+        found.unsafe_offset(slot)[] = -9
+
+    var child = fork()
+    if child == 0:
+        found.unsafe_offset(0)[] = setsid()
+        # `O_NOCTTY` is asked for on the master and not on the far end:
+        # the master is not a terminal this session can take in any
+        # case, and taking the far end is exactly what is wanted here.
+        var master = posix_openpt(O_RDWR | O_NOCTTY)
+        if master >= 0:
+            _ = grantpt(master)
+            _ = unlockpt(master)
+            var name = char_ptr_to_string(ptsname(master))
+            var path = string_to_char_ptr(name)
+            var slave = open(path, O_RDWR)
+            path.unsafe_free()
+            if slave >= 0:
+                found.unsafe_offset(1)[] = getpgrp()
+                found.unsafe_offset(2)[] = tcgetpgrp(slave)
+
+                found.unsafe_offset(3)[] = tcsetpgrp(slave, getpgrp() + 1000000)
+                found.unsafe_offset(4)[] = tcgetpgrp(slave)
+
+                var grandchild = fork()
+                if grandchild == 0:
+                    # Nothing to do but stay in its group. It is let go
+                    # of after the terminal has named it, and the pipe
+                    # never carries a byte, so this reads forever.
+                    var held = unsafe_alloc[UInt8](1)
+                    _ = read(read_fd, held.unsafe_bitcast[c_void](), c_uint(1))
+                    _ = exit(0)
+
+                # Put into a group of its own from this side as well as
+                # its own, so that the group is there to be named
+                # whichever of the two gets there first.
+                _ = setpgid(grandchild, grandchild)
+                found.unsafe_offset(7)[] = grandchild
+                found.unsafe_offset(5)[] = tcsetpgrp(slave, grandchild)
+                found.unsafe_offset(6)[] = tcgetpgrp(slave)
+
+                _ = kill(grandchild, SIGKILL)
+                var reaped = unsafe_alloc[Int32](1)
+                reaped.unsafe_offset(0)[] = 0
+                _ = waitpid(grandchild, reaped, 0)
+                reaped.unsafe_free()
+            # Neither descriptor is closed here. Closing the master
+            # hangs up the terminal this child has just made its own,
+            # and a hangup is a `SIGHUP` to the session that owns it --
+            # which is this child, so the signal would arrive before the
+            # numbers were written down and the report would be an empty
+            # pipe instead. Left to the exit, the descriptors are closed
+            # after the exit status is already settled, and the same
+            # hangup is then asked of a process that is on its way out.
+
+        # Read back after the child has ended, so that a child which
+        # never got this far leaves nothing to wait on: the pipe is
+        # empty and its write end is gone, and the read answers 0.
+        _ = write(report_fd, found.unsafe_bitcast[c_void](), c_uint(32))
+        _ = exit(0)
+
+    assert_true(child > 0, "there is a child to ask")
+    _ = close(report_fd)
+    var status = unsafe_alloc[Int32](1)
+    status.unsafe_offset(0)[] = 0
+    assert_equal(waitpid(child, status, 0), child, "the child is waited for")
+    assert_true(
+        WIFEXITED(status.unsafe_load()), "and it ended of its own accord"
+    )
+    assert_equal(
+        WEXITSTATUS(status.unsafe_load()),
+        0,
+        "having finished what it went to do",
+    )
+    status.unsafe_free()
+
+    assert_equal(
+        read(read_fd, found.unsafe_bitcast[c_void](), c_uint(32)),
+        32,
+        "and every number it found came back down the pipe",
+    )
+
+    var leader = Int(found.unsafe_offset(1)[])
+    assert_equal(
+        Int(found.unsafe_offset(0)[]),
+        Int(child),
+        "the child leads a session of its own, and it is the one it was",
+    )
+    assert_equal(leader, Int(child), "so its group is itself")
+    assert_equal(
+        Int(found.unsafe_offset(2)[]),
+        leader,
+        "and the terminal it opened says that group is in the foreground",
+    )
+    assert_equal(
+        Int(found.unsafe_offset(3)[]), -1, "a group in no session is refused"
+    )
+    assert_equal(
+        Int(found.unsafe_offset(4)[]),
+        leader,
+        "and the refusal left the terminal naming the group it named",
+    )
+    assert_equal(
+        Int(found.unsafe_offset(5)[]), 0, "a group in the session is taken"
+    )
+    assert_equal(
+        Int(found.unsafe_offset(6)[]),
+        Int(found.unsafe_offset(7)[]),
+        "and the terminal names that group and not the one before it",
+    )
+    assert_true(
+        Int(found.unsafe_offset(7)[]) != leader,
+        "which is a different group, so the two answers cannot be the same one",
+    )
+
+    _ = close(read_fd)
+    found.unsafe_free()
+    fds.unsafe_free()
+
+    assert_equal(
+        tcgetpgrp(-1), -1, "and a descriptor that is no terminal has no group"
+    )
+    assert_equal(tcsetpgrp(-1, getpgrp()), -1, "nor takes one")
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -1053,6 +1232,7 @@ def main() raises:
     test_sysconf()
     test_usleep()
     test_process_groups()
+    test_the_foreground_group_of_a_terminal()
     test_dup3()
     test_access_dup_and_link()
     test_syscall_by_number()
