@@ -84,9 +84,9 @@ comptime INT_MIN: c_int = -2147483648
 """The lowest `int`, `-2**31`.
 
 It is worth having for one thing on its own: `EOF` is -1, and the `ctype`
-functions are only defined for an argument that is an `unsigned char` or
-`EOF`. Passing an `int` below -1 is undefined, and this is the low end of
-what an `int` can even be.
+functions are defined for an argument that is an `unsigned char` value or
+`EOF` and for nothing else. Every `int` outside `0..255` and -1 is
+undefined behaviour there, and this is the far end of that outside.
 """
 
 comptime INT_MAX: c_int = 2147483647
@@ -146,8 +146,10 @@ split, and the pieces of two writers can meet in the middle.
 comptime MAX_CANON: c_int = 1024 if CompilationTarget.is_macos() else 255
 """Bytes in a line of terminal input in canonical mode.
 
-255 on Linux and 1024 on Darwin — one of the numbers where the same
-sizeof buffer is right on one machine and truncating on the other.
+255 on Linux and 1024 on Darwin. In canonical mode the line is held until
+the newline arrives, and a line longer than this is not held: the terminal
+is what has the limit here, not the program, and the difference between
+the two platforms is four times over.
 """
 
 comptime MAX_INPUT: c_int = 1024 if CompilationTarget.is_macos() else 255
@@ -157,7 +159,9 @@ any: 255 on Linux and 1024 on Darwin."""
 comptime NGROUPS_MAX: c_int = 16 if CompilationTarget.is_macos() else 65536
 """How many supplementary groups `getgroups` can report.
 
-65536 on Linux and 16 on Darwin. A `getgroups` buffer sized from the Linux
-answer is 16 times larger than it needs to be and safe; one sized from 16
-on Linux is a list cut short without an error to say so.
+65536 on Linux and 16 on Darwin, which is 4096 times apart and the widest
+gap in this file. A `getgroups` buffer sized from the Darwin answer is a
+call that fails with `EINVAL` on a Linux machine where the process is in
+more than sixteen groups, and one sized from the Linux answer is 256 KB of
+`gid_t` where 64 bytes would do.
 """

@@ -81,8 +81,22 @@ the bottom.
 
 ## Not started yet
 
-`libc.threads` (`<threads.h>`) exports nothing: Apple never shipped C11
-threads, so a binding would only ever work on Linux.
+`libc.threads` (`<threads.h>`) exports nothing, and the reason is not the
+one the header suggests. Apple never shipped C11 threads — no Darwin SDK
+has `<threads.h>` — but a header that one platform does not have has never
+disqualified a module here: `libc.sys.epoll`, `libc.uchar` and others are
+Linux-only on purpose, and say so.
+
+The blocker is `thrd_create`, which takes a function pointer, and nothing
+in this package can hand C one. The same wall stands behind `qsort`,
+`atexit` and `pthread_create`. Here it takes the whole module with it: of
+the twenty-five functions `<threads.h>` declares, twenty-two could be
+bound, and every one of them is about meeting another thread. A mutex with
+one thread never blocks, a condition variable with one thread can only
+time out, and `thrd_join` wants a `thrd_t` that nothing here can bring
+into being. `libc.pthread` has the same hole and a hundred other entry
+points that are worth having on their own; `threads.h` is a wrapper over
+those same calls with nothing else in it.
 
 `libc.math` has no `long double` variants — no `fabsl`, no `nexttoward` —
 because Mojo has no type to pass: on x86-64 the C type is the 80-bit x87
