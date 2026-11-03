@@ -7,6 +7,42 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **Six of the seventeen "a test cannot ask this" reasons were not
+  reasons.** The suite has had, for a while now, a way to fork a child,
+  point a pipe at one of its standard streams with `dup2`, and have it
+  leave with the number it found. That is enough for all of these:
+
+  - `getchar` and `getchar_unlocked` read the child's own standard
+    input and leave with the `A` that was put there — 65;
+  - `getwchar` does the same with a wide character, setting the C
+    locale in the child first because the suite runs in one process
+    and an earlier test may have left it another one;
+  - `_Exit` ends the child with 42 and nothing after it runs, which
+    is what it is for;
+  - `system` is asked in the parent: `exit 7` comes back as a wait
+    status that decodes to 7, and a null command says whether there
+    is a shell at all;
+  - `sigwait` is asked without waiting: `SIGUSR1` is blocked, sent,
+    seen in `sigpending`, and only then taken, so it answers at once.
+
+- **`_Exit` was bound but not exported.** `import *` passes names
+  beginning with an underscore by, so the binding in
+  `libc.stdlib.syscalls` could not be imported from `libc.stdlib` by
+  anybody. `libc.stdlib.__init__` now re-exports it explicitly, and
+  `test_import_all` and the new test both import it by name.
+
+- **Two of the remaining reasons are sharper now.** `pthread_atfork`
+  was tried and links and answers 0 in a built binary, but the suite
+  is run just-in-time and the JIT run cannot resolve the symbol on
+  this glibc; the binding stays unasked, with the reason it actually
+  is. `putwchar` was tried too: it is not only that a wide write
+  orients standard output for the rest of the process — a forked
+  child inherits that orientation, and the suite has already
+  oriented it narrow. A wide write to a narrow stream is undefined;
+  a C probe showed glibc handing back the character while writing
+  nothing at all. `getwchar` is still asked in a child, and the
+  binding's notes say why its partner is not.
+
 - **Five bindings that were missing between the ones already there:
   `getlogin` and `getlogin_r`, `sync`, `ttyslot` in `libc.unistd`, and
   `sockatmark` in `libc.sys.socket`.** All of them are declared and

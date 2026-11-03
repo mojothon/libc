@@ -9,12 +9,15 @@ from libc.utils import (
     string_to_char_ptr,
 )
 from libc.file import fclose, rewind
-from libc.locale import LC_ALL, Locale, freelocale, newlocale
-from libc.stdlib import free
+from libc.locale import LC_ALL, Locale, freelocale, newlocale, setlocale
+from libc.stdlib import exit, free
+from libc.sys.wait import WEXITSTATUS, WIFEXITED, waitpid
 from libc.time import gmtime_r, time, tm
 from libc.stdio import tmpfile
+from libc.unistd import close, dup2, fork, pipe, read, write
 from libc.wchar import (
     btowc,
+    getwchar,
     fgetwc,
     fgetws,
     fputwc,
@@ -36,6 +39,7 @@ from libc.wchar import (
     mbrlen,
     mbrtowc,
     mbsinit,
+    putwchar,
     mbsnrtowcs,
     mbsrtowcs,
     mbstate_t,
@@ -296,8 +300,8 @@ def test_wide_characters_through_a_stream() raises:
     written, since writing a wide character is what turns it.
 
     `getwc` and `putwc` are the same pair under another name and are
-    asked the same things. `getwchar` and `putwchar` are bound and not
-    called, being the ones that go to the terminal.
+    asked the same things. `getwchar` is the same question on
+    standard input, and has its own test below.
     """
     var stream = tmpfile()
     assert_true(not is_null(stream), "tmpfile hands back a stream")
@@ -1153,6 +1157,54 @@ def test_how_many_columns_a_character_takes() raises:
     line.unsafe_free()
 
 
+def test_getwchar_reads_what_stdin_is_made_of() raises:
+    """`getwchar` reads the process's own standard input, and the
+    child makes its own: a pipe with an 'A' in it, put where standard
+    input is read from. The child sets the C locale first — the suite
+    runs in one process, and a locale an earlier test left behind
+    would be the child's otherwise — and leaves with the wide
+    character it read.
+
+    `putwchar` is the other half of this pair and is not asked here.
+    Standard output's orientation is process-wide and travels across
+    a fork: the suite has already written to it as a narrow stream,
+    and a wide write to a narrow-oriented stream is not something C
+    defines. A child inherits the stream, not a fresh one.
+    """
+    var fds = unsafe_alloc[Int32](2)
+    assert_equal(pipe(fds), 0, "a pipe for the child to read from")
+    var child = fork()
+    if child == 0:
+        var four_in = unsafe_alloc[UInt8](4)
+        four_in.unsafe_offset(0)[] = 65
+        four_in.unsafe_offset(1)[] = 0
+        four_in.unsafe_offset(2)[] = 0
+        four_in.unsafe_offset(3)[] = 0
+        assert_equal(
+            write(fds.unsafe_offset(1)[], four_in, 4), 4, "an A goes in"
+        )
+        assert_equal(
+            dup2(fds.unsafe_offset(0)[], 0), 0, "and it is standard input"
+        )
+        _ = setlocale(LC_ALL, string_to_char_ptr("C"))
+        _ = exit(getwchar())
+
+    _ = close(fds.unsafe_offset(0)[])
+    _ = close(fds.unsafe_offset(1)[])
+    var status = unsafe_alloc[Int32](1)
+    status.unsafe_offset(0)[] = 0
+    assert_equal(waitpid(child, status, 0), child, "the reader is waited for")
+    assert_true(
+        WIFEXITED(status.unsafe_load()), "and it left of its own accord"
+    )
+    assert_equal(
+        Int(WEXITSTATUS(status.unsafe_load())),
+        65,
+        "with the wide A it read",
+    )
+    status.unsafe_free()
+
+
 def main() raises:
     test_length_and_compare()
     test_search()
@@ -1177,4 +1229,5 @@ def main() raises:
     test_reading_numbers_for_a_locale_object()
     test_writing_a_time_out_wide_for_a_locale_object()
     test_how_many_columns_a_character_takes()
+    test_getwchar_reads_what_stdin_is_made_of()
     print("test_wchar: ok")

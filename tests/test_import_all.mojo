@@ -1069,6 +1069,7 @@ def bring_in_libc_stdio():
 
 def bring_in_libc_stdlib():
     from libc.stdlib import (
+        _Exit,
         HUGE_VAL,
         HUGE_VALF,
         LONG_MAX,

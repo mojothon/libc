@@ -45,6 +45,8 @@ from libc.stdio import (
     fwrite,
     getc,
     getc_unlocked,
+    getchar,
+    getchar_unlocked,
     getw,
     open_memstream,
     pclose,
@@ -68,9 +70,10 @@ from libc.stdio import (
     tmpnam,
     ungetc,
 )
-from libc.stdlib import free, mkstemp
+from libc.stdlib import exit, free, mkstemp
 from libc.string import strerror
-from libc.unistd import dup, dup2, read
+from libc.sys.wait import WEXITSTATUS, WIFEXITED, waitpid
+from libc.unistd import dup, dup2, fork, pipe, read, write
 from libc.utils import char_ptr_to_string, null_ptr, string_to_char_ptr
 
 
@@ -655,6 +658,51 @@ def test_saying_how_a_stream_buffers() raises:
     got3.unsafe_free()
 
 
+def _leave_with_the_first_byte_of_stdin(unlocked: Bool) raises -> None:
+    """The child's half: make a pipe, write an 'A' into it, and put it
+    where standard input is read from. The byte that comes back is the
+    one the child leaves with, so the parent can ask what was read
+    without reading it here.
+    """
+    var fds = unsafe_alloc[Int32](2)
+    assert_equal(pipe(fds), 0, "a pipe to be standard input")
+    var one = unsafe_alloc[UInt8](1)
+    one.unsafe_offset(0)[] = 65
+    assert_equal(write(fds.unsafe_offset(1)[], one, 1), 1, "and the A is in it")
+    assert_equal(dup2(fds.unsafe_offset(0)[], 0), 0, "and it is standard input")
+    var took = getchar_unlocked() if unlocked else getchar()
+    _ = exit(took)
+
+
+def test_getchar_reads_what_stdin_is_made_of() raises:
+    """`getchar` reads the process's own standard input, which a suite
+    cannot promise has an end — so the child makes its own end: a pipe
+    with one byte in it, put where standard input is read from. It
+    leaves with the byte it read, and `getchar_unlocked` is asked the
+    same question over its own pipe, there being no lock to take from
+    a stream that only one process is reading.
+    """
+    for which in range(2):
+        var child = fork()
+        if child == 0:
+            _leave_with_the_first_byte_of_stdin(which == 1)
+
+        var status = unsafe_alloc[Int32](1)
+        status.unsafe_offset(0)[] = 0
+        assert_equal(
+            waitpid(child, status, 0), child, "the child is waited for"
+        )
+        assert_true(
+            WIFEXITED(status.unsafe_load()), "and it left of its own accord"
+        )
+        assert_equal(
+            Int(WEXITSTATUS(status.unsafe_load())),
+            65,
+            "with the A that was standard input",
+        )
+        status.unsafe_free()
+
+
 def main() raises:
     test_tmpfile_roundtrip()
     test_rename_and_remove()
@@ -673,4 +721,5 @@ def main() raises:
     test_naming_a_terminal_and_a_temporary()
     test_writing_a_stream_into_memory()
     test_saying_how_a_stream_buffers()
+    test_getchar_reads_what_stdin_is_made_of()
     print("test_stdio: ok")

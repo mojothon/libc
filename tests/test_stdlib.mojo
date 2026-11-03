@@ -14,7 +14,7 @@ from libc.constant import (
 from libc.fcntl import O_RDWR, open
 from libc.file import close, read, write
 from libc.stdio import remove
-from libc.sys.wait import WIFSIGNALED, waitpid
+from libc.sys.wait import WEXITSTATUS, WIFEXITED, WIFSIGNALED, waitpid
 from libc.unistd import fork, isatty, rmdir
 from libc.signal import SIGABRT, signal
 from libc.stdlib import (
@@ -29,7 +29,9 @@ from libc.stdlib import (
     div,
     drand48,
     erand48,
+    _Exit,
     exit,
+    system,
     free,
     getenv,
     getloadavg,
@@ -981,6 +983,43 @@ def test_a_pseudo_terminal_comes_in_pairs() raises:
     assert_true(is_null(ptsname(-1)), "nor has a name")
 
 
+def test_system_hands_back_the_commands_own_ending() raises:
+    """`system` hands the command to a shell and comes back with how
+    the command ended, as a wait status. `exit 7` is a command that
+    chooses its own ending, and a command that is none at all is the
+    question of whether there is a shell to hand to, answered
+    nonzero.
+    """
+    var shell = system(null_ptr[c_char]())
+    assert_true(Int(shell) != 0, "there is a shell to run commands with")
+
+    var command = string_to_char_ptr("exit 7")
+    var answer = system(command)
+    command.unsafe_free()
+    assert_true(WIFEXITED(Int32(answer)), "the command left of its own accord")
+    assert_equal(Int(WEXITSTATUS(Int32(answer))), 7, "with the status it chose")
+
+
+def test_the_underscored_exit_ends_the_child_where_it_stands() raises:
+    """`_Exit` ends the process without running the handlers `exit`
+    runs, which is what it is for and why it is the one a child uses
+    to leave with a number of its own choosing: this child leaves with
+    42 and nothing else in it runs.
+    """
+    var child = fork()
+    if child == 0:
+        _ = _Exit(42)
+
+    var status = unsafe_alloc[Int32](1)
+    status.unsafe_offset(0)[] = 0
+    assert_equal(waitpid(child, status, 0), child, "and it is waited for")
+    assert_true(WIFEXITED(status.unsafe_load()), "it left of its own accord")
+    assert_equal(
+        Int(WEXITSTATUS(status.unsafe_load())), 42, "with the 42 it chose"
+    )
+    status.unsafe_free()
+
+
 def main() raises:
     test_malloc()
     test_the_untried_calls()
@@ -1006,4 +1045,6 @@ def main() raises:
     test_a_name_made_with_a_suffix_left_alone()
     test_a_pseudo_terminal_comes_in_pairs()
     test_the_number_the_rand48s_have_next()
+    test_system_hands_back_the_commands_own_ending()
+    test_the_underscored_exit_ends_the_child_where_it_stands()
     print("test_stdlib: ok")

@@ -821,6 +821,14 @@ def putwchar(wc: c_wchar) -> c_wint:
         package can reach. On glibc the next byte write to it answers
         `EOF` and writes nothing, so one call here would silence every
         later byte-oriented test that shares the stream.
+
+        Nor is a forked child a way around it: it inherits the
+        oriented stream, not a fresh one, and the suite has already
+        written to standard output as a byte stream before this can
+        be asked. A wide write to a stream oriented the other way is
+        not defined by C at all — glibc can hand back the character
+        while writing nothing — so even a child cannot say what came
+        out.
     """
     return external_call["putwchar", c_wint, c_wchar](wc)
 

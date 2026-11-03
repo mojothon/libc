@@ -44,23 +44,17 @@ def load(name: str):
 # calls this suite can make — so the point is that the reason is written
 # down rather than that the call is gone.
 CANNOT_ASK = {
-    "getchar": "reads standard input, which a suite cannot promise has an end",
-    "getchar_unlocked": "reads standard input, as `getchar` does",
-    "getwchar": "reads standard input a wide character at a time",
     "scanf": "reads standard input, and takes its arguments after them",
     "pause": "waits for a signal, which is a suite that stops",
     "sigsuspend": "waits for a signal to arrive",
-    "sigwait": "the same, and glibc waits rather than refusing an empty set",
     "pthread_cond_wait": "waits for another thread, and a test that waits is one that hangs",
-    "_Exit": "ends the process, so nothing after it in the same suite runs",
-    "system": "starts a shell, and hands back its exit status rather than an answer",
     "pthread_cancel": "cancels a thread that the rest of the suite is sharing",
-    "pthread_atfork": "asks for a fork, and this suite has one process to lose",
+    "pthread_atfork": "the suite is run just-in-time, and the JIT run does not resolve this one — a built binary links and answers fine",
+    "putwchar": "standard output is process-wide and narrow-oriented by the suite already, and a forked child inherits that orientation — a wide write to it is not defined by C",
     "prctl": "Linux only, and the interesting requests change the running process",
     "ioctl": "variadic: what it does is decided by its second argument",
     "sched_getcpucount": "glibc does not export it, so calling it would not link",
     "isascii_l": "glibc does not export it, so calling it would not link",
-    "putwchar": "orients standard output to wide for the rest of the process, and nothing here can turn the stream back",
 }
 
 # Bindings that could be asked something and have not been. This is the list

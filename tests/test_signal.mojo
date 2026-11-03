@@ -5,6 +5,7 @@ from libc.constant import EINVAL, c_ptr
 from libc.errno import get_errno, set_errno
 from libc.signal import (
     SIGINT,
+    SIG_UNBLOCK,
     SIGUSR1,
     SIGUSR2,
     SIG_BLOCK,
@@ -22,6 +23,7 @@ from libc.signal import (
     siginterrupt,
     sigismember,
     sigsetmask,
+    sigwait,
     sigpending,
     sigprocmask,
 )
@@ -308,6 +310,43 @@ def test_the_blocked_set_as_a_word_and_as_bytes() raises:
     nothing.unsafe_free()
 
 
+def test_sigwait_takes_one_that_is_already_waiting() raises:
+    """`sigwait` waits for a signal to arrive, and a suite that waits
+    is one that hangs — unless the signal is already there. It is put
+    there on purpose: `SIGUSR1` is blocked, so sending it to this
+    process leaves it pending, and `sigpending` says so before
+    `sigwait` is asked anything. Then taking it is no waiting at all,
+    and the answer says which one was taken. The block is undone at
+    the end, the signal being spent.
+    """
+    var mask = empty_set()
+    assert_equal(sigemptyset(mask), 0, "an empty set to start from")
+    assert_equal(sigaddset(mask, SIGUSR1), 0, "with SIGUSR1 in it")
+    assert_equal(
+        sigprocmask(SIG_BLOCK, mask, null_ptr[UInt8]()),
+        0,
+        "SIGUSR1 is blocked",
+    )
+    assert_equal(craise(SIGUSR1), 0, "and sent, to sit pending")
+
+    var pending = empty_set()
+    assert_equal(sigpending(pending), 0, "the pending set answers")
+    assert_equal(sigismember(pending, SIGUSR1), 1, "and SIGUSR1 is in it")
+
+    var which = unsafe_alloc[Int32](1)
+    which.unsafe_offset(0)[] = 0
+    assert_equal(sigwait(mask, which), 0, "so sigwait takes it at once")
+    assert_equal(which.unsafe_offset(0)[], SIGUSR1, "and says which one it was")
+    assert_equal(
+        sigprocmask(SIG_UNBLOCK, mask, null_ptr[UInt8]()),
+        0,
+        "and the block is undone",
+    )
+    which.unsafe_free()
+    pending.unsafe_free()
+    mask.unsafe_free()
+
+
 def main() raises:
     test_sigaddset_round_trips_through_sigismember()
     test_sigismember_refuses_a_number_that_is_not_a_signal()
@@ -320,4 +359,5 @@ def main() raises:
     test_craise_with_nothing_to_send()
     test_the_blocked_set_as_a_word_and_as_bytes()
     test_signal_zero_asks_whether_a_group_is_there()
+    test_sigwait_takes_one_that_is_already_waiting()
     print("signal ok")
