@@ -3,6 +3,7 @@ from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.constant import c_long, c_ptr
+from libc.stdlib import setenv, unsetenv
 from libc.unistd import geteuid
 from libc.sys.stat import timeval
 from libc.time import (
@@ -236,6 +237,11 @@ def test_clocks() raises:
 
     ts[] = timespec()
     assert_equal(Int(clock_getres(CLOCK_MONOTONIC, ts)), 0)
+    # A resolution is a length of time rather than a moment: no seconds in it,
+    # and the nanoseconds are what the clock counts in. `clock_gettime` takes
+    # the same two arguments and answers the same 0, and answers with now.
+    assert_equal(Int(ts[].tv_sec), 0, "a resolution has no seconds in it")
+    assert_true(Int(ts[].tv_nsec) > 0, "and is counted in nanoseconds")
 
     # timespec_get is C11, which Darwin's libSystem only picked up recently.
     comptime if not CompilationTarget.is_macos():
@@ -259,6 +265,39 @@ def test_localtime() raises:
     slot[] = tm()
 
     assert_true(Int(localtime_r(epoch, slot)) != 0, "localtime_r succeeded")
+
+    # And it is the local reading rather than the Greenwich one, which is what
+    # separates it from `gmtime_r` -- same two arguments, same answer of a
+    # pointer. A place five hours from Greenwich is put in force for the length
+    # of this test, a machine that keeps UTC not being able to tell the two
+    # apart at all.
+    var zone = string_to_char_ptr("TZ")
+    var west = string_to_char_ptr("UTC+05")
+    assert_equal(Int(setenv(zone, west, 1)), 0, "a place to read the time in")
+    tzset()
+
+    # Read again now that the zone is in force: the two calls are given the
+    # same second and have to answer with two different hours.
+    assert_true(
+        Int(localtime_r(epoch, slot)) != 0,
+        "the second is broken down where this is",
+    )
+    var utc = unsafe_alloc[tm](1)
+    utc[] = tm()
+    assert_true(
+        Int(gmtime_r(epoch, utc)) != 0, "and the same second in Greenwich"
+    )
+    assert_equal(
+        (Int(utc[].tm_hour) + 19) % 24,
+        Int(slot[].tm_hour),
+        "and five hours earlier where this is",
+    )
+
+    assert_equal(Int(unsetenv(zone)), 0, "the place is put back")
+    tzset()
+    zone.unsafe_free()
+    west.unsafe_free()
+    utc.unsafe_free()
     # 1800000000 is 2027-01-15 wherever the machine is, give or take a day.
     assert_true(Int(slot[].tm_year) >= 126, "year is 2026 or later")
 
@@ -279,11 +318,27 @@ def test_the_ones_that_keep_their_own_buffer() raises:
     var zero = unsafe_alloc[c_long](1)
     zero.unsafe_offset(0)[] = 0
 
+    # Where this machine thinks it is, put somewhere that is not Greenwich for
+    # the length of this test: a machine that keeps UTC reads the epoch the
+    # same way through either call, so the difference has to be arranged.
+    var zone = string_to_char_ptr("TZ")
+    var west = string_to_char_ptr("UTC+05")
+    assert_equal(Int(setenv(zone, west, 1)), 0, "a place to read times in")
+    tzset()
+
     var broken = gmtime(zero)
     assert_true(Int(UInt(broken)) != 0, "gmtime breaks the epoch down")
     var said = char_ptr_to_string(asctime(broken))
     assert_true(said.startswith("Thu Jan  1"), "and asctime reads it back out")
     assert_true(said.endswith("1970\n"), "in nineteen seventy")
+
+    # The same second read where this is, which is five hours earlier, and the
+    # one thing `localtime` does that `gmtime` does not -- the two hand back a
+    # pointer into a buffer of their own and answer nothing else.
+    var here = localtime(zero)
+    assert_true(Int(UInt(here)) != 0, "localtime breaks it down as well")
+    assert_equal(Int(here[].tm_hour), 19, "five hours before Greenwich")
+    assert_equal(Int(here[].tm_mday), 31, "on the last day of the year before")
 
     # `ctime` reads in the local time, so what it says about the epoch
     # depends on where this is; only its shape is being asked about.
@@ -298,6 +353,11 @@ def test_the_ones_that_keep_their_own_buffer() raises:
     assert_true(Int(UInt(local)) != 0, "localtime breaks a time down")
     assert_equal(Int(mktime(local)), 1700000000, "and mktime puts it back")
     assert_equal(Int(timelocal(local)), 1700000000, "as does timelocal")
+
+    assert_equal(Int(unsetenv(zone)), 0, "and the place is put back")
+    tzset()
+    zone.unsafe_free()
+    west.unsafe_free()
 
     var seconds = unsafe_alloc[Int64](2)
     seconds.unsafe_offset(0)[] = 0

@@ -924,6 +924,25 @@ All notable changes to this project are documented here. The format follows
   gets a second round in the cross-process test with `_broadcast` in the child,
   because with one waiter `_signal` and `_broadcast` are the same wake-up.
 
+- **`string`, `sched`, `network` and `time`: nineteen survivors, and only one
+  of them left.** `memcpy` was called for its side effect and not asked what it
+  answered, which is the one thing `mempcpy` answers differently; `strcmp` was
+  asked about a pair that differs in more than case; `bcmp` about blocks with
+  no nothing in them, where the string comparison that could stand in for it
+  stops; `strcoll_l` about a pair the folding neighbour folds away;
+  `strsignal` was asked whether it said something rather than whether it said
+  something about a signal. `sched_getparam` was given zeroed room, which is
+  what a `sched_setparam` would have left; the priority pair was asked about
+  the one policy where the two answer the same number; `sched_setaffinity` was
+  given back the set it had just read, which is not a change — an empty set,
+  which it refuses, is. `clock_getres` was asked to answer 0 and not to answer
+  a resolution; `gmtime` and `localtime` were read on a machine that keeps UTC,
+  where they are the same call, and are read under a `TZ` five hours away now.
+  Six are one routine under two names, measured with `dlsym`: `memcpy` and
+  `memmove`, `mktime` and `timelocal`, and the two byte-order pairs, which are
+  the same arithmetic on every input. `strcoll` against `strcmp` is in the
+  third table, C-locale collation being code-point order.
+
 - **`stdio` and `stdlib` had twenty-three between them, and eight are now
   caught.** The stream calls were being asked for what a call with the same
   signature answers anyway: `pclose` was not asked for its status, so `getc`

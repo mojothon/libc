@@ -12,6 +12,7 @@ from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.sched import (
+    SCHED_FIFO,
     SCHED_OTHER,
     sched_get_priority_max,
     sched_get_priority_min,
@@ -59,11 +60,25 @@ def test_what_the_scheduler_says() raises:
         0,
         "and no lower, being the one flat number",
     )
+    # The ordinary policy has one number, so the two calls answer the same one
+    # and neither can be told from the other there. A policy with a range is
+    # what separates them, and the range is what it is for: the highest above
+    # the lowest.
+    assert_true(
+        Int(sched_get_priority_max(SCHED_FIFO))
+        > Int(sched_get_priority_min(SCHED_FIFO)),
+        "a real-time policy reaches higher than it starts",
+    )
     assert_equal(
         sched_getscheduler(0), ORDINARY, "and it is the one this is on"
     )
 
+    # Started at a priority the ordinary policy does not reach, so that a call
+    # which set it rather than read it -- `sched_setparam`, which has the same
+    # signature -- would either be refused or leave the impossible number
+    # there for the assertion to find.
     var param = unsafe_alloc[sched_param](1)
+    param.unsafe_offset(0)[].set_sched_priority(99)
     assert_equal(
         sched_getparam(0, param), 0, "sched_getparam fills in what it has"
     )
@@ -106,6 +121,19 @@ def test_which_processors() raises:
             if set.unsafe_load(i) != 0:
                 any = True
         assert_true(any, "and it names a processor this may run on")
+
+        # A set with no processor in it is what `sched_setaffinity` refuses,
+        # and `sched_getaffinity` -- the call with its signature and its
+        # answer of 0 -- would take it happily and write over it.
+        var empty = unsafe_alloc[Int32](256)
+        for i in range(256):
+            empty.unsafe_store(i, 0)
+        assert_equal(
+            sched_setaffinity(0, 1024, empty),
+            -1,
+            "a set of no processors at all is refused",
+        )
+        empty.unsafe_free()
 
         # The one it was just given back again, which is not a change.
         assert_equal(

@@ -416,6 +416,19 @@ answer 0, and what separates them is what may be done with the object
 afterwards, which after a destroy is undefined. Calling that "the same answer"
 would have been the kind of entry that reads as an answer when it is a hole.
 
+Four more modules between them had nineteen, and the habits were the ones
+already named: `memcpy` called for its side effect and not asked what it
+returned, `sched_getparam` given zeroed room -- which is exactly what a
+`sched_setparam` would leave -- and `gmtime` read on a machine that keeps UTC,
+where it and `localtime` are the same call. That last one needed the test to
+arrange the difference: a `TZ` five hours from Greenwich for as long as the
+question is being asked.
+
+Six of the nineteen are one routine under two names, and `dlsym` is what says
+so: `memcpy` and `memmove` are one address in glibc, as are `mktime` and
+`timelocal`, and the byte-order pairs are the same arithmetic whichever way
+round they are written.
+
 `stdio` and `stdlib` were twenty-three, and the pattern was a call being asked
 for the answer another call with the same signature gives. `pclose` was never
 asked for its status, so `getc` would have done; `fgetpos` was never asked

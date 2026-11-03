@@ -131,6 +131,17 @@ def test_compare() raises:
     assert_true(Int(strcmp(abc, abd)) < 0, "abc sorts before abd")
     assert_true(Int(strcmp(abd, abc)) > 0, "abd sorts after abc")
 
+    # Case is what tells it from the case-folding neighbour, which has the same
+    # signature and answers 0 for a pair that differs in nothing else.
+    var caps = string_to_char_ptr("ABC")
+    var small = string_to_char_ptr("abc")
+    assert_true(
+        Int(strcmp(caps, small)) < 0,
+        "and upper case sorts before lower, which folding would not see",
+    )
+    caps.unsafe_free()
+    small.unsafe_free()
+
     assert_equal(Int(strncmp(abc, abd, 2)), 0)
     assert_true(Int(strncmp(abc, abd, 3)) < 0, "the third byte decides")
     # And it compares bytes, not letters: `strncasecmp` answers 0 here, and a
@@ -226,6 +237,12 @@ def test_messages() raises:
     assert_true(strlen(strerror(0)) > 0, "every errno has a message")
     assert_true(strlen(strerror(2)) > 0, "ENOENT has a message")
     assert_true(strlen(strsignal(9)) > 0, "SIGKILL has a description")
+    # And it is a description of a signal: the same number read as an error is
+    # a different message, which is what tells this from `strerror`.
+    assert_true(
+        char_ptr_to_string(strsignal(9)) != char_ptr_to_string(strerror(9)),
+        "and a signal's message is not the one that number has as an error",
+    )
 
 
 def test_strncat_and_stpcpy() raises:
@@ -312,11 +329,19 @@ def test_copying() raises:
     var dst = unsafe_alloc[UInt8](16)
     for i in range(16):
         dst.unsafe_store(i, 0)
-    _ = memcpy(
+    var filled = memcpy(
         dst.unsafe_bitcast[NoneType](), src.unsafe_bitcast[NoneType](), 7
     )
     assert_equal(
         char_ptr_to_string(dst), "abcdef", "memcpy fills the first one"
+    )
+    # And answers with it. `mempcpy` is the one that answers with the end of
+    # what it filled, and the two take the same three arguments and fill the
+    # same bytes -- so the pointer is the one thing that says which ran.
+    assert_equal(
+        Int(UInt(filled.unsafe_bitcast[UInt8]())),
+        Int(UInt(dst)),
+        "and answers with the destination it filled",
     )
 
     # Overlapping is what `memmove` is for and what `memcpy` does not
@@ -436,6 +461,24 @@ def test_the_bsd_spellings() raises:
         "and blocks that differ in the last byte do not",
     )
     assert_equal(bcmp(left, other, 5), 0, "though their first five do")
+
+    # A nothing in the middle, which is where a count and a string part ways:
+    # the string comparison that could stand in for this one stops at the
+    # nothing, and this one is told how many bytes to look at.
+    var cut = unsafe_alloc[UInt8](3)
+    cut.unsafe_store(0, 97)
+    cut.unsafe_store(1, 0)
+    cut.unsafe_store(2, 99)
+    var cut_other = unsafe_alloc[UInt8](3)
+    cut_other.unsafe_store(0, 97)
+    cut_other.unsafe_store(1, 0)
+    cut_other.unsafe_store(2, 100)
+    assert_true(
+        bcmp(cut, cut_other, 3) != 0,
+        "bcmp counts bytes and looks past the nothing",
+    )
+    cut.unsafe_free()
+    cut_other.unsafe_free()
 
     # Filled with zeroes, and left holding what it held.
     var room = string_to_char_ptr("abcdef")
@@ -589,6 +632,13 @@ def test_the_l_variants_ask_a_locale_object() raises:
 
     var hello = string_to_char_ptr("Hello")
     var shout = string_to_char_ptr("hELLO")
+    # Which is the one thing the folding call does that the ordering one does
+    # not: collation reads H and h as two characters, and the two calls have
+    # the same signature and the same locale argument.
+    assert_true(
+        strcoll_l(hello, shout, loc) < 0,
+        "and collation sees the case that folding takes away",
+    )
     assert_equal(strcasecmp_l(hello, shout, loc), 0, "case is folded away")
     # Folding is what makes those two equal, and equality is the answer either
     # way round. These two differ, so the order they are asked in shows.

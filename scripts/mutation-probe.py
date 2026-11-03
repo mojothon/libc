@@ -117,6 +117,27 @@ SAME_ANSWER = {
         "same value under a declared width that happens to agree: a difference "
         "only ILP32 would show, for the reason `llrintf->lrintf` is here"
     ),
+    # Measured with dlsym in this process: one address each.
+    "memcpy->memmove": (
+        "glibc resolves `memcpy` and `memmove` to one address on this "
+        "platform -- `dlsym` says so -- so the two names run one routine, and "
+        "that routine is the overlap-safe one. The test that asks `memmove` to "
+        "survive an overlap still passes, because what ran was the code that "
+        "promises it"
+    ),
+    "mktime->timelocal": (
+        "`timelocal` is a weak alias of `mktime` in glibc, one address, so "
+        "the call that runs is the call that was meant"
+    ),
+    "htonl->ntohl": (
+        "the same arithmetic on every input, which is what these two are: on "
+        "a little-endian machine both byte-swap, on a big-endian one both do "
+        "nothing, and neither looks at where the bytes came from. The names "
+        "differ in what they are for"
+    ),
+    "htons->ntohs": (
+        "the same for the sixteen-bit pair, for the same reason"
+    ),
     # One routine under two names, measured: `nm` puts `strtoll` and `strtoq` at
     # the same address in glibc, and `strtoull` and `strtouq` at another one.
     "strtoll->strtoq": (
@@ -575,6 +596,12 @@ NO_OBSERVATION = {
         "that `wcscmp` answers, because code-point order is the collation "
         "there. The `_l` forms are separated by a locale object the test "
         "makes; this one has no such argument to hold the difference"
+    ),
+    "strcoll->strcmp": (
+        "measured in the C locale, which is the one this suite runs in: "
+        "collation there is code-point order, and `strcoll` answers the same "
+        "number `strcmp` answers. The `_l` form is separated by a locale "
+        "object the test makes; this one has no such argument"
     ),
     "get_nprocs->get_nprocs_conf": (
         "measured on a machine with every processor online, which is the only "
