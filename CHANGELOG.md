@@ -40,6 +40,23 @@ All notable changes to this project are documented here. The format follows
   changes nothing without returning an error. `newlocale`'s docstring now
   says so, since the masks are not bound and a caller has to spell one.
 
+- **`libc.locale` has the seven `LC_*_MASK` constants, which are what
+  `newlocale` takes.** They are a second numbering rather than a shift of
+  the categories: glibc's `LC_CTYPE_MASK` is `1 << LC_CTYPE`, and Darwin
+  numbered its six alphabetically, so there `LC_CTYPE_MASK` is `1 << 1`
+  while `LC_CTYPE` is 2. The two `LC_ALL_MASK`s come to 8127 and 63,
+  because glibc has six more categories to cover. Both platforms' numbers
+  are checked against C by `scripts/check-constants.py`, which needed
+  Darwin's `xlocale.h` in its header list to see them there.
+
+  Six tests were calling `newlocale(LC_ALL, …)`: a category where a mask
+  belongs, which is neither an error nor a locale — the object comes back
+  with a good pointer and changes nothing. They pass `LC_ALL_MASK` now.
+  Nothing observable changed, since the global locale was already `C`, and
+  that is the point: it was wrong in a way no test could see, and it cost
+  the first run of `test_uchar` a C-locale `EILSEQ` before the mask was
+  found.
+
 - **`prctl` asked the questions it answers without changing anything.** It
   was on the cannot-ask list as Linux's own and as a call that changes the
   process it is made on. The second half is only true of some of its options:

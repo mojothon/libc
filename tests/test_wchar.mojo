@@ -9,7 +9,14 @@ from libc.utils import (
     string_to_char_ptr,
 )
 from libc.file import fclose, rewind
-from libc.locale import LC_ALL, Locale, freelocale, newlocale, setlocale
+from libc.locale import (
+    LC_ALL,
+    LC_ALL_MASK,
+    Locale,
+    freelocale,
+    newlocale,
+    setlocale,
+)
 from libc.stdlib import exit, free
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, waitpid
 from libc.time import gmtime_r, time, tm
@@ -942,7 +949,7 @@ def test_the_l_variants_ask_a_locale_object() raises:
     and not the same one for four.
     """
     var c_locale = string_to_char_ptr("C")
-    var loc = newlocale(LC_ALL, c_locale, null_ptr[Locale]())
+    var loc = newlocale(LC_ALL_MASK, c_locale, null_ptr[Locale]())
     assert_true(Int(loc) != 0, "a C locale object was made to ask")
     c_locale.unsafe_free()
 
@@ -990,7 +997,7 @@ def test_reading_numbers_for_a_locale_object() raises:
     point: a comma is not one, so the reading stops at three.
     """
     var c_locale = string_to_char_ptr("C")
-    var loc = newlocale(LC_ALL, c_locale, null_ptr[Locale]())
+    var loc = newlocale(LC_ALL_MASK, c_locale, null_ptr[Locale]())
     assert_true(Int(loc) != 0, "a C locale object was made to ask")
     c_locale.unsafe_free()
 
@@ -1059,7 +1066,7 @@ def test_writing_a_time_out_wide_for_a_locale_object() raises:
     holding to a language rather than to a format.
     """
     var c_locale = string_to_char_ptr("C")
-    var loc = newlocale(LC_ALL, c_locale, null_ptr[Locale]())
+    var loc = newlocale(LC_ALL_MASK, c_locale, null_ptr[Locale]())
     assert_true(Int(loc) != 0, "a C locale object was made to write for")
     c_locale.unsafe_free()
 

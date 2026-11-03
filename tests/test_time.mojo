@@ -41,7 +41,7 @@ from libc.time import (
     tm,
     tzset,
 )
-from libc.locale import LC_ALL, Locale, freelocale, newlocale
+from libc.locale import LC_ALL, LC_ALL_MASK, Locale, freelocale, newlocale
 from libc.utils import (
     char_ptr_to_string,
     is_null,
@@ -123,7 +123,9 @@ def test_strftime_l_writes_the_names_in_the_locale_it_is_given() raises:
     on the clock: a locale that was not in play would answer in whatever
     language the program happened to be running.
     """
-    var loc = newlocale(LC_ALL, string_to_char_ptr("C"), null_ptr[Locale]())
+    var loc = newlocale(
+        LC_ALL_MASK, string_to_char_ptr("C"), null_ptr[Locale]()
+    )
     assert_true(not is_null(loc), "the C locale has an object")
 
     var epoch = unsafe_alloc[Int64](1)

@@ -107,6 +107,11 @@ MORE_HEADERS = [
     "sys/select.h",
     "sys/utsname.h",
     "sys/sysmacros.h",
+    # The `LC_*_MASK` numbers are in Darwin's `xlocale.h` and in glibc's
+    # `locale.h`, and glibc has no `xlocale.h`, so the exists() below skips
+    # this one here and takes it there. Without it the six masks the package
+    # writes down are numbers nobody checked on the platform they are for.
+    "xlocale.h",
 ]
 
 

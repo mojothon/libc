@@ -27,7 +27,7 @@ from std.testing import assert_equal, assert_true
 
 from libc.constant import EILSEQ, c_ptr
 from libc.errno import get_errno, set_errno
-from libc.locale import LC_CTYPE, Locale, freelocale, newlocale, uselocale
+from libc.locale import LC_CTYPE_MASK, Locale, freelocale, newlocale, uselocale
 from libc.string import memset
 from libc.uchar import c16rtomb, c32rtomb, mbrtoc16, mbrtoc32
 from libc.utils import null_ptr, string_to_char_ptr
@@ -35,12 +35,6 @@ from libc.wchar import mbstate_t
 
 # `mbstate_t` here is four 64-bit slots, and zero is the initial state.
 comptime STATE_BYTES = 32
-
-# `newlocale` takes a mask and `setlocale` takes a category, and the two are
-# not the same numbers: `LC_CTYPE` is 0, and `LC_CTYPE_MASK` is `1 << 0`. A
-# category handed to `newlocale` gives back an object that changes nothing,
-# without an error, which is what the first run of this test did.
-comptime LC_CTYPE_MASK: Int32 = Int32(1) << LC_CTYPE
 
 
 def _initial(ps: c_ptr[mbstate_t]):

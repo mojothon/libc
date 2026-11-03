@@ -4,6 +4,7 @@ from std.testing import assert_equal, assert_true
 
 from libc.locale import (
     LC_ALL,
+    LC_ALL_MASK,
     Locale,
     lconv,
     duplocale,
@@ -55,7 +56,7 @@ def test_localeconv() raises:
 
 def test_locale_objects() raises:
     var c_locale = string_to_char_ptr("C")
-    var loc = newlocale(LC_ALL, c_locale, null_ptr[Locale]())
+    var loc = newlocale(LC_ALL_MASK, c_locale, null_ptr[Locale]())
     assert_true(Int(loc) != 0, "the object was made")
 
     var copy = duplocale(loc)

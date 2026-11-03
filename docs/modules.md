@@ -31,7 +31,7 @@ the bottom.
 | `libc.sched` | `<sched.h>` | 15 |
 | `libc.signal` | `<signal.h>` | 53 |
 | `libc.spawn` | `<spawn.h>` start a process without fork | 25 |
-| `libc.locale` | `<locale.h>` | 16 |
+| `libc.locale` | `<locale.h>` | 23 |
 | `libc.sys.epoll` | `<sys/epoll.h>` | 7 |
 | `libc.search` | `<search.h>` | 9 |
 | `libc.dirent` | `<dirent.h>` | 18 |

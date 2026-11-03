@@ -32,7 +32,7 @@ from libc.ctype import (
     toupper,
     toupper_l,
 )
-from libc.locale import LC_ALL, Locale, freelocale, newlocale
+from libc.locale import LC_ALL, LC_ALL_MASK, Locale, freelocale, newlocale
 from libc.utils import null_ptr, string_to_char_ptr
 
 
@@ -65,7 +65,7 @@ def test_l_variants_take_a_locale() raises:
     # They were declared as taking a character and nothing else, so libc read
     # whatever was next to it as the locale.
     var c_locale = string_to_char_ptr("C")
-    var loc = newlocale(LC_ALL, c_locale, null_ptr[Locale]())
+    var loc = newlocale(LC_ALL_MASK, c_locale, null_ptr[Locale]())
     assert_true(Int(loc) != 0, "the locale object was made")
 
     assert_true(islower_l(Int32(ord("a")), loc) != 0, "'a' is lowercase there")
@@ -212,7 +212,7 @@ def test_l_variants_agree_in_the_c_locale() raises:
     to read whatever came next as the locale.
     """
     var c_locale = string_to_char_ptr("C")
-    var loc = newlocale(LC_ALL, c_locale, null_ptr[Locale]())
+    var loc = newlocale(LC_ALL_MASK, c_locale, null_ptr[Locale]())
     assert_true(Int(loc) != 0, "the locale object was made")
 
     var bad_l = 0
@@ -253,7 +253,7 @@ def test_isdigit_l_takes_a_locale() raises:
     is the ten that every locale agrees on.
     """
     var c_locale = string_to_char_ptr("C")
-    var loc = newlocale(LC_ALL, c_locale, null_ptr[Locale]())
+    var loc = newlocale(LC_ALL_MASK, c_locale, null_ptr[Locale]())
     assert_true(Int(loc) != 0, "the locale object was made")
 
     assert_true(isdigit_l(Int32(ord("7")), loc) != 0, "'7' is a digit there")

@@ -32,6 +32,35 @@ comptime LC_ALL: Int32 = Int32(
     6
 ) if not CompilationTarget.is_macos() else Int32(0)
 
+# The masks, which are what `newlocale` takes where the categories above are
+# what `setlocale` takes, and a second numbering rather than a shift of the
+# first: glibc's is `1 << LC_CTYPE`, and Darwin numbered its six masks
+# alphabetically, so `LC_CTYPE_MASK` is `1 << 1` there while `LC_CTYPE` is 2.
+# The two `LC_ALL_MASK`s look nothing alike either, 8127 against 63, because
+# glibc has six more categories to cover. Reading one of these as a category
+# is what makes `newlocale` build an object that changes nothing.
+comptime LC_CTYPE_MASK: Int32 = Int32(
+    1
+) if not CompilationTarget.is_macos() else Int32(2)
+comptime LC_NUMERIC_MASK: Int32 = Int32(
+    2
+) if not CompilationTarget.is_macos() else Int32(16)
+comptime LC_TIME_MASK: Int32 = Int32(
+    4
+) if not CompilationTarget.is_macos() else Int32(32)
+comptime LC_COLLATE_MASK: Int32 = Int32(
+    8
+) if not CompilationTarget.is_macos() else Int32(1)
+comptime LC_MONETARY_MASK: Int32 = Int32(
+    16
+) if not CompilationTarget.is_macos() else Int32(8)
+comptime LC_MESSAGES_MASK: Int32 = Int32(
+    32
+) if not CompilationTarget.is_macos() else Int32(4)
+comptime LC_ALL_MASK: Int32 = Int32(
+    8127
+) if not CompilationTarget.is_macos() else Int32(63)
+
 
 struct Locale:
     """An opaque C locale object, the thing a `locale_t` points at.
@@ -169,12 +198,12 @@ def newlocale(
     """Libc `newlocale`, which builds a locale object you can pass around.
 
     Args:
-        category_mask: A bitwise OR of the `LC_*_MASK` macros, the parts to
-            take from `locale`. Note the name: the categories `setlocale`
-            takes are not these numbers, and the masks are not bound here,
-            so one is spelled `1 << LC_CTYPE`. A category handed to this
-            builds an object that changes nothing and answers a good
-            pointer while doing it, which is how it fails.
+        category_mask: A bitwise OR of the `LC_*_MASK` constants, the parts
+            to take from `locale`. Note the name: the categories `setlocale`
+            takes are not these numbers, and neither is a shift of them. A
+            category handed to this builds an object that changes nothing
+            and answers a good pointer while doing it, which is how it
+            fails.
         locale: The locale name to read those parts from.
         base: An existing object to start from, or `null_ptr[Locale]()` to
             build on the current global locale.

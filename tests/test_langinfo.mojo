@@ -32,7 +32,7 @@ from libc.langinfo import (
     nl_langinfo,
     nl_langinfo_l,
 )
-from libc.locale import LC_ALL, Locale, freelocale, newlocale
+from libc.locale import LC_ALL, LC_ALL_MASK, Locale, freelocale, newlocale
 from libc.utils import char_ptr_to_string, is_null, null_ptr, string_to_char_ptr
 
 
@@ -126,7 +126,7 @@ def test_nl_langinfo_l_answers_from_the_locale_it_is_given() raises:
     and `US-ASCII` on XNU, so that one is only asked to have a name.
     """
     var c_locale = string_to_char_ptr("C")
-    var loc = newlocale(LC_ALL, c_locale, null_ptr[Locale]())
+    var loc = newlocale(LC_ALL_MASK, c_locale, null_ptr[Locale]())
     assert_true(Int(loc) != 0, "a C locale object was made to ask")
 
     assert_equal(

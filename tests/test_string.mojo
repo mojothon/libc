@@ -54,7 +54,7 @@ from libc.string import (
     strxfrm_l,
 )
 from libc.constant import c_ptr
-from libc.locale import LC_ALL, Locale, freelocale, newlocale
+from libc.locale import LC_ALL, LC_ALL_MASK, Locale, freelocale, newlocale
 from libc.utils import (
     char_ptr_to_string,
     is_null,
@@ -558,7 +558,7 @@ def test_the_l_variants_ask_a_locale_object() raises:
     transformed string can be read back as the string it came from.
     """
     var c_locale = string_to_char_ptr("C")
-    var loc = newlocale(LC_ALL, c_locale, null_ptr[Locale]())
+    var loc = newlocale(LC_ALL_MASK, c_locale, null_ptr[Locale]())
     assert_true(Int(loc) != 0, "a C locale object was made to ask")
     c_locale.unsafe_free()
 
