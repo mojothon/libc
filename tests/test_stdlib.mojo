@@ -303,7 +303,8 @@ def test_the_untried_calls() raises:
 
     var half = string_to_char_ptr("2.5abc")
     assert_true(
-        (Float64(strtof(half, end)) - 2.5) < 1e-6, "strtof reads two and a half"
+        fabs(Float64(strtof(half, end)) - 2.5) < 1e-6,
+        "strtof reads two and a half",
     )
     assert_equal(
         char_ptr_to_string(end.unsafe_offset(0)[]),

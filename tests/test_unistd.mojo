@@ -512,6 +512,11 @@ def test_descriptors_and_offsets() raises:
     from; `ftruncate` takes a length and the file is that long after.
     """
     var path = string_to_char_ptr("/tmp/libc_unistd_me")
+    # Started from nothing, because the file is opened without `O_TRUNC`: a
+    # longer file left behind by an interrupted run is still that long after
+    # five bytes are written over the front of it, and the first `SEEK_END`
+    # below measures what was there rather than what this wrote.
+    _ = unlink(path)
     var fd = open_with_mode(path, O_CREAT | O_RDWR, 0o644)
     assert_true(fd >= 0, "the file is there to be written")
 

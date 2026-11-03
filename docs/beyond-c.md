@@ -386,6 +386,24 @@ handler on `SIGUSR1` and an alternate stack under it, so the process the suite
 runs in is not one that has never set a stack. The test therefore measures the
 restore against the first read rather than against zero.
 
+The symbol axis was swept too, and the sample had been flattering it as well:
+574 mutants, 376 caught, 4 that took the process down, 7 that hung, 9 that are
+the same call and 175 that passed. Two thirds of a pair going unnoticed is not
+a corner. The first module worked through was `math`, and its 31 came down to
+two shapes.
+
+The trigonometry was asked at nothing, where six of the functions answer
+nothing and two answer one, so most of the twelve could have been pointed at
+`fabs` without a test saying otherwise. They are asked at a half now.
+
+The rest was `answer - expected < epsilon`, which is the one-sided bound the
+`pow` test had above, written as a tolerance. Eight lines were like that, and
+one of them was in `test_stdlib` where no probe sample had ever landed:
+`(Float64(strtof(..)) - 2.5) < 1e-6`. `scripts/check-magnitudes.py` asks the
+whole suite the question — is the thing compared with the tolerance the
+absolute value of the difference, or the absolute value of one end of it — and
+found one more the day it was written.
+
 A fifth sample came back 17 caught, 2 that took the process down, 3 that are
 the same call and 2 that passed. `lockf(-1, 3, 0)` is the descriptor lesson
 again — `-1` is refused before the command is read — and is asked about a real

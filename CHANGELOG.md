@@ -895,6 +895,32 @@ All notable changes to this project are documented here. The format follows
   it, so the suite's own process has one already, and the restore is measured
   against the first read rather than against zero.
 
+- **The symbol axis swept: 574 mutants, 175 survivors, and `math` is now 0.**
+  376 caught, 4 crashes, 7 hangs, 9 that are the same call, 175 that passed —
+  the sample of twenty-four had been finding a fraction of what was there. The
+  probe also takes `--jobs`, which is what makes a sweep of the axis half an
+  hour rather than four.
+
+  `math` had 31 of them and two causes. The trigonometry was asked at nothing,
+  where six of those functions answer nothing and two answer one, so most of
+  the twelve could have been pointed at `fabs` and nothing would have said so;
+  they are asked at a half now, where the twelve answer twelve different
+  numbers. The rest was `answer - expected < epsilon`, which is true of every
+  answer below the expected one: `hypot(3, 4)` answered by `fmod` is 3, and
+  3 - 5 is under 1e-9. Every difference in `test_math` and `test_stdlib` is a
+  distance now, and `fmin`/`fmax` moved off one and two because `fmod` answers
+  its first argument when it is the smaller. Two of the thirty-one are the same
+  call (`llround`/`lround`, `ldexpf`/`scalbnf`) and are written down as such.
+
+- **`scripts/check-magnitudes.py` asks every tolerance which side it holds.**
+  A tolerance written as `answer - expected < epsilon` is a one-sided bound
+  with a `fabs` missing, and it passes for every answer below the expected one.
+  The script reads every `assert_true` in the suite and requires the thing
+  compared with the tolerance to be the absolute value of the whole difference
+  — `fabs(answer) - expected` fails it too, because the absolute value went on
+  the answer rather than on the distance. It found a ninth line the day it was
+  written, in `test_stdlib`, where no mutation sample had ever landed.
+
 - **The probe's two tables of reasons are checked, in the one direction that
   does not need a suite run.** A reason is read only when its mutant survives,
   so an entry that has outlived its pair excuses a mistake nothing makes any
