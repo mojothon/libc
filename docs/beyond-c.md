@@ -249,8 +249,19 @@ nobody wrote. `open` is bound as `openat` here because of it; `FIONREAD`
 through `ioctl` answers 0 on Apple silicon and leaves the integer it was asked
 about untouched, which is what a probe on a runner showed; and `fcntl`'s
 three-argument form is dependable only where that slot happens to hold what
-was meant, which is not a thing to promise. Everything the suite cannot ask,
-and why, is in [Modules](modules.md).
+was meant, which is not a thing to promise.
+
+There is a second way the wall shows up, in the binding rather than in the
+call. `fcntl` was bound twice, once with the two arguments C lets you give it
+and once with the three that the commands take, and each form compiled and
+worked — but a program that made both calls did not build: one symbol
+declared with two signatures, and the compiler stops at lowering with
+`existing function with conflicting signature`. So there is one form, the
+three-argument one, and the commands that read nothing are given 0. It is the
+same lesson as `isascii_l` a few paragraphs down, from the other side: what a
+name can be called with is one thing, and what can be built is the evidence.
+
+Everything the suite cannot ask, and why, is in [Modules](modules.md).
 
 ## What C does and this does not
 

@@ -1,8 +1,15 @@
 from std.memory.alloc import unsafe_alloc
-from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
-from libc.constant import EAGAIN, ENOENT, EPERM
+from libc.constant import (
+    AT_FDCWD,
+    EAGAIN,
+    ENOENT,
+    EPERM,
+    O_NONBLOCK,
+    O_RDONLY,
+    O_WRONLY,
+)
 from libc.errno import (
     check,
     check_ptr,
@@ -11,19 +18,29 @@ from libc.errno import (
     get_errno,
     set_errno,
 )
-from libc.fcntl import F_SETFL, O_NONBLOCK, fcntl
-from libc.sys.stat import Stat, stat
-from libc.unistd import getcwd, pipe, read
+from libc.fcntl import openat
+from libc.sys.stat import Stat, mkfifo, stat
+from libc.unistd import close, getcwd, read, unlink
 from libc.utils import string_to_char_ptr
 
 
 def test_errno() raises:
-    # The macOS runner hangs the test job in the middle of this
-    # suite, somewhere around the read of a non-blocking pipe;
-    # the test is kept on the side that runs and skipped on the
-    # side that does not, pending a closer look.
-    comptime if CompilationTarget.is_macos():
-        return
+    """The numbers a failure leaves behind, asked of failures that happen.
+
+    The last of them is the one worth the trouble: `EAGAIN` is 11 here and
+    35 on Darwin, so a test that hard-coded either would pass on one
+    platform and mean something else on the other.
+
+    Getting an `EAGAIN` used to be done by opening a pipe and setting
+    `O_NONBLOCK` on the read end with `fcntl`, and on macOS the read then
+    blocked forever -- the whole run hung -- which is why this test was
+    skipped on that side. The flag was the reason: `F_SETFL` takes it in
+    C's variadic argument, and that argument does not arrive on arm64, so
+    the descriptor was never made non-blocking. A fifo opened with
+    `O_NONBLOCK` says the same thing in an argument `openat` has been
+    given a name for, and both platforms read it as empty rather than
+    waiting for something to fall into it.
+    """
     set_errno(0)
     assert_equal(get_errno(), 0, "errno starts out clear")
 
@@ -39,30 +56,38 @@ def test_errno() raises:
     assert_equal(get_errno(), 0, "set_errno cleared it")
 
     # The errno whose number differs between the platforms that is easy to
-    # provoke: a non-blocking read of an empty pipe. Linux says 11 and Darwin
-    # says 35, so this is what keeps `EAGAIN` honest on both, and a value
-    # that is not the platform's own fails here rather than in a caller's
-    # error handling.
-    var fds = unsafe_alloc[Int32](2)
-    assert_equal(pipe(fds), 0, "pipe succeeded")
-    assert_equal(
-        fcntl(fds.unsafe_offset(0)[], F_SETFL, O_NONBLOCK),
-        0,
-        "the read end is non-blocking",
+    # provoke: a read of an empty fifo that was opened non-blocking. Linux
+    # says 11 and Darwin says 35, so this is what keeps `EAGAIN` honest on
+    # both, and a value that is not the platform's own fails here rather
+    # than in a caller's error handling.
+    var fifo = string_to_char_ptr("/tmp/libc-errno-fifo")
+    _ = unlink(fifo)  # a run that was cut short may have left it
+    assert_equal(mkfifo(fifo, 0o600), 0, "a fifo to read nothing out of")
+    var reading = openat(Int32(AT_FDCWD), fifo, O_RDONLY | O_NONBLOCK)
+    assert_true(
+        reading >= 0,
+        "opened non-blocking, which is a flag on the open and not one set"
+        + " afterwards, and",
     )
+    # A writer on the other end, because a fifo with nobody writing to it
+    # is at its end: that read answers 0 rather than waiting, which is EOF
+    # and not the failure this is about.
+    var writing = openat(Int32(AT_FDCWD), fifo, O_WRONLY)
+    assert_true(writing >= 0, "a writer on the other end of it")
     var one = unsafe_alloc[UInt8](1)
     set_errno(0)
     assert_equal(
-        read(fds.unsafe_offset(0)[], one, 1),
-        -1,
-        "reading an empty non-blocking pipe fails",
+        read(reading, one, 1), -1, "reading it with nothing in it fails"
     )
     assert_equal(
         Int(get_errno()), Int(EAGAIN), "and says EAGAIN, this platform's number"
     )
-    fds.unsafe_free()
-    one.unsafe_free()
+    assert_equal(close(writing), 0, "the fifo closes, and")
+    assert_equal(close(reading), 0, "both ends of it do, and")
+    assert_equal(unlink(fifo), 0, "it goes")
 
+    one.unsafe_free()
+    fifo.unsafe_free()
     missing.unsafe_free()
     buf.unsafe_free()
 

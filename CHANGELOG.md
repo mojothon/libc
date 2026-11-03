@@ -679,6 +679,18 @@ All notable changes to this project are documented here. The format follows
 
 ### Removed
 
+- **`fcntl`'s two-argument form, which could not be used with the
+  three-argument one.** Both were bound and each worked on its own — a program
+  that only asked `fcntl(fd, F_GETFD)` built and answered, and so did one that
+  only set a flag. A program that did both did not build at all: one symbol
+  with two signatures, and the compiler stops when it lowers the module with
+  `existing function with conflicting signature`, which is nowhere near the
+  call that was written second. The three-argument form is the one every
+  caller here already used, so it is the one that stayed, and a command that
+  reads nothing is given 0. The docstring says which commands lose their
+  argument on Apple silicon — the ones that set something — and why the ones
+  that only ask are unaffected.
+
 - **Two bindings that could be called on neither platform: `isascii_l` and
   `sched_getcpucount`.** Both sat on the cannot-ask list with the reason
   that glibc does not export them, which was true and was half the story:
@@ -706,6 +718,23 @@ All notable changes to this project are documented here. The format follows
   5 not to 995 and 3.
 
 ### Changed
+
+- **The errno test runs on macOS again, and the reason it did not was the
+  variadic argument.** `test_errno` was skipped on that side with a note about
+  the runner hanging somewhere around a read of a non-blocking pipe, and the
+  note was right and the diagnosis behind it was not: the read end was made
+  non-blocking with `fcntl(fd, F_SETFL, O_NONBLOCK)`, the flag never arrived
+  on arm64, and the read waited for a byte that was not coming. A fifo opened
+  with `O_NONBLOCK` in the `openat` call says the same thing with an argument
+  that has a name, and a read of it with nothing in it answers `EAGAIN` on
+  both platforms — 11 here and 35 on Darwin, which is the number the test
+  exists to pin down. What it cost was a job that timed out rather than an
+  assertion that failed.
+  - And `fcntl`'s two questions have a test of their own now: `F_GETFD` and
+    `F_GETFL` on a descriptor opened with `O_CLOEXEC` and `O_NONBLOCK`, then
+    the same two on a descriptor opened with neither, then `-1` with `EBADF`
+    on one that is not there. They are the commands that never look at the
+    third argument, which is what makes them worth asking on both platforms.
 
 - **Four tests now fail when the binding underneath them calls the wrong
   function**, which is what `scripts/mutation-probe.py` found by making that

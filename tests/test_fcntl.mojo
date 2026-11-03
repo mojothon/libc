@@ -1,10 +1,13 @@
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import AT_FDCWD, EEXIST
+from libc.constant import AT_FDCWD, EBADF, EEXIST
 from libc.errno import errno_message, get_errno, set_errno
 from libc.sys.stat import Stat, fchmod, fstat
 from libc.fcntl import (
+    FD_CLOEXEC,
+    F_GETFD,
+    F_GETFL,
     LOCK_EX,
     LOCK_NB,
     LOCK_UN,
@@ -12,12 +15,14 @@ from libc.fcntl import (
     O_CLOEXEC,
     O_CREAT,
     O_EXCL,
+    O_NONBLOCK,
     O_RDONLY,
     O_RDWR,
     O_TRUNC,
     O_WRONLY,
     flock,
     lockf,
+    fcntl,
     open,
     openat,
 )
@@ -47,7 +52,7 @@ def test_open_with_the_flags() raises:
     file.
     """
     var path = string_to_char_ptr("/tmp/libc-open-flags-test")
-    _ = unlink(path)  # 上一次跑可能留下了它
+    _ = unlink(path)  # a run that was cut short may have left it
 
     var fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0o644)
     assert_true(fd >= 0, "opened a new file for writing")
@@ -172,8 +177,65 @@ def test_flock_is_taken_on_the_open_file() raises:
     path.unsafe_free()
 
 
+def test_asking_a_descriptor_what_is_set_on_it() raises:
+    """`F_GETFD` and `F_GETFL`, the two commands that read a descriptor
+    rather than change it.
+
+    Both answer with a bit of their own, and a descriptor opened with a
+    flag is what says the question was put the right way round rather
+    than answered with a constant: `O_CLOEXEC` shows up in the `F_GETFD`
+    answer, `O_NONBLOCK` in the `F_GETFL` one, and a descriptor opened
+    with neither answers 0 to both.
+
+    These are also the two commands worth asking of this binding, because
+    they never look at the argument in the third place -- which is the
+    one that does not arrive on Apple silicon. The 0 written there is for
+    the sake of the signature, not for the kernel.
+
+    A descriptor that is not there is the other half: -1 with `EBADF`
+    left behind, rather than a 0 that would read like "nothing is set".
+    """
+    var dev = string_to_char_ptr("/dev/null")
+
+    var plain = open(dev, O_RDONLY)
+    assert_true(plain >= 0, "a descriptor with no flags asked for, and")
+    assert_equal(fcntl(plain, F_GETFD, 0), 0, "nothing is close-on-exec on it")
+    assert_equal(
+        fcntl(plain, F_GETFL, 0) & O_NONBLOCK, 0, "and nothing makes it wait"
+    )
+    assert_equal(
+        fcntl(plain, F_GETFL, 0) & O_WRONLY, 0, "and it is open for reading"
+    )
+    assert_equal(close(plain), 0, "closed")
+
+    var flagged = open(dev, O_RDONLY | O_CLOEXEC | O_NONBLOCK)
+    assert_true(flagged >= 0, "one opened with both of them, and")
+    assert_equal(
+        fcntl(flagged, F_GETFD, 0) & FD_CLOEXEC,
+        FD_CLOEXEC,
+        "close-on-exec is in the F_GETFD answer, and",
+    )
+    assert_equal(
+        fcntl(flagged, F_GETFL, 0) & O_NONBLOCK,
+        O_NONBLOCK,
+        "non-blocking is in the F_GETFL one",
+    )
+    assert_equal(close(flagged), 0, "closed")
+
+    set_errno(0)
+    assert_equal(
+        fcntl(-1, F_GETFD, 0),
+        -1,
+        "a descriptor that is not there is refused, and",
+    )
+    assert_equal(Int(get_errno()), EBADF, "says EBADF")
+
+    dev.unsafe_free()
+
+
 def main() raises:
     test_lockf_on_what_is_not_open()
+    test_asking_a_descriptor_what_is_set_on_it()
     test_open_with_the_flags()
     test_openat_opens_by_way_of_a_directory()
     test_flock_is_taken_on_the_open_file()

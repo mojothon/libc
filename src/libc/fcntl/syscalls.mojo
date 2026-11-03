@@ -90,45 +90,42 @@ def creat(path: c_ptr[UInt8], mode: UInt32) -> Int32:
     return external_call["creat", Int32, c_ptr[UInt8], UInt32](path, mode)
 
 
-def fcntl(fildes: Int32, cmd: Int32) -> Int32:
-    """Libc POSIX `fcntl` function.
-
-    Args:
-        fildes: A File Descriptor to close.
-        cmd: A command to execute.
-
-    Returns:
-        Whatever the command asked for, which is a different thing each
-        time: duplicating answers with the new descriptor, asking for the
-        flags answers with them, and the commands that only set something
-        answer 0 for having done it. Only -1 is failure, with `errno` set.
-    """
-    return external_call["fcntl", Int32, Int32, Int32](fildes, cmd)
-
-
 def fcntl(fildes: Int32, cmd: Int32, arg: Int32) -> Int32:
-    """Libc POSIX `fcntl` function, with the argument some commands take.
+    """Libc POSIX `fcntl` function, with the argument the call always takes.
 
-    C's is variadic and `external_call` wants each type written out, so it
-    is the int-argument form that is bound, which covers `F_SETFL`,
-    `F_GETFL` and the commands that set a descriptor. A command that wants
-    a pointer or a lock has nothing here to give it one.
+    C's is variadic and `external_call` wants each type written out, so what
+    is bound is the int-argument form: it covers `F_GETFD` and `F_GETFL`,
+    which are the two that ask a descriptor what is set on it, and the
+    commands that set something. A command that wants a pointer, a lock or
+    a descriptor to fill in has nothing here to give it one.
 
-    On Apple silicon this form is not dependable, and the reason is the
-    ABI rather than the command: arm64 hands a variadic callee its
-    anonymous arguments on the stack, `external_call` emits a call whose
-    arguments are all in registers, and what the callee reads is a stack
-    slot nobody wrote. A `F_SETFL` made that way returns 0 and the flag is
-    not there afterwards -- `F_GETFL` came back without it when this was
-    asked on a runner -- so the value arrives only when the slot happens
-    to hold it. The two-argument form asks and answers nothing of the
-    kind and is unaffected.
+    There is no two-argument form, and the reason is not C's. C does not
+    mind being called with two, and the commands that read nothing are
+    happy that way -- but a program that makes both calls cannot be built:
+    one symbol ends up declared twice with two different signatures, and
+    the compiler stops with `existing function with conflicting signature`
+    when the module is lowered rather than at the second call. So there is
+    one form, every command is given three arguments, and the ones that
+    read nothing are given 0. `F_GETFD` and `F_GETFL` are asked that way
+    in the tests.
+
+    On Apple silicon the value in that third argument does not arrive, and
+    the reason is the ABI rather than the command: arm64 hands a variadic
+    callee its anonymous arguments on the stack, `external_call` emits a
+    call whose arguments are all in registers, and what the callee reads is
+    a stack slot nobody wrote. A `F_SETFL` made that way returns 0 and the
+    flag is not there afterwards -- `F_GETFL` came back without it when
+    this was asked on a runner -- so a command that *sets* something
+    arrives only where the slot happens to hold what was meant. The
+    commands that only read are unaffected, because they never look at the
+    argument at all.
 
     Args:
-        fildes: A File Descriptor to close.
+        fildes: A File Descriptor to ask about, or to set something on.
         cmd: A command to execute.
         arg: What the command works on, a flags word for `F_SETFL`, and
-            ignored by the commands that take nothing.
+            ignored by the commands that take nothing -- 0 is the honest
+            thing to pass to those.
 
     Returns:
         Whatever the command asked for, which is a different thing each
