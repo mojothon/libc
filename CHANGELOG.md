@@ -620,6 +620,30 @@ All notable changes to this project are documented here. The format follows
   `beyond-c.md` says 974 symbols, 971 among the four libraries, 27.2%,
   and 187 members laid out in order; `modules.md` says `libc.netdb` has
   62.
+- **Netgroups: the last group of four in `<netdb.h>`.** `setnetgrent`,
+  `getnetgrent`, `endnetgrent` and `innetgr` are bound. The first points
+  a walk at one group, the second reads its `(host, user, domain)`
+  triples through three `char **` the caller owns, the third ends it,
+  and the fourth asks membership without walking at all.
+
+  `setnetgrent` is the one signature in this package the two platforms
+  spell differently in a way that cannot be papered over: glibc says it
+  answers with an `int` (0 where the group could not be opened) and
+  Darwin says it answers with nothing. It is bound as answering
+  nothing, which is right on Darwin and safe on glibc -- the `int` is
+  dropped rather than read on one platform and invented on the other --
+  and loses nothing, because a group that could not be opened is a
+  group whose walk answers nothing, which `getnetgrent` says anyway.
+
+  The test needs no `/etc/netgroup`, which is on very few machines. It
+  asks only things settled without the file: a group that is not there
+  holds no triple, so `innetgr` says 0 whether the file is absent,
+  empty, or full of other groups, and a walk over that group ends
+  before it starts. That is what pins down 0 as "no" rather than "could
+  not look".
+
+  `beyond-c.md` says 978 symbols, 975 among the four libraries, 27.3%;
+  `modules.md` says `libc.netdb` has 66.
 - **The list of bindings a test could ask and has not is empty.** Five of
   the last six debts were not blocked by anything, which is the point: four
   of the reasons said a privilege, a thread or a policy was needed, and

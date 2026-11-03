@@ -29,10 +29,12 @@ from libc.netdb import (
     addrinfo,
     endhostent,
     endnetent,
+    endnetgrent,
     endrpcent,
     getnetbyaddr,
     getnetbyname,
     getnetent,
+    getnetgrent,
     getrpcbyname,
     getrpcbynumber,
     getrpcent,
@@ -55,13 +57,15 @@ from libc.netdb import (
     herror,
     hostent,
     hstrerror,
+    innetgr,
     setnetent,
+    setnetgrent,
     setrpcent,
     sethostent,
     setprotoent,
     setservent,
 )
-from libc.utils import char_ptr_to_string, is_null, string_to_char_ptr
+from libc.utils import char_ptr_to_string, is_null, null_ptr, string_to_char_ptr
 
 
 def test_a_numeric_address_needs_no_name_service() raises:
@@ -637,6 +641,62 @@ def test_the_rpc_database_three_ways() raises:
     endrpcent()
 
 
+def test_the_netgroup_lookup_and_walk() raises:
+    """Netgroups are `(host, user, domain)` triples named together, and
+    `/etc/netgroup` is the one place they live -- on very few machines.
+
+    Nothing here needs the file, because everything asked is a question
+    whose answer is settled without it: a group that is not there holds
+    no triple, so `innetgr` says 0 whether the file is absent, empty, or
+    full of other groups, and a walk over that group ends before it
+    starts. What that pins down is that 0 from `innetgr` means "no" and
+    not "could not look" -- a distinction the C prototype does not make
+    and the only one worth testing here.
+
+    The three pointers `getnetgrent` writes through are checked as
+    pointers, not as strings: a group with a triple can leave any of the
+    three null, standing for "any" in that position.
+    """
+    var group = string_to_char_ptr("no-such-netgroup-at-all")
+    var host = string_to_char_ptr("somehost")
+    var user = string_to_char_ptr("someuser")
+    var domain = string_to_char_ptr("somedomain")
+    var anything = null_ptr[UInt8]()
+
+    assert_equal(
+        Int(innetgr(group, host, user, domain)),
+        0,
+        "a group that is not there holds no such triple",
+    )
+    assert_equal(
+        Int(innetgr(group, anything, anything, anything)),
+        0,
+        "and holds nothing at all",
+    )
+
+    setnetgrent(group)
+    var host_out = unsafe_alloc[c_ptr[UInt8]](1)
+    var user_out = unsafe_alloc[c_ptr[UInt8]](1)
+    var domain_out = unsafe_alloc[c_ptr[UInt8]](1)
+    host_out.unsafe_offset(0)[] = null_ptr[UInt8]()
+    user_out.unsafe_offset(0)[] = null_ptr[UInt8]()
+    domain_out.unsafe_offset(0)[] = null_ptr[UInt8]()
+    assert_equal(
+        Int(getnetgrent(host_out, user_out, domain_out)),
+        0,
+        "and a walk over it finds no triple",
+    )
+    endnetgrent()
+
+    host_out.unsafe_free()
+    user_out.unsafe_free()
+    domain_out.unsafe_free()
+    group.unsafe_free()
+    host.unsafe_free()
+    user.unsafe_free()
+    domain.unsafe_free()
+
+
 def main() raises:
     test_a_numeric_address_needs_no_name_service()
     test_a_name_that_is_not_a_number_is_refused()
@@ -647,6 +707,7 @@ def main() raises:
     test_the_service_database_by_name_and_by_port()
     test_the_network_database_three_ways()
     test_the_rpc_database_three_ways()
+    test_the_netgroup_lookup_and_walk()
     test_the_host_database_read_row_by_row()
     test_a_host_asked_for_by_name_answers_with_the_kind_it_was_asked_by()
     test_the_resolver_says_what_a_number_meant()

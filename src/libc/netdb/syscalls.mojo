@@ -1253,3 +1253,132 @@ def getrpcbynumber(number: Int32) -> c_ptr[rpcent]:
         is a 64-bit one, so the `int` is the only signature there is.
     """
     return external_call["getrpcbynumber", c_ptr[rpcent], Int32](number)
+
+
+def setnetgrent(group: c_ptr[UInt8]) -> None:
+    """Libc BSD `setnetgrent` function.
+
+    Description:
+        Points the netgroup walk at one group.
+
+    Args:
+        group: The netgroup to walk, as bytes with a nil on the end.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/setnetgrent.3.html).
+        Fn signature: `void setnetgrent(const char *netgroup)`.
+
+        glibc says this answers with an `int` -- 0 where the group could
+        not be opened -- and Darwin says it answers with nothing at all.
+        Each is right about its own C, and there is one signature here,
+        so the `int` is dropped rather than read on one platform and
+        invented on the other. Nothing is lost: a group that could not
+        be opened is a group whose walk answers nothing, which is what
+        `getnetgrent` says anyway.
+
+        The database is `/etc/netgroup`, which is on very few machines;
+        where it is not there, every group is one that cannot be opened.
+    """
+    external_call["setnetgrent", NoneType, c_ptr[UInt8]](group)
+
+
+def getnetgrent(
+    host: c_ptr[c_ptr[UInt8]],
+    user: c_ptr[c_ptr[UInt8]],
+    domain: c_ptr[c_ptr[UInt8]],
+) -> Int32:
+    """Libc BSD `getnetgrent` function.
+
+    Description:
+        Reads the next triple out of the group `setnetgrent` opened.
+
+    Args:
+        host: Where to put the host of the triple, which may be a null
+            in the group for "any host".
+        user: Where to put the user, on the same terms.
+        domain: Where to put the domain, on the same terms.
+
+    Returns:
+        1 where there was another triple, 0 at the end of the group.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/getnetgrent.3.html).
+        Fn signature: `int getnetgrent(char **host, char **user, char **domain)`.
+
+        All three arguments are written through rather than answered,
+        so each is the address of a `char *` the caller owns. A null is
+        stored on the end of a group as well as at it, so a caller that
+        reads them only after the 1 has to check each one.
+
+        The strings are libc's and the next call overwrites them; copy
+        anything that has to outlive the walk. The end of the group and
+        a group that could not be opened answer the same 0, which is the
+        same thing libc says about the other database walks.
+    """
+    return external_call[
+        "getnetgrent",
+        Int32,
+        c_ptr[c_ptr[UInt8]],
+        c_ptr[c_ptr[UInt8]],
+        c_ptr[c_ptr[UInt8]],
+    ](host, user, domain)
+
+
+def endnetgrent() -> None:
+    """Libc BSD `endnetgrent` function.
+
+    Description:
+        Ends the walk `setnetgrent` opened, releasing what it held.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/setnetgrent.3.html).
+        Fn signature: `void endnetgrent(void)`.
+
+        Unlike the database walks, this one is worth calling: the group
+        is held open in memory between calls rather than read a line at
+        a time off a file, and nothing else closes it.
+    """
+    external_call["endnetgrent", NoneType]()
+
+
+def innetgr(
+    group: c_ptr[UInt8],
+    host: c_ptr[UInt8],
+    user: c_ptr[UInt8],
+    domain: c_ptr[UInt8],
+) -> Int32:
+    """Libc BSD `innetgr` function.
+
+    Description:
+        Asks whether a triple is a member of a group, without walking it.
+
+    Args:
+        group: The group to ask about, as bytes with a nil on the end.
+        host: The host to look for, or a null pointer for any host.
+        user: The user to look for, or a null pointer for any user.
+        domain: The domain to look for, or a null pointer for any domain.
+
+    Returns:
+        1 where the triple is a member, 0 where it is not.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/innetgr.3.html).
+        Fn signature: `int innetgr(const char *netgroup, const char *host,
+        const char *user, const char *domain)`.
+
+        A null for any of the three says "any", which is not the same as
+        the empty string: asked about no host at all, the question is
+        whether the group has a triple whose host is anything.
+
+        This does not disturb a walk in progress and does not need
+        `setnetgrent` first, which is the whole of why it is here beside
+        the walk rather than instead of it.
+    """
+    return external_call[
+        "innetgr",
+        Int32,
+        c_ptr[UInt8],
+        c_ptr[UInt8],
+        c_ptr[UInt8],
+        c_ptr[UInt8],
+    ](group, host, user, domain)
