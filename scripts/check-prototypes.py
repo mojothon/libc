@@ -690,6 +690,9 @@ SPELLED_DIFFERENTLY = {
     "cdouble": "double _Complex",
     "cfloat": "float _Complex",
     "IfNameindex": "if_nameindex",
+    # glibc leaves the struct unnamed behind the typedef and Darwin tags it
+    # `dl_info`, so neither spelling gets there without being told.
+    "dl_info": "Dl_info",
 }
 
 

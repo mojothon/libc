@@ -7,6 +7,48 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **`libc.dlfcn` binds `dladdr`, which is `dlsym` the other way round.**
+  `dlsym` takes a name and answers an address; `dladdr` takes an address and
+  answers which object it is in, where that object was loaded, and the name
+  of the nearest symbol at or below it — together with the `struct Dl_info`
+  it fills, four pointers at 0, 8, 16 and 24 on both platforms. It is what
+  makes the numbers `backtrace` hands back worth putting in a report, and
+  it was the one call missing from a module that had the other four.
+
+  The test asks the pair about each other, which needs no number written
+  into it: a name goes into `dlsym`, the address comes out, the address
+  goes into `dladdr`, and the name comes back — `getpid`, exactly, with
+  `dli_saddr` the address that was handed over to the byte, since a symbol
+  start is the nearest symbol to itself. What is looked up is `getpid` and
+  not one of the string functions because those are ifuncs: `dlsym`
+  answers with the implementation the machine chose, which is a different
+  symbol from the one that was asked for and would be named differently, so
+  the round trip would fail for a reason that has nothing to do with this
+  binding.
+
+  The other half of the call is the address of a heap block, which is in
+  no object: zero, and `dlerror` with nothing to say about it.
+
+  The struct is spelled `dl_info` here, which is Darwin's tag: glibc leaves
+  it unnamed behind the typedef, so neither spelling reaches both, and
+  `check-layouts` is told the two names are the same thing so that it asks
+  C for the size instead of reporting it as a struct with nothing to
+  compare against.
+
+  **What is left, and why it is not here.** `fts` — the recursive
+  directory walk — was the last whole capability unbound, and it is not
+  bindable: Darwin's `FTSENT` carries three members glibc's does not
+  (`fts_ino`, `fts_dev`, `fts_nlink`), its `fts_level` is a `short` where
+  glibc's is unsigned, and all five entry points there are behind
+  `__DARWIN_INODE64`, which is the alias-macro case this package does not
+  bind. `openpty`/`forkpty`/`login_tty` are in `libutil`, which nothing
+  here links. Everything else still unbound is a macro, variadic, a
+  callback, root's, or one platform's alone; `gap` is no longer a list of
+  things to pick up.
+
+  `beyond-c.md` says 991 symbols, 988 among the four libraries, 27.7%, and
+  191 structs laid out in order; `modules.md` says `libc.dlfcn` has 9.
+
 - **`libc.execinfo` is new: the three calls that read the stack the
   process is standing on.** Not ISO C and not POSIX — a BSD extension glibc
   copied, which is why it exists twice over — but it is the thing a crash

@@ -5,7 +5,8 @@
 # ----------------------------------
 from std.ffi import external_call
 from std.sys import CompilationTarget
-from libc.constant import c_ptr
+from libc.constant import c_ptr, c_void
+from libc.utils import null_ptr
 
 
 # What `dlopen` is asked for. `RTLD_LAZY` and `RTLD_NOW` are the same
@@ -13,6 +14,85 @@ from libc.constant import c_ptr
 comptime RTLD_LAZY: Int32 = 1
 comptime RTLD_NOW: Int32 = 2
 comptime RTLD_GLOBAL: Int32 = 8 if CompilationTarget.is_macos() else 256
+
+
+struct dl_info:
+    """A C `struct Dl_info`: what `dladdr` found out about an address.
+
+    Four members — the object's name, where it was loaded, the nearest
+    symbol below the address, and that symbol's address — at 0, 8, 16 and
+    24 on glibc and on Darwin both, thirty-two bytes and eight-aligned
+    either way. Darwin calls the tag `dl_info` and glibc leaves the struct
+    unnamed behind the typedef, so the name here is the tag one platform
+    has and the typedef the other does.
+
+    All four are borrowed. The two strings belong to the loader and stay
+    valid for as long as the object is loaded, so nothing here copies
+    them or frees them.
+    """
+
+    var dli_fname: c_ptr[UInt8]
+    var dli_fbase: c_ptr[c_void]
+    var dli_sname: c_ptr[UInt8]
+    var dli_saddr: c_ptr[c_void]
+
+    def __init__(out self):
+        """Zeroes every member, which is the state of one nothing has filled."""
+        self.dli_fname = null_ptr[UInt8]()
+        self.dli_fbase = null_ptr[c_void]()
+        self.dli_sname = null_ptr[UInt8]()
+        self.dli_saddr = null_ptr[c_void]()
+
+
+def dladdr(address: c_ptr[c_void], info: c_ptr[dl_info]) -> Int32:
+    """C library <dlfcn.h> function `dladdr`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/dladdr.3.html
+
+    Prototype:
+        int dladdr(const void *address, Dl_info *info)
+
+    Description:
+        Says what is at an address: which loaded object it falls in, where
+        that object was loaded, and the nearest symbol at or below it. It
+        is `dlsym` the other way round — one takes a name and answers an
+        address, this takes an address and answers a name — and it is what
+        turns the bare number `backtrace` hands back into something worth
+        putting in a report.
+
+    Arguments:
+        address: The address to ask about.
+        info: Where to write the answer. Every member is filled in when
+            the call succeeds.
+
+    Returns:
+        Non-zero where the address is in a loaded object, and zero where
+        it is in none — a stack address, a heap address, a number that was
+        never an address at all. Zero is not an error and `dlerror` has
+        nothing to say about it; there is simply nothing there to name.
+
+    Notes:
+        The symbol it answers with is the nearest one at or below the
+        address, not the one the address is in: asking about the middle of
+        a function names the function, and `dli_saddr` is then some way
+        before the address that was asked about. The difference between
+        the two is the offset into the symbol, which is what a symboliser
+        outside libc adds to it.
+
+        Where the object has no symbol table, or nothing below the address
+        in it, `dli_sname` and `dli_saddr` come back null rather than the
+        call failing: the object it is in is still an answer.
+
+        Code that was built into memory by the interpreter has no object
+        and no symbol table, so an address in it is in no loaded object and
+        this answers zero — the same thing `backtrace_symbols` runs into
+        when it can only write the address down. Code that was built ahead
+        of time is in an object like any other.
+    """
+    return external_call["dladdr", Int32, c_ptr[c_void], c_ptr[dl_info]](
+        address, info
+    )
 
 
 def dlclose(handle: c_ptr[UInt8]) -> Int32:

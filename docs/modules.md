@@ -52,7 +52,7 @@ the bottom.
 | `libc.logging` | `<syslog.h>` | 6 |
 | `libc.fcntl` | `<fcntl.h>` | 50 |
 | `libc.getopt` | `<getopt.h>` taking a command line apart | 12 |
-| `libc.dlfcn` | `<dlfcn.h>` | 7 |
+| `libc.dlfcn` | `<dlfcn.h>` | 9 |
 | `libc.wchar` | `<wchar.h>` | 85 |
 | `libc.wordexp` | `<wordexp.h>` shell-style word splitting | 6 |
 | `libc.wctype` | `<wctype.h>` | 5 |
