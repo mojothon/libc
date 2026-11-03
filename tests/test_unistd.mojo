@@ -425,6 +425,17 @@ def test_process_groups() raises:
     assert_true(getpgid(0) > 0, "this process is in a process group")
     assert_equal(getpgid(0), getpgrp(), "the group `getpgrp` names, also")
     assert_true(getsid(0) > 0, "and this process is in a session")
+    # The group this process is in is not its own -- not yet -- and naming it
+    # is a move to where it already is, which answers 0. Both numbers are then
+    # not 0, which is what lets the two be told apart: handed over swapped, the
+    # call names that group as the process to move, and the only process this
+    # one may move is itself.
+    var me = getpid()
+    var group = getpgid(0)
+    assert_equal(
+        setpgid(me, group), 0, "moving into the group it is already in"
+    )
+
     var moved = setpgid(0, 0)
     assert_true(
         moved == 0 or moved == -1,

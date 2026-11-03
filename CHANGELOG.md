@@ -850,6 +850,31 @@ All notable changes to this project are documented here. The format follows
   nothing to convert answers 0 for any input — which is written into
   `SAME_ORDER` rather than asserted differently.
 
+- **The order axis swept rather than sampled.** All 191 swaps in one run: 146
+  caught, 11 crashed, 13 that are the same call and 20 that passed. Five
+  samples of twenty-four had found eleven of those twenty; the other nine were
+  in candidates no sample happened to draw, which is the measure of what
+  sampling was leaving on the table.
+
+  Five had an assertion to write. `powf(2, 10) - 1024 < 1e-6` is true of every
+  answer below 1024 and therefore of `powf(10, 2)`, and `nextafterf` was
+  bounded on each side, which a step from either end satisfies; both are asked
+  for an absolute distance now. `tcflush` is the descriptor lesson again.
+  `pthread_sigmask` was asked twice with the same empty mask in both positions,
+  so it never mattered which came first; it blocks `SIGWINCH` and watches the
+  mask change now, and puts it back. `setpgid(0, 0)` names "this process" and
+  "its own group", both zero; it names the group it is in — a move to where it
+  already is — so the swap names that group as the process and is refused.
+
+  Nine more went into `SAME_ORDER` with their reasons: `fmin`, `hypotf` and
+  `fmaf` are float twins of calls already there, `pthread_equal` is a question
+  with no order in it, and the rest are an id this process cannot change
+  (`setreuid`, `setregid`, `lchown`, `adjtime`) or a call that fails on its
+  first argument before reading the second (`getnetgrent`, `innetgr`,
+  `aligned_alloc`, `mbsnrtowcs`, `wcsnrtombs`, `sched_setscheduler`). One is
+  left standing: `sigaltstack`, which needs a `stack_t` the package does not
+  have yet.
+
 - **`scripts/check-comparisons.py` asks every comparison which way it leans.**
   Seven of the survivors across four samples were one shape: an assertion that
   is true whichever way round the two arguments went — `!= 0` on two strings

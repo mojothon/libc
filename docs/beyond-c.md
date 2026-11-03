@@ -323,6 +323,34 @@ neither argument is looked at past the descriptor, so both positions answered
 read, so `-1` answers `EBADF` where the swap asks for descriptor `TCOOFF` — 0
 on glibc, 1 on Darwin — and gets `ENOTTY` or `EINVAL` back instead.
 
+After five samples the axis was swept instead of sampled: all 191 swaps, in
+one run. That came back 146 caught, 11 that took the process down, 13 that are
+the same call and 20 that passed — and the twenty are worth reading as one
+number, because five samples of twenty-four had found eleven between them. The
+remaining nine were in candidates no sample had happened to draw.
+
+Five of the twenty had an assertion to write, and two of those are the same
+mistake as the ulp — `powf` was asserted as `powf(2, 10) - 1024 < 1e-6`, which
+is true of every answer below 1024 and so is true of `powf(10, 2)`, and
+`nextafterf` was bounded on each side, which a step from either end satisfies.
+`tcflush` is the descriptor lesson again. `pthread_sigmask` was asked twice
+with the same empty mask in both positions, so it never mattered which came
+first; it blocks `SIGWINCH` and watches the mask change now, and puts it back.
+`setpgid` was asked with two zeroes, which are the two arguments that mean
+"this process" and "its own group"; it names the group it is in now, which is a
+move to where it already is.
+
+Nine were explained: `fmin`, `hypotf` and `fmaf` are the float twins of calls
+already in the table, `pthread_equal` is a question with no order to it, and
+the rest are the two shapes this suite keeps meeting — an id this process does
+not have the privilege to change (`setreuid`, `setregid`, `lchown`,
+`adjtime`), and a call that fails at its first argument before reading the
+second (`getnetgrent`, `innetgr`, `aligned_alloc`, `mbsnrtowcs`,
+`wcsnrtombs`, `sched_setscheduler`).
+
+One is left, and it is the `sigaction` story again: `sigaltstack` is asked
+with two NULLs because this package has no `stack_t` to give it.
+
 A fifth sample came back 17 caught, 2 that took the process down, 3 that are
 the same call and 2 that passed. `lockf(-1, 3, 0)` is the descriptor lesson
 again — `-1` is refused before the command is read — and is asked about a real

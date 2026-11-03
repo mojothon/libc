@@ -21,6 +21,7 @@ from libc.fcntl import (
     O_RDWR,
     O_TRUNC,
     O_WRONLY,
+    creat,
     flock,
     lockf,
     fcntl,
@@ -51,7 +52,10 @@ def test_lockf_on_what_is_not_open() raises:
 
     var path = string_to_char_ptr("/tmp/libc-lockf-test")
     _ = unlink(path)
-    var first = openat(Int32(AT_FDCWD), path, O_CREAT | O_RDWR, 0o600)
+    # `creat` rather than `openat` with `O_CREAT`: the mode is a variadic
+    # argument, and arm64 Darwin drops it, which leaves a file nothing can be
+    # opened on a second time.
+    var first = creat(path, 0o600)
     var second = openat(Int32(AT_FDCWD), path, O_RDWR)
     assert_true(first >= 0 and second >= 0, "a file was made to ask about")
     assert_equal(lockf(second, F_TEST, 0), 0, "a range nobody holds is free")

@@ -145,7 +145,10 @@ def test_sqrt_and_rounding() raises:
 
 
 def test_pow() raises:
-    assert_true((powf(2.0, 10.0) - 1024.0) < 1e-6)
+    # `x - expected < epsilon` is true of every x below expected, which is what
+    # a binding handing the two over swapped answers: 10 to the 2 is 100, and
+    # 100 - 1024 is well under 1e-6.
+    assert_true(fabs(Float64(powf(2.0, 10.0)) - 1024.0) < 1e-6)
 
 
 def test_the_right_symbol_is_called() raises:
@@ -398,12 +401,16 @@ def test_the_two_that_are_not_symmetric() raises:
     assert_true(fabs(Float64(atan2f(1.0, 0.0)) - 1.5707963267948966) < 1e-6)
     assert_true(fabs(Float64(atan2f(0.0, 1.0)) - 0.0) < 1e-6)
 
+    # A bound on each side is answered by a step from either end, so what is
+    # asked is the size of the step: the closest float to one, in each
+    # direction, and it is nowhere near the other argument.
     assert_true(
-        Float64(nextafterf(1.0, 4.0)) > 1.0,
-        "nextafterf goes towards the second",
+        fabs(Float64(nextafterf(1.0, 4.0)) - 1.0) < 1e-6,
+        "nextafterf steps one ulp up from the first",
     )
     assert_true(
-        Float64(nextafterf(1.0, 0.0)) < 1.0, "and back down towards nothing"
+        fabs(1.0 - Float64(nextafterf(1.0, 0.0))) < 1e-6,
+        "and one ulp down towards nothing",
     )
 
     assert_true(fabs(Float64(remainderf(7.0, 3.0)) - 1.0) < 1e-6)

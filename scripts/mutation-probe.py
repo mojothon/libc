@@ -104,6 +104,70 @@ SAME_ANSWER = {
 # two arguments are interchangeable, or where the order is nothing the API
 # hands back.
 SAME_ORDER = {
+    "fmin:x <-> y": (
+        "the smaller of two numbers does not know which was written first, for "
+        "the reason `fmax` does not"
+    ),
+    "hypotf:x <-> y": (
+        "the float twin of `hypot`, and a sum of squares does not remember "
+        "which addend came first"
+    ),
+    "fmaf:x <-> y": (
+        "the float twin of `fma`: the first two are multiplied, and a product "
+        "does not remember its order"
+    ),
+    "pthread_equal:t1 <-> t2": (
+        "whether two handles name the same thread is the same question with "
+        "them either way round, and the answer is zero or not"
+    ),
+    "setreuid:ruid <-> euid": (
+        "this process has no privilege, so the only ids it may ask for are the "
+        "pair it already has -- and they are the same number, so the swap is "
+        "the same pair. The pair that differs is the one a privileged process "
+        "would be refused"
+    ),
+    "setregid:rgid <-> egid": (
+        "the group ids this process may ask for are its own, and the two are "
+        "the same number, for the reason `setreuid`'s are"
+    ),
+    "lchown:owner <-> group": (
+        "every `lchown` a suite without a privilege can ask about is refused "
+        "before the two ids are read, for the reason `chown`'s is"
+    ),
+    "sched_setscheduler:pid <-> policy": (
+        "the only policy this suite may ask for is the one it is already on, "
+        "`SCHED_OTHER`, which is 0 -- and 0 is also the pid that means this "
+        "process, so the swap is the same call"
+    ),
+    "adjtime:delta <-> olddelta": (
+        "the adjustment asked for is a zero timeval, because moving the clock "
+        "needs a privilege this suite does not have, and both arguments are "
+        "then the same two zeroed structs"
+    ),
+    "getnetgrent:host <-> user": (
+        "the walk finds no triple, so nothing is written to any of the three "
+        "outputs and the three are interchangeable"
+    ),
+    "innetgr:group <-> host": (
+        "there is no netgroup on this machine, so every triple answers 0, "
+        "whichever way round it is asked"
+    ),
+    "aligned_alloc:alignment <-> size": (
+        "every pair POSIX allows has the second a multiple of the first and "
+        "both powers of two, so the swap is allowed as well -- and memory on "
+        "128 bytes is on 64 as well, which is all the test looks at. Asking "
+        "for a size that is not a multiple is asking for something the "
+        "standard leaves undefined"
+    ),
+    "mbsnrtowcs:nmc <-> length": (
+        "both arguments are limits -- bytes to read and wide characters of "
+        "room -- and every character here is one byte wide, so both limits are "
+        "reached at the same place and the answer is the same either way round"
+    ),
+    "wcsnrtombs:nwc <-> length": (
+        "the same two limits as `mbsnrtowcs`, in the other direction, and one "
+        "byte per character here as well"
+    ),
     "fmax:x <-> y": (
         "the larger of two numbers does not know which was written first: "
         "`fmax` is commutative, including for a NaN, where both orders answer "

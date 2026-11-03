@@ -187,6 +187,17 @@ def test_the_tc_calls_all_refuse_the_same_file() raises:
     assert_equal(tcflush(fd, TCIFLUSH), -1, "tcflush refuses")
     _assert_it_is_not_a_terminal("with that said")
 
+    # For the reason `tcflow` above is given one: on a descriptor that is not a
+    # terminal neither argument is read past the descriptor, and a descriptor
+    # that is not one is refused before the queue is looked at.
+    set_errno(0)
+    assert_equal(
+        tcflush(-1, TCIFLUSH),
+        -1,
+        "tcflush refuses a descriptor that is not one",
+    )
+    assert_equal(get_errno(), EBADF, "and says that was the thing wrong")
+
     set_errno(0)
     # The duration is never looked at on a descriptor that is not a terminal,
     # so what is passed there is free to be a number that could not be one. A

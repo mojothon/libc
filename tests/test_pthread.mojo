@@ -63,7 +63,14 @@ from libc.pthread import (
     pthread_t,
     pthread_testcancel,
 )
-from libc.signal import SIG_BLOCK, sigemptyset
+from libc.signal import (
+    SIGWINCH,
+    SIG_BLOCK,
+    SIG_UNBLOCK,
+    sigaddset,
+    sigemptyset,
+    sigismember,
+)
 from libc.sched import SCHED_OTHER, sched_param
 from libc.utils import is_null, null_ptr
 
@@ -483,6 +490,36 @@ def test_a_thread_can_be_asked_for_and_keeps_its_own_mask() raises:
         also_before.unsafe_load(0),
         "the same mask it handed back the first time",
     )
+
+    # And then asked for something that changes the mask, which is what tells
+    # the two arguments apart: the set goes in first and the mask it replaces
+    # comes back second, and the assertions above hold with them either way
+    # round because both are the same empty mask. `SIGWINCH` is the signal
+    # borrowed -- nothing sends one -- and blocking it is undone below.
+    var winch = empty_set()
+    assert_equal(sigaddset(winch, SIGWINCH), 0, "a set with one signal in it")
+    assert_equal(
+        pthread_sigmask(SIG_BLOCK, winch, before),
+        0,
+        "the one signal is blocked",
+    )
+    assert_equal(
+        sigismember(before, SIGWINCH), 0, "the mask handed back predates that"
+    )
+    assert_equal(
+        pthread_sigmask(SIG_BLOCK, null_ptr[UInt8](), before),
+        0,
+        "and asked with no set, it only reports",
+    )
+    assert_equal(
+        sigismember(before, SIGWINCH), 1, "which is the block in force"
+    )
+    assert_equal(
+        pthread_sigmask(SIG_UNBLOCK, winch, null_ptr[UInt8]()),
+        0,
+        "and put back",
+    )
+    winch.unsafe_free()
 
     empty.unsafe_free()
     before.unsafe_free()
