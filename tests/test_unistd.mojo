@@ -17,7 +17,7 @@ from libc.constant import (
     c_void,
 )
 from libc.signal import SIGALRM, SIGKILL, kill
-from libc.stdlib import exit, grantpt, posix_openpt, ptsname, unlockpt
+from libc.stdlib import _Exit, exit, grantpt, posix_openpt, ptsname, unlockpt
 from libc.sys.stat import Stat, fchmod, fstat, stat
 from libc.sys.utsname import Utsname, uname
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, WIFSIGNALED, WTERMSIG, waitpid
@@ -823,6 +823,58 @@ def test_the_exec_family_refuses_what_is_not_there() raises:
     name.unsafe_free()
 
 
+def test_execve_hands_over_the_arguments_and_the_environment() raises:
+    """A program that runs is the only way to see which list went where.
+
+    `execve` is only ever watched failing above, and a program that is not
+    there fails the same way whichever list is in which slot. So this one
+    runs: `/bin/echo` prints the arguments it is given, and the environment
+    it is handed has a single entry that is not an argument. Swapping the two
+    makes the output that entry instead, or nothing at all.
+    """
+    var fds = unsafe_alloc[Int32](2)
+    assert_equal(pipe(fds), 0, "a pipe to read the program through")
+
+    var child = fork()
+    assert_true(child >= 0, "a child to become the program")
+    if child == 0:
+        _ = dup2(fds.unsafe_load(1), 1)
+        _ = close(fds.unsafe_load(0))
+        _ = close(fds.unsafe_load(1))
+
+        var program = string_to_char_ptr("/bin/echo")
+        var argv = unsafe_alloc[c_ptr[UInt8]](3)
+        argv.unsafe_offset(0)[] = string_to_char_ptr("echo")
+        argv.unsafe_offset(1)[] = string_to_char_ptr("from-the-arguments")
+        argv.unsafe_offset(2)[] = null_ptr[UInt8]()
+        var envp = unsafe_alloc[c_ptr[UInt8]](2)
+        envp.unsafe_offset(0)[] = string_to_char_ptr(
+            "MARK=from-the-environment"
+        )
+        envp.unsafe_offset(1)[] = null_ptr[UInt8]()
+        _ = execve(program, argv, envp)
+        _ = _Exit(127)
+    _ = close(fds.unsafe_load(1))
+
+    var status = unsafe_alloc[Int32](1)
+    assert_equal(waitpid(child, status, 0), child, "the child is waited for")
+    var said = unsafe_alloc[UInt8](64)
+    for i in range(64):
+        said.unsafe_offset(i)[] = 0
+    var got = read(fds.unsafe_load(0), said, 63)
+    _ = close(fds.unsafe_load(0))
+    assert_true(got > 0, "the program said something")
+    assert_equal(
+        char_ptr_to_string(said),
+        "from-the-arguments\n",
+        "and it is the argument list, not the environment",
+    )
+
+    said.unsafe_free()
+    status.unsafe_free()
+    fds.unsafe_free()
+
+
 def test_setuid_and_setgid_asked_for_what_we_already_are() raises:
     """`setuid` and `setgid` change who the process is, which an
     ordinary process may only do to someone it already is. Asked
@@ -1402,6 +1454,7 @@ def main() raises:
     test_access_dup_and_link()
     test_syscall_by_number()
     test_the_exec_family_refuses_what_is_not_there()
+    test_execve_hands_over_the_arguments_and_the_environment()
     test_setuid_and_setgid_asked_for_what_we_already_are()
     test_setreuid_and_setregid_name_both_ids_at_once()
     test_pread_and_pwrite_at_an_offset()

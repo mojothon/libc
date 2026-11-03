@@ -160,6 +160,17 @@ def test_the_right_symbol_is_called() raises:
         atan2(1.0, 1.0) > 0.785398 and atan2(1.0, 1.0) < 0.785399,
         "atan2(1, 1) is a quarter of pi",
     )
+    # On the diagonal the two arguments are the same number and the answer is
+    # the same either way round. Off it, the sign of the answer is the sign of
+    # the first argument: three quarters of pi, and the same below zero.
+    assert_true(
+        atan2(1.0, -1.0) > 2.35619 and atan2(1.0, -1.0) < 2.35620,
+        "atan2(1, -1) is three quarters of pi",
+    )
+    assert_true(
+        atan2(-1.0, 1.0) > -0.785399 and atan2(-1.0, 1.0) < -0.785398,
+        "and atan2(-1, 1) is a quarter of pi the other side of zero",
+    )
 
 
 def test_remquo() raises:

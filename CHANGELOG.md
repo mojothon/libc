@@ -7,6 +7,20 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **`scripts/mutation-probe.py` asks a second question: two arguments handed
+  over the other way round.** Pointing a binding at a sibling's symbol tests
+  which function ran; it says nothing about the order the arguments went in,
+  and `chown(path, owner, group)` against `chown(path, group, owner)` is the
+  same string, the same return type and three arguments of two types — the
+  compiler has nothing to say, and a test only has something to say if the two
+  numbers in those positions differ. `--kind order` swaps two neighbours of
+  the same declared type and runs the tests that call it.
+
+  The first sample of twenty-four came back 13 caught, 2 that took the process
+  down, and 9 that passed: three times the rate of the symbol axis on a sample
+  of the same size. That is the measure of how much more of this suite proves
+  which call ran than proves how it was asked.
+
 - **`scripts/check-duplicates.py` asks for one signature per symbol, not
   just one file.** The two questions are the same question one step apart. Two
   files binding one symbol disagree in a way a reader of either cannot see;
@@ -736,6 +750,27 @@ All notable changes to this project are documented here. The format follows
   5 not to 995 and 3.
 
 ### Changed
+
+- **Five tests now fail when a binding hands its two arguments over in the
+  other order**, which is what `--kind order` found by making that happen.
+  `socketpair(AF_UNIX, SOCK_STREAM, ...)` was handed 1 and 1, which are the
+  two constants, so both orders were the same call; a datagram pair is type 2
+  and `getsockopt` says which kind came back. `strncasecmp` was asserted equal
+  to a string differing only in case, and equal is the answer a swap gives
+  too; it is asserted to sort two different strings now. `atan2(1, 1)` is on
+  the diagonal, where the answer does not depend on which argument is which,
+  and three quarters of pi is off it. `iconv_open("UTF-8", "UTF-8")` is one
+  name written twice: UTF-8 to UTF-16LE turns two bytes into four and the
+  other way round turns the same two into three. `execve` was only ever
+  watched failing, and a program that is not there fails the same way
+  whichever list is in which slot, so the test runs `/bin/echo` and reads what
+  it printed.
+
+  Four more were explained rather than fixed, and the reason is in the
+  script's `SAME_ORDER`: `fmax` and `hypot` are commutative, `openlog`'s two
+  integers are read by a daemon whose file this process never reads,
+  `catgets` has only a catalog that did not open, and every `chown` a suite
+  without a privilege can ask about fails before the two ids are looked at.
 
 - **Three tests now fail when the binding underneath them calls the wrong
   function, and the mutation probe has a verdict for a test that waits instead

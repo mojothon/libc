@@ -140,6 +140,14 @@ def test_compare() raises:
         "strncmp keeps the case, so a lowercase letter sorts after its capital",
     )
 
+    # The two comparisons that ignore case are asserted equal above, which is
+    # the answer a swap of their two arguments also gives. Two strings that
+    # differ ask which way round they were handed over.
+    assert_true(
+        Int(strcasecmp(abc, abd)) < 0, "abc sorts before abd ignoring case"
+    )
+    assert_true(Int(strncasecmp(abc, abd, 3)) < 0, "and the third byte decides")
+
     assert_equal(Int(strcasecmp(abc, upper)), 0)
     assert_equal(Int(strncasecmp(abc, upper, 3)), 0)
 

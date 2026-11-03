@@ -30,6 +30,13 @@ the other's symbol and the tests that call it are run. Five answers:
             two functions agree on every input the test uses.
   error     the mutant did not build. Not evidence either way.
 
+`--kind order` asks a different question with the same method: instead of
+pointing a binding at a sibling symbol, it hands two arguments of the same type
+to C in the other order. `chown(path, owner, group)` and `chown(path, group,
+owner)` are the same string, the same return type and the same three argument
+types, so nothing but a test with two different numbers in those positions can
+tell them apart -- and a test that passes `getuid()` for both has not.
+
 `--limit` samples, because each mutant is a full rebuild of the package and a
 suite run. The sample is spread over the modules rather than taken from the
 front, and it is the same sample every run so two runs can be compared.
@@ -43,6 +50,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -92,6 +100,39 @@ SAME_ANSWER = {
 }
 
 
+# The same table for the second axis: a survivor that is here is one where the
+# two arguments are interchangeable, or where the order is nothing the API
+# hands back.
+SAME_ORDER = {
+    "fmax:x <-> y": (
+        "the larger of two numbers does not know which was written first: "
+        "`fmax` is commutative, including for a NaN, where both orders answer "
+        "the one number"
+    ),
+    "hypot:x <-> y": (
+        "the square root of the sum of two squares does not know which addend "
+        "came first, and the host order is one addition on top of the other"
+    ),
+    "openlog:logopt <-> facility": (
+        "both are small integers that `syslog` reads, and what it does with "
+        "them is write a line to a daemon this process never reads back: the "
+        "wrong pair is a line filed under a strange facility, not an answer"
+    ),
+    "catgets:set_id <-> msg_id": (
+        "the only catalog this suite can open is one that did not open, and a "
+        "catalog that never opened hands back the string it was given whatever "
+        "set and message it is asked for; one with rows in it is a binary "
+        "`.cat` file, which is a thing to ship rather than a path to point at"
+    ),
+    "chown:owner <-> group": (
+        "every `chown` this suite can ask about is one that fails: the paths do "
+        "not exist, and giving a file to somebody else is refused before the "
+        "two ids are looked at -- so the ids can be the other way round and "
+        "the answer is the same -1 with the same errno"
+    ),
+}
+
+
 def load(name: str):
     path = ROOT / "scripts" / f"{name}.py"
     spec = importlib.util.spec_from_file_location(name, path)
@@ -127,6 +168,144 @@ def callers(name: str) -> list[Path]:
     return hits
 
 
+@dataclass(frozen=True)
+class Mutant:
+    """One deliberate mistake, and what it is called in the report."""
+
+    path: str
+    name: str
+    kind: str
+    what: str
+    symbol: str = ""
+    into: str = ""
+    first: int = -1
+    second: int = -1
+
+
+# The words a parameter can be prefixed with. They say what a caller may do
+# with it, not what type it is, so they come off before the two are compared.
+MARKERS = ("mut ", "out ", "read ", "var ", "owned ", "borrowed ", "inout ", "deinit ")
+
+
+def split_arguments(inside: str) -> list[str]:
+    """The pieces of a comma-separated list, by counting brackets."""
+    parts, depth, current = [], 0, ""
+    for char in inside:
+        if char in "[(":
+            depth += 1
+        elif char in "])":
+            depth -= 1
+        if char == "," and depth == 0:
+            parts.append(current)
+            current = ""
+            continue
+        current += char
+    parts.append(current)
+    return parts
+
+
+def parameters(text: str, name: str) -> list[tuple[str, str]]:
+    """The parameters of one `def name(...)`, as (name, type).
+
+    Types are compared as they are written rather than resolved. Two arguments
+    are worth exchanging when the compiler sees one type on both, and the text
+    of the type is the nearest thing to that which does not need a compiler.
+    """
+    start = re.search(rf"(?m)^def {re.escape(name)}\(", text)
+    if start is None:
+        return []
+    close, depth = start.end() - 1, 0
+    while close < len(text):
+        if text[close] == "(":
+            depth += 1
+        elif text[close] == ")":
+            depth -= 1
+            if depth == 0:
+                break
+        close += 1
+
+    found = []
+    for part in split_arguments(text[start.end() : close]):
+        part = part.strip()
+        if not part or part.startswith("/") or part.startswith("*"):
+            continue
+        for marker in MARKERS:
+            if part.startswith(marker):
+                part = part[len(marker) :].strip()
+        given, _, kind = part.partition(":")
+        kind = kind.split("=")[0].strip()
+        if given and kind:
+            found.append((given.strip(), kind))
+    return found
+
+
+def reverse_arguments(
+    body: str, names: list[str], first: int, second: int
+) -> str | None:
+    """The same body with two of the call's arguments exchanged.
+
+    Only a call that is handed the parameters themselves, in order, is worth
+    doing: anything else is passing an expression, and two expressions of the
+    same type are not two arguments a reader could have misplaced.
+    """
+    call = re.search(r"external_call\[", body)
+    if call is None:
+        return None
+    close, depth = call.end() - 1, 0
+    while close < len(body):
+        if body[close] == "[":
+            depth += 1
+        elif body[close] == "]":
+            depth -= 1
+            if depth == 0:
+                break
+        close += 1
+    opened = re.match(r"\s*\(", body[close + 1 :])
+    if opened is None:
+        return None
+    open_at = close + 1 + opened.end() - 1
+    end, depth = open_at, 0
+    while end < len(body):
+        if body[end] == "(":
+            depth += 1
+        elif body[end] == ")":
+            depth -= 1
+            if depth == 0:
+                break
+        end += 1
+
+    given = [piece.strip() for piece in split_arguments(body[open_at + 1 : end])]
+    if given != names or len(given) <= second:
+        return None
+    given[first], given[second] = given[second], given[first]
+    return body[: open_at + 1] + ", ".join(given) + body[end:]
+
+
+def apply(target: Path, mutant: Mutant) -> bool:
+    """Make the mistake in `target`, and say whether it landed."""
+    text = target.read_text()
+    span = def_block(text, mutant.name)
+    if span is None:
+        return False
+    start, end = span
+    body = text[start:end]
+    if mutant.kind == "symbol":
+        changed = re.sub(
+            r'(external_call\[\s*)"' + re.escape(mutant.symbol) + '"',
+            r'\1"' + mutant.into + '"',
+            body,
+        )
+    else:
+        names = [given for given, _kind in parameters(text, mutant.name)]
+        changed = reverse_arguments(body, names, mutant.first, mutant.second)
+        if changed is None:
+            return False
+    if changed == body:
+        return False
+    target.write_text(text[:start] + changed + text[end:])
+    return True
+
+
 def def_block(text: str, name: str) -> tuple[int, int] | None:
     """Where one `def name(...)` runs, from the keyword to the next def."""
     start = re.search(rf"(?m)^def {re.escape(name)}\(", text)
@@ -143,22 +322,6 @@ def def_block(text: str, name: str) -> tuple[int, int] | None:
         close += 1
     nxt = re.search(r"(?m)^def ", text[close:])
     return start.start(), close + nxt.start() if nxt else len(text)
-
-
-def mutate(path: Path, name: str, symbol: str, into: str) -> bool:
-    text = path.read_text()
-    span = def_block(text, name)
-    if span is None:
-        return False
-    start, end = span
-    body = text[start:end]
-    swapped = re.sub(
-        r'(external_call\[\s*)"' + re.escape(symbol) + '"', r'\1"' + into + '"', body
-    )
-    if swapped == body:
-        return False
-    path.write_text(text[:start] + swapped + text[end:])
-    return True
 
 
 def classify(result: subprocess.CompletedProcess) -> str:
@@ -180,6 +343,12 @@ def main() -> int:
         "--only", default="", help="comma separated binding names to keep"
     )
     parser.add_argument(
+        "--kind",
+        default="symbol",
+        choices=("symbol", "order"),
+        help="wrong function, or two arguments the other way round",
+    )
+    parser.add_argument(
         "--strict", action="store_true", help="fail the run if a mutant survives"
     )
     args = parser.parse_args()
@@ -192,34 +361,65 @@ def main() -> int:
         given = Path(path)
         return given if given.is_absolute() else ROOT / given
 
-    groups: dict[tuple[str, str, tuple[str, ...]], list[tuple[str, str]]] = {}
-    for path, name, symbol, _nargs, ret, argtypes in every:
-        groups.setdefault((str(here(path)), ret, tuple(argtypes)), []).append(
-            (name, symbol)
-        )
-
-    mutants = []
-    for (path, ret, argtypes), members in groups.items():
-        if len(members) < 2:
-            continue
-        for name, symbol in members:
-            other = next((s for n, s in members if s != symbol), None)
-            if other is None or not callers(name):
+    mutants: list[Mutant] = []
+    if args.kind == "symbol":
+        groups: dict[tuple[str, str, tuple[str, ...]], list[tuple[str, str]]] = {}
+        for path, name, symbol, _nargs, ret, argtypes in every:
+            groups.setdefault((str(here(path)), ret, tuple(argtypes)), []).append(
+                (name, symbol)
+            )
+        for (path, ret, argtypes), members in groups.items():
+            if len(members) < 2:
                 continue
-            mutants.append((path, name, symbol, other, ret, argtypes))
+            for name, symbol in members:
+                other = next((s for n, s in members if s != symbol), None)
+                if other is None or not callers(name):
+                    continue
+                mutants.append(
+                    Mutant(path, name, "symbol", f"{symbol} -> {other}", symbol, other)
+                )
+    else:
+        for given, name, _symbol, _nargs, _ret, _argtypes in every:
+            if not callers(name):
+                continue
+            path = str(here(given))
+            params = parameters(here(given).read_text(), name)
+            pair = next(
+                (
+                    index
+                    for index in range(len(params) - 1)
+                    if params[index][1] == params[index + 1][1]
+                ),
+                None,
+            )
+            if pair is None:
+                continue
+            # The first pair is asked, not every pair: three arguments of one
+            # type are three ways to be wrong about the same three names, and
+            # the sample is spread over bindings rather than over one of them.
+            mutants.append(
+                Mutant(
+                    path,
+                    name,
+                    "order",
+                    f"{params[pair][0]} <-> {params[pair + 1][0]}",
+                    first=pair,
+                    second=pair + 1,
+                )
+            )
 
     if args.only:
         wanted = {name.strip() for name in args.only.split(",")}
-        mutants = [m for m in mutants if m[1] in wanted]
+        mutants = [m for m in mutants if m.name in wanted]
 
-    mutants.sort(key=lambda m: (m[0], m[1]))
+    mutants.sort(key=lambda m: (m.path, m.name))
     random.Random(args.seed).shuffle(mutants)
 
     # One per module first, so a dozen mutants are a dozen modules rather than
     # a dozen `isw*` comparisons.
     picked, seen = [], set()
     for mutant in mutants:
-        module = Path(mutant[0]).relative_to(SRC).parts[0]
+        module = Path(mutant.path).relative_to(SRC).parts[0]
         if module in seen:
             continue
         seen.add(module)
@@ -235,7 +435,7 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         copy = Path(tmp) / "src"
         shutil.copytree(SRC, copy)
-        print(f"{len(picked)} mutant(s), one `mojo run` each\n")
+        print(f"{len(picked)} {args.kind} mutant(s), one `mojo run` each\n")
         tally = {
             "caught": 0,
             "crashed": 0,
@@ -244,13 +444,13 @@ def main() -> int:
             "survived": 0,
             "error": 0,
         }
-        for path, name, symbol, other, ret, argtypes in picked:
-            target = copy / Path(path).relative_to(SRC)
+        for mutant in picked:
+            target = copy / Path(mutant.path).relative_to(SRC)
             pristine = target.read_text()
-            if not mutate(target, name, symbol, other):
-                print(f"  ?? {name}: could not be mutated")
+            if not apply(target, mutant):
+                print(f"  ?? {mutant.name}: could not be mutated")
                 continue
-            tests = callers(name)
+            tests = callers(mutant.name)
             outs = []
             for test in tests:
                 try:
@@ -281,12 +481,19 @@ def main() -> int:
                 outs.append(classify(result))
             target.write_text(pristine)
             verdict = "caught" if "caught" in outs else outs[0]
-            where = f"{Path(path).relative_to(SRC / 'libc')}:{name}"
-            known = SAME_ANSWER.get(f"{symbol}->{other}")
+            where = f"{Path(mutant.path).relative_to(SRC / 'libc')}:{mutant.name}"
+            if mutant.kind == "order":
+                where += f" ({mutant.what})"
+            known = SAME_ANSWER.get(f"{mutant.symbol}->{mutant.into}")
+            if mutant.kind == "order":
+                known = SAME_ORDER.get(f"{mutant.name}:{mutant.what}")
             if verdict == "survived" and known:
                 verdict = "same"
             tally[verdict] += 1
-            print(f"  {verdict:9} {where:44} {symbol} -> {other}")
+            if mutant.kind == "symbol":
+                print(f"  {verdict:9} {where:44} {mutant.what}")
+            else:
+                print(f"  {verdict:9} {where}")
             if known:
                 print(f"            {known}")
             if verdict == "error":
@@ -301,7 +508,9 @@ def main() -> int:
             f" survived {tally['survived']}, did not build {tally['error']}"
         )
         if tally["survived"] or tally["hung"]:
-            if tally["survived"]:
+            if tally["survived"] and args.kind == "order":
+                print("  a survivor is a call whose two arguments nothing tells apart")
+            elif tally["survived"]:
                 print("  a survivor is a call whose answer nothing compares against")
             if tally["hung"]:
                 print("  a hang is a call whose tests wait for it instead: nothing")

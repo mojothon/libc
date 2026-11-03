@@ -134,8 +134,61 @@ def test_an_output_too_small_stops_the_conversion_where_it_ran_out() raises:
     out_left.unsafe_free()
 
 
+def test_the_two_encodings_are_not_the_same_string() raises:
+    """UTF-8 to UTF-16 changes the width of every character, and the two
+    encodings are not one name written twice, so which way round they were
+    handed over is in the answer.
+
+    Two bytes of UTF-8 are one character and four bytes of UTF-16LE; asked the
+    other way round, the same two bytes are one UTF-16 character and come back
+    as three bytes of UTF-8. The counts are enough, and the bytes are written
+    out to say which end is which: the low half of each UTF-16 character is
+    the ASCII byte and the high half is zero.
+    """
+    var to = string_to_char_ptr("UTF-16LE")
+    var source = string_to_char_ptr("UTF-8")
+    var cd = iconv_open(to, source)
+    assert_true(Int(UInt(cd)) != -1, "UTF-8 to UTF-16LE opens")
+
+    var text = string_to_char_ptr("hi")
+    var in_ptr = unsafe_alloc[c_ptr[UInt8]](1)
+    in_ptr[] = text
+    var in_left = unsafe_alloc[UInt64](1)
+    in_left[] = 2
+
+    var out_bytes = unsafe_alloc[UInt8](16)
+    for i in range(16):
+        out_bytes.unsafe_offset(i)[] = 0
+    var out_ptr = unsafe_alloc[c_ptr[UInt8]](1)
+    out_ptr[] = out_bytes
+    var out_left = unsafe_alloc[UInt64](1)
+    out_left[] = 16
+
+    var moved = iconv(cd, in_ptr, in_left, out_ptr, out_left)
+    assert_equal(moved, UInt64(0), "both characters converted")
+    assert_equal(
+        Int(out_left[]), 12, "each of them two bytes wider than it was"
+    )
+    assert_equal(
+        Int(out_bytes.unsafe_offset(0)[]), 0x68, "an h, low half first"
+    )
+    assert_equal(Int(out_bytes.unsafe_offset(1)[]), 0, "with a zero after it")
+    assert_equal(Int(out_bytes.unsafe_offset(2)[]), 0x69, "then an i")
+    assert_equal(Int(out_bytes.unsafe_offset(3)[]), 0, "and its zero")
+
+    _ = iconv_close(cd)
+    to.unsafe_free()
+    source.unsafe_free()
+    in_ptr.unsafe_free()
+    in_left.unsafe_free()
+    out_bytes.unsafe_free()
+    out_ptr.unsafe_free()
+    out_left.unsafe_free()
+
+
 def main() raises:
     test_converting_to_the_encoding_it_is_already_in_copies_the_bytes()
     test_an_encoding_libc_does_not_know_is_minus_one()
     test_an_output_too_small_stops_the_conversion_where_it_ran_out()
+    test_the_two_encodings_are_not_the_same_string()
     print("test_iconv: ok")

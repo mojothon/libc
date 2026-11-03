@@ -18,6 +18,8 @@ from libc.constant import (
     SHUT_RDWR,
     SOCK_DGRAM,
     SOCK_STREAM,
+    SOL_SOCKET,
+    SO_TYPE,
 )
 from libc.sys.socket import (
     accept,
@@ -26,6 +28,7 @@ from libc.sys.socket import (
     connect,
     getpeername,
     getsockname,
+    getsockopt,
     iovec,
     listen,
     msghdr,
@@ -234,6 +237,42 @@ def test_socketpair() raises:
     assert_equal(recv(right, coming, 1, 0), 1, "and out of the right")
     assert_equal(Int(coming.unsafe_load()), 0x37, "unchanged")
 
+    # `AF_UNIX` is 1 and `SOCK_STREAM` is 1, so the first two arguments are
+    # the same number and a binding handing them over the other way round is
+    # asked exactly what it was already asked. A datagram pair is type 2: the
+    # numbers differ there, and the socket can be asked which kind it is.
+    var datagrams = unsafe_alloc[Int32](2)
+    assert_equal(
+        socketpair(AF_UNIX, SOCK_DGRAM, 0, datagrams),
+        0,
+        "a datagram pair is made the same way",
+    )
+    var kind = unsafe_alloc[Int32](1)
+    kind[] = 0
+    var width = unsafe_alloc[UInt32](1)
+    width[] = 4
+    assert_equal(
+        Int(
+            getsockopt(
+                datagrams.unsafe_load(0),
+                SOL_SOCKET,
+                SO_TYPE,
+                kind.unsafe_bitcast[NoneType](),
+                width,
+            )
+        ),
+        0,
+        "and one end can be asked what it is",
+    )
+    assert_equal(
+        kind[], SOCK_DGRAM, "a datagram, rather than the 1 that was asked for"
+    )
+
+    kind.unsafe_free()
+    width.unsafe_free()
+    _ = close(datagrams.unsafe_load(0))
+    _ = close(datagrams.unsafe_load(1))
+    datagrams.unsafe_free()
     going.unsafe_free()
     coming.unsafe_free()
     ends.unsafe_free()

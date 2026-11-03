@@ -235,6 +235,37 @@ was a number nobody got. A test that waits is not a test that passed, and it
 is worse than a survivor, because nothing after it in that file is asked
 either. `hung` is a verdict now, counted with the rest, and the run goes on.
 
+Every one of those mutants changes *which* function is called. The other half
+of a binding is the order its arguments go over in, and nothing above asks
+about that: `chown(path, owner, group)` and `chown(path, group, owner)` are the
+same string, the same return type and three arguments of two types, so the
+compiler has nothing to say — and a test only has something to say if the two
+numbers in those positions differ. `--kind order` makes that mistake instead,
+and the first sample of twenty-four came back 13 caught, 2 that took the
+process down rather than fail an assertion, and 9 that passed. Nine against
+three on the symbol axis of the same size is the measure of how much more of
+this suite proves which call ran than proves how it was asked.
+
+Five of the nine had an assertion to write. `socketpair(AF_UNIX, SOCK_STREAM,
+...)` is handed 1 and 1 — those are the two constants — so both orders are the
+same call; a datagram pair is type 2, and `getsockopt` says which kind came
+back. `strncasecmp` was asserted equal to a string that differs only in case,
+and equal is the answer a swap gives too, so it is asserted to sort two
+different strings now. `atan2(1, 1)` is on the diagonal, where the answer does
+not depend on which argument is which; three quarters of pi is off it.
+`iconv_open("UTF-8", "UTF-8")` is one name written twice, and the swap is
+invisible until the two names differ — UTF-8 to UTF-16LE turns two bytes into
+four, and the other way round turns the same two into three. And `execve` was
+only ever watched failing: a program that is not there fails the same way
+whichever list is in which slot, so the test now runs `/bin/echo` and reads
+what it printed.
+
+Four were explained rather than fixed, and each says why where a reader will
+find it: `fmax` and `hypot` are commutative, `openlog`'s two integers are read
+by a daemon that writes a file this process never reads, `catgets` has only a
+catalog that did not open, and every `chown` a suite without a privilege can
+ask about is one that fails before the two ids are looked at.
+
 glibc, for its part, does not come with anything that checks glibc.
 
 ## Next to Rust's `libc`
