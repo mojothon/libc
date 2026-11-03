@@ -582,6 +582,18 @@ def test_the_network_database_three_ways() raises:
 
     endnetent()
 
+    # The walk was opened to stay open, so it is still where it stopped, and a
+    # database shut and opened again starts at the top. `endprotoent` is one
+    # line away and the same shape: it leaves the networks walk where it was,
+    # on the row after the first, or at the end of a one-row file.
+    var after_shut = getnetent()
+    assert_true(not is_null(after_shut), "the network database opens again")
+    assert_equal(
+        char_ptr_to_string(after_shut.unsafe_offset(0)[].n_name),
+        name,
+        "at the first row, which is where a shut database starts",
+    )
+
 
 def test_the_rpc_database_three_ways() raises:
     """The RPC program walk and the two lookups that read the same rows.

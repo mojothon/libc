@@ -737,6 +737,26 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- **Three tests now fail when the binding underneath them calls the wrong
+  function, and the mutation probe has a verdict for a test that waits instead
+  of failing.** A third sample of twenty-four mutants found `pow` held to a
+  bound from above — `fmod(2, 10)` is 2, which is under 1024 — `getpgid` held
+  only to being positive, which `getsid` is too, and `chown` asked only about
+  a file that is not there, which `lchown` answers the same way. What
+  replaced them: two to the tenth exactly, a new process group named after the
+  process that made it, and a link whose target is not there — `chown`
+  follows it and gets `ENOENT`, `lchown` changes the link itself — which is
+  the one file that separates the pair without a privilege the test does not
+  have. Two more turned out to be the same call under two names rather than
+  calls nothing looked at, and each says why: `cfgetospeed` and `cfgetispeed`
+  read the same `CBAUD` bits of `c_cflag` on glibc, and `endgrent` and
+  `setgrent` both leave the next `getgrent` at the first row.
+
+  One mutant — `pthread_rwlock_rdlock` pointed at `pthread_rwlock_destroy` —
+  left the test waiting rather than failing, and the run ended in a traceback
+  at the timeout with the mutants after it never asked. That is a verdict of
+  its own now: `hung`, counted in the tally, and the run goes on to the rest.
+
 - **The errno test runs on macOS again, and the reason it did not was the
   variadic argument.** `test_errno` was skipped on that side with a note about
   the runner hanging somewhere around a read of a non-blocking pipe, and the

@@ -213,6 +213,28 @@ whose `utsname` carries it. The same twenty-four come back as 21 caught by an
 assertion, 2 that are the same function under two names (`scalbn` and
 `ldexp`), and 1 that took the process down rather than fail an assertion.
 
+A third sample of twenty-four, from a different seed, found three more.
+`pow` was held to a bound from above, and `fmod(2, 10)` is 2, which is under
+1024; `getpgid` was held to being positive, which `getsid` is too; `chown` was
+asked only about a file that is not there, which `lchown` answers the same
+way. Each has an assertion now that only the right call passes: two to the
+tenth exactly, a new process group named after the process that made it, and a
+link whose target is not there — `chown` follows it and finds nothing,
+`lchown` changes the link itself, and no privilege is needed to tell them
+apart. Two more were explained instead of fixed, because they are the same
+call under two names: `cfgetospeed` and `cfgetispeed` read the same `CBAUD`
+bits on glibc, where a terminal has one speed and not two, and `endgrent` and
+`setgrent` leave the next `getgrent` at the same row, the descriptor they
+differ over being one the API never hands out.
+
+The fifth verdict came out of that sample too. One mutant — a read lock
+pointed at `pthread_rwlock_destroy` — left the test waiting rather than
+failing, and the script stopped where it stood: the traceback was the last
+thing the run printed, the mutants after it were never asked, and the tally
+was a number nobody got. A test that waits is not a test that passed, and it
+is worse than a survivor, because nothing after it in that file is asked
+either. `hung` is a verdict now, counted with the rest, and the run goes on.
+
 glibc, for its part, does not come with anything that checks glibc.
 
 ## Next to Rust's `libc`

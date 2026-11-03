@@ -232,6 +232,18 @@ def test_the_scheduling_settings() raises:
         "and the two are told apart",
     )
 
+    # `PTHREAD_CREATE_JOINABLE` and `PTHREAD_SCOPE_SYSTEM` are the same
+    # number on both platforms -- 0 on Linux, 1 on macOS -- so a binding
+    # that called `pthread_attr_getdetachstate` would write exactly the
+    # value the assert below wants and nothing would say so. The detach
+    # state is moved to the other of the two first, which leaves the scope
+    # alone and makes the two answers different.
+    assert_equal(
+        pthread_attr_setdetachstate(attr, PTHREAD_CREATE_DETACHED),
+        0,
+        "the detach state is set away from the scope's own number",
+    )
+
     var scope = unsafe_alloc[Int32](1)
     assert_equal(
         pthread_attr_setscope(attr, PTHREAD_SCOPE_SYSTEM),

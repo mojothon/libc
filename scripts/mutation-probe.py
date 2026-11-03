@@ -14,12 +14,17 @@ when the symbol underneath it changes.
 This makes that change on purpose. Two bindings in the same file with the same
 signature are interchangeable as far as the compiler is concerned -- same
 return type, same argument types, both symbols exported -- so one is pointed at
-the other's symbol and the tests that call it are run. Three answers:
+the other's symbol and the tests that call it are run. Five answers:
 
   caught    a test failed, and its assertion is the reason. The suite has
             teeth here.
   crashed   the mutant took the process down without an assertion firing.
             Noticed, but not by anything written for the purpose.
+  hung      a test neither passed nor failed: it stopped answering and the run
+            was killed at its timeout. A lock taken and never given back does
+            this, and it is worse than a survivor -- nothing after it in that
+            file is asked at all, and a suite that does this in CI waits for
+            the job's own timeout instead of reporting.
   survived  every test passed with the binding calling the wrong function.
             Either the call's answer is never compared with anything, or the
             two functions agree on every input the test uses.
@@ -43,7 +48,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
 TESTS = sorted((ROOT / "tests").glob("*.mojo"))
-TIMEOUT = 300
+# A test file that has not answered in two minutes has stopped answering: the
+# suite is seconds per file, and the slowest of them wait on threads and
+# sleeps that are bounded. The number is here to end a hang, not to hurry a
+# slow machine.
+TIMEOUT = 120
 
 
 # Pairs that survive because the two symbols answer the same thing, not because
@@ -53,6 +62,26 @@ SAME_ANSWER = {
     "scalbn->ldexp": (
         "`ldexp(x, n)` is `scalbn(x, n)` with FLT_RADIX written as 2, and "
         "FLT_RADIX is 2 on both platforms: the same call under two names"
+    ),
+    "cfgetospeed->cfgetispeed": (
+        "a terminal has one speed and not two: on glibc both functions read "
+        "the same `CBAUD` bits of `c_cflag` -- a probe printing the flag at "
+        "each step shows `cfsetispeed` writing them and `cfsetospeed` "
+        "overwriting them -- so the two answer the same number, and "
+        "`c_ispeed`, the field only one of them would read, is not read by "
+        "either"
+    ),
+    "endgrent->setgrent": (
+        "closing the group database and winding it back are the same thing "
+        "from outside: either way the next `getgrent` opens at the first row, "
+        "and the descriptor that differs between them is not something the "
+        "API hands out"
+    ),
+    "llrintf->lrintf": (
+        "`long` and `long long` are both 64 bits on the two platforms this is "
+        "built for, and the two round the same way, so the answer is the same "
+        "value under a declared width that happens to agree: a difference "
+        "only ILP32 would show"
     ),
     "sched_getscheduler->sched_get_priority_max": (
         "the ordinary policy is numbered 0 and so is the highest priority it "
@@ -207,7 +236,14 @@ def main() -> int:
         copy = Path(tmp) / "src"
         shutil.copytree(SRC, copy)
         print(f"{len(picked)} mutant(s), one `mojo run` each\n")
-        tally = {"caught": 0, "crashed": 0, "same": 0, "survived": 0, "error": 0}
+        tally = {
+            "caught": 0,
+            "crashed": 0,
+            "hung": 0,
+            "same": 0,
+            "survived": 0,
+            "error": 0,
+        }
         for path, name, symbol, other, ret, argtypes in picked:
             target = copy / Path(path).relative_to(SRC)
             pristine = target.read_text()
@@ -217,23 +253,31 @@ def main() -> int:
             tests = callers(name)
             outs = []
             for test in tests:
-                result = subprocess.run(
-                    [
-                        "pixi",
-                        "run",
-                        "mojo",
-                        "run",
-                        "-I",
-                        str(copy),
-                        "-I",
-                        "tests",
-                        str(test.relative_to(ROOT)),
-                    ],
-                    cwd=ROOT,
-                    capture_output=True,
-                    text=True,
-                    timeout=TIMEOUT,
-                )
+                try:
+                    result = subprocess.run(
+                        [
+                            "pixi",
+                            "run",
+                            "mojo",
+                            "run",
+                            "-I",
+                            str(copy),
+                            "-I",
+                            "tests",
+                            str(test.relative_to(ROOT)),
+                        ],
+                        cwd=ROOT,
+                        capture_output=True,
+                        text=True,
+                        timeout=TIMEOUT,
+                    )
+                except subprocess.TimeoutExpired:
+                    # A mutated lock or wait can leave the file waiting rather
+                    # than failing, and that is a verdict of its own: the run
+                    # does not stop at it, and the mutant after it still gets
+                    # asked.
+                    outs.append("hung")
+                    continue
                 outs.append(classify(result))
             target.write_text(pristine)
             verdict = "caught" if "caught" in outs else outs[0]
@@ -253,11 +297,15 @@ def main() -> int:
         print()
         print(
             f"  caught {tally['caught']}, crashed {tally['crashed']},"
-            f" same answer {tally['same']}, survived {tally['survived']},"
-            f" did not build {tally['error']}"
+            f" hung {tally['hung']}, same answer {tally['same']},"
+            f" survived {tally['survived']}, did not build {tally['error']}"
         )
-        if tally["survived"]:
-            print("  a survivor is a call whose answer nothing compares against")
+        if tally["survived"] or tally["hung"]:
+            if tally["survived"]:
+                print("  a survivor is a call whose answer nothing compares against")
+            if tally["hung"]:
+                print("  a hang is a call whose tests wait for it instead: nothing")
+                print("  in that file after it was asked, and nothing was compared")
             return 1 if args.strict else 0
     return 0
 

@@ -184,7 +184,9 @@ def test_arguments_in_order() raises:
     still returns a number. Each of these is asked for something that only
     comes out one way round.
     """
-    assert_true((pow(2.0, 10.0) - 1024.0) < 1e-9, "2 to the 10, not 10 squared")
+    # Two to the tenth is exact in binary, and a bound from above alone is
+    # nothing: `fmod(2, 10)` answers 2, which is under 1024 and passes it.
+    assert_true(pow(2.0, 10.0) == 1024.0, "2 to the 10, not 10 squared")
     assert_true((copysign(1.0, -1.0) + 1.0) < 1e-12, "the sign comes second")
 
     var after = nextafter(1.0, 4.0)

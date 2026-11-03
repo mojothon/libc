@@ -6,6 +6,7 @@ from std.testing import assert_equal, assert_true
 from libc.fcntl import O_CREAT, O_RDONLY, open as open_with_mode
 from libc.constant import (
     AT_FDCWD,
+    ENOENT,
     ERANGE,
     c_ptr,
     c_uint,
@@ -110,6 +111,7 @@ from libc.unistd import (
     sleep,
     swab,
     sync,
+    symlink,
     symlinkat,
     syscall,
     sysconf,
@@ -245,10 +247,15 @@ def test_nice_and_pagesize() raises:
 
 
 def test_chown_on_what_is_not_there() raises:
-    """All four say -1 for a file that does not exist.
+    """All four say -1 for a file that does not exist, and one file tells the
+    pair apart without a privilege.
 
     Giving a real file to somebody else is not a thing a test should do,
-    so this is the part of them a test can safely ask about.
+    so this is the part of them a test can safely ask about -- with one
+    addition. A link whose target is not there is the file that separates
+    `chown` from `lchown`: the first follows it and finds nothing, the
+    second changes the link itself, which this process already owns.
+    Nothing about that needs an id the test does not have.
     """
     var nowhere = string_to_char_ptr("/nonexistent/libc-test")
 
@@ -256,6 +263,20 @@ def test_chown_on_what_is_not_there() raises:
     assert_equal(lchown(nowhere, getuid(), getgid()), -1)
     assert_equal(fchown(-1, getuid(), getgid()), -1, "no such descriptor")
     assert_equal(fchownat(-1, nowhere, getuid(), getgid(), 0), -1)
+
+    var link = string_to_char_ptr("/tmp/libc_dangling_link")
+    _ = unlink(link)
+    assert_equal(symlink(nowhere, link), 0, "a name is given to nothing")
+    assert_equal(
+        chown(link, getuid(), getgid()),
+        -1,
+        "`chown` follows it and finds nothing",
+    )
+    assert_equal(get_errno(), ENOENT, "and says which nothing it found")
+    assert_equal(
+        lchown(link, getuid(), getgid()), 0, "`lchown` changes the link itself"
+    )
+    _ = unlink(link)
 
     nowhere.unsafe_free()
 
@@ -388,12 +409,19 @@ def test_process_groups() raises:
     purpose and not by the way.
     """
     assert_true(getpgid(0) > 0, "this process is in a process group")
-    assert_true(getsid(0) > 0, "and in a session")
+    assert_equal(getpgid(0), getpgrp(), "the group `getpgrp` names, also")
+    assert_true(getsid(0) > 0, "and this process is in a session")
     var moved = setpgid(0, 0)
     assert_true(
         moved == 0 or moved == -1,
         "moving into its own group answers 0, or -1 with a reason in errno",
     )
+    # A new group is named after the process that made it, and the session it
+    # is in belongs to whoever started it. Both numbers are positive, so a
+    # binding asking for the session instead -- one call away in the header --
+    # answers something that reads like a group.
+    if moved == 0:
+        assert_equal(getpgid(0), getpid(), "and it is named after this process")
 
 
 def test_readv_gathers_what_writev_scattered() raises:
