@@ -20,7 +20,6 @@ from libc.constant import (
     SOCK_STREAM,
     SOL_SOCKET,
     SO_TYPE,
-    c_short,
     c_ulong,
 )
 from libc.sys.socket import (
@@ -46,7 +45,7 @@ from libc.sys.socket import (
     socketaddr,
     socketpair,
 )
-from libc.poll import POLLPRI, poll, pollfd
+from libc.poll import poll, pollfd
 from libc.unistd import close
 from libc.utils import null_ptr
 
@@ -542,23 +541,6 @@ def test_the_mark_that_out_of_band_data_leaves() raises:
     after.unsafe_offset(0)[] = 100  # d
     assert_equal(send(client, after, 1, 0), 1, "and an ordinary one last")
 
-    # Three `send`s are three segments, and which of them has arrived when the
-    # reads below happen is the network's business rather than this test's --
-    # on Darwin the two ordinary bytes were read before the marked one was
-    # there, and the mark was still nowhere. `poll` answers an exception
-    # condition on a socket that has urgent data waiting, so the mark is waited
-    # for instead of assumed.
-    var watch = unsafe_alloc[pollfd](1)
-    watch.unsafe_offset(0)[] = pollfd(taken, c_short(POLLPRI))
-    assert_equal(
-        poll(watch, c_ulong(1), 2000), 1, "the marked byte has arrived"
-    )
-    assert_true(
-        (Int(watch.unsafe_offset(0)[].revents) & Int(POLLPRI)) != 0,
-        "and it arrived as urgent data",
-    )
-    watch.unsafe_free()
-
     var coming = unsafe_alloc[UInt8](1)
     assert_equal(recv(taken, coming, 1, 0), 1, "the first byte is read")
     assert_equal(Int(coming.unsafe_load()), 97, "and it is the first one")
@@ -566,7 +548,22 @@ def test_the_mark_that_out_of_band_data_leaves() raises:
 
     assert_equal(recv(taken, coming, 1, 0), 1, "the second byte is read")
     assert_equal(Int(coming.unsafe_load()), 98, "and it is the second one")
-    assert_equal(sockatmark(taken), 1, "and the read is at the mark")
+
+    # The mark is a place in the stream, and it is a place only once the marked
+    # byte has arrived: three `send`s are three segments and the receiver is
+    # told about them one at a time, so on Darwin the two ordinary bytes were
+    # read before the marked one was there and the mark was still nowhere.
+    # `POLLPRI` is not the answer to that on Darwin -- it reported nothing for
+    # two seconds while the byte was arriving -- so what is waited for is the
+    # mark itself, a millisecond at a time, with `poll` on no descriptors as
+    # the sleep.
+    var mark = sockatmark(taken)
+    var waited = 0
+    while mark == 0 and waited < 2000:
+        _ = poll(null_ptr[pollfd](), c_ulong(0), 1)
+        mark = sockatmark(taken)
+        waited += 1
+    assert_equal(mark, 1, "and the read is at the mark")
 
     assert_equal(
         recv(taken, coming, 1, MSG_OOB), 1, "the marked byte is read at it"
