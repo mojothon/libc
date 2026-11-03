@@ -261,6 +261,17 @@ three-argument one, and the commands that read nothing are given 0. It is the
 same lesson as `isascii_l` a few paragraphs down, from the other side: what a
 name can be called with is one thing, and what can be built is the evidence.
 
+What found it was wanting to ask the two-argument form something — `F_GETFD`
+is a question and not a command, so it was the form to ask it with — and
+finding that the suite would not build once the test did. Every other check
+was green while there were two forms, and would be again: each of them is
+right about itself, and the compiler only complains at lowering, where it
+names the symbol and not the call that was written second.
+
+`scripts/check-duplicates.py` asks for the rule now, rather than leaving it to
+whoever writes the second form: one signature per symbol, in one file or
+across two.
+
 Everything the suite cannot ask, and why, is in [Modules](modules.md).
 
 ## What C does and this does not

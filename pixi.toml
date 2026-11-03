@@ -29,6 +29,12 @@ check-prototypes = "python3 scripts/check-prototypes.py"
 # copy compiled and every copy was tested, so nothing compared them, and
 # the copy a bug was found in got fixed while the other kept it. A module
 # that wants to offer a call another module owns imports it instead.
+# And one signature per symbol, which is the same mistake one step in: `fcntl`
+# was bound with the two arguments a caller may give it and with the three its
+# commands take, each form right about itself, and a program that called both
+# stopped at lowering with `existing function with conflicting signature` --
+# a message that names the symbol and not the call written second. A form C
+# makes variadic is declared with the arguments it always takes instead.
 check-duplicates = "python3 scripts/check-duplicates.py"
 # Not a gate: every mutant is a rebuild of the package and a suite run, so it
 # samples. It points one binding at a same-signature sibling's symbol and asks

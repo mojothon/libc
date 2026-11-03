@@ -26,8 +26,10 @@ jobs:
       # A binding is a string and a signature, and two modules can hold the
       # same string with two signatures that agree today: `strlen` answered
       # `UInt64` in one and `Int` in the other. One file per symbol, and a
-      # re-export where a second door is wanted.
-      - name: Check that each symbol is bound once
+      # re-export where a second door is wanted. One signature per symbol
+      # too, in one file or across two: `fcntl` bound twice compiled twice
+      # and failed only where a program called both.
+      - name: Check that each symbol is bound once, in one signature
         run: pixi run check-duplicates
       # The docs are the one place a call is written and nothing compiles it:
       # a rename leaves an example a reader finds before a test does.

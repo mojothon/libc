@@ -7,6 +7,24 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **`scripts/check-duplicates.py` asks for one signature per symbol, not
+  just one file.** The two questions are the same question one step apart. Two
+  files binding one symbol disagree in a way a reader of either cannot see;
+  one file binding one symbol twice disagrees in a way the compiler cannot see
+  either until something calls both. C's `fcntl` was bound with the two
+  arguments POSIX lets a caller give it and with the three its commands take,
+  and each form was right about itself: a program that called either one built
+  and answered. A program that called both stopped at lowering with `existing
+  function with conflicting signature` — one symbol declared twice, a message
+  that names the symbol and not the call written second, and a failure that
+  arrives in a build rather than in a test. What found it was wanting to ask
+  the two-argument form a question, which is now the question the test asks a
+  three-argument form: the two-argument one is gone and the commands that read
+  nothing are given 0.
+
+  The guard is proven the way the others were: put a second form back, in the
+  same file and in another one, and see it name both.
+
 - **`fprintf`, which was missing while `printf`, `dprintf`, `sprintf` and
   `snprintf` were all here.** Like them it writes a format with nothing to
   fill in — a conversion lives in the variadic part and `external_call` cannot
