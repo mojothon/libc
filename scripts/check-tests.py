@@ -44,9 +44,6 @@ def load(name: str):
 # calls this suite can make — so the point is that the reason is written
 # down rather than that the call is gone.
 CANNOT_ASK = {
-    "scanf": "reads standard input, and takes its arguments after them",
-    "pause": "waits for a signal, which is a suite that stops",
-    "sigsuspend": "waits for a signal to arrive",
     "pthread_cond_wait": "waits for another thread, and a test that waits is one that hangs",
     "pthread_cancel": "cancels a thread that the rest of the suite is sharing",
     "pthread_atfork": "the suite is run just-in-time, and the JIT run does not resolve this one — a built binary links and answers fine",

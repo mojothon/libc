@@ -1,9 +1,10 @@
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import EINVAL, c_ptr
+from libc.constant import EINTR, EINVAL, c_ptr
 from libc.errno import get_errno, set_errno
 from libc.signal import (
+    SIGALRM,
     SIGINT,
     SIG_UNBLOCK,
     SIGUSR1,
@@ -23,11 +24,14 @@ from libc.signal import (
     siginterrupt,
     sigismember,
     sigsetmask,
+    sigsuspend,
     sigwait,
     sigpending,
     sigprocmask,
 )
-from libc.unistd import getpgrp, getpid
+from libc.stdlib import exit
+from libc.sys.wait import WEXITSTATUS, WIFEXITED, WIFSIGNALED, WTERMSIG, waitpid
+from libc.unistd import close, fork, getpgrp, getpid, pipe, read, ualarm, write
 from libc.utils import null_ptr, string_to_char_ptr
 
 
@@ -347,6 +351,105 @@ def test_sigwait_takes_one_that_is_already_waiting() raises:
     mask.unsafe_free()
 
 
+def test_sigsuspend_swaps_in_a_mask_and_takes_what_was_waiting() raises:
+    """`sigsuspend` waits under a mask of its own choosing, and the
+    signal it waits for here is already waiting: whether it is ever
+    delivered is the whole of what the call is.
+
+    In the child `SIGUSR1` is blocked and then sent to itself, so it
+    sits pending -- blocked signals are held, not delivered -- and
+    `sigpending` is asked to say so before anything waits. `sigsuspend`
+    is then handed an empty set, which is to say nothing blocked, and
+    the swap is what delivers it. What the delivery does to the child
+    is not this test's business and is not the same everywhere: this
+    process has a handler for `SIGUSR1` (so the call comes back with
+    `EINTR` and takes the pending signal with it), and a build without
+    one is ended by it instead. Both are the signal arriving, and the
+    child says which happened by a byte down a pipe: written if the
+    call came back.
+
+    "Something else" is the alarm, one second and blocked as well. A
+    `sigsuspend` that failed to take the mask would leave `SIGUSR1`
+    where it was and be woken by that instead, and the parent finds
+    `SIGALRM` rather than `SIGUSR1` -- a name it can tell apart, rather
+    than a run that stops here until the job times out.
+    """
+    var fds = unsafe_alloc[Int32](2)
+    assert_equal(pipe(fds), 0, "a pipe to say what became of the wait")
+    var child = fork()
+    if child == 0:
+        _ = close(fds.unsafe_offset(0)[])
+
+        var held = empty_set()
+        _ = sigaddset(held, SIGUSR1)
+        _ = sigaddset(held, SIGALRM)
+        _ = sigprocmask(SIG_BLOCK, held, null_ptr[UInt8]())
+        _ = craise(SIGUSR1)
+
+        var waiting = empty_set()
+        assert_equal(sigpending(waiting), 0, "the pending set answers")
+        assert_equal(
+            sigismember(waiting, SIGUSR1), 1, "and SIGUSR1 is held in it"
+        )
+        _ = ualarm(1000000, 0)
+
+        var swap = empty_set()
+        var answer = sigsuspend(swap)
+        var why = get_errno()
+
+        var said = unsafe_alloc[UInt8](1)
+        said.unsafe_store(0, UInt8(1))
+        assert_equal(
+            write(fds.unsafe_offset(1)[], said, 1), 1, "the wait came back"
+        )
+        said.unsafe_free()
+
+        assert_equal(answer, -1, "and it came back the only way it can")
+        assert_equal(why, EINTR, "interrupted, which is a signal arriving")
+        var after = empty_set()
+        _ = sigpending(after)
+        assert_equal(
+            sigismember(after, SIGUSR1),
+            0,
+            "the one that was held, which it has taken with it",
+        )
+        _ = exit(0)
+
+    _ = close(fds.unsafe_offset(1)[])
+    assert_true(child > 0, "there is a child to wait for")
+    var status = unsafe_alloc[Int32](1)
+    status.unsafe_offset(0)[] = 0
+    assert_equal(waitpid(child, status, 0), child, "the child is waited for")
+
+    var said = unsafe_alloc[UInt8](1)
+    said.unsafe_store(0, UInt8(0))
+    var came_back = read(fds.unsafe_offset(0)[], said, 1)
+    said.unsafe_free()
+
+    if came_back == 1:
+        assert_true(
+            WIFEXITED(status.unsafe_load()),
+            "the call came back, and the child left on its own",
+        )
+        assert_equal(
+            Int(WEXITSTATUS(status.unsafe_load())),
+            0,
+            "with the pending signal taken, not with the alarm",
+        )
+    else:
+        assert_true(
+            WIFSIGNALED(status.unsafe_load()), "something ended the child"
+        )
+        assert_equal(
+            WTERMSIG(status.unsafe_load()),
+            SIGUSR1,
+            "the signal that was pending, not the alarm that was there in case",
+        )
+
+    status.unsafe_free()
+    fds.unsafe_free()
+
+
 def main() raises:
     test_sigaddset_round_trips_through_sigismember()
     test_sigismember_refuses_a_number_that_is_not_a_signal()
@@ -360,4 +463,5 @@ def main() raises:
     test_the_blocked_set_as_a_word_and_as_bytes()
     test_signal_zero_asks_whether_a_group_is_there()
     test_sigwait_takes_one_that_is_already_waiting()
+    test_sigsuspend_swaps_in_a_mask_and_takes_what_was_waiting()
     print("signal ok")

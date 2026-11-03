@@ -28,13 +28,15 @@ from libc.file import (
     preadv,
     printf,
     pwritev,
+    scanf,
     snprintf,
     sprintf,
     sscanf,
 )
-from libc.stdlib import free
+from libc.stdlib import exit, free
 from libc.sys.socket import iovec
-from libc.unistd import close, unlink
+from libc.sys.wait import WEXITSTATUS, WIFEXITED, waitpid
+from libc.unistd import close, dup2, fork, pipe, unlink, write
 from libc.utils import char_ptr_to_string, null_ptr, string_to_char_ptr
 
 
@@ -234,6 +236,74 @@ def test_the_scanf_family_asked_for_nothing() raises:
     text.unsafe_free()
 
 
+def test_scanf_reads_the_standard_input_it_is_given() raises:
+    """`scanf` reads standard input, which a suite cannot promise has an
+    end -- so a child makes its own, the way `getchar` is asked: a pipe
+    with a word in it, put where standard input is read from.
+
+    The format is that word and nothing else, which is the whole of
+    what this binding can be asked: the pointers a conversion writes
+    through are in the variadic part, and `external_call` has no way to
+    hand them over, so a `%` would be answered by writing through
+    whatever address came next. A format with no `%` in it reads and
+    assigns nothing, which leaves the two things it does say: 0 when
+    the input was there to be matched, and `EOF` when it was not.
+
+    Both are asked in the one child, the second call finding the stream
+    where the first one left it -- at its end. The child asserts them
+    itself and leaves with its status, so an answer that was neither is
+    a red run rather than a number reported as the right one.
+    """
+    var child = fork()
+    if child == 0:
+        var fds = unsafe_alloc[Int32](2)
+        assert_equal(pipe(fds), 0, "a pipe to be standard input")
+        var word = unsafe_alloc[UInt8](5)
+        var letters = "hello"
+        for i in range(5):
+            word.unsafe_store(i, UInt8(ord(letters[byte=i])))
+        assert_equal(
+            write(fds.unsafe_offset(1)[], word, 5), 5, "with the word in it"
+        )
+        word.unsafe_free()
+        assert_equal(
+            dup2(fds.unsafe_offset(0)[], 0), 0, "and it is standard input"
+        )
+        # The write end is closed here and not left to the exit: an end
+        # of the input is a closed pipe, and this child holding one open
+        # is a `scanf` with nothing to read and no reason to stop.
+        _ = close(fds.unsafe_offset(1)[])
+        _ = close(fds.unsafe_offset(0)[])
+
+        var format = string_to_char_ptr("hello")
+        assert_equal(
+            Int(scanf(format)),
+            0,
+            "the word is matched, and nothing is assigned",
+        )
+        assert_equal(
+            Int(scanf(format)),
+            -1,
+            "and at the end of the input it says so rather than answering 0",
+        )
+        format.unsafe_free()
+        _ = exit(0)
+
+    assert_true(child > 0, "there is a child to read it")
+    var status = unsafe_alloc[Int32](1)
+    status.unsafe_offset(0)[] = 0
+    assert_equal(waitpid(child, status, 0), child, "the child is waited for")
+    assert_true(
+        WIFEXITED(status.unsafe_load()), "and it left of its own accord"
+    )
+    assert_equal(
+        Int(WEXITSTATUS(status.unsafe_load())),
+        0,
+        "having found both answers where they were expected",
+    )
+    status.unsafe_free()
+
+
 def test_pieces_at_an_offset() raises:
     """`pwritev` and `preadv` on a stream that was opened for something
     else: two pieces are handed to the file at offset 8 and read back the
@@ -331,4 +401,5 @@ def main() raises:
     test_getline_reads_to_the_newline()
     test_the_printf_family()
     test_pieces_at_an_offset()
+    test_scanf_reads_the_standard_input_it_is_given()
     print("test_file: ok")

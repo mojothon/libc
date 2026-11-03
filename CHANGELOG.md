@@ -7,6 +7,38 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **Three of the bindings nothing asked, asked: `scanf`, `sigsuspend` and
+  `pause`.** All three were on the list with one reason between them — they
+  read standard input or wait for a signal, and a suite that waits is a
+  suite that stops — and none of them turned out to need a handler or a
+  thread to ask something.
+
+  `scanf` takes a format and no conversion, so there is no address for
+  libc to write through: a child's pipe with a word in it, **closed at the
+  write end** (which is what gives the input an end at all — the first
+  version left it open and the call sat there for the ten minutes the run
+  had), answers 0 for the word and `EOF` for the call after it.
+
+  `sigsuspend` waits under a mask of its own choosing, so the signal does
+  not have to arrive: `SIGUSR1` is blocked and sent to itself, and the swap
+  is what delivers it. What delivery then does differs — this build has a
+  handler for `SIGUSR1`, so the call comes back with `EINTR` and takes the
+  pending signal with it, and a build without one is ended by the signal —
+  so the child says which happened by a byte down a pipe and the parent
+  accepts both. A one-second alarm, blocked as well, is there so that a
+  `sigsuspend` which failed to take the mask is woken by `SIGALRM` and
+  named as such rather than sitting in the job until it times out.
+
+  `pause` has no mask to swap, so its signal has to arrive: the child arms
+  `ualarm` for a tenth of a second, calls `pause`, and is ended by the
+  `SIGALRM` it never installed a handler for. Being ended by the signal it
+  went to wait for is the assertion; a `pause` that came back would have
+  left the child to exit on its own, which `WIFSIGNALED` tells apart.
+
+  Eight remain, each with a reason, and the count on the modules page moved
+  from 989 asked and 11 not to 992 and 8 — the guard added in the last
+  commit failed until that sentence was corrected, which is what it is for.
+
 - **Two more things the docs say, made able to fail.** `docs/modules.md`
   ends with what the suite does not ask, and that section had drifted a long
   way: it still named `sigwait` and `getchar` as unasked after both had been

@@ -15,11 +15,11 @@ from libc.constant import (
     SEEK_SET,
     c_void,
 )
-from libc.signal import SIGKILL, kill
+from libc.signal import SIGALRM, SIGKILL, kill
 from libc.stdlib import exit, grantpt, posix_openpt, ptsname, unlockpt
 from libc.sys.stat import Stat, fchmod, fstat, stat
 from libc.sys.utsname import Utsname, uname
-from libc.sys.wait import WEXITSTATUS, WIFEXITED, waitpid
+from libc.sys.wait import WEXITSTATUS, WIFEXITED, WIFSIGNALED, WTERMSIG, waitpid
 from libc.time import ITIMER_REAL, getitimer, itimerval, setitimer
 from libc.unistd import (
     CS_PATH,
@@ -90,6 +90,7 @@ from libc.unistd import (
     lseek,
     nice,
     pathconf,
+    pause,
     pipe,
     pread,
     pwrite,
@@ -1267,6 +1268,44 @@ def test_ttyslot_counts_a_line_or_none() raises:
     )
 
 
+def test_pause_comes_back_because_a_signal_arrived() raises:
+    """`pause` waits for a signal, and a suite that waits is one that
+    stops -- so the signal is arranged before the waiting starts.
+
+    The child arms `ualarm` for a tenth of a second and calls `pause`.
+    Nothing here has installed a handler for `SIGALRM`, so what it does
+    when it arrives is what it does by default: it ends the child. That
+    is the assertion, and it is the strong one: the child is ended by
+    the very signal it went to wait for, which cannot happen unless the
+    waiting happened first.
+
+    A `pause` that came back instead would leave the child to exit on
+    its own, and the parent tells the two apart by `WIFSIGNALED` --
+    ended by a signal, or by an exit -- and by the signal's name, so
+    the wrong signal is not read as the right one.
+    """
+    var child = fork()
+    if child == 0:
+        _ = ualarm(100000, 0)
+        _ = pause()
+        _ = exit(0)
+
+    assert_true(child > 0, "there is a child to wait for")
+    var status = unsafe_alloc[Int32](1)
+    status.unsafe_offset(0)[] = 0
+    assert_equal(waitpid(child, status, 0), child, "the child is waited for")
+    assert_true(
+        WIFSIGNALED(status.unsafe_load()),
+        "a signal ended it, and the only signal it was waiting for is the one",
+    )
+    assert_equal(
+        WTERMSIG(status.unsafe_load()),
+        SIGALRM,
+        "the one the alarm was armed with",
+    )
+    status.unsafe_free()
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -1305,4 +1344,5 @@ def main() raises:
     test_pread_and_pwrite_at_an_offset()
     test_readv_gathers_what_writev_scattered()
     test_ualarm_is_the_timer_that_getitimer_reads()
+    test_pause_comes_back_because_a_signal_arrived()
     print("test_unistd: ok")

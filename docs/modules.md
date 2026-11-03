@@ -102,14 +102,11 @@ Mojo has no 80-bit type.
 
 ## What the suite does not ask
 
-Four of the bindings would stop the run rather than fail it, which is a
+One of the bindings would stop the run rather than fail it, which is a
 worse trade than no test at all:
 
 | Call | Why not |
 |---|---|
-| `libc.file.scanf` | Reads standard input, which a test cannot promise will ever come to an end, and the arguments it fills come after the format. |
-| `libc.signal.sigsuspend` | Waits for a signal to arrive. A test that waits is a test that stops. |
-| `libc.unistd.pause` | The same wait, with no mask to put in place for it. |
 | `libc.pthread.pthread_cond_wait` | Waits for another thread to signal a condition, and there is one thread here to wait with. |
 
 The other seven are not about waiting. `ioctl` is variadic with the request
@@ -123,7 +120,7 @@ suite uses cannot link. `sched_getcpucount` and `isascii_l` are names glibc
 does not export at all. None of them is known to be broken; they are simply
 not asked.
 
-989 bindings are asked something, and the 11 that are not have a reason
+992 bindings are asked something, and the 8 that are not have a reason
 each. Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -147,6 +144,15 @@ because that is where `gl_flags` was: called by nothing, wrong for three
 releases, and every other check in this repository green. That list is
 **empty** now, and empty is not the same as gone: it still fails if it
 grows, which is the thing it was written for.
+
+Three have left the list above, and none of them needed a handler to do
+it. `scanf` takes a format and no conversion, so a child's pipe with a word
+in it — closed at the write end, which is what gives the input an end — is
+enough to ask it for 0 and then for `EOF`. `sigsuspend` waits under a mask
+of its own, so a signal blocked and sent to itself is pending until the swap
+delivers it: no waiting at all. `pause` has no such mask, and is asked
+instead with an alarm it never armed a handler for: the child is ended by
+the signal it went to wait for, which is what says it waited.
 
 ## API reference
 
