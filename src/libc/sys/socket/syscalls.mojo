@@ -836,8 +836,9 @@ def sockatmark(sockfd: Int32) -> Int32:
         as a function: it says whether the read pointer has reached
         the place in the stream where a byte sent out of band went,
         which is how a receiver finds the urgent byte without reading
-        past it. The mark survives the urgent byte being read — it is
-        only ordinary reading that moves past it — and reading up to
-        the mark is how the two kinds of data are kept apart.
+        past it. What reading the urgent byte does to the mark is the
+        platforms' own answer: Linux keeps it where it was until
+        ordinary reading moves past that place, and Darwin drops it as
+        the urgent byte is read.
     """
     return external_call["sockatmark", Int32, Int32](sockfd)

@@ -25,10 +25,12 @@ All notable changes to this project are documented here. The format follows
   `sockatmark` is asked the whole of what it is for, over a loopback
   TCP connection: two ordinary bytes, one sent with the new
   `MSG_OOB` constant, one more ordinary byte after it. The answer is 0
-  before the second byte is read, 1 from then on, and still 1 after the
-  marked byte itself has been read — the mark being a place in the
-  stream rather than the byte at it — and 0 again once the read has
-  passed it.
+  before the second byte is read, 1 from then on, and 0 again once the
+  read has passed the mark. Reading the marked byte itself is where
+  the platforms part ways — Linux keeps the mark until ordinary
+  reading moves past that place, Darwin drops it as the marked byte is
+  read — and the macOS run of the suite is what said so, the Linux one
+  having answered 1 there.
 
   `sync` has nothing it can report, so the test asks only that the
   asking comes back; `ttyslot` counts a line in the machine's own login

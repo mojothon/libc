@@ -461,9 +461,15 @@ def test_the_mark_that_out_of_band_data_leaves() raises:
     sent out of band leaves in the stream. Three bytes go over the
     loopback — two ordinary ones, then the marked one, then one more
     ordinary — and the mark sits between the second and the last, so
-    the answer is 0 until both ordinary bytes are read, 1 from then
-    on, and 1 still after the marked byte itself has been read, the
-    mark being a place in the stream rather than the byte at it.
+    the answer is 0 until both ordinary bytes are read and 1 from then
+    on.
+
+    Reading the marked byte is the one place the platforms part ways:
+    Linux keeps the mark where it was until ordinary reading moves past
+    that place, and Darwin drops it as the marked byte is read. Both
+    are a reading of the same rule — the mark is a place in the stream
+    rather than the byte at it — so what each platform answers there is
+    asked for by name.
     """
     var server = socket(AF_INET, SOCK_STREAM, 0)
     var unspecified = unsafe_alloc[socketaddr](1)
@@ -507,8 +513,11 @@ def test_the_mark_that_out_of_band_data_leaves() raises:
         recv(taken, coming, 1, MSG_OOB), 1, "the marked byte is read at it"
     )
     assert_equal(Int(coming.unsafe_load()), 99, "and it is the marked one")
+    comptime MARK_AFTER_ITS_BYTE: Int32 = 0 if CompilationTarget.is_macos() else 1
     assert_equal(
-        sockatmark(taken), 1, "reading the marked byte does not move past it"
+        sockatmark(taken),
+        MARK_AFTER_ITS_BYTE,
+        "reading the marked byte is where the platforms part ways",
     )
 
     assert_equal(recv(taken, coming, 1, 0), 1, "the last byte is read")
