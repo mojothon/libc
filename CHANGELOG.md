@@ -17,14 +17,22 @@ All notable changes to this project are documented here. The format follows
 
   The test asks the pair about each other, which needs no number written
   into it: a name goes into `dlsym`, the address comes out, the address
-  goes into `dladdr`, and the name comes back — `getpid`, exactly, with
-  `dli_saddr` the address that was handed over to the byte, since a symbol
-  start is the nearest symbol to itself. What is looked up is `getpid` and
+  goes into `dladdr`, and the name comes back, with `dli_saddr` the address
+  that was handed over to the byte, since a symbol start is the nearest
+  symbol to itself. What is looked up is `getpid` and
   not one of the string functions because those are ifuncs: `dlsym`
   answers with the implementation the machine chose, which is a different
   symbol from the one that was asked for and would be named differently, so
   the round trip would fail for a reason that has nothing to do with this
   binding.
+
+  **What CI found that this machine did not.** The name comes back
+  `getpid` here and `__getpid` there, on both platforms: libc exports the
+  same address under both spellings, and the loader reports whichever its
+  linker settled on. The address is what makes the two the same symbol, so
+  the test takes either name and says why, which is the difference between
+  a test that says "the name that went in comes back" and one that says
+  "the string I happened to see locally comes back".
 
   The other half of the call is the address of a heap block, which is in
   no object: zero, and `dlerror` with nothing to say about it.

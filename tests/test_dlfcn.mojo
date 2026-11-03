@@ -71,6 +71,11 @@ def test_an_address_is_named_back() raises:
     start is the nearest symbol to itself — and the object it is in has a
     load address that is not after it.
 
+    The name is allowed to come back underscored as well. libc exports
+    the same address under both spellings and the loader reports whichever
+    its linker settled on, which is `getpid` on one build and `__getpid`
+    on the next; the address is what makes them the same symbol.
+
     The address of a heap block is in no object, which is the other half
     of the call: zero, and no error.
     """
@@ -86,7 +91,18 @@ def test_an_address_is_named_back() raises:
         "and that address is in a loaded object",
     )
     var named = char_ptr_to_string(info[].dli_sname)
-    assert_equal(named, String("getpid"), "which names the symbol that went in")
+    # The same address is exported twice, under the name and under the
+    # underscored one libc uses internally, and which of the two the
+    # loader reports is the linker's business: this answers `getpid` on
+    # one glibc and `__getpid` on another, and on macOS as well as here.
+    # Either of them is the symbol that went in.
+    assert_true(
+        named == String("getpid") or named == String("__getpid"),
+        (
+            "the name that comes back is the symbol that went in, or libc's"
+            " underscored spelling of the same address"
+        ),
+    )
     assert_equal(
         Int(UInt(info[].dli_saddr)),
         Int(UInt(address)),
