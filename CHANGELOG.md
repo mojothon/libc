@@ -924,6 +924,26 @@ All notable changes to this project are documented here. The format follows
   gets a second round in the cross-process test with `_broadcast` in the child,
   because with one waiter `_signal` and `_broadcast` are the same wake-up.
 
+- **`stdio` and `stdlib` had twenty-three between them, and eight are now
+  caught.** The stream calls were being asked for what a call with the same
+  signature answers anyway: `pclose` was not asked for its status, so `getc`
+  would have done; `tmpnam` was asked for a name and not for the name of
+  something that does not exist, which is what tells it from `ctermid` looking
+  the other way; `fgetpos` was asked to write the place down and never asked
+  whether it also moved the stream, which is `fsetpos`; `setlinebuf` was
+  checked by reading the line back through the same stream, which flushes it,
+  so a stream that was not line-buffered answered the same. `valloc` was never
+  asked where its room begins -- the one thing it is for, and a number a
+  pointer can be turned into. `exit` and `_Exit` were separated by a child that
+  leaves with 42 either way, and are separated now by a buffer that one empties
+  on the way out and the other does not. `strtoll`/`strtoq` and
+  `strtoull`/`strtouq` are one address each in glibc, measured with `nm`.
+  Eleven are unobservable and are in the third table with the reason: the
+  locked and unlocked spellings of one byte in and out need a second thread to
+  contend for the lock, `flockfile` and `funlockfile` are the same wall,
+  `secure_getenv` needs a process that is not privileged, and `valloc` answers
+  with everything `malloc` promises plus alignment.
+
 - **`sys` had fourteen survivors and thirteen of them are now caught.**
   `munmap` was leaving nothing to observe, so the test asks `mprotect` on the
   address it gave back -- not a mapping any more, which is `ENOMEM`. `mlock`

@@ -117,6 +117,19 @@ SAME_ANSWER = {
         "same value under a declared width that happens to agree: a difference "
         "only ILP32 would show, for the reason `llrintf->lrintf` is here"
     ),
+    # One routine under two names, measured: `nm` puts `strtoll` and `strtoq` at
+    # the same address in glibc, and `strtoull` and `strtouq` at another one.
+    "strtoll->strtoq": (
+        "glibc's `strtoq` is a weak alias of `strtoll` -- the two are one "
+        "address in the library -- so the call that runs is the call that was "
+        "meant. The pair is BSD's older spelling, and both platforms this "
+        "package targets make them the same routine"
+    ),
+    "strtoull->strtouq": (
+        "the same for the unsigned pair: `strtouq` and `strtoull` are one "
+        "address in glibc, and Darwin spells the older name over the newer "
+        "one the same way"
+    ),
     "fputwc->putwc": (
         "glibc's header spells `putwc` as `fputwc` -- the macro is the whole "
         "of it -- and the symbol the library exports under that name writes "
@@ -505,6 +518,50 @@ NO_OBSERVATION = {
         "the same pair again for the condition's attributes, for the same "
         "reason and with the same measurement behind it"
     ),
+    # The locked and the unlocked spelling of one byte in and one byte out, five
+    # times over. What they differ in is whether the stream's lock is held for
+    # the length of the move, and the only way to see a lock is to have someone
+    # else contending for it -- a second thread, which this package cannot make
+    # (pthread_create wants a function pointer, and the runtime does not hand
+    # one out). A single-threaded process cannot tell them apart, and neither
+    # can this suite.
+    "getchar->getchar_unlocked": (
+        "one byte from standard input, with the stream's lock held or not "
+        "held. In a process with one thread nothing contends for that lock, "
+        "so the two are the same call here"
+    ),
+    "getc->getc_unlocked": (
+        "the same for the byte in from a stream the caller names: the lock "
+        "is what differs, and a second thread is what would show it"
+    ),
+    "putchar->putchar_unlocked": (
+        "the same the other way, one byte out to standard input's stream: "
+        "without a second thread the lock is never contended"
+    ),
+    "putc->putc_unlocked": (
+        "and the same for the byte out to a named stream"
+    ),
+    "flockfile->funlockfile": (
+        "one takes the stream's lock and the other gives it back, and the "
+        "lock is per-thread and recursive -- so a thread asking for it always "
+        "gets it, and giving it back when it is not held changes nothing that "
+        "can be seen. It is the same wall the four above run into: what a "
+        "lock does is only visible to whoever cannot have it"
+    ),
+    "getenv->secure_getenv": (
+        "measured in a process that is not privileged, which is every process "
+        "this suite runs in: `secure_getenv` answers nothing only when the "
+        "process's credentials changed on the way in, which is a property of "
+        "the binary and its file mode rather than of the call. There is no "
+        "way to be insecure from inside a test"
+    ),
+    "malloc->valloc": (
+        "`valloc` answers with room that begins on a page boundary and is at "
+        "least as aligned as `malloc` promises, and no other promise of "
+        "`malloc` is broken by getting better alignment than asked for. The "
+        "other direction is caught -- the test asks `valloc` where its room "
+        "begins and the heap does not begin there"
+    ),
     "btowc->wctob": (
         "measured in the C locale, which is the one this suite runs in: both "
         "answer the byte itself for ASCII, both answer EOF for everything "
@@ -646,7 +703,14 @@ def check_tables() -> int:
         ("symbol", NO_OBSERVATION),
     ):
         keys = {key_of(mutant) for mutant in build(kind)}
-        stale += [(kind, key) for key in table if key not in keys]
+        # Either way round, which is how `reason_for` reads them: a pair that
+        # only one direction of the sweep produced is still a pair, and the
+        # reason written for it excuses whichever direction turns up.
+        stale += [
+            (kind, key)
+            for key in table
+            if key not in keys and reverse_key(key) not in keys
+        ]
 
     if not stale:
         print(

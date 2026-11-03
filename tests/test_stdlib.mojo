@@ -13,10 +13,10 @@ from libc.constant import (
 )
 from libc.fcntl import O_RDWR, open
 from libc.math import fabs
-from libc.file import close, read, write
+from libc.file import close, fclose, fopen, fputs, fread, read, write
 from libc.stdio import remove
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, WIFSIGNALED, waitpid
-from libc.unistd import fork, isatty, rmdir
+from libc.unistd import SC_PAGESIZE, fork, isatty, rmdir, sysconf, unlink
 from libc.signal import SIGABRT, signal
 from libc.stdlib import (
     a64l,
@@ -641,6 +641,16 @@ def test_yes_no_and_neither() raises:
 
     var room = valloc(4096)
     assert_true(not is_null(room), "valloc gives room, and")
+    # Where that room begins is the whole of what the call is for, and it is
+    # said by turning the pointer into a number, which is the one thing a test
+    # can do with an address that is not about what is in it. `malloc` takes
+    # the same size and answers with room that begins wherever the heap is,
+    # which is not a page boundary.
+    assert_equal(
+        Int(UInt(room)) % Int(sysconf(SC_PAGESIZE)),
+        0,
+        "and it begins where a page begins",
+    )
     var words = room.unsafe_bitcast[UInt8]()
     words.unsafe_store(0, 42)
     assert_equal(words.unsafe_load(0), 42, "a number put in it comes back out")
@@ -1011,8 +1021,14 @@ def test_the_underscored_exit_ends_the_child_where_it_stands() raises:
     to leave with a number of its own choosing: this child leaves with
     42 and nothing else in it runs.
     """
+    var path = string_to_char_ptr("/tmp/libc_stdlib_exit_child")
     var child = fork()
     if child == 0:
+        # Something left in a buffer on the way out, because that is what the
+        # two exits disagree about and the number they leave with is the same
+        # one either way.
+        var out = fopen(path, string_to_char_ptr("w"))
+        _ = fputs(string_to_char_ptr("still in the buffer"), out)
         _ = _Exit(42)
 
     var status = unsafe_alloc[Int32](1)
@@ -1023,6 +1039,51 @@ def test_the_underscored_exit_ends_the_child_where_it_stands() raises:
         Int(WEXITSTATUS(status.unsafe_load())), 42, "with the 42 it chose"
     )
     status.unsafe_free()
+
+    var got = unsafe_alloc[UInt8](32)
+    var back = fopen(path, string_to_char_ptr("r"))
+    assert_true(Int(UInt(back)) != 0, "the file it was writing to is there")
+    assert_equal(
+        Int(fread(got, 1, 1, back)),
+        0,
+        "and nothing of it was written, the buffer not having been emptied",
+    )
+    _ = fclose(back)
+
+    # The same child with `exit`, which is the call `_Exit` is told from: the
+    # buffer goes out on the way, and the handlers with it.
+    var second = fork()
+    if second == 0:
+        var out = fopen(path, string_to_char_ptr("w"))
+        _ = fputs(string_to_char_ptr("out of the buffer"), out)
+        _ = exit(0)
+
+    assert_true(second > 0, "there is a second child")
+    var second_status = unsafe_alloc[Int32](1)
+    second_status.unsafe_offset(0)[] = 0
+    assert_equal(
+        waitpid(second, second_status, 0), second, "which is waited for too"
+    )
+    assert_true(
+        WIFEXITED(second_status.unsafe_load()), "and left of its own accord"
+    )
+    assert_equal(
+        Int(WEXITSTATUS(second_status.unsafe_load())), 0, "with the 0 it chose"
+    )
+    second_status.unsafe_free()
+
+    back = fopen(path, string_to_char_ptr("r"))
+    assert_true(Int(UInt(back)) != 0, "the file is there again")
+    assert_equal(
+        Int(fread(got, 1, 1, back)),
+        1,
+        "and this one wrote its buffer out on the way",
+    )
+    _ = fclose(back)
+
+    got.unsafe_free()
+    _ = unlink(path)
+    path.unsafe_free()
 
 
 def main() raises:

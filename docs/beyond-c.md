@@ -416,6 +416,17 @@ answer 0, and what separates them is what may be done with the object
 afterwards, which after a destroy is undefined. Calling that "the same answer"
 would have been the kind of entry that reads as an answer when it is a hole.
 
+`stdio` and `stdlib` were twenty-three, and the pattern was a call being asked
+for the answer another call with the same signature gives. `pclose` was never
+asked for its status, so `getc` would have done; `fgetpos` was never asked
+whether writing the place down moved the stream, which is what `fsetpos` does;
+`setlinebuf` was checked by reading the line back through the stream it was set
+on, which flushes it, so a stream left fully buffered answered the same. What
+ended that one was asking from outside: a second descriptor on the same path,
+opened by name. `valloc` was never asked where its room begins, which is the
+whole of what it is for -- and turning a pointer into a number is enough to ask
+it, which the docstring there had said was not possible.
+
 `sys` had fourteen, and they were not one habit but five. A call that only
 promises it worked is untestable until something else is asked about its
 effect: `munmap` is asked through a `mprotect` on the address it gave back,

@@ -73,7 +73,7 @@ from libc.stdio import (
 from libc.stdlib import exit, free, mkstemp
 from libc.string import strerror
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, waitpid
-from libc.unistd import dup, dup2, fork, pipe, read, write
+from libc.unistd import access, dup, dup2, fork, pipe, read, unlink, write
 from libc.utils import char_ptr_to_string, null_ptr, string_to_char_ptr
 
 
@@ -112,8 +112,19 @@ def test_popen() raises:
     var buf = unsafe_alloc[UInt8](32)
     _ = fgets(buf, 32, p)
     assert_equal(char_ptr_to_string(buf), "mojo\n")
-    _ = pclose(p)
+    # What `pclose` answers is the status the command left with, and it is the
+    # one thing here that a call reading the stream instead could not answer:
+    # `getc` takes the same stream and answers a byte of it, or -1 at the end.
+    assert_equal(pclose(p), 0, "pclose says the command left with 0")
     buf.unsafe_free()
+
+    # And once with a status of its own, so that the answer is known to be a
+    # status rather than the -1 an exhausted `getc` would have given.
+    var q = popen(string_to_char_ptr("exit 3"), string_to_char_ptr("r"))
+    assert_true(Int(UInt(q)) != 0, "there is a command to wait for")
+    assert_equal(
+        pclose(q), 3 << 8, "and the 3 it left with is where a status keeps it"
+    )
 
 
 def test_fileno_and_buffering() raises:
@@ -283,6 +294,12 @@ def test_setbuf_and_tmpnam() raises:
     assert_true(Int(UInt(made)) != 0, "tmpnam hands back a name")
     assert_true(
         Int(name.unsafe_load()) != 0, "and it wrote it where it was told to"
+    )
+    # Which is the whole of what it promises: a name no file has yet. `ctermid`
+    # writes the name of something that is there into the buffer it is handed,
+    # and the two have the same signature and the same answer of a pointer.
+    assert_true(
+        access(name, 0) != 0, "and it is the name of no file that exists"
     )
     name.unsafe_free()
 
@@ -518,6 +535,24 @@ def test_where_a_stream_is() raises:
     assert_equal(fgetc(f), 97, "so the a is read again")
     assert_equal(fgetc(f), 98, "and so is the b")
 
+    # Now with the place already holding somewhere else, which is what tells
+    # `fgetpos` from `fsetpos`: the two take the same argument and answer the
+    # same 0, and one writes where the stream is into it while the other puts
+    # the stream where it says. The stream is at the second character and the
+    # place is written there, and then the stream is rewound -- so a
+    # `fgetpos` that put the stream at what the place held would leave it at
+    # the b and read nothing at all.
+    assert_equal(fgetpos(f, pos), 0, "the place is written down again")
+    # The stream is at the third character, and asking where it is leaves it
+    # there. The place still holds the start from before, so a `fsetpos` would
+    # have put the stream back at the a.
+    assert_equal(
+        fgetc(f), 99, "and asking did not move the stream, which is at the c"
+    )
+    _ = rewind(f)
+    assert_equal(fgetpos(f, pos), 0, "and written down where the stream is now")
+    assert_equal(fgetc(f), 97, "which left the stream where it was, at the a")
+
     pos.unsafe_free()
     _ = fclose(f)
 
@@ -546,6 +581,11 @@ def test_naming_a_terminal_and_a_temporary() raises:
         char_ptr_to_string(name).byte_length() > 0,
         "and what it says is not empty",
     )
+    # It names the terminal device, which is a path that is there whether or
+    # not this process is on one -- what is there is the node. `tmpnam` writes
+    # the name of a file that does not exist into the same buffer, being the
+    # call with its signature and the same answer of a pointer.
+    assert_equal(access(name, 0), 0, "and names something that is there")
 
     var pfx = string_to_char_ptr("mytmp")
     var made = tempnam(null_ptr[c_char](), pfx)
@@ -647,15 +687,44 @@ def test_saying_how_a_stream_buffers() raises:
     _ = fclose(g)
     got2.unsafe_free()
 
-    var h = tmpfile()
+    # A file rather than a `tmpfile`, because what line buffering means is
+    # only visible from outside the stream: the line is in the file as soon as
+    # the newline is in it, with nothing closed and nothing flushed to make it
+    # so. `clearerr_unlocked` takes the same stream and answers nothing at all,
+    # so a stream set to lines by it would still be holding the line here.
+    var path = string_to_char_ptr("/tmp/mojo_libc_stdio_linebuf")
+    var h = fopen(path, string_to_char_ptr("w+"))
+    assert_true(Int(UInt(h)) != 0, "there is a stream to be set to lines")
     setlinebuf(h)
-    _ = fputs(string_to_char_ptr("line"), h)
+    _ = fputs(string_to_char_ptr("line\n"), h)
+
+    var alongside = open(path, O_RDONLY)
+    assert_true(alongside >= 0, "and the file can be read alongside it")
+    var early = unsafe_alloc[UInt8](8)
+    early.unsafe_store(0, 0)
+    assert_equal(
+        Int(read(alongside, early, 5)),
+        5,
+        "so the line has already left the buffer",
+    )
+    # Terminated by hand: what was read is five bytes with nothing after them,
+    # and reading it as a string would carry on into what the buffer held.
+    early.unsafe_store(5, 0)
+    assert_equal(
+        char_ptr_to_string(early), "line\n", "and it is the line that went in"
+    )
+    early.unsafe_free()
+    assert_equal(close(alongside), 0, "the second descriptor closes")
+
     _ = rewind(h)
     var got3 = unsafe_alloc[UInt8](8)
     _ = fgets(got3, 8, h)
-    assert_equal(char_ptr_to_string(got3), "line", "and one set to lines")
+    assert_equal(char_ptr_to_string(got3), "line\n", "and one set to lines")
     _ = fclose(h)
     got3.unsafe_free()
+
+    _ = unlink(path)
+    path.unsafe_free()
 
 
 def _leave_with_the_first_byte_of_stdin(unlocked: Bool) raises -> None:
