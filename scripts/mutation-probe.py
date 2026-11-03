@@ -41,6 +41,12 @@ tell them apart -- and a test that passes `getuid()` for both has not.
 suite run. The sample is spread over the modules rather than taken from the
 front, and it is the same sample every run so two runs can be compared.
 
+`--jobs` asks several mutants at once, each against its own copy of the tree.
+The suite is what takes the time and it is mostly one process compiling, so
+this is the only way a sweep of the whole axis is an evening's work rather than
+a day's; the answers are the same count, because a mutant is still one mutation
+and one run of the tests that call it.
+
 `--check-tables` asks nothing of the suite and takes seconds: it reads the two
 reasons tables back against the mutants that can still be built, because a
 reason that outlives the pair it was written for is worse than no reason at
@@ -53,13 +59,16 @@ entry that has been answered, and the run says so.
 """
 
 import argparse
+import concurrent.futures
 import importlib.util
 import random
 import re
+import queue
 import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -586,6 +595,9 @@ def main() -> int:
         "--strict", action="store_true", help="fail the run if a mutant survives"
     )
     parser.add_argument(
+        "--jobs", type=int, default=1, help="how many mutants to ask at once"
+    )
+    parser.add_argument(
         "--check-tables",
         action="store_true",
         help="ask nothing of the suite: only that the two tables still apply",
@@ -622,9 +634,18 @@ def main() -> int:
             picked.append(mutant)
 
     with tempfile.TemporaryDirectory() as tmp:
-        copy = Path(tmp) / "src"
-        shutil.copytree(SRC, copy)
-        print(f"{len(picked)} {args.kind} mutant(s), one `mojo run` each\n")
+        # One copy of the tree per worker: two mutants in one tree would be two
+        # mutations in one file, and the second would be asked against the
+        # first one's mistake.
+        copies: queue.Queue[Path] = queue.Queue()
+        for index in range(max(1, args.jobs)):
+            made = Path(tmp) / f"src{index}"
+            shutil.copytree(SRC, made)
+            copies.put(made)
+        how = f"{len(picked)} {args.kind} mutant(s), one `mojo run` each"
+        if args.jobs > 1:
+            how += f", {args.jobs} at a time"
+        print(how + "\n")
         tally = {
             "caught": 0,
             "crashed": 0,
@@ -634,62 +655,79 @@ def main() -> int:
             "error": 0,
         }
         answered: list[str] = []
-        for mutant in picked:
-            target = copy / Path(mutant.path).relative_to(SRC)
-            pristine = target.read_text()
-            if not apply(target, mutant):
-                print(f"  ?? {mutant.name}: could not be mutated")
-                continue
-            tests = callers(mutant.name)
-            outs = []
-            for test in tests:
-                try:
-                    result = subprocess.run(
-                        [
-                            "pixi",
-                            "run",
-                            "mojo",
-                            "run",
-                            "-I",
-                            str(copy),
-                            "-I",
-                            "tests",
-                            str(test.relative_to(ROOT)),
-                        ],
-                        cwd=ROOT,
-                        capture_output=True,
-                        text=True,
-                        timeout=TIMEOUT,
-                    )
-                except subprocess.TimeoutExpired:
-                    # A mutated lock or wait can leave the file waiting rather
-                    # than failing, and that is a verdict of its own: the run
-                    # does not stop at it, and the mutant after it still gets
-                    # asked.
-                    outs.append("hung")
-                    continue
-                outs.append(classify(result))
-            target.write_text(pristine)
-            verdict = "caught" if "caught" in outs else outs[0]
-            where = f"{Path(mutant.path).relative_to(SRC / 'libc')}:{mutant.name}"
-            if mutant.kind == "order":
-                where += f" ({mutant.what})"
-            known = reason_for(mutant)
-            if verdict == "survived" and known:
-                verdict = "same"
-            if verdict == "caught" and known:
-                answered.append(where)
-            tally[verdict] += 1
-            if mutant.kind == "symbol":
-                print(f"  {verdict:9} {where:44} {mutant.what}")
-            else:
-                print(f"  {verdict:9} {where}")
-            if known:
-                print(f"            {known}")
-            if verdict == "error":
-                tail = (result.stderr or "").strip().splitlines()
-                for line in tail[-3:]:
-                    print(f"            {line.strip()[:110]}")
+        # The workers print as they finish, so the report is in the order the
+        # answers came back rather than the order they were asked in -- which is
+        # the order a reader of a sweep wants anyway.
+        say = threading.Lock()
+
+        def ask(mutant: Mutant):
+            copy = copies.get()
+            try:
+                target = copy / Path(mutant.path).relative_to(SRC)
+                pristine = target.read_text()
+                if not apply(target, mutant):
+                    with say:
+                        print(f"  ?? {mutant.name}: could not be mutated")
+                    return
+                outs = []
+                for test in callers(mutant.name):
+                    try:
+                        result = subprocess.run(
+                            [
+                                "pixi",
+                                "run",
+                                "mojo",
+                                "run",
+                                "-I",
+                                str(copy),
+                                "-I",
+                                "tests",
+                                str(test.relative_to(ROOT)),
+                            ],
+                            cwd=ROOT,
+                            capture_output=True,
+                            text=True,
+                            timeout=TIMEOUT,
+                        )
+                    except subprocess.TimeoutExpired:
+                        # A mutated lock or wait can leave the file waiting
+                        # rather than failing, and that is a verdict of its own:
+                        # the run does not stop at it, and the mutant after it
+                        # still gets asked.
+                        outs.append("hung")
+                        continue
+                    outs.append(classify(result))
+                target.write_text(pristine)
+                verdict = "caught" if "caught" in outs else outs[0]
+                where = f"{Path(mutant.path).relative_to(SRC / 'libc')}:{mutant.name}"
+                if mutant.kind == "order":
+                    where += f" ({mutant.what})"
+                known = reason_for(mutant)
+                if verdict == "survived" and known:
+                    verdict = "same"
+                with say:
+                    tally[verdict] += 1
+                    if mutant.kind == "symbol":
+                        print(f"  {verdict:9} {where:44} {mutant.what}")
+                    else:
+                        print(f"  {verdict:9} {where}")
+                    if known:
+                        print(f"            {known}")
+                    if verdict == "caught" and known:
+                        answered.append(where)
+                    if verdict == "error":
+                        tail = (result.stderr or "").strip().splitlines()
+                        for line in tail[-3:]:
+                            print(f"            {line.strip()[:110]}")
+            finally:
+                copies.put(copy)
+
+        if args.jobs > 1:
+            with concurrent.futures.ThreadPoolExecutor(args.jobs) as pool:
+                list(pool.map(ask, picked))
+        else:
+            for mutant in picked:
+                ask(mutant)
 
         print()
         print(
