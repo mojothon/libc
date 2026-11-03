@@ -739,6 +739,24 @@ All notable changes to this project are documented here. The format follows
   samples, with `--only` for named bindings and `--strict` to fail on a
   survivor that is not a pair known to answer the same thing.
 
+### Fixed
+
+- **`tests/test_import_all.mojo` is a test again.** It lists every public name
+  in every sub-package and imports it, which is how a name that a platform
+  does not export is found here rather than in whatever a caller was doing. It
+  had two names that no longer exist — `fflush`, which `libc.file` stopped
+  binding because `std.io` declares the same symbol, and `close`, which moved
+  to `libc.unistd` — and the suite was green the whole time.
+
+  It was green because imported from `test_main.mojo` none of it is checked:
+  Mojo resolves the names a function body *uses*, and these functions use none
+  of the ones they import, so every import in the file is dropped before
+  anything looks at it. The function still ran, still printed `ok`, and proved
+  nothing. Run as the module the compiler starts from, the same file fails to
+  parse — which is what `pixi run test-imports` does now, and what the lint job
+  in CI does. The call from the runner stays, because it is harmless and
+  because what it does not do is worth knowing.
+
 ### Removed
 
 - **`fcntl`'s two-argument form, which could not be used with the

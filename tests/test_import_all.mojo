@@ -5,6 +5,19 @@ symbol each binding asks for, which is what a caller gets when it
 imports a package and what the JIT does at materialization time.
 A name a platform does not export fails here, in a test, rather
 than in whatever a caller was doing when it imported us.
+
+Run it as the module the compiler starts from:
+
+    mojo run -I src -I tests tests/test_import_all.mojo
+
+which is what `pixi run test-imports` does, and what the lint job in CI
+does. That matters more than it looks. Imported from `test_main.mojo`, none
+of this is checked at all: Mojo resolves the names a function body *uses*
+and these functions use none of them, so every `from ... import (...)` in
+here is dropped before anything looks at it. The runner still calls it and
+it still says ok, which is how `fflush` stayed in the list after `file`
+stopped binding it and `close` after it moved to `unistd` -- the two were
+found by running this file on its own, which nothing had done.
 """
 
 
@@ -259,7 +272,6 @@ def bring_in_libc_file():
         fcntl,
         feof,
         ferror,
-        fflush,
         fgetc,
         fgets,
         fmemopen,
@@ -971,6 +983,7 @@ def bring_in_libc_setjmp():
 
 def bring_in_libc_signal():
     from libc.signal import (
+        SA_RESTART,
         SIGABRT,
         SIGALRM,
         SIGBUS,
@@ -991,6 +1004,7 @@ def bring_in_libc_signal():
         SIGTSTP,
         SIGUSR1,
         SIGUSR2,
+        SIGWINCH,
         SIG_BLOCK,
         SIG_DFL,
         SIG_ERR,
@@ -1002,6 +1016,7 @@ def bring_in_libc_signal():
         killpg,
         psignal,
         sigaction,
+        sigaction_t,
         siginfo_t,
         sigaddset,
         sigaltstack,
@@ -1471,7 +1486,6 @@ def bring_in_libc_sys_socket():
         accept,
         accept4,
         bind,
-        close,
         connect,
         getpeername,
         getsockname,

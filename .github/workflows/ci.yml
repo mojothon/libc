@@ -35,6 +35,12 @@ jobs:
       # a rename leaves an example a reader finds before a test does.
       - name: Check that the examples in the docs compile
         run: pixi run check-examples
+      # Every public name imported by name, in a process of its own. It has
+      # to be its own process: imported from the runner, Mojo resolves the
+      # names a function body uses and these bodies use none of them, so the
+      # imports are dropped and a name that no longer exists goes unnoticed.
+      - name: Check that every public name still resolves
+        run: pixi run test-imports
       # Everything above asks whether a binding is right. This asks whether
       # anything ever calls it, which is a different question and the one
       # `gl_flags` was on the wrong side of.
