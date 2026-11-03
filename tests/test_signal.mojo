@@ -19,8 +19,10 @@ from libc.signal import (
     killpg,
     psignal,
     sigaction,
+    SIGSTKSZ,
     sigaction_t,
     sigaddset,
+    stack_t,
     sigblock,
     sigaltstack,
     sigdelset,
@@ -176,10 +178,86 @@ def test_sigaltstack_asked_and_told_nothing() raises:
     set one is: there is not one.
     """
     assert_equal(
-        sigaltstack(null_ptr[UInt8](), null_ptr[UInt8]()),
+        sigaltstack(null_ptr[stack_t](), null_ptr[stack_t]()),
         0,
         "sigaltstack answers when given nothing",
     )
+
+
+def test_sigaltstack_installs_a_stack_and_puts_it_back() raises:
+    """The two arguments are the pair `sigaction`'s test is about: one is
+    what to install, the other is where to write what is already there,
+    they are the same type, and the null call above answers 0 with them
+    either way round.
+
+    So a stack is installed and asked for. Nothing installs an action
+    with `SA_ONSTACK`, so no signal is ever delivered on it: it is a
+    block of memory C is told about and then told to forget.
+    """
+    var before = unsafe_alloc[stack_t](1)
+    before.unsafe_offset(0)[] = stack_t()
+    assert_equal(
+        sigaltstack(null_ptr[stack_t](), before),
+        0,
+        "a process can be asked what its stack is",
+    )
+    # What the answer is is not asserted: this is not a process that never set
+    # one. The runtime puts a handler on `SIGUSR1` and an alternate stack under
+    # it, so the first read is what "put back" is measured against rather than
+    # zero.
+
+    # `SIGSTKSZ` is what the platforms ask for at least, and the least is
+    # enough: nothing is going to run on this stack.
+    var room = unsafe_alloc[UInt8](Int(SIGSTKSZ))
+    var wanted = unsafe_alloc[stack_t](1)
+    wanted.unsafe_offset(0)[] = stack_t()
+    wanted[].set_sp(UInt64(UInt(room)))
+    wanted[].set_size(UInt64(UInt(SIGSTKSZ)))
+    assert_equal(
+        sigaltstack(wanted, null_ptr[stack_t]()), 0, "the stack is installed"
+    )
+
+    var now = unsafe_alloc[stack_t](1)
+    now.unsafe_offset(0)[] = stack_t()
+    assert_equal(
+        sigaltstack(null_ptr[stack_t](), now),
+        0,
+        "and asked what it is",
+    )
+
+    # Put back before the answers are judged, so that a failure here cannot
+    # leave the process with a stack pointing at memory about to be freed.
+    assert_equal(
+        sigaltstack(before, null_ptr[stack_t]()),
+        0,
+        "and taken away again",
+    )
+
+    # Three members, and both that had to make the trip out and back: a
+    # binding handing the two arguments over swapped installs what `before`
+    # held, which is no stack at all -- `ss_sp` is NULL with no `SS_DISABLE`
+    # -- and is refused with EINVAL.
+    assert_equal(
+        now[].sp(), wanted[].sp(), "the stack in force is where it was put"
+    )
+    assert_equal(
+        now[].size(), UInt64(UInt(SIGSTKSZ)), "and as long as it was made"
+    )
+
+    # And the restore put back what was there, read once more.
+    assert_equal(
+        sigaltstack(null_ptr[stack_t](), now),
+        0,
+        "and asked again after the restore",
+    )
+    assert_equal(
+        now[].sp(), before[].sp(), "which is the stack it had when it started"
+    )
+
+    now.unsafe_free()
+    wanted.unsafe_free()
+    room.unsafe_free()
+    before.unsafe_free()
 
 
 def test_sigaction_asked_and_told_nothing() raises:
@@ -539,6 +617,7 @@ def main() raises:
     test_sigprocmask_read_twice_reads_the_same()
     test_kill_with_nothing_to_send()
     test_sigaltstack_asked_and_told_nothing()
+    test_sigaltstack_installs_a_stack_and_puts_it_back()
     test_sigaction_asked_and_told_nothing()
     test_sigaction_installs_an_ignore_and_puts_it_back()
     test_craise_with_nothing_to_send()

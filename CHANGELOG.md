@@ -871,9 +871,18 @@ All notable changes to this project are documented here. The format follows
   with no order in it, and the rest are an id this process cannot change
   (`setreuid`, `setregid`, `lchown`, `adjtime`) or a call that fails on its
   first argument before reading the second (`getnetgrent`, `innetgr`,
-  `aligned_alloc`, `mbsnrtowcs`, `wcsnrtombs`, `sched_setscheduler`). One is
-  left standing: `sigaltstack`, which needs a `stack_t` the package does not
-  have yet.
+  `aligned_alloc`, `mbsnrtowcs`, `wcsnrtombs`, `sched_setscheduler`).
+
+  The twentieth was `sigaltstack`, asked with two NULLs because there was no
+  `stack_t` to give it, which is the `sigaction` story over again. It is bound
+  now, and it is the only struct on the page the two platforms lay out
+  identically — a pointer, four bytes of flags and a size, at 0, 8 and 16 for
+  24 either way. The test installs a stack of `SIGSTKSZ` bytes, reads it back
+  and puts the old one back; a swap installs what the read buffer held, which
+  is no stack at all, and is refused with `EINVAL`. Writing it turned up
+  something worth knowing: the runtime puts a handler on `SIGUSR1` and an
+  alternate stack under it, so the suite's own process has one already and the
+  restore is measured against the first read rather than against zero.
 
 - **`scripts/check-comparisons.py` asks every comparison which way it leans.**
   Seven of the survivors across four samples were one shape: an assertion that

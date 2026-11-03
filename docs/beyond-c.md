@@ -146,8 +146,8 @@ counted rather than asked, which is what the count is for.
 
 | what a struct does with its members | how many |
 | --- | --- |
-| places one by hand, at an offset listed in `OFFSETS` | 113 |
-| declares them in order and leaves the layout to Mojo | 186 |
+| places one by hand, at an offset listed in `OFFSETS` | 116 |
+| declares them in order and leaves the layout to Mojo | 187 |
 | reads none of them, and claims only a size | 17 |
 | has a struct only Linux has | 13 |
 
@@ -348,8 +348,15 @@ not have the privilege to change (`setreuid`, `setregid`, `lchown`,
 second (`getnetgrent`, `innetgr`, `aligned_alloc`, `mbsnrtowcs`,
 `wcsnrtombs`, `sched_setscheduler`).
 
-One is left, and it is the `sigaction` story again: `sigaltstack` is asked
-with two NULLs because this package has no `stack_t` to give it.
+The twentieth was the `sigaction` story again, and it closed the same way:
+`sigaltstack` was asked with two NULLs because there was no `stack_t` to give
+it, and there is one now. It is the only struct on the page the two platforms
+lay out identically — a pointer, four bytes of flags and a size, at 0, 8 and 16
+for 24 either way — so it is the only one where the offsets are the same number
+twice. Writing the test turned up something worth knowing: the runtime puts a
+handler on `SIGUSR1` and an alternate stack under it, so the process the suite
+runs in is not one that has never set a stack. The test therefore measures the
+restore against the first read rather than against zero.
 
 A fifth sample came back 17 caught, 2 that took the process down, 3 that are
 the same call and 2 that passed. `lockf(-1, 3, 0)` is the descriptor lesson

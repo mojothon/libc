@@ -164,7 +164,7 @@ def sigaction(
     ](sig, act, oldact)
 
 
-def sigaltstack(ss: c_ptr[UInt8], oss: c_ptr[UInt8]) -> Int32:
+def sigaltstack(ss: c_ptr[stack_t], oss: c_ptr[stack_t]) -> Int32:
     """C library <signal.h> function `sigaltstack`.
 
     Reference:
@@ -174,22 +174,30 @@ def sigaltstack(ss: c_ptr[UInt8], oss: c_ptr[UInt8]) -> Int32:
         int sigaltstack(const stack_t *ss, stack_t *oss)
 
     Description:
-        The sigaltstack() function sets the alternate signal stack. There is no
-        `stack_t` here either, so both arguments are bytes: what C wants at
-        `ss` is a pointer, a set of flags and a size, and what it wants of the
-        size is at least `SIGSTKSZ`, which is not bound here and differs
-        between the platforms.
+        The sigaltstack() function sets the alternate signal stack, which is
+        the stack a signal handler runs on when its action asked to be run
+        there. Nothing here asks for that, so a stack can be installed, asked
+        for and taken away again without a signal ever being delivered on it.
+
+        `stack_t` is here, and it is the one struct on this page the two
+        platforms lay out the same way: a pointer, four bytes of flags and a
+        size, at 0, 8 and 16 for 24 in all. What it wants of the size is at
+        least `SIGSTKSZ`.
+
+        As with `sigaction`, calling it with NULL where the new stack would go
+        writes the stack in force where `oss` points and changes nothing.
 
     Arguments:
-        ss: The stack to use, as bytes, or NULL to leave it alone.
-        oss: Where the old one is written, as bytes, or NULL if it is
-            not wanted.
+        ss: The stack to use, or NULL to leave the signal answering as it
+            did.
+        oss: Where the stack in force is written, or NULL if it is not
+            wanted.
 
     Return Value:
         On success, 0 is returned. On error, -1 is returned, and errno
         is set to indicate the error.
     """
-    return external_call["sigaltstack", Int32, c_ptr[UInt8], c_ptr[UInt8]](
+    return external_call["sigaltstack", Int32, c_ptr[stack_t], c_ptr[stack_t]](
         ss, oss
     )
 
@@ -680,6 +688,72 @@ def siginterrupt(sig: Int32, interrupt: Int32) -> Int32:
 comptime SIGACTION_HANDLER_OFFSET: Int = 0
 comptime SIGACTION_FLAGS_OFFSET: Int = 12 if CompilationTarget.is_macos() else 136
 comptime SIGACTION_SLOTS: Int = 2 if CompilationTarget.is_macos() else 19
+
+
+# `stack_t` is the third struct here, and the only one the two platforms agree
+# about byte for byte: a pointer, four bytes of flags and a size, at 0, 8 and
+# 16 for 24 in all -- where glibc pads the flags out to eight with four bytes
+# XNU does not have, and both end at the same place anyway.
+comptime STACK_SP_OFFSET: Int = 0
+comptime STACK_FLAGS_OFFSET: Int = 8
+comptime STACK_SIZE_OFFSET: Int = 16
+
+
+struct stack_t:
+    """A C `stack_t`: the alternate stack a signal handler may be run on.
+
+    Three members and no union, so this one is written out rather than kept as
+    a number the way `sigaction_t`'s handler is: `ss_sp` is an address, and it
+    is kept as one, because nothing else can be.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man2/sigaltstack.2.html).
+    """
+
+    # The `ss_size` member is a `size_t` and the pointer is a word: eight-byte
+    # slots keep the alignment C gives it.
+    var _slots: Array[UInt64, 3]
+
+    def __init__(out self):
+        """Zeroed, which is a process that has no alternate stack: `ss_sp` is
+        NULL and `ss_flags` is 0, which is what `sigaltstack` refuses.
+        """
+        self._slots = Array[UInt64, 3](fill=0)
+
+    def sp(self) -> UInt64:
+        """The lowest address of the stack, which is zero when there is none."""
+        return self._slots[STACK_SP_OFFSET // 8]
+
+    def set_sp(mut self, value: UInt64):
+        """Puts the stack at `value`."""
+        self._slots[STACK_SP_OFFSET // 8] = value
+
+    def flags(self) -> Int32:
+        """The `SS_*` bits: `SS_DISABLE` and `SS_ONSTACK`.
+
+        Returns:
+            The four bytes beside the pointer, as the number C reads.
+        """
+        var shift = UInt64((STACK_FLAGS_OFFSET % 8) * 8)
+        var word = self._slots[STACK_FLAGS_OFFSET // 8]
+        return Int32(UInt32((word >> shift) & 0xFFFFFFFF))
+
+    def set_flags(mut self, value: Int32):
+        """Asks for `value` as the flags, leaving the pointer where it is."""
+        var shift = UInt64((STACK_FLAGS_OFFSET % 8) * 8)
+        var word = self._slots[STACK_FLAGS_OFFSET // 8]
+        var bits = UInt64(UInt32(Int64(value) & 0xFFFFFFFF))
+        self._slots[STACK_FLAGS_OFFSET // 8] = (
+            word & ~(UInt64(0xFFFFFFFF) << shift)
+        ) | (bits << shift)
+
+    def size(self) -> UInt64:
+        """How many bytes there are, which is what `SIGSTKSZ` is for."""
+        return self._slots[STACK_SIZE_OFFSET // 8]
+
+    def set_size(mut self, value: UInt64):
+        """Makes the stack `value` bytes long."""
+        self._slots[STACK_SIZE_OFFSET // 8] = value
 
 
 struct sigaction_t:
