@@ -214,6 +214,11 @@ def bring_in_libc_fcntl():
 
 
 def bring_in_libc_fenv():
+    from libc.execinfo import (
+        backtrace,
+        backtrace_symbols,
+        backtrace_symbols_fd,
+    )
     from libc.fenv import (
         FE_ALL_EXCEPT,
         FE_DIVBYZERO,

@@ -37,6 +37,7 @@ from test_sync import main as run_sync
 from test_logging import main as run_logging
 from test_sendfile import main as run_sendfile
 from test_errno import main as run_errno
+from test_execinfo import main as run_execinfo
 from test_fenv import main as run_fenv
 from test_float import main as run_float
 from test_fnmatch import main as run_fnmatch
@@ -112,6 +113,7 @@ def main() raises:
     run_logging()
     run_sendfile()
     run_errno()
+    run_execinfo()
     run_fenv()
     run_float()
     run_fnmatch()

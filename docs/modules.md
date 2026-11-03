@@ -62,6 +62,7 @@ the bottom.
 | `libc.sys.sem` | `<sys/sem.h>` counters that wait | 6 |
 | `libc.poll` | `<poll.h>` | 14 |
 | `libc.setjmp` | `<setjmp.h>` | 2 |
+| `libc.execinfo` | `<execinfo.h>` the stack the process is on | 3 |
 | `libc.sys.utsname` | `<sys/utsname.h>` | 8 |
 | `libc.sys.sendfile` | `<sys/sendfile.h>` | 1 |
 | `libc.sys.random` | `<sys/random.h>` | 3 |
@@ -142,7 +143,7 @@ when a binding is added with neither a test nor a reason. It also keeps the
 opposite list — bindings that could be asked something and have not been —
 because that is where `gl_flags` was: called by nothing, wrong for three
 releases, and every other check in this repository green. That list is
-**empty** now: 936 bindings are asked something, and the 18 that are not
+**empty** now: 977 bindings are asked something, and the 17 that are not
 each have a reason written down. Empty is not the same as gone; it still
 fails if it grows, which is the thing it was written for.
 

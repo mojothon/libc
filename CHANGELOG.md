@@ -7,6 +7,43 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **`libc.execinfo` is new: the three calls that read the stack the
+  process is standing on.** Not ISO C and not POSIX — a BSD extension glibc
+  copied, which is why it exists twice over — but it is the thing a crash
+  handler and a diagnostic report are built on, and it was missing.
+  `backtrace` fills an array with the return addresses of the frames above
+  the caller, `backtrace_symbols` turns that array into one line of text
+  per frame, and `backtrace_symbols_fd` writes the same lines to a
+  descriptor. The two textual forms are not the same call twice: the first
+  makes one block holding the array and the strings together, so it is the
+  array that goes back to `free` and not each string, and the second
+  allocates nothing at all, which is the whole reason it exists — it is
+  what a handler writes with once the heap it would have asked is gone.
+
+  **What this found is about the toolchain, not about C.** Run through
+  `mojo run`, the same `backtrace` in the same three-deep nest answers
+  **1** where a C program answers 4, and the one line it can print is a
+  bare address with no object name on it: the program is built into memory
+  just before it is run, those frames have no unwind information that libc's
+  unwinder knows, and that memory belongs to no loaded image, so nothing can
+  name it. Built ahead of time with `mojo build`, the same call answers 4.
+  The binding is right in both cases; what a caller gets back is a property
+  of how the program was built. So the test asserts the floor that holds
+  either way — room for one frame records one, room for none records none,
+  sixty-four is a ceiling — and not a depth, and the module says so where a
+  reader will hit it.
+
+  The assertion worth having is the two forms against each other: neither
+  the words nor their spelling is the same on the two platforms, so what is
+  compared is the number of lines, which both have to get right and which
+  has to agree with what `backtrace` answered. Neither platform is asked
+  what it wrote, only that it wrote as many of them as it said it would.
+
+  `beyond-c.md` says 990 symbols, 987 among the four libraries, 27.7%;
+  `modules.md` says `libc.execinfo` has 3, and its closing paragraph said
+  936 asked and 18 unaskable, which was two recountings out of date and now
+  says 977 and 17.
+
 - **`libc.utmpx` is new: the seven calls of `<utmpx.h>`, and the record
   they hand back.** The login database: one record per session, who, on
   which terminal, since when, and whether it is still open. `getutxent`

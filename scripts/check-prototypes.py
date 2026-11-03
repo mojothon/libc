@@ -49,7 +49,8 @@ SRC = ROOT / "src" / "libc"
 # whole run.
 HEADERS = [
     "aio.h", "arpa/inet.h", "complex.h", "ctype.h", "dirent.h", "dlfcn.h",
-    "errno.h", "fcntl.h", "fenv.h", "float.h", "fnmatch.h", "ftw.h",
+    "errno.h", "execinfo.h", "fcntl.h", "fenv.h", "float.h", "fnmatch.h",
+    "ftw.h",
     "glob.h", "getopt.h", "grp.h", "iconv.h", "ifaddrs.h", "inttypes.h",
     "langinfo.h",
     "libgen.h",
