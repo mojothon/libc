@@ -30,6 +30,13 @@ check-prototypes = "python3 scripts/check-prototypes.py"
 # the copy a bug was found in got fixed while the other kept it. A module
 # that wants to offer a call another module owns imports it instead.
 check-duplicates = "python3 scripts/check-duplicates.py"
+# Not a gate: every mutant is a rebuild of the package and a suite run, so it
+# samples. It points one binding at a same-signature sibling's symbol and asks
+# whether any test notices -- `check-tests` only asks that a binding be
+# called, and `_ = f(...)` counts, so a test that throws the answer away is
+# green against the wrong function. `--limit` for more, `--only` for named
+# bindings, `--strict` to fail on a survivor that is not a known pair.
+mutation-probe = "python3 scripts/mutation-probe.py"
 # Every numeric constant here was read out of `gcc -dM` by eye, once, and
 # a number nobody rechecks is a number nothing stops from being wrong: 55
 # of them were Darwin's values with no platform branch at all, which is

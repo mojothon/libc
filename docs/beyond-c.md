@@ -186,6 +186,33 @@ thinks is there; a block smaller than C's is whatever came next in memory
 being overwritten, which is why the script calls that a failure and calls the
 generous ones loose.
 
+The last thing nothing here checked was whether a test would *notice*.
+Every script above asks about the binding; `scripts/check-tests.py` asks that
+each one be called, which is a lower bar than it sounds: `_ = f(...)` counts,
+and a test that asks for an answer and then throws it away passes just as
+quietly when the binding underneath is calling the wrong function. `gamma` was
+in exactly that state for a while — it called `tgamma`, the gamma function
+rather than its logarithm, and every check on this list was green — and what
+tells that apart is a test failing when the symbol changes.
+
+`scripts/mutation-probe.py` changes it on purpose. Two bindings in one file
+with the same signature are interchangeable as far as the compiler is
+concerned, so one is pointed at the other's symbol and the tests that call it
+are run — a rebuild each, which is why it samples instead of sweeping. The
+first two samples were twenty-four mutants and found four calls whose tests
+could not tell: `strncmp`, whose two strings were the same case, so
+`strncasecmp` answered identically; `endhostent`, called and never observed,
+so `endprotoent` — next line, same shape — passed; `alarm`, asked twice for
+nothing, which `close` also answers 0 to; and `getdomainname`, held only to
+writing fewer than 256 bytes into a 256 byte buffer, which `gethostname`
+does too. Each has an assertion now that only the right call passes: a
+case-differing `strncmp`, a second `gethostent` after the database was shut —
+the first row again, which is what shutting it means — ten seconds armed and
+taken back unspent, and `uname`'s `domainname` agreeing on the one platform
+whose `utsname` carries it. The same twenty-four come back as 21 caught by an
+assertion, 2 that are the same function under two names (`scalbn` and
+`ldexp`), and 1 that took the process down rather than fail an assertion.
+
 glibc, for its part, does not come with anything that checks glibc.
 
 ## Next to Rust's `libc`

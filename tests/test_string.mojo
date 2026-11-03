@@ -133,6 +133,12 @@ def test_compare() raises:
 
     assert_equal(Int(strncmp(abc, abd, 2)), 0)
     assert_true(Int(strncmp(abc, abd, 3)) < 0, "the third byte decides")
+    # And it compares bytes, not letters: `strncasecmp` answers 0 here, and a
+    # `strncmp` that was calling it would answer 0 too.
+    assert_true(
+        Int(strncmp(abc, upper, 3)) > 0,
+        "strncmp keeps the case, so a lowercase letter sorts after its capital",
+    )
 
     assert_equal(Int(strcasecmp(abc, upper)), 0)
     assert_equal(Int(strncasecmp(abc, upper, 3)), 0)

@@ -212,9 +212,28 @@ def test_ids() raises:
 
 
 def test_alarm_and_sleep() raises:
-    """Both can be asked for nothing, and neither one waits."""
+    """Both can be asked for nothing, and neither one waits.
+
+    `alarm` answers with the seconds left on the alarm it replaced, and that
+    is the one number about it this suite can read: a second's worth is armed
+    and taken back in the next breath, so what comes back is that second with
+    nothing spent. Asked twice for nothing it says 0 both times, which is
+    also what `close` says -- `close` is one line away in the module, takes
+    the same `c_uint` and returns the same `c_uint` -- and a binding pointed
+    at it is a test that passes while the process is being handed a signal
+    instead of an answer.
+    """
     assert_equal(alarm(0), 0, "no alarm was set, so none was replaced")
     assert_equal(sleep(0), 0, "and there was nothing to sleep through")
+
+    assert_equal(alarm(10), 0, "ten seconds are asked for, and none was there")
+    var left = alarm(0)
+    # A whole second between the two calls is the only way to lose one, and
+    # they are microseconds apart.
+    assert_true(
+        left == 10 or left == 9,
+        "and taking it back says the ten it had left, less what was spent",
+    )
 
 
 def test_nice_and_pagesize() raises:
@@ -848,11 +867,27 @@ def test_asking_after_the_machine_and_the_process() raises:
     assert_equal(
         getdomainname(domain, 256), 0, "the domain name is written, and"
     )
-    # Not what it says: a machine with no domain is one with none.
-    assert_true(
-        char_ptr_to_string(domain).byte_length() < 256,
-        "what is written fits the room it was given",
-    )
+    comptime if CompilationTarget.is_macos():
+        # Not what it says: a machine with no domain is one with none, and
+        # Darwin's `utsname` stops at `machine`, so there is no second way to
+        # ask. All that is asked is that a name fits the room it was given.
+        assert_true(
+            char_ptr_to_string(domain).byte_length() < 256,
+            "what is written fits the room it was given",
+        )
+    else:
+        # glibc keeps the same name in `utsname`, so the two are asked to
+        # agree. Without that, all this test said about `getdomainname` was
+        # that it wrote fewer than 256 bytes, which `gethostname` -- same
+        # signature, same buffer, next line in the module -- also says.
+        var node = unsafe_alloc[Utsname](1)
+        assert_equal(uname(node), 0, "uname answers on this platform, and")
+        assert_equal(
+            char_ptr_to_string(domain),
+            node[].domainname(),
+            "the name `uname` carries under `domainname`",
+        )
+        node.unsafe_free()
     domain.unsafe_free()
 
     # Asked with no room, it says how many there are.

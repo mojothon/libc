@@ -648,6 +648,17 @@ All notable changes to this project are documented here. The format follows
   names deliberately and whoever reads that file can see both; the same
   pair in two files is what this refuses.
 
+- **`scripts/mutation-probe.py`, which points a binding at the wrong
+  function and asks whether any test notices.** `check-tests.py` asks that
+  every binding be called, and `_ = f(...)` counts, so a test that asks a call
+  for its answer and then throws the answer away is green against the wrong
+  symbol — the shape of the `gamma`/`tgamma` bug. Two bindings in one file
+  with the same signature are what the compiler cannot tell apart, so one is
+  pointed at the other's symbol and the tests that call it are run. Not a
+  gate: every mutant is a rebuild of the package and a suite run, so it
+  samples, with `--only` for named bindings and `--strict` to fail on a
+  survivor that is not a pair known to answer the same thing.
+
 ### Removed
 
 - **Two bindings that could be called on neither platform: `isascii_l` and
@@ -677,6 +688,21 @@ All notable changes to this project are documented here. The format follows
   5 not to 995 and 3.
 
 ### Changed
+
+- **Four tests now fail when the binding underneath them calls the wrong
+  function**, which is what `scripts/mutation-probe.py` found by making that
+  happen. `strncmp`'s two strings were the same case, so `strncasecmp`
+  answered identically; `endhostent` was called and never observed, so
+  `endprotoent` — next line, same shape — passed; `alarm` was asked twice for
+  nothing, which `close` also answers 0 to; `getdomainname` was held only to
+  writing fewer than 256 bytes into a 256 byte buffer, which `gethostname`
+  does too. What replaced them: a case-differing `strncmp` comparison, a
+  `gethostent` after the database was shut starting over at the first row,
+  ten seconds armed and taken back unspent, and `uname`'s `domainname`
+  agreeing on the one platform whose `utsname` carries it. The same
+  twenty-four mutants now come back 21 caught by an assertion, 2 the same
+  function under two names, and 1 that took the process down rather than fail
+  an assertion.
 
 - **Every C symbol is bound in one file now**, and the name is imported
   where a second door was wanted:

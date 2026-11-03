@@ -375,6 +375,13 @@ def test_the_host_database_read_row_by_row() raises:
 
     Which host is first is the machine's own to say, so none of this
     asks which one it is.
+
+    What `endhostent` is asked is that it shuts the walk down: the
+    database was opened to stay open, so a second `gethostent` after it
+    starts over at the first row rather than carrying on to the second.
+    Shutting the wrong database -- `endprotoent`, which is one line away
+    and the same shape -- leaves the hosts file open and the second read
+    moves down a row, and nothing else in this test could tell.
     """
     sethostent(1)
     var row = gethostent()
@@ -384,6 +391,9 @@ def test_the_host_database_read_row_by_row() raises:
 
     var name = char_ptr_to_string(row.unsafe_offset(0)[].h_name)
     assert_true(name.byte_length() > 0, "it has a name, and")
+    # A copy, because the row `gethostent` hands back is one buffer reused on
+    # every call: `name` above borrows it and the second read writes over it.
+    var first = String(name)
 
     var length = Int(row.unsafe_offset(0)[].h_length)
     assert_true(
@@ -395,6 +405,15 @@ def test_the_host_database_read_row_by_row() raises:
         "an address to go with it",
     )
 
+    endhostent()
+
+    var again = gethostent()
+    assert_true(not is_null(again), "and the database still opens, at")
+    assert_equal(
+        char_ptr_to_string(again.unsafe_offset(0)[].h_name),
+        first,
+        "the first row, which is where a shut database starts",
+    )
     endhostent()
 
 
