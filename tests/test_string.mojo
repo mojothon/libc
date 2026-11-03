@@ -594,7 +594,13 @@ def test_the_l_variants_ask_a_locale_object() raises:
     var abc_x = string_to_char_ptr("abcX")
     var abc_y = string_to_char_ptr("ABCY")
     assert_equal(strncasecmp_l(abc_x, abc_y, 3, loc), 0, "three bytes agree")
-    assert_true(strncasecmp_l(abc_x, abc_y, 4, loc) != 0, "the fourth does not")
+    # "not zero" is the answer either way round; which way it leans is not.
+    assert_true(
+        strncasecmp_l(abc_x, abc_y, 4, loc) < 0, "the fourth sorts x before y"
+    )
+    assert_true(
+        strncasecmp_l(abc_y, abc_x, 4, loc) > 0, "and the other way after it"
+    )
 
     var roomy = unsafe_alloc[UInt8](16)
     var src = string_to_char_ptr("abc")

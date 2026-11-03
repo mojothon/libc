@@ -266,6 +266,29 @@ by a daemon that writes a file this process never reads, `catgets` has only a
 catalog that did not open, and every `chown` a suite without a privilege can
 ask about is one that fails before the two ids are looked at.
 
+A second sample of twenty-four, from a different seed, found 10 more of the
+same kind. Five had an assertion to write. `posix_memalign(slot, 32, 64)` was
+handed a size that is a valid alignment, so the swap was answered: 48 is not,
+and a binding handing it over as the alignment is refused with `EINVAL`.
+`tcsendbreak` was given a duration of 0, which put the real descriptor in a
+place the call ignores and a 0 where the descriptor goes — and whether 0 is a
+terminal is a property of the runner. It is given 100000 now: not a descriptor
+any process has, so the swap asks for that one and gets `EBADF` where the test
+is holding out for `ENOTTY`. `strncasecmp_l` and `wcsncasecmp_l` were asserted
+"not zero", which is the answer both ways round; the sign of the answer is
+not. And `nextafter` is the one worth keeping: it was bounded above and below,
+and a step in *either* direction passes both bounds, because both directions
+land between the two numbers. What is asserted now is the size of the step —
+one ulp past the argument it steps away from — which is 1 past the one and
+under the four the other way round.
+
+The other five are the same call with the arguments exchanged, and each says
+why: `fminf` and the `x` and `y` of `fma` are a minimum and a product,
+`calloc`'s block is the product of `nmemb` and `size` and its overflow check is
+on the same product, `scandir`'s two callbacks are both NULL because this FFI
+cannot hand C a function address, and `fchownat`'s call is refused before the
+two ids are read.
+
 glibc, for its part, does not come with anything that checks glibc.
 
 ## Next to Rust's `libc`

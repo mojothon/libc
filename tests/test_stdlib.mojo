@@ -265,9 +265,12 @@ def test_the_untried_calls() raises:
     assert_true(Int(UInt(p)) != 0, "aligned_alloc hands back memory")
     assert_equal(Int(UInt(p)) % 64, 0, "and it starts on the alignment")
 
+    # The two are of one type and in that order, and the size is the half that
+    # can make a swap visible: 48 is not a power of two, so a binding handing
+    # it over as the alignment is refused with EINVAL instead of answered.
     var slot = unsafe_alloc[c_ptr[c_char]](1)
     assert_equal(
-        posix_memalign(slot, 32, 64), 0, "posix_memalign says it worked"
+        posix_memalign(slot, 32, 48), 0, "posix_memalign says it worked"
     )
     var q = slot.unsafe_offset(0)[]
     assert_true(Int(UInt(q)) != 0, "and it wrote a pointer into the slot")

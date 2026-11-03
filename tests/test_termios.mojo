@@ -175,8 +175,13 @@ def test_the_tc_calls_all_refuse_the_same_file() raises:
     _assert_it_is_not_a_terminal("with that said")
 
     set_errno(0)
+    # The duration is never looked at on a descriptor that is not a terminal,
+    # so what is passed there is free to be a number that could not be one. A
+    # binding handing the two over the other way round is then asking for a
+    # descriptor 100000, which answers EBADF rather than the ENOTTY asserted
+    # below -- and a break of that many tenths of a second is never sent.
     assert_equal(
-        tcsendbreak(fd, 0), -1, "tcsendbreak refuses a zero-length break"
+        tcsendbreak(fd, 100000), -1, "tcsendbreak refuses a numbered break"
     )
     _assert_it_is_not_a_terminal("with that said")
 

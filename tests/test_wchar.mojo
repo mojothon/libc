@@ -967,7 +967,13 @@ def test_the_l_variants_ask_a_locale_object() raises:
     assert_equal(
         wcsncasecmp_l(abc_x, abc_y, 3, loc), 0, "three characters agree"
     )
-    assert_true(wcsncasecmp_l(abc_x, abc_y, 4, loc) != 0, "the fourth does not")
+    # "not zero" is the answer either way round; which way it leans is not.
+    assert_true(
+        wcsncasecmp_l(abc_x, abc_y, 4, loc) < 0, "the fourth sorts x before y"
+    )
+    assert_true(
+        wcsncasecmp_l(abc_y, abc_x, 4, loc) > 0, "and the other way after it"
+    )
 
     var roomy = unsafe_alloc[c_wchar](16)
     var src = wide("abc")

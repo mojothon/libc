@@ -19,7 +19,10 @@ All notable changes to this project are documented here. The format follows
   The first sample of twenty-four came back 13 caught, 2 that took the process
   down, and 9 that passed: three times the rate of the symbol axis on a sample
   of the same size. That is the measure of how much more of this suite proves
-  which call ran than proves how it was asked.
+  which call ran than proves how it was asked. A second sample of twenty-four,
+  from a different seed, found 10 more; after the assertions below it comes
+  back 16 caught, 2 crashed, 6 that are the same call with the arguments
+  exchanged, and none unaccounted for.
 
 - **`scripts/check-duplicates.py` asks for one signature per symbol, not
   just one file.** The two questions are the same question one step apart. Two
@@ -771,6 +774,25 @@ All notable changes to this project are documented here. The format follows
   integers are read by a daemon whose file this process never reads,
   `catgets` has only a catalog that did not open, and every `chown` a suite
   without a privilege can ask about fails before the two ids are looked at.
+
+- **Five more from the second sample of `--kind order`.** `posix_memalign` was
+  handed a size that is a valid alignment (64), so the swap was answered; 48 is
+  not a power of two, and a binding handing it over as the alignment is refused
+  with `EINVAL`. `tcsendbreak` was given a duration of 0, which put the real
+  descriptor where the call ignores it and a 0 where the descriptor goes, and
+  whether 0 is a terminal is a property of the runner; it is given 100000 now,
+  which is nobody's descriptor, so the swap gets `EBADF` where the test holds
+  out for `ENOTTY`. `strncasecmp_l` and `wcsncasecmp_l` were held to "not
+  zero", which is the answer both ways round; the sign of the answer is not.
+  `nextafter` was bounded above and below, and a step in *either* direction
+  passes both bounds — what is asserted now is the size of the step, one ulp
+  past the argument it steps away from.
+
+  Five more were explained instead: `fminf` and the `x` and `y` of `fma` are a
+  minimum and a product, `calloc`'s block and its overflow check are both the
+  product of `nmemb` and `size`, `scandir`'s two callbacks are both NULL
+  because this FFI cannot hand C a function address, and `fchownat`'s call is
+  refused before the two ids are read.
 
 - **Three tests now fail when the binding underneath them calls the wrong
   function, and the mutation probe has a verdict for a test that waits instead

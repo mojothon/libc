@@ -203,6 +203,14 @@ def test_arguments_in_order() raises:
     var after = nextafter(1.0, 4.0)
     assert_true(after > 1.0, "nextafter steps away from the first")
     assert_true(after < 4.0, "and toward the second")
+    # Both bounds are answered by a step in either direction, and so is a step
+    # from either end, so what is asked for is the size of the step: one ulp
+    # past the argument that is stepped away from, which is 1 past the one and
+    # under the four the other way round.
+    assert_true(after - 1.0 < 1e-15, "one step, not a jump")
+    assert_true(
+        4.0 - nextafter(4.0, 1.0) < 1e-15, "and the same from the other end"
+    )
 
     assert_true((fma(2.0, 3.0, 4.0) - 10.0) < 1e-9, "2*3+4, the 4 added last")
     assert_true(fdim(1.0, 4.0) == 0.0, "the positive difference, or zero")

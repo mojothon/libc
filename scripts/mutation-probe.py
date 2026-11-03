@@ -124,6 +124,29 @@ SAME_ORDER = {
         "set and message it is asked for; one with rows in it is a binary "
         "`.cat` file, which is a thing to ship rather than a path to point at"
     ),
+    "fminf:x <-> y": (
+        "the smaller of two numbers does not know which was written first, for "
+        "the reason `fmax` does not"
+    ),
+    "fma:x <-> y": (
+        "the first two arguments are multiplied, and a product does not "
+        "remember its order: the third argument is the one that is added "
+        "rather than multiplied, and it is not the one being swapped"
+    ),
+    "calloc:nmemb <-> size": (
+        "the block is the product of the two, zeroed, and the overflow check "
+        "is on the same product: `calloc(2, 8)` and `calloc(8, 2)` are "
+        "sixteen zeroed bytes either way"
+    ),
+    "scandir:selector <-> compar": (
+        "both are callbacks, and this FFI has no way to hand C a function "
+        "address, so both are NULL here and the swap is the same two zeroes"
+    ),
+    "fchownat:owner <-> group": (
+        "the call this suite can make is refused before the two ids are read: "
+        "a path that is not there with `AT_FDCWD`, which answers ENOENT "
+        "either way round"
+    ),
     "chown:owner <-> group": (
         "every `chown` this suite can ask about is one that fails: the paths do "
         "not exist, and giving a file to somebody else is refused before the "
