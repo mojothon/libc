@@ -20,6 +20,8 @@ from libc.constant import (
     SOCK_STREAM,
     SOL_SOCKET,
     SO_TYPE,
+    c_short,
+    c_ulong,
 )
 from libc.sys.socket import (
     accept,
@@ -44,6 +46,7 @@ from libc.sys.socket import (
     socketaddr,
     socketpair,
 )
+from libc.poll import POLLPRI, poll, pollfd
 from libc.unistd import close
 from libc.utils import null_ptr
 
@@ -538,6 +541,23 @@ def test_the_mark_that_out_of_band_data_leaves() raises:
     var after = unsafe_alloc[UInt8](1)
     after.unsafe_offset(0)[] = 100  # d
     assert_equal(send(client, after, 1, 0), 1, "and an ordinary one last")
+
+    # Three `send`s are three segments, and which of them has arrived when the
+    # reads below happen is the network's business rather than this test's --
+    # on Darwin the two ordinary bytes were read before the marked one was
+    # there, and the mark was still nowhere. `poll` answers an exception
+    # condition on a socket that has urgent data waiting, so the mark is waited
+    # for instead of assumed.
+    var watch = unsafe_alloc[pollfd](1)
+    watch.unsafe_offset(0)[] = pollfd(taken, c_short(POLLPRI))
+    assert_equal(
+        poll(watch, c_ulong(1), 2000), 1, "the marked byte has arrived"
+    )
+    assert_true(
+        (Int(watch.unsafe_offset(0)[].revents) & Int(POLLPRI)) != 0,
+        "and it arrived as urgent data",
+    )
+    watch.unsafe_free()
 
     var coming = unsafe_alloc[UInt8](1)
     assert_equal(recv(taken, coming, 1, 0), 1, "the first byte is read")
