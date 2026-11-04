@@ -7,14 +7,15 @@ package (`libc.mojoc`) into your environment's `lib/mojo` directory, so
 ## pixi
 
 ```bash
-pixi add --from https://conda.modular.com/max --channel mojo-force libc
+pixi init -c https://conda.modular.com/max -c conda-forge -c https://prefix.dev/mojo-force .
+pixi add libc
 ```
 
 or, in `pixi.toml`:
 
 ```toml
 [workspace]
-channels = ["https://conda.modular.com/max", "conda-forge", "mojo-force"]
+channels = ["https://conda.modular.com/max", "conda-forge", "https://prefix.dev/mojo-force"]
 
 [dependencies]
 libc = ">=0.13.0,<0.14"
@@ -24,8 +25,15 @@ mojo = ">=1.1.0,<2"
 ## conda / mamba
 
 ```bash
-conda install -c https://conda.modular.com/max -c mojo-force libc
+conda install -c https://conda.modular.com/max -c https://prefix.dev/mojo-force libc
 ```
+
+!!! note "The channel is a URL, and `mojo-force` on its own is not it"
+    A bare channel name is read as an anaconda.org channel, so `-c mojo-force`
+    asks `conda.anaconda.org/mojo-force`, which does not exist — and pixi reads
+    `"mojo-force"` in `channels` the same way. The channel lives on prefix.dev,
+    which is why both of the commands above spell it out. Written the short way
+    the failure is a `404` for a channel that is not there, on a package that is.
 
 ## From source
 
