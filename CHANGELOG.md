@@ -30,7 +30,12 @@ All notable changes to this project are documented here. The format follows
   would compile and be wrong. `CompilationTarget.is_x86()` is answerable the
   way `is_macos()` is, since the check runs on the machine that would compile
   the package, which brings the seven `FE_*` bits under trial on both
-  architectures. And an expression too long for one line comes back from the
+  architectures. Conditionals that sit inside one another are settled one at
+  a time now, innermost last; that is what `FE_ALL_EXCEPT` is, and it turned
+  out to be 0x3F on Intel Darwin and 0x9F on arm, where it had been the sum of
+  the five standard bits — a set that does not include the sixth flag Darwin
+  counts, so `feclearexcept(FE_ALL_EXCEPT)` there left it standing. And an
+  expression too long for one line comes back from the
   formatter inside brackets with a Mojo type call in each branch: neither was
   read, so every `LC_*` category was reported as "computed in Mojo" and
   compared with nothing. That one found Darwin's categories holding their

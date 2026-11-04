@@ -130,8 +130,12 @@ nothing had compared since they were written — including
 `PTHREAD_MUTEX_DEFAULT = PTHREAD_MUTEX_NORMAL`, which is a claim about
 the header and now gets checked like one. And `is_x86()` is answerable
 the same way `is_macos()` is, because the check runs on the machine that
-would compile the package, which puts the seven `FE_*` bits under trial
-on both architectures rather than on neither.
+would compile the package, which puts the `FE_*` bits under trial on both
+architectures rather than on neither. It also made the reader nest: a
+conditional inside a conditional is what `FE_ALL_EXCEPT` is, since Darwin
+counts a sixth flag — the x86 denormal operand on Intel, flush-to-zero on
+arm — and settling only the outer question would have read the wrong
+half.
 
 Two kinds it cannot follow, and it says so rather than passing them.
 glibc 2.42 redefined the `B*` line speeds from indices into `c_cflag`

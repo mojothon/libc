@@ -162,6 +162,13 @@ BREAKS = [
         "comptime PTHREAD_MUTEX_DEFAULT = PTHREAD_MUTEX_NORMAL",
         "comptime PTHREAD_MUTEX_DEFAULT = PTHREAD_MUTEX_ERRORCHECK",
     ),
+    Break(
+        "check-constants",
+        "a wrong number in the inner branch of a nested conditional",
+        "src/libc/fenv/syscalls.mojo",
+        "Int32(0x3D) if CompilationTarget.is_x86() else Int32(0x1F)",
+        "Int32(0x2D) if CompilationTarget.is_x86() else Int32(0x1F)",
+    ),
 ]
 
 

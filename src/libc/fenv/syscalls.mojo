@@ -33,8 +33,17 @@ comptime FE_UNDERFLOW: Int32 = (
 comptime FE_INEXACT: Int32 = (
     Int32(0x20) if CompilationTarget.is_x86() else Int32(0x10)
 )
+# `FE_ALL_EXCEPT` is not the sum of the five everywhere. Darwin counts a
+# sixth flag, and which one depends on the architecture: 0x02 is the x86
+# denormal operand, 0x80 arm's flush-to-zero. glibc counts only the five,
+# on both. Spelled out rather than summed because that is what the headers
+# say, and all four cases are what `check-constants` asks about.
 comptime FE_ALL_EXCEPT: Int32 = (
-    FE_INVALID | FE_DIVBYZERO | FE_OVERFLOW | FE_UNDERFLOW | FE_INEXACT
+    (
+        Int32(0x3F) if CompilationTarget.is_x86() else Int32(0x9F)
+    ) if CompilationTarget.is_macos() else (
+        Int32(0x3D) if CompilationTarget.is_x86() else Int32(0x1F)
+    )
 )
 comptime FE_TONEAREST: Int32 = 0
 comptime FE_UPWARD: Int32 = (
