@@ -10,6 +10,7 @@ from libc.utmpx import (
     EMPTY,
     USER_PROCESS,
     UTMPX_BYTES,
+    UT_USER_ROOM,
     endutxent,
     getutxent,
     getutxid,
@@ -84,6 +85,36 @@ def test_a_record_reads_back_what_was_put_in_it() raises:
     record.set_ut_id("abcde")
     assert_equal(record.ut_id(), "abcd", "and cuts the fifth rather than")
     assert_equal(record.ut_user(), "someone", "running into the user's name")
+
+
+def test_a_name_too_long_for_its_field_stops_at_the_field() raises:
+    """The room is the field's width, and the field beside it is next.
+
+    `ut_user` is thirty-two bytes of a Linux record and two hundred and
+    fifty-six of a Darwin one, and whichever it is the next field starts
+    at the byte after it — `ut_host` on Linux, `ut_id` on Darwin. A name
+    written past the room would land in that field, so the name is
+    longer than either room and the answer asked for is the room
+    itself: the one length both platforms agree the field has.
+    """
+    var record = utmpx()
+    var name = String()
+    for _ in range(UT_USER_ROOM + 8):
+        name = name + "n"
+    record.set_ut_user(name)
+
+    assert_equal(
+        record.ut_user().byte_length(),
+        UT_USER_ROOM,
+        "the name is cut to the room the field has",
+    )
+    assert_equal(
+        record.ut_user(),
+        name[byte=0:UT_USER_ROOM],
+        "and is its first bytes",
+    )
+    assert_equal(record.ut_id(), "", "with nothing written past the field")
+    assert_equal(record.ut_host(), "", "on either side of it")
 
 
 def test_a_record_written_back_comes_out_again() raises:
@@ -370,6 +401,7 @@ def test_endutxent_ends_the_walk_and_setutxent_starts_it_again() raises:
 def main() raises:
     test_a_new_record_is_the_empty_one()
     test_a_record_reads_back_what_was_put_in_it()
+    test_a_name_too_long_for_its_field_stops_at_the_field()
     test_a_record_written_back_comes_out_again()
     test_bytes_written_at_these_offsets_are_bytes_libc_reads()
     test_endutxent_ends_the_walk_and_setutxent_starts_it_again()

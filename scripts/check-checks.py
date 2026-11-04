@@ -213,6 +213,13 @@ BREAKS = [
     ),
     Break(
         "check-layouts",
+        "a room given to a member that is wider than the member",
+        "src/libc/utmpx/syscalls.mojo",
+        "comptime UT_LINE_ROOM: Int = 32",
+        "comptime UT_LINE_ROOM: Int = 64",
+    ),
+    Break(
+        "check-layouts",
         "a constant that says a C type is wider than it is",
         "src/libc/termios/syscalls.mojo",
         "comptime TERMIOS_FLAG_BYTES: Int = 8 if CompilationTarget.is_macos() else 4",

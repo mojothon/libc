@@ -206,12 +206,21 @@ all, and Darwin's `sigevent` is a different struct with `sigev_notify` first,
 so asking it would compare a member against the wrong struct. Those are
 counted rather than asked, which is what the count is for.
 
+A member declared as an array of chars is the one place a width is not the
+accessor's to claim: `ut_user` is thirty-two bytes of text in a `utmpx` and the
+accessor neither reads nor writes a fixed four or eight of it. What it takes
+instead is a *room* — `_string(UT_USER_OFFSET, UT_USER_ROOM)` — and that number
+is still a claim about the member, compared with its `sizeof`. It is the claim
+worth having: a room larger than the member is a write past the end of the
+member on every `_set_string`, into whatever the struct holds next.
+
 | what a struct does with its members | how many |
 | --- | --- |
 | places one by hand, at an offset listed in `OFFSETS` | 117 |
 | declares them in order and leaves the layout to Mojo | 187 |
 | reads none of them, and claims only a size | 17 |
 | has a struct only Linux has | 13 |
+| gives itself a fixed room to read or write a member | 4 |
 
 One struct is sized the other way round from the rest. Most of the blocks
 here are as wide as the wider platform wants, because they are written *by*

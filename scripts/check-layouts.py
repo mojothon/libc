@@ -270,6 +270,7 @@ STATED_ROWS: dict[str, str] = {
     "in order": "fielded",
     "only a size": "bytes",
     "only Linux": "linux_only",
+    "a fixed room": "rooms",
 }
 
 
@@ -523,6 +524,35 @@ def read_widths() -> tuple[
                     key, f"{path.relative_to(ROOT)}:{number}"
                 )
     return found, places
+
+
+# A room this package gives itself for one of those members: `_string` reads
+# at most that many bytes of it and `_set_string` writes at most that many, so
+# the number is a claim about how wide the member is, in the same terms the
+# accessor's reader claims a width in. It is the claim here whose being wrong
+# costs the most: a room larger than the member is a write past the end of it.
+ROOMED = re.compile(r"self\.(_set_string|_string)\((\w+_OFFSET),\s*(\w+)")
+
+
+def rooms() -> dict[tuple[str, str, str], str]:
+    """Every `(module, offset, room)` a string accessor is given, and where.
+
+    Keyed by all three because the offset is what ties the room to a member:
+    the offset is asked of `offsetof` already, so the room beside it is
+    compared with `sizeof` of the member that offset names.
+    """
+    found: dict[tuple[str, str, str], str] = {}
+    for path in SOURCES:
+        module = module_of(path)
+        for number, line in enumerate(path.read_text().split("\n"), 1):
+            match = ROOMED.search(line)
+            if match is None:
+                continue
+            found.setdefault(
+                (module, match.group(2), match.group(3)),
+                f"{path.relative_to(ROOT)}:{number}",
+            )
+    return found
 
 
 def structs() -> list[tuple[str, str, str, list[str]]]:
@@ -990,6 +1020,42 @@ def main() -> int:
                 f" {member_width}   {read_at[(module, constant, accessor)]}"
             )
 
+    roomed = rooms()
+    room_agree = 0
+    room_disagree = []
+    room_unasked = []
+    if roomed:
+        room_here, room_unread = mojo_numbers(
+            sorted({(module, room) for module, _offset, room in roomed})
+        )
+        for (module, offset, room), place in sorted(roomed.items()):
+            struct, member = OFFSETS.get((module, offset), ("", ""))
+            member_width = member_sizes.get((module, offset))
+            given = room_here.get((module, room))
+            if given is None:
+                room_unasked.append(f"{module}.{room} Mojo will not say  ({place})")
+            elif member_width is None:
+                room_unasked.append(
+                    f"{module}.{room} C has no width for {struct}.{member}"
+                    f"  ({place})"
+                )
+            elif given == member_width:
+                room_agree += 1
+            else:
+                room_disagree.append(
+                    (module, room, struct, member, given, member_width, place)
+                )
+        asked = room_agree + len(room_disagree) + len(room_unasked)
+        print(f"\n  Room given to read or write a member, for the {asked}:")
+        print(f"      {room_agree} agree with sizeof")
+        for module, room, struct, member, given, member_width, place in room_disagree:
+            print(
+                f"      {module + '.' + room:<40} says {given:>4}  "
+                f"sizeof({struct}.{member}) is {member_width}   {place}"
+            )
+        for line in room_unasked:
+            print(f"      {line}")
+
     wide_here, wide_unread = mojo_numbers(list(WIDTHS))
     wide_by_c, wide_absent = c_layouts(
         [(f"{module}.{name}", WIDTHS[(module, name)]) for module, name in WIDTHS]
@@ -1072,6 +1138,7 @@ def main() -> int:
         "fielded": len(fielded),
         "bytes": len(not_listed),
         "linux_only": len(LINUX_ONLY),
+        "rooms": len(roomed),
     }
     wrong_stated = stated_counts(stated)
     if wrong_stated:
@@ -1098,6 +1165,8 @@ def main() -> int:
         print("  *** constants that say the wrong width for a C type ***")
     if read_disagree or read_half:
         print("  *** members read at a width or an offset C does not agree with ***")
+    if room_disagree:
+        print("  *** members given a room C says they do not have ***")
     if (
         disagree
         or offset_disagree
@@ -1107,6 +1176,7 @@ def main() -> int:
         or width_disagree
         or read_disagree
         or read_half
+        or room_disagree
     ):
         return 1
     print("  nothing disagrees with C")

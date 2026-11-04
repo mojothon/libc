@@ -29,6 +29,19 @@ All notable changes to this project are documented here. The format follows
   `setbuffer` said the two platforms agreed on it. None of these had ever
   failed a test, because nothing here asserts what a number means.
 
+### Added
+
+- **A check on the room a string accessor gives itself inside a member.**
+  `ut_user` is a `char[32]` on Linux and a `char[256]` on Darwin, and the
+  accessor neither reads nor writes a fixed four or eight bytes of it: it
+  passes a *room* to `_string`, and `_set_string` writes at most that many
+  bytes. That number is a claim about the member's width like any reader's,
+  and the one whose being wrong writes past the end of the member — on Linux
+  `ut_user` ends exactly where `ut_host` begins. `check-layouts` now compares
+  all four of them with `sizeof`, and a name longer than either room is
+  written in a test that asserts it stops at the room and leaves the fields
+  beside it empty.
+
 ### Changed
 
 - **`siginfo_t.si_ptr` reads the other half of the union `si_value` reads
