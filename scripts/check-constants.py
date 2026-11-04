@@ -280,8 +280,53 @@ def is_x86() -> bool:
     return platform.machine().lower() in {"x86_64", "amd64", "i386", "i686"}
 
 
+def at_top_level(text: str, word: str, last: bool = False) -> int:
+    """Where `word` sits outside every bracket, or -1.
+
+    The conditionals in this package nest — `FE_ALL_EXCEPT` is four values
+    in one expression, each chosen by a different question — and a regular
+    expression cannot tell the outer `if` from the inner one. Counting
+    brackets can: the outer question is the last one at depth zero.
+    """
+    depth = 0
+    found = -1
+    at = 0
+    while at < len(text):
+        character = text[at]
+        if character == "(":
+            depth += 1
+        elif character == ")":
+            depth -= 1
+        elif depth == 0 and text.startswith(word, at):
+            if not last:
+                return at
+            found = at
+            at += len(word)
+            continue
+        at += 1
+    return found
+
+
+def answer(condition: str) -> bool | None:
+    """Whether a conditional's question is true here, or None for unknown.
+
+    Some are written from the other side round — `if not is_macos()` — and
+    the constant is no less a platform constant for being phrased that way.
+    Anything else — `is_linux()`, a feature test — is not answered: a guess
+    here would report the package wrong for disagreeing with a branch this
+    machine never compiles.
+    """
+    inverted = condition.startswith("not ")
+    if inverted:
+        condition = condition[len("not ") :].strip()
+    here = {MACOS_ONLY: sys.platform == "darwin", X86_ONLY: is_x86()}.get(condition)
+    if here is None:
+        return None
+    return here != inverted
+
+
 def each_side(raw: str) -> str | None:
-    """The branch of a platform conditional that this machine decides.
+    """The value with every platform conditional this machine can settle gone.
 
     Every conditional written here is about macOS or about x86, which is
     the whole reason one codebase can hold both sets of numbers: pick the
@@ -290,28 +335,25 @@ def each_side(raw: str) -> str | None:
     reason the platform does — the check runs on the machine that would
     compile the package, so `is_x86()` here is the branch that gets built.
 
-    That is what `FE_DIVBYZERO` needed: the same bit is a different
-    exception on x86 and on arm, and until this asked, the seven `FE_*`
-    constants were compared with nothing on either architecture.
+    One at a time, because they nest: `FE_ALL_EXCEPT` is 0x3D or 0x1F on
+    Linux and 0x3F or 0x9F on Darwin, and settling only the outermost
+    question would leave the other one in the value.
     """
-    m = re.fullmatch(r"(.+?) if (.+?) else (.+)", raw.strip())
-    if m is None:
-        return None
-    condition = m.group(2).strip()
-    # Some are written from the other side round — `if not is_macos()`
-    # — and the constant is no less a platform constant for being phrased
-    # that way.
-    inverted = condition.startswith("not ")
-    if inverted:
-        condition = condition[len("not ") :].strip()
-    answers = {MACOS_ONLY: sys.platform == "darwin", X86_ONLY: is_x86()}
-    if condition not in answers:
-        # Anything else — `is_linux()`, a feature test — is not answered:
-        # a guess here would report the package wrong for disagreeing with
-        # a branch this machine never compiles.
-        return None
-    here = answers[condition] != inverted
-    return m.group(1).strip() if here else m.group(3).strip()
+    text = raw.strip()
+    for _ in range(8):
+        text = unwrapped(text).strip()
+        question = at_top_level(text, " if ", last=True)
+        if question < 0:
+            return text
+        rest = text[question + len(" if ") :]
+        either = at_top_level(rest, " else ")
+        if either < 0:
+            return None
+        wanted = answer(rest[:either].strip())
+        if wanted is None:
+            return None
+        text = text[:question] if wanted else rest[either + len(" else ") :]
+    return None
 
 
 def constants() -> list[tuple[str, str, str, float | None]]:
