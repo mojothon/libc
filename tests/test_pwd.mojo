@@ -21,27 +21,42 @@ def test_root_is_user_zero_whichever_way_it_is_asked() raises:
 
     Root is uid 0 on both platforms and cannot be removed, so it is the one
     user a test can name without asking what this machine happens to hold.
+
+    The first answer is read out in full before the second question is put.
+    `getpwuid` and `getpwnam` hand back a row in a buffer that the next
+    lookup of either kind is free to write over, so asking both and then
+    comparing them compares whichever row came second with itself — which
+    is what this did on glibc until the strings were copied out first, and
+    why it passed there without saying anything.
+
+    `pw_shell` is the one field the two are allowed to disagree about on
+    Darwin, where a number is answered from Open Directory and a name from
+    the local file, and an image can have set root's shell in one and not
+    the other. On the runner that failed here, asking by name said
+    `/bin/bash` and asking by number said `/bin/sh`. What is asked of the
+    shell is that both name an absolute path.
     """
     var by_id = getpwuid(0)
     assert_false(is_null(by_id), "uid 0 is a user")
 
-    assert_equal(by_id[].pw_name(), "root", "uid 0 is named root")
+    var id_name = by_id[].pw_name()
+    var id_dir = by_id[].pw_dir()
+    var id_shell = by_id[].pw_shell()
+    assert_equal(id_name, "root", "uid 0 is named root")
     assert_equal(Int(by_id[].pw_uid()), 0, "and its uid is 0")
-    assert_true(
-        by_id[].pw_dir().byte_length() > 0, "and it has a home directory"
-    )
-    assert_true(by_id[].pw_shell().byte_length() > 0, "and it has a shell")
+    assert_true(id_dir.byte_length() > 0, "and it has a home directory")
+    assert_true(id_shell.startswith("/"), "and it has a shell by path")
 
     var name = string_to_char_ptr("root")
     var by_name = getpwnam(name)
     assert_false(is_null(by_name), "the name root is a user")
     assert_equal(Int(by_name[].pw_uid()), 0, "and asking by name finds uid 0")
-    assert_equal(
-        by_name[].pw_dir(),
-        by_id[].pw_dir(),
-        "and it is the same home directory",
+    assert_equal(by_name[].pw_name(), id_name, "and it is the same name")
+    assert_equal(by_name[].pw_dir(), id_dir, "and the same home directory")
+    assert_true(
+        by_name[].pw_shell().startswith("/"),
+        "and it has a shell by path too",
     )
-    assert_equal(by_name[].pw_shell(), by_id[].pw_shell(), "and the same shell")
 
 
 def test_asking_for_a_user_that_is_not_there_answers_null() raises:

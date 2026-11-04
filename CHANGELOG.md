@@ -7,6 +7,18 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- **`test_pwd` compared a row with itself, and macOS's two lookups disagree
+  about one field.** `getpwuid(0)` and `getpwnam("root")` hand back a row in a
+  buffer that the next lookup writes over, so reading both rows after asking
+  both questions compared whichever came second with itself: on glibc the
+  test proved nothing, and passed. The first row is now read out into Strings
+  before the second question is put. On Darwin the two answers turn out to be
+  different records: `pw_shell` comes from Open Directory by number and from
+  the local file by name, so the runner said `/bin/sh` one way and `/bin/bash`
+  the other. That is the platform's, not a layout mistake — `offsetof` agrees
+  with `PASSWD_SHELL_OFFSET` on Darwin — so what is asserted of it now is that
+  both name an absolute path. Found by pointing CI's macOS job at `macos-14`
+  after the `macos-latest` pool stopped handing out runners.
 - **Fourteen constants that held Linux's number on a platform whose header
   says otherwise**, found by asking C about the constant's name for the first
   time. The `LDBL_*` limits and `DECIMAL_DIG` described an 80-bit `long
