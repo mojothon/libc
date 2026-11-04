@@ -1009,6 +1009,13 @@ the one flag word in a <code>glob_t</code>. Thirteen of them are Linux's alone:
 all, and Darwin's <code>sigevent</code> is a different struct with <code>sigev_notify</code> first,
 so asking it would compare a member against the wrong struct. Those are
 counted rather than asked, which is what the count is for.</p>
+<p>A member declared as an array of chars is the one place a width is not the
+accessor's to claim: <code>ut_user</code> is thirty-two bytes of text in a <code>utmpx</code> and the
+accessor neither reads nor writes a fixed four or eight of it. What it takes
+instead is a <em>room</em> — <code>_string(UT_USER_OFFSET, UT_USER_ROOM)</code> — and that number
+is still a claim about the member, compared with its <code>sizeof</code>. It is the claim
+worth having: a room larger than the member is a write past the end of the
+member on every <code>_set_string</code>, into whatever the struct holds next.</p>
 <table>
 <thead>
 <tr>
@@ -1032,6 +1039,10 @@ counted rather than asked, which is what the count is for.</p>
 <tr>
 <td>has a struct only Linux has</td>
 <td>13</td>
+</tr>
+<tr>
+<td>gives itself a fixed room to read or write a member</td>
+<td>4</td>
 </tr>
 </tbody>
 </table>
