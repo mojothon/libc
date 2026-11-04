@@ -276,6 +276,15 @@ bytes of an eight-byte union on purpose and says so: it is `sival_int`, the
 half that shares the union with `sival_ptr`, and an exemption that stops being
 true is one `sizeof` disagrees with.
 
+The same reading of the source answers which half of a slot a member is in.
+`pw_uid` and `pw_gid` share one eight-byte slot on both platforms — glibc puts
+them side by side with no padding, and Darwin does the same — so one accessor
+masks the low four bytes and the other shifts the high four away.
+`offsetof(passwd, pw_gid)` says the member starts four bytes into that slot,
+which is the half the shift keeps, and that is what it is compared with: take
+the other half and the number is the right size and the wrong value, which is
+what `gl_flags` did for three releases before anyone looked.
+
 What is left is counted rather than trusted silently, and it splits in two.
 The members of a struct Mojo lays out itself rest on the order they are
 declared in, which is C's arrangement when the order is and says nothing

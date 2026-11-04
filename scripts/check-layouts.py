@@ -396,24 +396,36 @@ MASKS = (("0xFFFFFFFF", 4), ("0xFFFF", 2), ("0xFF", 1))
 SHIFT = re.compile(r">>\s*(\d+)")
 
 
-def width_of(line: str, reader_width: int) -> int:
-    """How much of what this reader took the member actually is.
+def kept_of(line: str, reader_width: int) -> tuple[int, int, bool]:
+    """How much of what this reader took the member is, and which bytes.
 
     `self._member(PASSWD_UID_OFFSET) & 0xFFFFFFFF` reads eight bytes and
-    keeps four; `>> 32` keeps the other four. Either way the accessor is
-    claiming four bytes at that offset, which is the claim to compare.
+    keeps the low four; `>> 32` keeps the high four. Either way the accessor
+    is claiming four bytes at that offset, and the second number says which
+    four — a slot read that keeps the wrong half gives a number that is the
+    right size and the wrong value, which is what `gl_flags` did for three
+    releases.
+
+    The third says whether the half was chosen in the call at all: a `_u32`
+    reader takes its four bytes from wherever the offset falls inside the
+    slot, so there is no choice there for this to disagree with.
     """
     width = reader_width
+    kept_from = 0
+    by_hand = False
     for token, kept in MASKS:
         if token in line:
             width = min(width, kept)
+            by_hand = reader_width == 8
             break
     shifted = SHIFT.search(line)
     if shifted is not None and int(shifted.group(1)) % 8 == 0:
         dropped = int(shifted.group(1)) // 8
         if 0 < dropped < 8:
             width = min(width, 8 - dropped)
-    return width
+            kept_from = dropped
+            by_hand = reader_width == 8
+    return width, kept_from, by_hand
 GUARDED = "comptime if CompilationTarget.is_macos():"
 
 # Members an accessor deliberately takes less of than C holds. Each one is a
@@ -452,7 +464,8 @@ def readers(path: Path) -> dict[str, int | None]:
 
 
 def read_widths() -> tuple[
-    dict[tuple[str, str], dict[str, set[int]]], dict[tuple[str, str], str]
+    dict[tuple[str, str], dict[str, set[tuple[int, int, bool]]]],
+    dict[tuple[str, str], str],
 ]:
     """How wide each member is read, per platform, and the first place it is.
 
@@ -462,7 +475,7 @@ def read_widths() -> tuple[
     what lets `st_dev` be eight bytes here and four there without either being
     a mistake.
     """
-    found: dict[tuple[str, str], dict[str, set[int]]] = {}
+    found: dict[tuple[str, str], dict[str, set[tuple[int, int, bool]]]] = {}
     places: dict[tuple[str, str], str] = {}
     for path in SOURCES:
         module = module_of(path)
@@ -489,11 +502,11 @@ def read_widths() -> tuple[
             width = widths.get(match.group(1), None)
             if width is None:
                 continue
-            width = width_of(line, width)
+            kept, kept_from, by_hand = kept_of(line, width)
             key = (module, match.group(2))
             per = found.setdefault(key, {"linux": set(), "macos": set()})
             for platform in (("linux", "macos") if guard is None else (guard,)):
-                per[platform].add(width)
+                per[platform].add((kept, kept_from, by_hand))
                 places.setdefault(
                     key, f"{path.relative_to(ROOT)}:{number}"
                 )
@@ -914,19 +927,32 @@ def main() -> int:
     read_agree = 0
     read_narrow = []
     read_disagree = []
+    read_half = []
     for key, per in sorted(read_here.items()):
         if key not in member_sizes or not per[here]:
             continue
         member_width = member_sizes[key]
-        if member_width in per[here]:
-            read_agree += 1
-        elif key in NARROWER_ON_PURPOSE:
-            read_narrow.append((key, member_width))
+        widths = sorted({width for width, _from, _hand in per[here]})
+        right_size = [read for read in per[here] if read[0] == member_width]
+        if not right_size:
+            if key in NARROWER_ON_PURPOSE:
+                read_narrow.append((key, member_width))
+            else:
+                read_disagree.append((key, widths, member_width))
+            continue
+        inside = placed_by_c[key] % 8 if key in placed_by_c else None
+        wrong_half = [
+            read
+            for read in right_size
+            if read[2] and inside is not None and read[1] != inside
+        ]
+        if wrong_half:
+            read_half.append((key, wrong_half[0][1], inside))
         else:
-            read_disagree.append((key, sorted(per[here]), member_width))
+            read_agree += 1
 
-    if read_agree or read_narrow or read_disagree:
-        asked = read_agree + len(read_narrow) + len(read_disagree)
+    if read_agree or read_narrow or read_disagree or read_half:
+        asked = read_agree + len(read_narrow) + len(read_disagree) + len(read_half)
         print(f"\n  Read widths, for the {asked} members read at one:")
         print(f"      {read_agree} agree with sizeof")
         for (module, constant), member_width in read_narrow:
@@ -934,6 +960,13 @@ def main() -> int:
             print(
                 f"      {module + '.' + constant:<40} reads less than"
                 f" {member_width:>2}   {NARROWER_ON_PURPOSE[(module, constant)]}"
+            )
+        for (module, constant), kept_from, inside in read_half:
+            struct, member = OFFSETS[(module, constant)]
+            print(
+                f"      {module + '.' + constant:<40} keeps bytes from "
+                f"{kept_from} of the slot, and {struct}.{member} starts at "
+                f"{inside}"
             )
         for (module, constant), widths, member_width in read_disagree:
             struct, member = OFFSETS[(module, constant)]
@@ -1049,8 +1082,8 @@ def main() -> int:
         print("  *** members read at a number that is not written down ***")
     if width_disagree:
         print("  *** constants that say the wrong width for a C type ***")
-    if read_disagree:
-        print("  *** members read at a width C does not agree with ***")
+    if read_disagree or read_half:
+        print("  *** members read at a width or an offset C does not agree with ***")
     if (
         disagree
         or offset_disagree
@@ -1059,6 +1092,7 @@ def main() -> int:
         or unsaid
         or width_disagree
         or read_disagree
+        or read_half
     ):
         return 1
     print("  nothing disagrees with C")

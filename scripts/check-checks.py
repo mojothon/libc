@@ -206,6 +206,13 @@ BREAKS = [
     ),
     Break(
         "check-layouts",
+        "a member read from the wrong half of its slot",
+        "src/libc/pwd/syscalls.mojo",
+        "        return UInt32(self._member(PASSWD_GID_OFFSET) >> 32)",
+        "        return UInt32(self._member(PASSWD_GID_OFFSET) & 0xFFFFFFFF)",
+    ),
+    Break(
+        "check-layouts",
         "a constant that says a C type is wider than it is",
         "src/libc/termios/syscalls.mojo",
         "comptime TERMIOS_FLAG_BYTES: Int = 8 if CompilationTarget.is_macos() else 4",

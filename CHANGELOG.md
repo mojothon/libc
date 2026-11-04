@@ -43,6 +43,13 @@ All notable changes to this project are documented here. The format follows
   members, fifty-seven agree. `si_value` is the one that does not, on purpose
   — it is the `sival_int` half of a union it shares with `sival_ptr` — and it
   is written down as such rather than left to look like the rest.
+- **The same reading asks which half of a slot a member is in.** `pw_uid` and
+  `pw_gid` share one eight-byte slot on both platforms, so one accessor masks
+  the low four bytes and the other shifts the high four away; the half it keeps
+  has to be the half `offsetof` puts the member in, and nothing compared them.
+  Taking the other half gives a number of the right size and the wrong value,
+  which is the shape of the `gl_flags` bug that went three releases before
+  anyone looked.
 
 - **`termios` reads and writes its flag words at the width it says, and the
   width is asked of C.** `TERMIOS_FLAG_BYTES` and `TERMIOS_SPEED_BYTES` state
