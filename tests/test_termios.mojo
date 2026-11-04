@@ -9,9 +9,18 @@ machine has.
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import AT_FDCWD, EBADF, ENODEV, ENOTTY, O_RDONLY, c_ptr
+from libc.constant import (
+    AT_FDCWD,
+    EAGAIN,
+    EBADF,
+    ENODEV,
+    ENOTTY,
+    O_RDONLY,
+    c_int,
+    c_ptr,
+)
 from libc.errno import get_errno, set_errno
-from libc.fcntl import openat
+from libc.fcntl import O_NOCTTY, O_NONBLOCK, O_RDWR, openat
 from libc.termios import (
     B9600,
     NCCS,
@@ -19,6 +28,7 @@ from libc.termios import (
     TCSAFLUSH,
     TCSANOW,
     TCIFLUSH,
+    TCIOFF,
     TCIOFLUSH,
     TCOFLUSH,
     TCOOFF,
@@ -37,8 +47,11 @@ from libc.termios import (
     tcsetattr,
     tcdrain,
 )
-from libc.unistd import close
-from libc.utils import string_to_char_ptr
+from libc.unistd import close, fork, getpid, read, setsid, usleep, write
+from libc.sys.wait import WEXITSTATUS, waitpid
+from libc.stdlib import _Exit, grantpt, posix_openpt, ptsname, unlockpt
+from libc.unistd import close, fork, getpid, read, setsid, usleep, write
+from libc.utils import char_ptr_to_string, is_null, string_to_char_ptr
 
 
 def _a_settings_block() raises -> c_ptr[Termios]:
@@ -232,6 +245,114 @@ def test_the_queue_and_action_constants_are_which_they_say() raises:
     )
 
 
+def test_the_calls_that_need_a_real_line() raises:
+    """A pty, which is a line that is real: `tcdrain` empties one and
+    answers 0, `tcflush` throws a queue away, `tcflow` says so on the
+    line itself, and `tcgetsid` is asked by a child that has taken the
+    line for its own terminal. The four are asked on `/dev/null` as
+    well, where every one of them refuses, and between the two the
+    answer 0 and the answer -1 both mean something.
+
+    `tcsendbreak` is asked too, and what can be said of it is that it
+    is taken: a break on a pty leaves nothing on either side of it
+    that a read finds, which is a thing the calls it stands next to
+    can also be true of, and the sweep says so in its own words.
+    """
+    var master = posix_openpt(O_RDWR | O_NOCTTY | O_NONBLOCK)
+    assert_true(master >= 0, "a pty is opened, and it does not wait")
+    assert_equal(grantpt(master), 0, "the slave side is given away")
+    assert_equal(unlockpt(master), 0, "and unlocked")
+    var named = ptsname(master)
+    assert_true(not is_null(named), "and it has a name")
+    var name = char_ptr_to_string(named)
+
+    var slave = openat(
+        AT_FDCWD,
+        string_to_char_ptr(name),
+        O_RDWR | O_NOCTTY | O_NONBLOCK,
+    )
+    assert_true(slave >= 0, "the slave side opens, and does not wait either")
+
+    # Echo goes first, so that what the other end reads is what the line was
+    # sent rather than what was typed on it: with the line as it opens, every
+    # byte put in is handed back as well, and the counts stop meaning things.
+    var settings = _a_settings_block()
+    assert_equal(tcgetattr(slave, settings), 0, "the line's settings are read")
+    cfmakeraw(settings)
+    assert_equal(
+        tcsetattr(slave, TCSANOW, settings), 0, "and echo goes with them"
+    )
+    settings.unsafe_free()
+
+    # `tcdrain` waits for a line to empty and answers 0, which is what it
+    # does on a line that is real; `tcgetsid` takes the same descriptor,
+    # and this process has no session for the line to belong to.
+    assert_equal(tcdrain(slave), 0, "the line drains")
+
+    # What is queued to be read is what `tcflush` is for, and this is what
+    # it does with it: six bytes go in, the queue is flushed, and reading
+    # finds nothing at all -- which neither `tcsendbreak` nor `tcflow`,
+    # taking the same descriptor and answering the same 0, does to a queue.
+    var put = string_to_char_ptr("abcdef")
+    assert_equal(Int(write(master, put, 6)), 6, "six bytes are put on the line")
+    _ = usleep(20000)
+    assert_equal(tcflush(slave, TCIFLUSH), 0, "the queue is flushed")
+    var taken = unsafe_alloc[UInt8](8)
+    set_errno(0)
+    assert_equal(Int(read(slave, taken, 8)), -1, "and there is nothing to read")
+    assert_equal(
+        get_errno(),
+        Int32(EAGAIN),
+        "which is a queue with nothing in it rather than an answer of 0",
+    )
+    taken.unsafe_free()
+    put.unsafe_free()
+
+    # And `tcflow` is the one that says something on the line itself: the
+    # stop character goes out, and the other end reads it.
+    assert_equal(tcflow(slave, TCIOFF), 0, "output is stopped")
+    _ = usleep(20000)
+    var seen = unsafe_alloc[UInt8](8)
+    assert_equal(
+        Int(read(master, seen, 8)), 1, "and the other end reads a byte"
+    )
+    assert_equal(
+        Int(seen.unsafe_load(0)),
+        19,
+        "and the byte is the stop character, 0x13",
+    )
+    seen.unsafe_free()
+
+    # A break is asked for as well, and taken; the rest of what it did is
+    # not anything a read finds, and that is all this test can say of it.
+    assert_equal(tcsendbreak(slave, 0), 0, "a break is taken")
+
+    # `tcgetsid` answers with the session of the line's controlling
+    # terminal, and this process has none: a child of its own becomes a
+    # session leader, takes the line for its terminal, and answers with
+    # the session it made -- which is the session leader's own number.
+    var child = fork()
+    if child == 0:
+        var made = setsid()
+        var own = openat(AT_FDCWD, string_to_char_ptr(name), O_RDWR)
+        var said = tcgetsid(own)
+        var good = made != -1 and own >= 0 and Int(said) == Int(getpid())
+        _ = _Exit(Int32(0) if good else Int32(1))
+    assert_true(child > 0, "there is a child to ask")
+    var status = unsafe_alloc[c_int](1)
+    status.unsafe_store(0, 0)
+    assert_equal(waitpid(child, status, 0), child, "and it is waited for")
+    assert_equal(
+        Int(WEXITSTATUS(status.unsafe_load())),
+        0,
+        "and the session is the child's own, which a 0 would not have said",
+    )
+    status.unsafe_free()
+
+    _ = close(slave)
+    _ = close(master)
+
+
 def main() raises:
     test_cfsetospeed_then_cfgetospeed()
     test_cfsetispeed_then_cfgetispeed()
@@ -240,4 +361,5 @@ def main() raises:
     test_tcgetattr_refuses_what_is_not_a_terminal()
     test_the_tc_calls_all_refuse_the_same_file()
     test_the_queue_and_action_constants_are_which_they_say()
+    test_the_calls_that_need_a_real_line()
     print("test_termios: ok")

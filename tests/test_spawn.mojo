@@ -7,6 +7,7 @@ exit code back, or write into a pipe whose other end is held here.
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
+from std.sys import size_of
 from libc.constant import c_int, c_ptr, c_short, c_uint
 from libc.fcntl import O_CREAT, O_RDONLY, O_TRUNC, O_WRONLY, open
 from libc.file import close, read
@@ -140,6 +141,13 @@ def test_the_file_actions_hand_the_child_a_pipe_for_its_output() raises:
     var writing_end = fds.unsafe_offset(1)[]
 
     var actions = unsafe_alloc[posix_spawn_file_actions_t](1)
+    # Filled first with bytes that are not a pointer anybody made, so that the
+    # call has a mess of its own to clean: `init` puts the list at nothing and
+    # the spawn goes, and pointed at `destroy` instead it would take the bytes
+    # for a list it had made and take them back.
+    var filler = actions.unsafe_bitcast[UInt8]()
+    for i in range(size_of[posix_spawn_file_actions_t]()):
+        filler.unsafe_store(i, UInt8(0x7F))
     assert_equal(
         Int(posix_spawn_file_actions_init(actions)), 0, "an empty list"
     )
@@ -427,9 +435,89 @@ def test_the_two_signal_sets_are_two_things() raises:
     assert_equal(Int(posix_spawnattr_destroy(attr)), 0, "the handle goes back")
 
 
+def test_posix_spawn_refuses_a_name_with_no_path_in_it() raises:
+    """`sh` — a bare name, the shape `posix_spawnp` goes looking for
+    along `PATH`. `posix_spawn` is told a path and does not look, so
+    it answers with the error number of having been given a name it
+    was meant to take for a path, which is the one answer that tells
+    the two apart.
+    """
+    var argv = _argv_for("sh", "-c", "exit 7")
+    var envp = _empty_environment()
+    var pid = unsafe_alloc[Int32](1)
+    pid.unsafe_offset(0)[] = -1
+
+    assert_equal(
+        Int(
+            posix_spawn(
+                pid,
+                string_to_char_ptr("sh"),
+                null_ptr[posix_spawn_file_actions_t](),
+                null_ptr[posix_spawnattr_t](),
+                argv,
+                envp,
+            )
+        ),
+        2,
+        "a bare name is refused with the error number, not 0",
+    )
+
+    _drop_argv(argv, 3)
+    envp.unsafe_free()
+    pid.unsafe_free()
+
+
+def test_the_attributes_are_a_block_the_call_cleans() raises:
+    """The attribute block is filled with bytes that are not a pointer
+    anybody made, and `posix_spawnattr_init` is what makes it usable:
+    the shell it hands them to leaves with the code it was told,
+    which a block full of somebody else's bytes would not have got it
+    to.
+    """
+    var attr = unsafe_alloc[posix_spawnattr_t](1)
+    var attr_filler = attr.unsafe_bitcast[UInt8]()
+    for i in range(size_of[posix_spawnattr_t]()):
+        attr_filler.unsafe_store(i, UInt8(0x7F))
+    assert_equal(Int(posix_spawnattr_init(attr)), 0, "the block is made usable")
+
+    var argv = _argv_for("sh", "-c", "exit 7")
+    var envp = _empty_environment()
+    var pid = unsafe_alloc[Int32](1)
+    assert_equal(
+        Int(
+            posix_spawn(
+                pid,
+                string_to_char_ptr("/bin/sh"),
+                null_ptr[posix_spawn_file_actions_t](),
+                attr,
+                argv,
+                envp,
+            )
+        ),
+        0,
+        "the shell is started with the block for its attributes",
+    )
+    var status = unsafe_alloc[Int32](1)
+    assert_true(waitpid(pid[], status, 0) == pid[], "the child is waited for")
+    assert_equal(
+        Int(WEXITSTATUS(status[])), 7, "and left with the code it was told"
+    )
+    assert_equal(
+        Int(posix_spawnattr_destroy(attr)), 0, "and the block is given back"
+    )
+
+    attr.unsafe_free()
+    status.unsafe_free()
+    _drop_argv(argv, 3)
+    envp.unsafe_free()
+    pid.unsafe_free()
+
+
 def main() raises:
     test_posix_spawnp_runs_the_program_its_arguments_name()
     test_posix_spawn_answers_for_a_path_that_is_not_there()
+    test_posix_spawn_refuses_a_name_with_no_path_in_it()
+    test_the_attributes_are_a_block_the_call_cleans()
     test_the_file_actions_hand_the_child_a_pipe_for_its_output()
     test_the_file_actions_open_a_file_where_the_child_would_write()
     test_the_attributes_hold_the_group_and_the_flags_they_are_given()

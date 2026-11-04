@@ -924,6 +924,30 @@ All notable changes to this project are documented here. The format follows
   gets a second round in the cross-process test with `_broadcast` in the child,
   because with one waiter `_signal` and `_broadcast` are the same wake-up.
 
+- **The sweep is done: the last twenty-nine, and none of them survived.**
+  `rmdir` was called for its 0 and not asked whether what it took was gone,
+  which `chdir` -- same path, same 0 -- would not have taken with it;
+  `sigemptyset` and `sigpending` are asked while a blocked signal stands in
+  the queue, which is the one moment an emptied set and a pending set differ;
+  `aio_fsync` was allowed the answer -1 that `aio_cancel` also gives, and is
+  held to 0 now; `posix_spawn` and `posix_spawnp` are told apart by a bare
+  name, the one shape the two disagree on, and the `init` calls are given a
+  block full of bytes no allocator made, which `init` cleans and `destroy`
+  dies on. `termios` wanted a real line: a pty is opened, echo turned off,
+  and `tcflush` is held to having emptied a queue that had bytes in it,
+  `tcflow` to the stop character arriving on the other end, `tcdrain` and
+  `tcgetsid` to the difference between 0 and a session -- `tcgetsid` asked by
+  a child that has taken the line for its own terminal. `herror` says what it
+  says with the error stream taken away and read back, and `setnetgrent`, the
+  call next to it in the table, is held to having said nothing;
+  `getutxid` and `getutxline` are each given a probe that names one thing and
+  asks for the other. Three speed setters are one storage on this platform,
+  measured -- two different speeds were set and one came back through both
+  getters -- and ten are in the third table with the measurement written
+  down: the walks that start again whichever of their calls is made, the
+  break that leaves nothing a read finds, the branch of `get_errno` this
+  machine does not run.
+
 - **`file`, `fenv`, `netdb` and `unistd`: ten more caught.** `clearerr` was
   asked whether it cleared the flag and not whether it left the stream where it
   was -- which is what `rewind` does not; `feholdexcept` was asked to answer 0

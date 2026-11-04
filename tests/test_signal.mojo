@@ -75,16 +75,47 @@ def test_sigismember_refuses_a_number_that_is_not_a_signal() raises:
     assert_equal(get_errno(), EINVAL, "errno says which way it went wrong")
 
 
-def test_sigpending_reports_an_empty_set_when_nothing_waits() raises:
-    """Whatever is waiting, asking about it succeeds and uses the set."""
+def test_sigpending_reports_what_waits_and_sigemptyset_leaves_nothing() raises:
+    """Something is made to wait, and `sigpending` is the call that
+    says so. `sigemptyset` takes the same set, answers the same 0,
+    and fills it with nothing -- so the two are asked while a blocked
+    signal stands in the queue, where one of them has to write it
+    down and the other must leave the set empty.
+    """
     var mask = empty_set()
-    var waiting = empty_set()
-    assert_equal(sigpending(waiting), 0, "sigpending succeeded")
-
-    # A signal nobody is blocking has nowhere pending to be, so ask about
-    # one using the empty mask rather than whatever it wrote down.
+    assert_equal(sigaddset(mask, SIGINT), 0, "SIGINT is put in a set")
     assert_equal(
-        sigismember(waiting, SIGINT), 0, "SIGINT is not waiting to be delivered"
+        sigprocmask(SIG_BLOCK, mask, null_ptr[UInt8]()),
+        0,
+        "and the set is blocked, so that raising it makes it wait",
+    )
+    assert_equal(Int(craise(SIGINT)), 0, "and it is raised")
+
+    var waiting = empty_set()
+    assert_equal(sigpending(waiting), 0, "asking what waits succeeded")
+    assert_equal(
+        sigismember(waiting, SIGINT),
+        1,
+        "and SIGINT is in there, which nothing put there",
+    )
+
+    # The same shape of call doing the other thing: with a signal standing in
+    # the queue, an empty set is now something to have said.
+    var cleared = empty_set()
+    assert_equal(
+        sigismember(cleared, SIGINT), 0, "and an emptied set holds none of it"
+    )
+
+    # The queue is given back the way it was found: the waiting signal is
+    # taken, so that taking the block off does not hand it to a process that
+    # has no handler for it.
+    var taken = unsafe_alloc[Int32](1)
+    assert_equal(sigwait(mask, taken), 0, "the waiting signal is taken")
+    assert_equal(Int(taken.unsafe_offset(0)[]), Int(SIGINT), "and it is SIGINT")
+    assert_equal(
+        sigprocmask(SIG_UNBLOCK, mask, null_ptr[UInt8]()),
+        0,
+        "and the block is taken off",
     )
     _ = mask
 
@@ -612,7 +643,7 @@ def test_sigsuspend_swaps_in_a_mask_and_takes_what_was_waiting() raises:
 def main() raises:
     test_sigaddset_round_trips_through_sigismember()
     test_sigismember_refuses_a_number_that_is_not_a_signal()
-    test_sigpending_reports_an_empty_set_when_nothing_waits()
+    test_sigpending_reports_what_waits_and_sigemptyset_leaves_nothing()
     test_sigfillset_fills()
     test_sigprocmask_read_twice_reads_the_same()
     test_kill_with_nothing_to_send()

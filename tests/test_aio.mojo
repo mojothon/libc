@@ -251,8 +251,15 @@ def test_cancel_and_sync_are_answered_about() raises:
     sync[] = Aiocb()
     sync[].set_fildes(fd)
     sync[].set_offset(0)
+    # And it is the sync that is asked for, which is what the answer says.
+    # `aio_cancel` -- the call next to it, with the same two arguments --
+    # answers 2 about the block the write left behind, because that block has
+    # already finished; the sync of it is taken, and 0 is what taken is.
+    assert_equal(
+        Int(aio_fsync(O_SYNC, cb)), 0, "the sync of the finished block is taken"
+    )
     var asked = Int(aio_fsync(O_SYNC, sync))
-    assert_true(asked == 0 or asked == -1, "aio_fsync is answered")
+    assert_equal(asked, 0, "and so is a sync of a block of its own")
     assert_true(
         _wait_for(sync) != Int(EINPROGRESS),
         "and the block it was given is settled either way",

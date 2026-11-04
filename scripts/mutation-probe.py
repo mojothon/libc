@@ -138,6 +138,20 @@ SAME_ANSWER = {
     "htons->ntohs": (
         "the same for the sixteen-bit pair, for the same reason"
     ),
+    # Measured on this platform: the classic `termios` encoding keeps one
+    # speed, and both setters write it -- two different speeds were set and
+    # one came back through both getters.
+    "cfsetispeed->cfsetospeed": (
+        "measured: the classic `termios` encoding keeps one speed and both "
+        "setters write the same bits of the same word -- two different speeds "
+        "were set and one came back through both getters, so the two calls "
+        "write the same storage here"
+    ),
+    "cfsetspeed->cfsetispeed": (
+        "the same one storage, which is what setting both at once comes to "
+        "here: the input and the output speed are the same bits, and either "
+        "setter writes them"
+    ),
     # One routine under two names, measured: `nm` puts `strtoll` and `strtoq` at
     # the same address in glibc, and `strtoull` and `strtouq` at another one.
     "strtoll->strtoq": (
@@ -596,6 +610,71 @@ NO_OBSERVATION = {
         "that `wcscmp` answers, because code-point order is the collation "
         "there. The `_l` forms are separated by a locale object the test "
         "makes; this one has no such argument to hold the difference"
+    ),
+    "setpwent->endpwent": (
+        "measured: whichever of the two is called, the next `getpwent` reads "
+        "the first entry of the file again -- one puts the walk back at its "
+        "beginning and the other shuts the file and the next call opens it "
+        "again at the top. Both answer nothing, and the walk after them is "
+        "the same walk"
+    ),
+    "setutxent->endutxent": (
+        "the same for the login walk, measured: after either call the next "
+        "`getutxent` reads the first record again, and neither answers "
+        "anything"
+    ),
+    "tcsendbreak->tcflush": (
+        "measured on a pty: a break leaves nothing on either side of the "
+        "line that a read finds, and the flush that stands in for it empties "
+        "a queue that was empty by then -- the two answers of 0 and the two "
+        "silences are the same silence"
+    ),
+    "tcsendbreak->tcflow": (
+        "the same measurement: the flow call the mutant points at is given "
+        "the break's argument of 0, which suspends output rather than "
+        "starting it, and nothing arrives on the other end either way"
+    ),
+    "posix_spawnattr_destroy->posix_spawnattr_init": (
+        "pointed the other way round, `init` only makes the block usable "
+        "that `destroy` was going to take apart, and both answer 0 -- the "
+        "test cannot see the block become clean. The other direction is "
+        "caught: the block is filled with bytes no allocator made before "
+        "`init` is called, and pointed at `destroy` that dies"
+    ),
+    "posix_spawn_file_actions_destroy->posix_spawn_file_actions_init": (
+        "the same for the list of file actions: the direction that makes a "
+        "mess first is caught, and this one only answers 0 about a block "
+        "that was going to be taken apart anyway"
+    ),
+    "__error->__errno_location": (
+        "the two symbols are the two platforms' spellings of the same thing, "
+        "and each is named in the branch for its own platform: the mutant "
+        "rewrites the branch this machine does not run, and does not even "
+        "build here"
+    ),
+    "endnetgrent->endprotoent": (
+        "both take nothing and answer nothing, and what each shuts is a "
+        "stream the other test does not have its hand in: this machine has "
+        "no netgroup database to be walking, and the protocol stream is "
+        "read by no test that an emptying would disturb"
+    ),
+    "endprotoent->endservent": (
+        "the same for the two enumeration streams that are left open: both "
+        "calls answer nothing, and no test reads either stream after the "
+        "call, so there is nothing the shutting could move"
+    ),
+    "endrpcent->endprotoent": (
+        "the same, and there is no rpc database on this machine at all"
+    ),
+    "endservent->endprotoent": (
+        "the same for the service stream, which no test walks far enough "
+        "for the closing of it to move anything"
+    ),
+    "sethostent->setprotoent": (
+        "both put an enumeration back at its beginning and both answer "
+        "nothing, and the test that reads the hosts walk reads it through "
+        "its own calls -- which work the same whether the protocol stream "
+        "was the one rewound"
     ),
     "setusershell->endusershell": (
         "measured: the walk over the shells starts again whether the list is "

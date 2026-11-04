@@ -27,7 +27,7 @@ from libc.sys.stat import (
     utimensat,
     utimes,
 )
-from libc.unistd import close, rmdir, symlink, unlink
+from libc.unistd import access, close, rmdir, symlink, unlink
 from libc.utils import string_to_char_ptr
 
 # POSIX keeps the file type in the top bits of `st_mode`. Nothing here
@@ -48,12 +48,17 @@ def test_mkdir_and_mkdirat() raises:
     _ = rmdir(a)
     assert_equal(mkdir(a, 0o755), 0, "mkdir makes a directory")
     _ = rmdir(a)
+    # And what it took is gone -- asked with mode 0, which is `F_OK`, the
+    # question of whether the thing is there at all. `chdir` takes the same
+    # path, answers the same 0, and leaves the directory standing.
+    assert_equal(access(a, 0), -1, "and the directory is gone")
     a.unsafe_free()
 
     var b = string_to_char_ptr("/tmp/libc_mkdir_b")
     _ = rmdir(b)
     assert_equal(mkdirat(AT_FDCWD, b, 0o755), 0, "mkdirat makes one too")
     _ = rmdir(b)
+    assert_equal(access(b, 0), -1, "and it is gone the same way")
     b.unsafe_free()
 
 

@@ -17,7 +17,9 @@ from libc.constant import (
     c_size_t,
     c_ushort,
 )
+from libc.errno import set_errno
 from libc.network import htons, ntohs
+from libc.unistd import close, dup, dup2, pipe, read
 from libc.netdb import (
     AI_NUMERICHOST,
     AI_NUMERICSERV,
@@ -507,7 +509,31 @@ def test_the_resolver_says_what_a_number_meant() raises:
         )
 
     var doing = string_to_char_ptr("nothing to report")
+    # It says it out loud rather than handing it back, and this is what the
+    # saying looks like: the error stream is taken away for the length of the
+    # call and read back afterwards. `setnetgrent` takes the same kind of
+    # string, answers nothing, and says nothing either -- which is what the
+    # walk test holds it to.
+    var fds = unsafe_alloc[Int32](2)
+    assert_equal(Int(pipe(fds)), 0, "somewhere for the words to go")
+    var spoken = unsafe_alloc[UInt8](128)
+    var kept = dup(2)
+    assert_true(kept >= 0, "the old error stream is kept")
+    assert_equal(dup2(fds.unsafe_offset(1)[], 2), 2, "and it goes to the pipe")
     herror(doing)
+    assert_equal(dup2(kept, 2), 2, "and the error stream is put back")
+    _ = close(kept)
+    _ = close(fds.unsafe_offset(1)[])
+    var words = Int(read(fds.unsafe_offset(0)[], spoken, 127))
+    assert_true(words > 0, "and it did say something out loud")
+    spoken.unsafe_store(words, 0)
+    assert_true(
+        char_ptr_to_string(spoken).startswith("nothing to report:"),
+        "and what it says begins with what it was given",
+    )
+    spoken.unsafe_free()
+    _ = close(fds.unsafe_offset(0)[])
+    fds.unsafe_free()
     doing.unsafe_free()
 
 
@@ -714,7 +740,31 @@ def test_the_netgroup_lookup_and_walk() raises:
         "and holds nothing at all",
     )
 
+    # And it says nothing either, which is held to with the error stream
+    # taken away: `herror` given a string would have said a lineful, and this
+    # is the call next to it in the table, with the same kind of argument.
+    var fds = unsafe_alloc[Int32](2)
+    assert_equal(Int(pipe(fds)), 0, "somewhere for words to go, for it")
+    var kept = dup(2)
+    assert_true(kept >= 0, "the old error stream is kept")
+    assert_equal(
+        dup2(fds.unsafe_offset(1)[], 2), 2, "and errors go to the pipe"
+    )
     setnetgrent(group)
+    assert_equal(dup2(kept, 2), 2, "and the error stream is put back")
+    _ = close(kept)
+    _ = close(fds.unsafe_offset(1)[])
+    var said = unsafe_alloc[UInt8](8)
+    set_errno(0)
+    assert_equal(
+        Int(read(fds.unsafe_offset(0)[], said, 8)),
+        0,
+        "and nothing was said at all",
+    )
+    said.unsafe_free()
+    _ = close(fds.unsafe_offset(0)[])
+    fds.unsafe_free()
+
     var host_out = unsafe_alloc[c_ptr[UInt8]](1)
     var user_out = unsafe_alloc[c_ptr[UInt8]](1)
     var domain_out = unsafe_alloc[c_ptr[UInt8]](1)

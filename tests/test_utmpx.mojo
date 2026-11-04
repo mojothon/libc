@@ -176,13 +176,28 @@ def test_a_record_written_back_comes_out_again() raises:
     )
 
     setutxent()
+    # The probe says whose terminal it wants and, to keep the two searches
+    # apart, names the *other* record's identifier as well: the search by
+    # line has to come back with the record for mojo-tty1, and the search by
+    # identifier -- the same probe, the other call -- has to come back with
+    # the one the identifier names.
     probe[].set_ut_line("mojo-tty1")
+    probe[].set_ut_id("mj00")
     var found = getutxline(probe)
     assert_true(not is_null(found), "a terminal that is in the file is found")
     assert_equal(
         found[].ut_pid(), 4243, "and it is the record for that terminal"
     )
     assert_equal(found[].ut_user(), "other", "with the user on it")
+
+    setutxent()
+    var found_by_id = getutxid(probe)
+    assert_true(not is_null(found_by_id), "the identifier finds its record too")
+    assert_equal(
+        found_by_id[].ut_pid(),
+        4242,
+        "which is the other one, the one the identifier names",
+    )
 
     probe[].set_ut_line("mojo-tty9")
     assert_true(is_null(getutxline(probe)), "and one that is not is not found")
