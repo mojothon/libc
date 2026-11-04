@@ -443,8 +443,8 @@ def posix_spawnattr_setflags(
     Args:
         attr: The handle.
         flags: Which of the six to honour, added together. Only what is
-        set here is looked at: `POSIX_SPAWN_SETPGROUP` with a group of 0
-        means its own group, while leaving it out means ours.
+            set here is looked at: `POSIX_SPAWN_SETPGROUP` with a group
+            of 0 means its own group, while leaving it out means ours.
 
     Returns:
         0, or the error number itself.
@@ -504,7 +504,7 @@ def posix_spawnattr_setpgroup(
     Args:
         attr: The handle.
         pgroup: The process group the new process is to be put in, or 0
-        for one of its own.
+            for one of its own.
 
     Returns:
         0, or the error number itself.
@@ -534,8 +534,8 @@ def posix_spawnattr_setsigdefault(
     Args:
         attr: The handle.
         sigdefault: The set of signals to put back to their default in
-        the new process, as bytes the way `libc.signal` writes a
-        `sigset_t`.
+            the new process, as bytes the way `libc.signal` writes a
+            `sigset_t`.
 
     Returns:
         0, or the error number itself.

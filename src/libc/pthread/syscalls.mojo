@@ -1228,7 +1228,7 @@ def pthread_condattr_init(attr: c_ptr[pthread_condattr_t]) -> Int32:
 
     Args:
         attr: The storage, which `pthread_condattr_destroy` gives
-        back.
+            back.
 
     Returns:
         0 on success, or the error number on failure.
@@ -1762,7 +1762,7 @@ def pthread_attr_getinheritsched(
     Args:
         attr: The attribute object to be queried.
         inheritsched: Where the answer is written, as
-        `PTHREAD_INHERIT_SCHED` or `PTHREAD_EXPLICIT_SCHED`.
+            `PTHREAD_INHERIT_SCHED` or `PTHREAD_EXPLICIT_SCHED`.
 
     Returns:
         0 on success, or the error number on failure.

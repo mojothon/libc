@@ -344,7 +344,7 @@ def set_opterr(complaining: c_int) raises:
 
     Args:
         complaining: 0 to keep quiet about an option that was not
-        asked for, anything else to go on complaining.
+            asked for, anything else to go on complaining.
 
     Raises:
         Error: When `dlsym` will not say where `opterr` is.

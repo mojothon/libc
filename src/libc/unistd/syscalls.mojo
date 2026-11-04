@@ -2173,7 +2173,7 @@ def getwd(buf: c_ptr[UInt8]) -> c_ptr[UInt8]:
 
     Args:
         buf: Where to write it, which has to hold `PATH_MAX`
-        characters and is written to.
+            characters and is written to.
 
     Returns:
         `buf` where it was written, or a null pointer where it could
@@ -2265,14 +2265,12 @@ def tcsetpgrp(fildes: c_int, pgrp_id: c_int) -> c_int:
 
 
 def brk(addr: c_ptr[c_void]):
-    """Libc BSD `brk` function, bound without the value it hands back.
+    """Libc BSD `brk` function, bound without the value it hands back:
+    where the end went is read back with `sbrk(0)`, which is the reading
+    this call is paired with.
 
     Args:
         addr: Where the end of the data segment is to be put.
-
-    Returns:
-        Nothing. Where the end went is read back with `sbrk(0)`, which is
-        the reading this call is paired with.
 
     Notes:
         [Reference](https://man7.org/linux/man-pages/man2/brk.2.html).
