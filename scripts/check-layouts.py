@@ -330,12 +330,11 @@ def read_at_a_literal() -> list[str]:
     """
     found = []
     for path in SOURCES:
-        if not path.read_text().count("_slots"):
-            continue
         for number, line in enumerate(path.read_text().split("\n"), 1):
-            if READ_AT.search(line):
+            match = READ_AT.search(line)
+            if match is not None:
                 found.append(
-                    f"{module_of(path)} reads at {READ_AT.search(line).group(1)}"
+                    f"{module_of(path)} reads at {match.group(1)}"
                     f"  ({path.relative_to(ROOT)}:{number})"
                 )
     return found
