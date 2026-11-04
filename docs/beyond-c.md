@@ -270,11 +270,15 @@ bytes, `_u64(st_size)` eight. Taking four of an eight-byte member truncates
 it, and taking eight of a four-byte one carries the member beside it into the
 answer, and neither mistake is visible to `offsetof` or to `sizeof`, both of
 which are right whichever width the accessor reads at. Those widths are
-compared with `sizeof(((struct stat *)0)->st_mode)` now — fifty-eight of them,
-and fifty-seven agree. The one that does not is `si_value`, which is four
-bytes of an eight-byte union on purpose and says so: it is `sival_int`, the
-half that shares the union with `sival_ptr`, and an exemption that stops being
-true is one `sizeof` disagrees with.
+compared with `sizeof(((struct stat *)0)->st_mode)` now — fifty-nine accessors
+read a member at one, and fifty-eight agree. The count is of accessors rather
+than of members, which matters for the one that does not agree: `si_value` is
+four bytes of the eight-byte union `sigval` and `si_ptr` is the other four,
+they read the same `sizeof`, and asking per member would have let a four-byte
+read pass on the strength of the eight-byte one beside it. `si_value` is the
+exemption, then, and written down as one: it is `sival_int`, the half that
+shares the union with `sival_ptr`, and an exemption that stops being true is
+one `sizeof` disagrees with.
 
 The same reading of the source answers which half of a slot a member is in.
 `pw_uid` and `pw_gid` share one eight-byte slot on both platforms — glibc puts

@@ -18,6 +18,12 @@ process, so a test that asked only which signal came back would pass
 however the union had been sent. Two are queued and taken in order,
 and each is asked for the number it was given.
 
+The third is the one that takes the eight bytes apart: its two halves
+differ, so `si_value` answering with the low four and `si_ptr` with
+all eight says the union arrived whole and that the two accessors
+read different of it. A number small enough to fit in four bytes
+would come back right from either of them.
+
 Neither wait can hang: the first is given no time at all, and the
 second is only called once there is a signal waiting for it.
 """
@@ -44,6 +50,10 @@ from libc.utils import null_ptr
 comptime SET_BYTES = 128
 comptime FIRST = 42
 comptime SECOND = 7
+# A number with different bytes in its two halves: 0x55667788 is what
+# `si_value` says, and all eight are what `si_ptr` says.
+comptime BOTH_HALVES: Int64 = 0x1122334455667788
+comptime LOW_HALF = 0x55667788
 
 
 def queued_and_taken_back() raises -> Int32:
@@ -110,6 +120,23 @@ def queued_and_taken_back() raises -> Int32:
         Int(info.unsafe_offset(0)[].si_value()),
         SECOND,
         "and with the second number, not the first",
+    )
+
+    assert_equal(
+        sigqueue(getpid(), SIGUSR1, BOTH_HALVES),
+        0,
+        "and a number with something in each half is queued",
+    )
+    assert_equal(sigwaitinfo(set, info), SIGUSR1, "and comes back")
+    assert_equal(
+        Int(info.unsafe_offset(0)[].si_value()),
+        LOW_HALF,
+        "with its low four bytes where si_value reads its four",
+    )
+    assert_equal(
+        Int(info.unsafe_offset(0)[].si_ptr()),
+        Int(BOTH_HALVES),
+        "and all eight where si_ptr reads all eight",
     )
 
     assert_equal(

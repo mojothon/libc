@@ -31,6 +31,19 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- **`siginfo_t.si_ptr` reads the other half of the union `si_value` reads
+  four bytes of.** `sigqueue` takes eight bytes and C names them twice:
+  `sival_int` is the low four and `sival_ptr` all eight, and `si_value`
+  returned `Int32`, so a number sent with anything above 2^32 in it came back
+  truncated with no way to ask for the rest. `si_ptr` answers with the whole
+  eight, and a test sends a value whose halves differ so that the two
+  accessors cannot both be answering with the same four bytes.
+- **The width check counts accessors, not members.** Adding `si_ptr` made that
+  matter: `si_value` reads four of the eight bytes and `si_ptr` all eight, and
+  keyed by member the four-byte read would have passed on the strength of the
+  eight-byte one beside it. Keyed by accessor, each read is its own claim, and
+  `si_value` stays the one exemption it always was.
+
 - **`check-layouts` asks how wide a member is, and found the one accessor
   that reads less of one than C holds.** An accessor claims two things about
   a member: where it starts, from the offset it names, and how many bytes it

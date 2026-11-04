@@ -432,8 +432,8 @@ GUARDED = "comptime if CompilationTarget.is_macos():"
 # claim somebody made on purpose, and the number beside it is what makes it
 # checkable rather than forgotten: `sizeof` disagreeing with a constant in
 # here is a failure, so the exemption cannot outlive the member it is about.
-NARROWER_ON_PURPOSE: dict[tuple[str, str], str] = {
-    ("libc.signal", "SIGINFO_VALUE_OFFSET"): (
+NARROWER_ON_PURPOSE: dict[tuple[str, str, str], str] = {
+    ("libc.signal", "SIGINFO_VALUE_OFFSET", "si_value"): (
         "`si_value` is the `sival_int` half of a union it shares with "
         "`sival_ptr`, so four bytes of eight is the member it names"
     ),
@@ -464,10 +464,16 @@ def readers(path: Path) -> dict[str, int | None]:
 
 
 def read_widths() -> tuple[
-    dict[tuple[str, str], dict[str, set[tuple[int, int, bool]]]],
-    dict[tuple[str, str], str],
+    dict[tuple[str, str, str], dict[str, set[tuple[int, int, bool]]]],
+    dict[tuple[str, str, str], str],
 ]:
-    """How wide each member is read, per platform, and the first place it is.
+    """How wide each accessor reads its member, per platform, and where it is.
+
+    One entry per accessor rather than per member, because the claim being
+    read is the accessor's: `si_value` takes four bytes of the eight that
+    `si_value`'s union occupies and `si_ptr`, once it exists, takes the
+    eight — and a member with one accessor right and one wrong is a member
+    with an accessor wrong, not a member that agrees.
 
     A reader inside `comptime if CompilationTarget.is_macos():` is the Darwin
     width and the `else:` one below it is the other platform's, so the widths
@@ -475,14 +481,16 @@ def read_widths() -> tuple[
     what lets `st_dev` be eight bytes here and four there without either being
     a mistake.
     """
-    found: dict[tuple[str, str], dict[str, set[tuple[int, int, bool]]]] = {}
-    places: dict[tuple[str, str], str] = {}
+    found: dict[tuple[str, str, str], dict[str, set[tuple[int, int, bool]]]] = {}
+    places: dict[tuple[str, str, str], str] = {}
+    DECLARED = re.compile(r"^    def (\w+)")
     for path in SOURCES:
         module = module_of(path)
         widths = readers(path)
         if not widths:
             continue
         guard: str | None = None
+        accessor: str | None = None
         for number, line in enumerate(path.read_text().split("\n"), 1):
             if GUARDED in line:
                 guard = "macos"
@@ -496,14 +504,18 @@ def read_widths() -> tuple[
                 or (stripped and not line.startswith("        "))
             ):
                 guard = None
+            named = DECLARED.match(line)
+            if named is not None:
+                accessor = named.group(1)
+                continue
             match = READ.search(line)
-            if match is None:
+            if match is None or accessor is None:
                 continue
             width = widths.get(match.group(1), None)
             if width is None:
                 continue
             kept, kept_from, by_hand = kept_of(line, width)
-            key = (module, match.group(2))
+            key = (module, match.group(2), accessor)
             per = found.setdefault(key, {"linux": set(), "macos": set()})
             for platform in (("linux", "macos") if guard is None else (guard,)):
                 per[platform].add((kept, kept_from, by_hand))
@@ -929,9 +941,11 @@ def main() -> int:
     read_disagree = []
     read_half = []
     for key, per in sorted(read_here.items()):
-        if key not in member_sizes or not per[here]:
+        module, constant, accessor = key
+        member_key = (module, constant)
+        if member_key not in member_sizes or not per[here]:
             continue
-        member_width = member_sizes[key]
+        member_width = member_sizes[member_key]
         widths = sorted({width for width, _from, _hand in per[here]})
         right_size = [read for read in per[here] if read[0] == member_width]
         if not right_size:
@@ -940,7 +954,7 @@ def main() -> int:
             else:
                 read_disagree.append((key, widths, member_width))
             continue
-        inside = placed_by_c[key] % 8 if key in placed_by_c else None
+        inside = placed_by_c[member_key] % 8 if member_key in placed_by_c else None
         wrong_half = [
             read
             for read in right_size
@@ -953,27 +967,27 @@ def main() -> int:
 
     if read_agree or read_narrow or read_disagree or read_half:
         asked = read_agree + len(read_narrow) + len(read_disagree) + len(read_half)
-        print(f"\n  Read widths, for the {asked} members read at one:")
+        print(f"\n  Read widths, for the {asked} accessors that read a member:")
         print(f"      {read_agree} agree with sizeof")
-        for (module, constant), member_width in read_narrow:
+        for (module, constant, accessor), member_width in read_narrow:
             struct, member = OFFSETS[(module, constant)]
             print(
-                f"      {module + '.' + constant:<40} reads less than"
-                f" {member_width:>2}   {NARROWER_ON_PURPOSE[(module, constant)]}"
+                f"      {module + '.' + accessor:<40} reads less than"
+                f" {member_width:>2}   {NARROWER_ON_PURPOSE[(module, constant, accessor)]}"
             )
-        for (module, constant), kept_from, inside in read_half:
+        for (module, constant, accessor), kept_from, inside in read_half:
             struct, member = OFFSETS[(module, constant)]
             print(
-                f"      {module + '.' + constant:<40} keeps bytes from "
+                f"      {module + '.' + accessor:<40} keeps bytes from "
                 f"{kept_from} of the slot, and {struct}.{member} starts at "
                 f"{inside}"
             )
-        for (module, constant), widths, member_width in read_disagree:
+        for (module, constant, accessor), widths, member_width in read_disagree:
             struct, member = OFFSETS[(module, constant)]
             print(
-                f"      {module + '.' + constant:<40} reads "
+                f"      {module + '.' + accessor:<40} reads "
                 f"{'/'.join(str(w) for w in widths)}  sizeof({struct}.{member}) is"
-                f" {member_width}   {read_at[(module, constant)]}"
+                f" {member_width}   {read_at[(module, constant, accessor)]}"
             )
 
     wide_here, wide_unread = mojo_numbers(list(WIDTHS))

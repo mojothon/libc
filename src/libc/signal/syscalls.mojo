@@ -1004,6 +1004,12 @@ struct siginfo_t:
         var slot = self._slots[off // 8]
         return UInt32((slot >> UInt64((off % 8) * 8)) & 0xFFFFFFFF)
 
+    def _u64(self, off: Int) -> UInt64:
+        """The whole slot at `off`, which every offset in here keeps
+        inside one.
+        """
+        return self._slots[off // 8]
+
     def si_signo(self) -> Int32:
         """The signal number the call was about."""
         return Int32(self._u32(SIGINFO_SIGNO_OFFSET))
@@ -1040,5 +1046,32 @@ struct siginfo_t:
             Sits where `si_status` sits on Linux, the two being
             different members of one union there, and past the
             faulting address on Darwin, where they are not.
+
+            Four bytes of the eight the union occupies: a number too
+            big for an `Int32` is truncated here and whole in `si_ptr`,
+            which is the same eight bytes read the other way.
         """
         return Int32(self._u32(SIGINFO_VALUE_OFFSET))
+
+    def si_ptr(self) -> c_ptr[UInt8]:
+        """What was sent along with the signal, read as the address it
+        may be: the `sival_ptr` half of the `sigval` union.
+
+        Returns:
+            The eight bytes `si_value` takes four of, as a pointer.
+
+        Notes:
+            `sigqueue` takes one eight-byte value and the sender means
+            either a number or an address by it; a number that fits in
+            `Int32` comes back from here with its high half zero, and
+            an address is whole. Nothing checks which was meant, and
+            nothing here can: the union is eight bytes on both
+            platforms and C does not say either.
+
+            A pointer this package hands back as a pointer, for the
+            reason the rest are: it is not this package's to read
+            through, and `Int` of it is the number that was sent.
+        """
+        return c_ptr[UInt8](
+            unsafe_from_address=Int(self._u64(SIGINFO_VALUE_OFFSET))
+        )
