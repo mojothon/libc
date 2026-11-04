@@ -31,6 +31,19 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- **`check-layouts` asks how wide a member is, and found the one accessor
+  that reads less of one than C holds.** An accessor claims two things about
+  a member: where it starts, from the offset it names, and how many bytes it
+  takes, from the reader it calls. Only the first was ever asked. `_u32` where
+  C has an eight-byte member truncates it, `_u64` where C has four carries the
+  member beside it into the answer, and both look plausible — `offsetof` and
+  `sizeof` are each right either way, so nothing here could see it. The width
+  each accessor reads at is compared with `sizeof(((struct stat *)0)->st_size)`
+  now, per platform and through the mask or shift it applies: fifty-eight
+  members, fifty-seven agree. `si_value` is the one that does not, on purpose
+  — it is the `sival_int` half of a union it shares with `sival_ptr` — and it
+  is written down as such rather than left to look like the rest.
+
 - **`termios` reads and writes its flag words at the width it says, and the
   width is asked of C.** `TERMIOS_FLAG_BYTES` and `TERMIOS_SPEED_BYTES` state
   how wide a `tcflag_t` and a `speed_t` are here — four bytes on glibc, eight

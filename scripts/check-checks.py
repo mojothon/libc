@@ -199,6 +199,13 @@ BREAKS = [
     ),
     Break(
         "check-layouts",
+        "a member read at a width C does not agree with",
+        "src/libc/sys/stat/syscalls.mojo",
+        "        return self._u64(STAT_SIZE_OFFSET)",
+        "        return self._u32(STAT_SIZE_OFFSET)",
+    ),
+    Break(
+        "check-layouts",
         "a constant that says a C type is wider than it is",
         "src/libc/termios/syscalls.mojo",
         "comptime TERMIOS_FLAG_BYTES: Int = 8 if CompilationTarget.is_macos() else 4",

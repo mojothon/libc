@@ -352,6 +352,154 @@ def read_at_a_literal() -> list[str]:
     return found
 
 
+# An offset says where a member starts; it does not say how wide what sits
+# there is. An accessor answers that too, in the reader it uses:
+# `_u32(STAT_MODE_OFFSET)` takes four bytes, `_u64(STAT_DEV_OFFSET)` eight.
+# Reading four bytes of an eight-byte member truncates it, and reading eight
+# of a four-byte one carries the member beside it into the answer — both are
+# numbers that look plausible and are not the member. `offsetof` cannot see
+# either mistake, and neither can `sizeof`: both are right whichever width the
+# accessor reads at. So the width the source reads is compared with the width
+# C says, which is the last claim the hand-placed members make.
+READERS = {
+    "byte": 1,
+    "u8": 1,
+    "i8": 1,
+    "u16": 2,
+    "i16": 2,
+    "u32": 4,
+    "i32": 4,
+    "u64": 8,
+    "i64": 8,
+    "member": 8,
+    "ptr_at": 8,
+}
+
+# Readers that hand back text rather than a number: how far they read is where
+# the NUL is, and `sizeof` of a `char[65]` is not the answer to any question
+# they ask. `_at` is a whole slot in `socket` and text in `utsname`, so a
+# reader returning `String` is recognised by that rather than by its name.
+TEXT_READERS = {"text", "text_at", "string"}
+
+# Readers whose width is not in their name and is a checked number already:
+# `_flag` and `_speed` read `TERMIOS_FLAG_BYTES` and `TERMIOS_SPEED_BYTES`
+# wide, and `WIDTHS` is where those are put to `sizeof`.
+WIDTHS_FROM_CONSTANT = {"flag", "speed"}
+
+READ = re.compile(r"self\.(_\w+)\((\w+_OFFSET)\)")
+# A read of a whole slot is often a read of half of one: `pw_uid` takes the
+# slot holding both ids and masks off the top, `pw_gid` takes the same slot
+# and shifts the bottom away. What is left after the mask or the shift is the
+# member, so the width is what the mask leaves rather than what the reader
+# took. Longest first: `0xFFFF` is a prefix of `0xFFFFFFFF`.
+MASKS = (("0xFFFFFFFF", 4), ("0xFFFF", 2), ("0xFF", 1))
+SHIFT = re.compile(r">>\s*(\d+)")
+
+
+def width_of(line: str, reader_width: int) -> int:
+    """How much of what this reader took the member actually is.
+
+    `self._member(PASSWD_UID_OFFSET) & 0xFFFFFFFF` reads eight bytes and
+    keeps four; `>> 32` keeps the other four. Either way the accessor is
+    claiming four bytes at that offset, which is the claim to compare.
+    """
+    width = reader_width
+    for token, kept in MASKS:
+        if token in line:
+            width = min(width, kept)
+            break
+    shifted = SHIFT.search(line)
+    if shifted is not None and int(shifted.group(1)) % 8 == 0:
+        dropped = int(shifted.group(1)) // 8
+        if 0 < dropped < 8:
+            width = min(width, 8 - dropped)
+    return width
+GUARDED = "comptime if CompilationTarget.is_macos():"
+
+# Members an accessor deliberately takes less of than C holds. Each one is a
+# claim somebody made on purpose, and the number beside it is what makes it
+# checkable rather than forgotten: `sizeof` disagreeing with a constant in
+# here is a failure, so the exemption cannot outlive the member it is about.
+NARROWER_ON_PURPOSE: dict[tuple[str, str], str] = {
+    ("libc.signal", "SIGINFO_VALUE_OFFSET"): (
+        "`si_value` is the `sival_int` half of a union it shares with "
+        "`sival_ptr`, so four bytes of eight is the member it names"
+    ),
+}
+
+
+def readers(path: Path) -> dict[str, int | None]:
+    """How wide each reader in this file takes, and None for the text ones."""
+    widths: dict[str, int | None] = {}
+    for match in re.finditer(
+        r"^    def (_\w+)\((?:[^)]*)\n?(?:[^)]*)\)\s*(?:raises\s*)?->\s*"
+        r"([\w\[\], ]+):",
+        path.read_text(),
+        re.M,
+    ):
+        name, result = match.group(1), match.group(2).strip()
+        if name in TEXT_READERS or result == "String":
+            widths[name] = None
+            continue
+        stem = name[1:]
+        if stem.startswith("set_"):
+            stem = stem[4:]
+        if stem in WIDTHS_FROM_CONSTANT:
+            continue
+        if stem in READERS:
+            widths[name] = READERS[stem]
+    return widths
+
+
+def read_widths() -> tuple[
+    dict[tuple[str, str], dict[str, set[int]]], dict[tuple[str, str], str]
+]:
+    """How wide each member is read, per platform, and the first place it is.
+
+    A reader inside `comptime if CompilationTarget.is_macos():` is the Darwin
+    width and the `else:` one below it is the other platform's, so the widths
+    are kept apart: on either platform only its own are compared, which is
+    what lets `st_dev` be eight bytes here and four there without either being
+    a mistake.
+    """
+    found: dict[tuple[str, str], dict[str, set[int]]] = {}
+    places: dict[tuple[str, str], str] = {}
+    for path in SOURCES:
+        module = module_of(path)
+        widths = readers(path)
+        if not widths:
+            continue
+        guard: str | None = None
+        for number, line in enumerate(path.read_text().split("\n"), 1):
+            if GUARDED in line:
+                guard = "macos"
+                continue
+            stripped = line.strip()
+            if guard == "macos" and stripped == "else:":
+                guard = "linux"
+                continue
+            if guard is not None and (
+                line.startswith("    def ")
+                or (stripped and not line.startswith("        "))
+            ):
+                guard = None
+            match = READ.search(line)
+            if match is None:
+                continue
+            width = widths.get(match.group(1), None)
+            if width is None:
+                continue
+            width = width_of(line, width)
+            key = (module, match.group(2))
+            per = found.setdefault(key, {"linux": set(), "macos": set()})
+            for platform in (("linux", "macos") if guard is None else (guard,)):
+                per[platform].add(width)
+                places.setdefault(
+                    key, f"{path.relative_to(ROOT)}:{number}"
+                )
+    return found, places
+
+
 def structs() -> list[tuple[str, str, str, list[str]]]:
     """Every struct: (label, module, what C calls it, fields it names)."""
     found = []
@@ -522,16 +670,25 @@ def mojo_numbers(
     return said, missing
 
 
-def c_offsets() -> tuple[dict[tuple[str, str], int], list[tuple[str, str]]]:
-    """What `offsetof` says for each of them, one struct at a time.
+def c_offsets() -> tuple[
+    dict[tuple[str, str], int],
+    dict[tuple[str, str], int],
+    list[tuple[str, str]],
+]:
+    """What `offsetof` and `sizeof` say for each of them, one struct at a time.
 
     Every member of one struct comes out of one compilation, which keeps
     this at four builds rather than twenty-two. A member C does not have
     under that name would take the rest of its struct down with it, so a
     struct that will not build is asked again a member at a time — that
     being the likeliest way for a field to be spelled wrongly here.
+
+    Both numbers come back from the same build because they are asked of the
+    same member: `sizeof` is how wide the member is, which is what an
+    accessor reading it has to read.
     """
     said: dict[tuple[str, str], int] = {}
+    sizes: dict[tuple[str, str], int] = {}
     missing: list[tuple[str, str]] = []
     includes = "\n".join(f"#include <{h}>" for h in CHECK_CONSTANTS.headers())
 
@@ -546,7 +703,8 @@ def c_offsets() -> tuple[dict[tuple[str, str], int], list[tuple[str, str]]]:
     ) -> str:
         kind = f"struct {struct}" if tagged else struct
         lines = "\n".join(
-            f'    printf("_{index} %zu\\n", offsetof({kind}, {member}));'
+            f'    printf("_{index} %zu %zu\\n", offsetof({kind}, {member}),'
+            f" sizeof((({kind} *)0)->{member}));"
             for index, (_key, member) in enumerate(members)
         )
         return (
@@ -583,12 +741,12 @@ def c_offsets() -> tuple[dict[tuple[str, str], int], list[tuple[str, str]]]:
         seen = {}
         for line in ran.stdout.splitlines():
             parts = line.split()
-            if len(parts) == 2 and parts[0].startswith("_"):
-                seen[parts[0]] = int(parts[1])
+            if len(parts) == 3 and parts[0].startswith("_"):
+                seen[parts[0]] = (int(parts[1]), int(parts[2]))
         if not all(f"_{index}" in seen for index in range(len(members))):
             return False
         for index, (key, _member) in enumerate(members):
-            said[key] = seen[f"_{index}"]
+            said[key], sizes[key] = seen[f"_{index}"]
         return True
 
     def ask(struct: str, members: list[tuple[tuple[str, str], str]]) -> None:
@@ -607,7 +765,7 @@ def c_offsets() -> tuple[dict[tuple[str, str], int], list[tuple[str, str]]]:
 
     for struct, members in by_struct.items():
         ask(struct, members)
-    return said, missing
+    return said, sizes, missing
 
 
 def main() -> int:
@@ -715,7 +873,7 @@ def main() -> int:
             print(f"      {label:<28} {why}")
 
     placed_here, unread = mojo_numbers(list(OFFSETS))
-    placed_by_c, unheard_of = c_offsets()
+    placed_by_c, member_sizes, unheard_of = c_offsets()
     offset_agree = 0
     offset_disagree = []
     offset_unchecked = []
@@ -750,6 +908,40 @@ def main() -> int:
         print(f"      {len(offset_unchecked)} could not be checked:")
         for line in offset_unchecked:
             print(f"      {line}")
+
+    here = "macos" if ON_DARWIN else "linux"
+    read_here, read_at = read_widths()
+    read_agree = 0
+    read_narrow = []
+    read_disagree = []
+    for key, per in sorted(read_here.items()):
+        if key not in member_sizes or not per[here]:
+            continue
+        member_width = member_sizes[key]
+        if member_width in per[here]:
+            read_agree += 1
+        elif key in NARROWER_ON_PURPOSE:
+            read_narrow.append((key, member_width))
+        else:
+            read_disagree.append((key, sorted(per[here]), member_width))
+
+    if read_agree or read_narrow or read_disagree:
+        asked = read_agree + len(read_narrow) + len(read_disagree)
+        print(f"\n  Read widths, for the {asked} members read at one:")
+        print(f"      {read_agree} agree with sizeof")
+        for (module, constant), member_width in read_narrow:
+            struct, member = OFFSETS[(module, constant)]
+            print(
+                f"      {module + '.' + constant:<40} reads less than"
+                f" {member_width:>2}   {NARROWER_ON_PURPOSE[(module, constant)]}"
+            )
+        for (module, constant), widths, member_width in read_disagree:
+            struct, member = OFFSETS[(module, constant)]
+            print(
+                f"      {module + '.' + constant:<40} reads "
+                f"{'/'.join(str(w) for w in widths)}  sizeof({struct}.{member}) is"
+                f" {member_width}   {read_at[(module, constant)]}"
+            )
 
     wide_here, wide_unread = mojo_numbers(list(WIDTHS))
     wide_by_c, wide_absent = c_layouts(
@@ -857,6 +1049,8 @@ def main() -> int:
         print("  *** members read at a number that is not written down ***")
     if width_disagree:
         print("  *** constants that say the wrong width for a C type ***")
+    if read_disagree:
+        print("  *** members read at a width C does not agree with ***")
     if (
         disagree
         or offset_disagree
@@ -864,6 +1058,7 @@ def main() -> int:
         or unlisted
         or unsaid
         or width_disagree
+        or read_disagree
     ):
         return 1
     print("  nothing disagrees with C")
