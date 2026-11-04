@@ -7,7 +7,12 @@ from libc.constant.ctype import c_int
 from std.sys import CompilationTarget
 
 comptime off_t = Int64
-comptime mode_t = UInt32
+# Darwin's `mode_t` is an `unsigned short`, and glibc's is an `unsigned
+# int`: the same bits in the low half, and the four-byte one is what
+# `open` and `chmod` read there. Written as the header has it, because a
+# type alias that is twice the width it claims is the kind of thing that
+# reads a neighbouring field.
+comptime mode_t = UInt16 if CompilationTarget.is_macos() else UInt32
 
 comptime FM_READ = "r"
 comptime FM_WRITE = "w"

@@ -41,4 +41,4 @@ comptime size_t = Int
 comptime ptrdiff_t = Int64
 comptime intptr_t = Int64
 comptime uintptr_t = UInt64
-comptime ssize_t = UInt64
+comptime ssize_t = Int
