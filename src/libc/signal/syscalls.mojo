@@ -637,6 +637,120 @@ def psignal(sig: Int32, text: c_ptr[UInt8]) -> None:
     external_call["psignal", NoneType, Int32, c_ptr[UInt8]](sig, text)
 
 
+def sighold(sig: Int32) -> Int32:
+    """Libc BSD `sighold` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sighold.3.html
+
+    Args:
+        sig: The signal to add to the set this process holds back.
+
+    Returns:
+        0 where the signal is held, or -1 where it is not, with
+        `errno` set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/sighold.3.html).
+        Fn signature: `int sighold(int sig)`.
+
+        This is `sigprocmask` with `SIG_BLOCK` and a set of one, said
+        in one call. What it does not say is what the mask was before,
+        which `sigprocmask` hands back and this does not -- putting the
+        mask back is the caller's to arrange, and `sigrelse` is the
+        one-way way out it was paired with.
+
+        A signal that is held after having been raised is not gone: it
+        waits in the pending set, and `sigpending` is the call that
+        sees it there.
+    """
+    return external_call["sighold", Int32, Int32](sig)
+
+
+def sigrelse(sig: Int32) -> Int32:
+    """Libc BSD `sigrelse` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sigrelse.3.html
+
+    Args:
+        sig: The signal to take out of the set this process holds
+            back.
+
+    Returns:
+        0 where the signal is released, or -1 where it is not, with
+        `errno` set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/sigrelse.3.html).
+        Fn signature: `int sigrelse(int sig)`.
+
+        This is `sigprocmask` with the signal taken out of the set,
+        said in one call. A signal that was waiting in the pending set
+        is delivered the moment it is out from behind the mask, which
+        is the whole point of the pair: `sighold` to shut the door with
+        the signal already inside, `sigrelse` to open it and let it
+        come.
+    """
+    return external_call["sigrelse", Int32, Int32](sig)
+
+
+def sigignore(sig: Int32) -> Int32:
+    """Libc BSD `sigignore` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sigignore.3.html
+
+    Args:
+        sig: The signal to be made nothing of.
+
+    Returns:
+        0 where the disposition was set, or -1 where it was not, with
+        `errno` set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/sigignore.3.html).
+        Fn signature: `int sigignore(int sig)`.
+
+        This is `signal` with `SIG_IGN`, said in one call. It says
+        nothing about the mask: a signal that is ignored and held is
+        discarded rather than kept, which is the one way `sigignore`
+        is not the same as `sighold` -- a held signal waits, an ignored
+        one never arrives.
+    """
+    return external_call["sigignore", Int32, Int32](sig)
+
+
+def sigpause(sig: Int32) -> Int32:
+    """Libc BSD `sigpause` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sigpause.3.html
+
+    Args:
+        sig: The signal to take out of the set this process holds
+            back, and then wait on.
+
+    Returns:
+        -1, with `errno` set to `EINTR`, when a signal ends the wait.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/sigpause.3.html).
+        Fn signature: `int sigpause(int sig)`.
+
+        This is `sigrelse` and `sigsuspend` in one atomic step: the
+        signal comes out from behind the mask and the process waits for
+        one to arrive, and the atomicity is the reason it exists --
+        between a `sigrelse` and a wait of one's own, the signal could
+        arrive with nobody waiting for it.
+
+        A signal that was waiting in the pending set is delivered the
+        moment the mask lets it, so this call with one already waiting
+        does not wait at all.
+    """
+    return external_call["sigpause", Int32, Int32](sig)
+
+
 def siginterrupt(sig: Int32, interrupt: Int32) -> Int32:
     """Libc BSD `siginterrupt` function.
 

@@ -7,10 +7,12 @@ from libc.signal import (
     SA_RESTART,
     SIGALRM,
     SIGINT,
+    SIGTERM,
     SIGWINCH,
     SIG_DFL,
     SIG_IGN,
     SIG_UNBLOCK,
+    SIG_SETMASK,
     SIGUSR1,
     SIGUSR2,
     SIG_BLOCK,
@@ -28,8 +30,12 @@ from libc.signal import (
     sigdelset,
     sigemptyset,
     sigfillset,
+    sighold,
+    sigignore,
     siginterrupt,
     sigismember,
+    sigpause,
+    sigrelse,
     sigsetmask,
     sigsuspend,
     sigwait,
@@ -581,7 +587,7 @@ def test_sigsuspend_swaps_in_a_mask_and_takes_what_was_waiting() raises:
         assert_equal(
             sigismember(waiting, SIGUSR1), 1, "and SIGUSR1 is held in it"
         )
-        _ = ualarm(1000000, 0)
+        _ = ualarm(999999, 0)
 
         var swap = empty_set()
         var answer = sigsuspend(swap)
@@ -640,7 +646,194 @@ def test_sigsuspend_swaps_in_a_mask_and_takes_what_was_waiting() raises:
     fds.unsafe_free()
 
 
+def test_the_four_old_ones_hold_release_ignore_and_pause() raises:
+    """`sighold`, `sigrelse`, `sigignore` and `sigpause` are the old
+    one-signal spellings of what `sigprocmask` and `sigaction` say, and
+    the four of them are asked in children -- because what two of them
+    do ends the process doing it, and what the other two do is best
+    read off a process that can be thrown away.
+
+    Every child puts `SIGTERM` back to its default first: what a
+    process inherits here is whatever the runtime had a hand in, and
+    the point of the ending is that the signal, once let through, ends
+    the child by the default and by nothing else.
+
+    The holding child is made to hold a signal that is already waiting:
+    the mask says it is held and the pending set says it is still
+    there, which is what holding means and what ignoring would not
+    have left behind. It takes the waiting one back with `sigwait`,
+    opens the door with `sigrelse`, and raises it -- and that one ends
+    it, because the door is open now and nothing is standing in the
+    way. How far it came is said down a pipe, so a child that died
+    before it said so died of the holding, and a child that died after
+    saying so died of the signal it let come.
+
+    The ignoring child sets `SIG_IGN` and raises the signal, and is
+    still there to say the pending set has nothing in it: an ignored
+    signal is not a waiting one. Then it holds the signal and releases
+    it, and the mask is read after each to find the one doing what the
+    other does not.
+
+    The pausing child holds the signal, arms a second's alarm, and
+    waits: taking the signal out of the mask is all that happens at
+    once, and the alarm -- which was never held -- is what ends it.
+    What the call says on the way out is what tells it from a releasing
+    that only answers and carries on.
+    """
+    # -- holding what waits, releasing what is held, and dying of it.
+    var fds = unsafe_alloc[Int32](2)
+    assert_equal(pipe(fds), 0, "a pipe to say how far the child came")
+    var child = fork()
+    if child == 0:
+        _ = close(fds.unsafe_offset(0)[])
+
+        var dfl = unsafe_alloc[sigaction_t](1)
+        dfl.unsafe_offset(0)[] = sigaction_t()
+        dfl[].set_handler(UInt64(SIG_DFL))
+        _ = sigaction(SIGTERM, dfl, null_ptr[sigaction_t]())
+        dfl.unsafe_free()
+
+        _ = sigprocmask(SIG_SETMASK, empty_set(), null_ptr[UInt8]())
+        var held = empty_set()
+        _ = sigaddset(held, SIGTERM)
+        _ = sigprocmask(SIG_BLOCK, held, null_ptr[UInt8]())
+        _ = craise(SIGTERM)
+
+        assert_equal(sighold(SIGTERM), 0, "the signal is held")
+        var mask = empty_set()
+        _ = sigprocmask(SIG_BLOCK, null_ptr[UInt8](), mask)
+        if sigismember(mask, SIGTERM) != 1:
+            _ = exit(3)
+
+        var said = unsafe_alloc[UInt8](1)
+        said.unsafe_store(0, UInt8(1))
+        assert_equal(
+            write(fds.unsafe_offset(1)[], said, 1), 1, "how far it came"
+        )
+        said.unsafe_free()
+
+        var taken = unsafe_alloc[Int32](1)
+        var wait_for = empty_set()
+        _ = sigaddset(wait_for, SIGTERM)
+        assert_equal(sigwait(wait_for, taken), 0, "what waited is taken")
+        assert_equal(
+            Int(taken.unsafe_load()), Int(SIGTERM), "and it is the one held"
+        )
+        taken.unsafe_free()
+
+        _ = ualarm(999999, 0)
+        assert_equal(sigrelse(SIGTERM), 0, "and the door is opened")
+        _ = craise(SIGTERM)
+        _ = exit(0)
+
+    _ = close(fds.unsafe_offset(1)[])
+    assert_true(child > 0, "there is a child to wait for")
+    var status = unsafe_alloc[Int32](1)
+    status.unsafe_offset(0)[] = 0
+    assert_equal(waitpid(child, status, 0), child, "the child is waited for")
+
+    var said = unsafe_alloc[UInt8](1)
+    said.unsafe_store(0, UInt8(0))
+    var came_back = read(fds.unsafe_offset(0)[], said, 1)
+    said.unsafe_free()
+    fds.unsafe_free()
+
+    assert_true(
+        WIFSIGNALED(status.unsafe_load()),
+        "and what let the signal come, it came for",
+    )
+    assert_equal(
+        WTERMSIG(status.unsafe_load()),
+        SIGTERM,
+        "the one that was released, not the alarm that was there in case",
+    )
+    assert_equal(came_back, 1, "and it said how far it came before then")
+    status.unsafe_free()
+
+    # -- ignoring what is raised, then holding and releasing what is read.
+    child = fork()
+    if child == 0:
+        var dfl = unsafe_alloc[sigaction_t](1)
+        dfl.unsafe_offset(0)[] = sigaction_t()
+        dfl[].set_handler(UInt64(SIG_DFL))
+        _ = sigaction(SIGTERM, dfl, null_ptr[sigaction_t]())
+        dfl.unsafe_free()
+
+        _ = sigprocmask(SIG_SETMASK, empty_set(), null_ptr[UInt8]())
+        _ = ualarm(999999, 0)
+
+        assert_equal(sigignore(SIGTERM), 0, "the signal is ignored")
+        assert_equal(Int(craise(SIGTERM)), 0, "and it is raised all the same")
+        var waiting = empty_set()
+        assert_equal(sigpending(waiting), 0, "asking what waits succeeded")
+        if sigismember(waiting, SIGTERM) != 0:
+            _ = exit(8)
+        var mask = empty_set()
+        _ = sigprocmask(SIG_BLOCK, null_ptr[UInt8](), mask)
+        if sigismember(mask, SIGTERM) != 0:
+            _ = exit(9)
+
+        var held = empty_set()
+        _ = sigaddset(held, SIGTERM)
+        _ = sigprocmask(SIG_BLOCK, held, null_ptr[UInt8]())
+        _ = ualarm(999999, 0)
+        assert_equal(sigrelse(SIGTERM), 0, "and it is let out again")
+        _ = sigprocmask(SIG_BLOCK, null_ptr[UInt8](), mask)
+        if sigismember(mask, SIGTERM) != 0:
+            _ = exit(6)
+        _ = exit(0)
+
+    assert_true(child > 0, "there is a child to ask")
+    var reaped = unsafe_alloc[Int32](1)
+    reaped.unsafe_offset(0)[] = 0
+    assert_equal(waitpid(child, reaped, 0), child, "the child is waited for")
+    assert_true(
+        WIFEXITED(reaped.unsafe_load()),
+        "and raising what is ignored does not end the child",
+    )
+    assert_equal(
+        Int(WEXITSTATUS(reaped.unsafe_load())), 0, "nor did anything else"
+    )
+    reaped.unsafe_free()
+
+    # -- waiting with nothing waiting: the alarm ends the wait.
+    child = fork()
+    if child == 0:
+        var dfl = unsafe_alloc[sigaction_t](1)
+        dfl.unsafe_offset(0)[] = sigaction_t()
+        dfl[].set_handler(UInt64(SIG_DFL))
+        _ = sigaction(SIGALRM, dfl, null_ptr[sigaction_t]())
+        dfl.unsafe_free()
+
+        _ = sigprocmask(SIG_SETMASK, empty_set(), null_ptr[UInt8]())
+        var held = empty_set()
+        _ = sigaddset(held, SIGTERM)
+        _ = sigprocmask(SIG_BLOCK, held, null_ptr[UInt8]())
+        _ = ualarm(999999, 0)
+        if sigpause(SIGTERM) != -1:
+            _ = exit(5)
+        if get_errno() != EINTR:
+            _ = exit(6)
+        _ = exit(0)
+
+    assert_true(child > 0, "there is a child to wait for")
+    status = unsafe_alloc[Int32](1)
+    status.unsafe_offset(0)[] = 0
+    assert_equal(waitpid(child, status, 0), child, "the child is waited for")
+    assert_true(
+        WIFSIGNALED(status.unsafe_load()),
+        "and the wait went on until something arrived",
+    )
+    assert_equal(
+        WTERMSIG(status.unsafe_load()),
+        SIGALRM,
+        "the alarm, which was never held -- not the one taken out of the mask",
+    )
+    status.unsafe_free()
+
+
 def main() raises:
+    test_the_four_old_ones_hold_release_ignore_and_pause()
     test_sigaddset_round_trips_through_sigismember()
     test_sigismember_refuses_a_number_that_is_not_a_signal()
     test_sigpending_reports_what_waits_and_sigemptyset_leaves_nothing()

@@ -291,6 +291,77 @@ def stated_symbols(bound: int) -> list[str]:
     return []
 
 
+# The same paragraph states the share: how many functions the four libraries
+# publish between them, how many of the bound symbols are among those, and
+# the percentage the two make. All three had drifted, and the first two were
+# never counted by the same filter — the denominator was the `T` and `W`
+# entries and the numerator had been counted with the ifunc ones left in, so
+# the percentage divided one set by another. They are all counted here now,
+# off one listing of the four libraries, and the page has to say what the
+# counting says.
+STATED_SHARE = re.compile(
+    r"publish\s+(\d+) functions between them, and this binds\s+\d+ C symbols,\s+"
+    r"(\d+) of which are among those — \*\*([\d.]+)%\*\*"
+)
+
+
+def published_functions() -> set[str]:
+    """Every function the four libraries export, ifunc and weak included.
+
+    `T` is a definition, `W` a weak one and `i` an ifunc — a definition the
+    loader picks an implementation of — and all three are called the same
+    way from here. What is left out is the data: `nm` lists variables with
+    the same command, and this is a count of what can be called.
+
+    Empty where there is no `libc.so.6` to ask, which is how this check
+    reports nothing on a platform whose libraries are named differently.
+    """
+    have: set[str] = set()
+    for lib in ("libc.so.6", "libm.so.6", "libdl.so.2", "librt.so.1"):
+        found = subprocess.run(
+            ["cc", f"-print-file-name={lib}"], capture_output=True, text=True
+        ).stdout.strip()
+        if not found or "/" not in found:
+            continue
+        listing = subprocess.run(
+            ["nm", "-D", "--defined-only", found], capture_output=True, text=True
+        ).stdout
+        for line in listing.splitlines():
+            parts = line.split()
+            if len(parts) >= 3 and parts[1] in ("T", "W", "i"):
+                have.add(parts[2].split("@")[0])
+    return have
+
+
+def stated_share(symbols: set[str]) -> list[str]:
+    """Where `docs/beyond-c.md` and the four libraries disagree about the share."""
+    page = (ROOT / "docs" / "beyond-c.md").read_text()
+    said = STATED_SHARE.search(page)
+    if said is None:
+        return ["no longer says how much of what C publishes it binds"]
+    published = published_functions()
+    if not published:
+        return []
+    among = len(symbols & published)
+    share = round(100 * among / len(published), 1)
+    wrong = []
+    if int(said.group(1)) != len(published):
+        wrong.append(
+            f"says the four libraries publish {said.group(1)} functions,"
+            f" and they publish {len(published)}"
+        )
+    if int(said.group(2)) != among:
+        wrong.append(
+            f"says {said.group(2)} of the bound symbols are among them,"
+            f" and {among} are"
+        )
+    if abs(float(said.group(3)) - share) > 0.05:
+        wrong.append(
+            f"says {said.group(3)}%, and the two numbers above make {share}%"
+        )
+    return wrong
+
+
 def module_counts() -> dict[str, int]:
     """{package: functions, structs and public constants it defines}.
 
@@ -987,6 +1058,14 @@ def main() -> int:
         print("\n  *** the page and the walk disagree about how many ***")
         return 1
     print(f"  and the page says {len(symbols)}, which is what it is")
+
+    wrong_share = stated_share(symbols)
+    if wrong_share:
+        print("\n  docs/beyond-c.md disagrees about the share of C it binds:")
+        for line in wrong_share:
+            print(f"      {line}")
+        print("\n  *** the page and the four libraries disagree about the share ***")
+        return 1
     return 0
 
 

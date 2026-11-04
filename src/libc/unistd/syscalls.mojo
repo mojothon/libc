@@ -6,7 +6,7 @@
 from std.ffi import external_call
 from std.sys import CompilationTarget
 from std.memory import Pointer
-from libc.constant import c_int, c_long, c_ptr, c_size_t, c_uint
+from libc.constant import c_int, c_long, c_ptr, c_size_t, c_uint, c_void
 
 
 # The number `syscall` takes for `getpid`. Linux numbers it 39 and
@@ -2262,3 +2262,67 @@ def tcsetpgrp(fildes: c_int, pgrp_id: c_int) -> c_int:
         itself.
     """
     return external_call["tcsetpgrp", c_int, c_int, c_int](fildes, pgrp_id)
+
+
+def brk(addr: c_ptr[c_void]) -> c_int:
+    """Libc BSD `brk` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/brk.2.html
+
+    Args:
+        addr: Where the end of the data segment is to be put.
+
+    Returns:
+        0 where the end was moved there, or -1 where it was not, with
+        `errno` set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man2/brk.2.html).
+        Fn signature: `int brk(void *addr)`.
+
+        The data segment ends where the program break is, and this
+        moves the break. `sbrk` is the same knob said as a distance
+        rather than a place, and `sbrk(0)` reads where the break is
+        without moving it, which is how the place to hand this is come
+        by.
+
+        The break is not this program's alone to move: the allocator
+        grows the segment by the same means, so a caller that moves the
+        break owes it a move back before anything is asked of the
+        allocator again.
+    """
+    return external_call["brk", c_int, c_ptr[c_void]](addr)
+
+
+def sbrk(increment: c_long) -> c_ptr[c_void]:
+    """Libc BSD `sbrk` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/sbrk.2.html
+
+    Args:
+        increment: How far to move the end of the data segment, in
+            bytes, positive to grow it and negative to shrink it.
+
+    Returns:
+        Where the end of the data segment was before the move, or
+        `(void *) -1` where the move did not happen, with `errno` set.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man2/sbrk.2.html).
+        Fn signature: `void *sbrk(intptr_t increment)`.
+
+        An `increment` of 0 moves nothing and answers with where the
+        break is, which is the reading this call is most often asked
+        for. What comes back is the old end and not the new one, which
+        is where the memory this call handed over begins -- the one
+        call in the library whose return value is an address the
+        caller may write to without anything else having been asked.
+
+        The break is not this program's alone to move: the allocator
+        grows the segment by the same means, so a caller that moves the
+        break owes it a move back before anything is asked of the
+        allocator again.
+    """
+    return external_call["sbrk", c_ptr[c_void], c_long](increment)

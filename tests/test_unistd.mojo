@@ -64,6 +64,7 @@ from libc.unistd import (
     fsync,
     ftruncate,
     getcwd,
+    brk,
     getdomainname,
     getdtablesize,
     getegid,
@@ -120,6 +121,7 @@ from libc.unistd import (
     tcgetpgrp,
     tcsetpgrp,
     truncate,
+    sbrk,
     ttyname,
     ttyname_r,
     ualarm,
@@ -1602,6 +1604,40 @@ def test_pause_comes_back_because_a_signal_arrived() raises:
     status.unsafe_free()
 
 
+def test_brk_and_sbrk_move_the_end_of_the_data_segment() raises:
+    """`sbrk` moves the program break a distance and says where it was;
+    `brk` moves it to a place and says whether it went. Each is the
+    other's witness: the place `sbrk` was asked for is read back with
+    `sbrk(0)`, which moves nothing, and the place `brk` was given is
+    where reading finds the break after it said yes.
+
+    The move is one made and one taken back, and nothing is asked of
+    the allocator in between: the break is the allocator's to grow by
+    the same means, and a caller that leaves it somewhere else has
+    rearranged a house it does not keep the keys to.
+    """
+    var here = sbrk(0)
+    assert_true(Int(UInt(here)) != 0, "the break is somewhere")
+
+    var was = sbrk(64)
+    assert_equal(
+        Int(UInt(was)), Int(UInt(here)), "and it says where the break was"
+    )
+
+    var now = sbrk(0)
+    assert_equal(
+        Int(UInt(now)),
+        Int(UInt(here)) + 64,
+        "and the break has moved by what was asked",
+    )
+
+    assert_equal(brk(here), 0, "and it is put back where reading found it")
+    var back = sbrk(0)
+    assert_equal(
+        Int(UInt(back)), Int(UInt(here)), "which is where the break is now"
+    )
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -1642,4 +1678,5 @@ def main() raises:
     test_readv_gathers_what_writev_scattered()
     test_ualarm_is_the_timer_that_getitimer_reads()
     test_pause_comes_back_because_a_signal_arrived()
+    test_brk_and_sbrk_move_the_end_of_the_data_segment()
     print("test_unistd: ok")

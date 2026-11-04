@@ -7,6 +7,26 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **Six bindings: the old one-signal calls, and the two that move the
+  break.** `sighold`, `sigrelse`, `sigignore` and `sigpause` are the
+  single-signal spellings of `sigprocmask` and `sigaction` that the BSDs kept
+  and POSIX made obsolescent; `brk` and `sbrk` are the allocator's own knob
+  said as the end of the data segment and as a distance from it.
+
+  The four are asked in children, because two of them end the process that
+  uses them. A child holds a signal with `sighold` while it is already
+  waiting, takes it back out of the pending set with `sigwait`, and is ended
+  by that same signal once `sigrelse` opens the door — a byte down a pipe
+  says how far it came, so a child that died of the holding and one that died
+  of the release are told apart. `sigignore` is asked against `sigpending`:
+  an ignored signal is not a waiting one. And `sigpause` is asked with an
+  alarm it never held, so being ended by `SIGALRM` is what says it waited.
+
+  `sbrk` is asked to move the break and to read it back without moving it
+  (`sbrk(0)`), and `brk` to put it back where the reading found it. Each is
+  the other's witness, and nothing is asked of the allocator in between,
+  which is the whole of what a caller may do with these.
+
 - **The six `strto*_l` readers and `strptime_l`.** The sieve's next clean
   family: `strtol_l`, `strtoul_l`, `strtoll_l`, `strtoull_l`, `strtod_l`
   and `strtof_l` read a number for a locale handed in, and `strptime_l`
@@ -763,6 +783,23 @@ All notable changes to this project are documented here. The format follows
   survivor that is not a pair known to answer the same thing.
 
 ### Fixed
+
+- **`docs/beyond-c.md` was dividing one count by another.** The paragraph
+  that opens the page said the four libraries publish 3574 functions, that
+  1012 of the bound symbols are among them, and that the two make 28.3% —
+  three numbers, from two different `nm` filters, and none of them what the
+  counting gives (3701, 1025, 27.7%). One listing is counted now, in
+  `scripts/check-prototypes.py`, which prints the three numbers it finds and
+  fails the run unless the page says the same three.
+
+- **The new signal test freed the same block twice.** Its second scenario
+  reused the `status` buffer the first had already freed, so the second
+  `waitpid` wrote through a dangling pointer and the second `unsafe_free`
+  freed the block again. Run on its own the file passed; run before the rest
+  of the suite it left the allocator holding a cycle, and a later
+  `unsafe_free` crashed inside `_free`. What found it was the suite and not
+  the file, which is the one thing that would not have happened if the test
+  had been checked only where it was written.
 
 - **`tests/test_import_all.mojo` is a test again.** It lists every public name
   in every sub-package and imports it, which is how a name that a platform

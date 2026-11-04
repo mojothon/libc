@@ -10,7 +10,7 @@ the bottom.
 | `libc.stdlib` | `<stdlib.h>` | 82 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.limits` | `<limits.h>` the widths of the integer types, and what a process may have | 24 |
-| `libc.unistd` | `<unistd.h>` | 206 |
+| `libc.unistd` | `<unistd.h>` | 208 |
 | `libc.file` | `<stdio.h>` file operations | 32 |
 | `libc.ctype` | `<ctype.h>` | 30 |
 | `libc.sys.socket` | `<sys/socket.h>` | 35 |
@@ -30,7 +30,7 @@ the bottom.
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 43 |
 | `libc.complex` | `<complex.h>` | 46 |
 | `libc.sched` | `<sched.h>` | 15 |
-| `libc.signal` | `<signal.h>` an action, and a handler as its number | 63 |
+| `libc.signal` | `<signal.h>` an action, and a handler as its number | 67 |
 | `libc.spawn` | `<spawn.h>` start a process without fork | 25 |
 | `libc.locale` | `<locale.h>` | 23 |
 | `libc.sys.epoll` | `<sys/epoll.h>` | 7 |
@@ -139,7 +139,7 @@ is about the call rather than about the suite:
 
 None of them is known to be broken; they are simply not asked.
 
-1019 bindings are asked something, and the 3 that are not have a reason
+1025 bindings are asked something, and the 3 that are not have a reason
 each. Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
