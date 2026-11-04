@@ -35,10 +35,10 @@ comptime O_CLOEXEC: Int32 = 16777216 if CompilationTarget.is_macos() else 524288
 comptime O_EXEC: Int32 = 1073741824 if CompilationTarget.is_macos() else -1
 comptime O_SEARCH: Int32 = 1074790400 if CompilationTarget.is_macos() else -1  # O_EXEC|O_DIRECTORY there; Linux has neither O_SEARCH nor O_EXEC
 comptime O_DIRECTORY: Int32 = 1048576 if CompilationTarget.is_macos() else 65536
-comptime O_DSYNC: Int32 = 4194304 if CompilationTarget.is_macos() else 4096  # Darwin's is 0x400000, not O_SYNC's 0x80
+comptime O_DSYNC = -1 if CompilationTarget.is_macos() else 4096  # Darwin has no such flag; it has O_SYNC
 comptime O_NOCTTY: Int32 = 131072 if CompilationTarget.is_macos() else 256
 comptime O_NOFOLLOW: Int32 = 256 if CompilationTarget.is_macos() else 131072
-comptime O_RSYNC: Int32 = 128 if CompilationTarget.is_macos() else 1052672  # both spell it the same as O_SYNC
+comptime O_RSYNC = -1
 comptime O_TTY_INIT = -1
 
 comptime STDIN_FILENO = 0
