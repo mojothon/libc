@@ -139,7 +139,7 @@ is about the call rather than about the suite:
 
 None of them is known to be broken; they are simply not asked.
 
-998 bindings are asked something, and the 3 that are not have a reason
+1012 bindings are asked something, and the 3 that are not have a reason
 each. Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.

@@ -1451,6 +1451,7 @@ def main() raises:
     test_copy()
     test_multibyte()
     test_classify()
+    test_the_l_variants_of_the_wide_classes()
     test_single_byte()
     test_wide_characters_through_a_stream()
     test_reading_numbers_off_the_front()
