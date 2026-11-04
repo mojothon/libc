@@ -750,19 +750,28 @@
 package (<code>libc.mojoc</code>) into your environment's <code>lib/mojo</code> directory, so
 <code>import libc</code> resolves without extra flags.</p>
 <h2 id="pixi">pixi<a class="headerlink" href="#pixi" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>pixi<span class="w"> </span>add<span class="w"> </span>--from<span class="w"> </span>https://conda.modular.com/max<span class="w"> </span>--channel<span class="w"> </span>mojo-force<span class="w"> </span>libc
+<div class="highlight"><pre><span></span><code>pixi<span class="w"> </span>init<span class="w"> </span>-c<span class="w"> </span>https://conda.modular.com/max<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span>-c<span class="w"> </span>https://prefix.dev/mojo-force<span class="w"> </span>.
+pixi<span class="w"> </span>add<span class="w"> </span>libc
 </code></pre></div>
 <p>or, in <code>pixi.toml</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="k">[workspace]</span>
-<span class="n">channels</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"https://conda.modular.com/max"</span><span class="p">,</span><span class="w"> </span><span class="s2">"conda-forge"</span><span class="p">,</span><span class="w"> </span><span class="s2">"mojo-force"</span><span class="p">]</span>
+<span class="n">channels</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"https://conda.modular.com/max"</span><span class="p">,</span><span class="w"> </span><span class="s2">"conda-forge"</span><span class="p">,</span><span class="w"> </span><span class="s2">"https://prefix.dev/mojo-force"</span><span class="p">]</span>
 
 <span class="k">[dependencies]</span>
 <span class="n">libc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"&gt;=0.13.0,&lt;0.14"</span>
 <span class="n">mojo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"&gt;=1.1.0,&lt;2"</span>
 </code></pre></div>
 <h2 id="conda-mamba">conda / mamba<a class="headerlink" href="#conda-mamba" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>conda<span class="w"> </span>install<span class="w"> </span>-c<span class="w"> </span>https://conda.modular.com/max<span class="w"> </span>-c<span class="w"> </span>mojo-force<span class="w"> </span>libc
+<div class="highlight"><pre><span></span><code>conda<span class="w"> </span>install<span class="w"> </span>-c<span class="w"> </span>https://conda.modular.com/max<span class="w"> </span>-c<span class="w"> </span>https://prefix.dev/mojo-force<span class="w"> </span>libc
 </code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">The channel is a URL, and <code>mojo-force</code> on its own is not it</p>
+<p>A bare channel name is read as an anaconda.org channel, so <code>-c mojo-force</code>
+asks <code>conda.anaconda.org/mojo-force</code>, which does not exist — and pixi reads
+<code>"mojo-force"</code> in <code>channels</code> the same way. The channel lives on prefix.dev,
+which is why both of the commands above spell it out. Written the short way
+the failure is a <code>404</code> for a channel that is not there, on a package that is.</p>
+</div>
 <h2 id="from-source">From source<a class="headerlink" href="#from-source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/mojothon/libc.git
 <span class="nb">cd</span><span class="w"> </span>libc
