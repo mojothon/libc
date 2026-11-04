@@ -1,0 +1,1503 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A standard C library binding for the Mojo programming language.">
+      
+      
+        <meta name="author" content="llango">
+      
+      
+        <link rel="canonical" href="https://mojothon.github.io/libc/beyond-c/">
+      
+      
+        <link rel="prev" href="../modules/">
+      
+      
+        <link rel="next" href="../version/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Beyond C - libc</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#what-is-here-that-c-does-not-have" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="libc" class="md-header__button md-logo" aria-label="libc" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            libc
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Beyond C
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mojothon/libc" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mojothon/libc
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../install/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Install
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../usage/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Usage
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../recipes/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Recipes
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../modules/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Modules
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Beyond C
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../version/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Version
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="libc" class="md-nav__button md-logo" aria-label="libc" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    libc
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mojothon/libc" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mojothon/libc
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../recipes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Recipes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../modules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beyond C
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beyond C
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#asking-what-a-number-means" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Asking what a number means
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#macros-that-are-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Macros that are functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#differences-that-are-visible-instead-of-hidden" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Differences that are visible instead of hidden
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-check-that-runs-against-c-itself" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A check that runs against C itself
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-to-rusts-libc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next to Rust's libc
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#one-thing-that-is-awkward-and-said-out-loud" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One thing that is awkward, and said out loud
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-c-does-and-this-does-not" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What C does and this does not
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#asking-what-a-number-means" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Asking what a number means
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#macros-that-are-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Macros that are functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#differences-that-are-visible-instead-of-hidden" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Differences that are visible instead of hidden
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-check-that-runs-against-c-itself" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A check that runs against C itself
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-to-rusts-libc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next to Rust's libc
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#one-thing-that-is-awkward-and-said-out-loud" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One thing that is awkward, and said out loud
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-c-does-and-this-does-not" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What C does and this does not
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="what-is-here-that-c-does-not-have">What is here that C does not have<a class="headerlink" href="#what-is-here-that-c-does-not-have" title="Permanent link">&para;</a></h1>
+<p>This is a binding, so what it can call is a subset of what C can call and
+will stay that way. What can be counted exactly is how much is here: this
+binds 1026 C symbols, every one checked against the header it comes from. C
+offers more, and calling more of it is not what this is for.</p>
+<p>How much of what C offers that is, is not a number that holds still. <code>nm -D
+--defined-only</code> over <code>libc</code>, <code>libm</code>, <code>libdl</code> and <code>librt</code> lists more functions
+on one glibc than on another — hundreds more, going by the machine this page
+was first counted on and the one that runs these tests — so the share is
+given as about a quarter rather than as a percentage that would be wrong on
+the next machine to count it. The count of symbols is the one
+<code>scripts/check-prototypes.py</code> walks, and it is the one number here that
+cannot drift from the source, because it is read out of the source and
+compared against this paragraph. Take the shape rather than the digits: a
+quarter of what those four publish, every one of them checked against the
+header it comes from, and no intention of the rest.</p>
+<p>(That number took correcting twice. An earlier count here said 470, because the
+symbol was read off the same line as <code>external_call[</code> and a fifth of the
+calls in this package put the name on the next line instead. Then it said
+567, which was right the day it was counted and was not recounted as the
+package grew. The honest number is the one the check prints, and nobody
+benefited from the lower one.)</p>
+<p>The rest of this page is about the other question, which is not "how much"
+but "how". There are things C cannot do for the caller, or does by
+convention and hope, and a binding can do them properly because it gets to
+choose what the call looks like on this side.</p>
+<h2 id="asking-what-a-number-means">Asking what a number means<a class="headerlink" href="#asking-what-a-number-means" title="Permanent link">&para;</a></h2>
+<p><code>errno</code> is a number at run time and a macro at compile time, and nothing in
+C joins the two. A program prints 2 and whoever reads it looks <code>ENOENT</code> up
+in a table, because there is no <code>errno_name</code> in libc to ask.</p>
+<p>There is one here:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">libc.errno</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">errno_message</span><span class="p">,</span><span class="w"> </span><span class="n">errno_name</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+<span class="w">    </span><span class="nb">print</span><span class="p">(</span><span class="n">errno_name</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span><span class="w">     </span><span class="c1"># ENOENT</span>
+<span class="w">    </span><span class="nb">print</span><span class="p">(</span><span class="n">errno_message</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span><span class="w">  </span><span class="c1"># ENOENT: No such file or directory</span>
+</code></pre></div>
+<p><code>check</code> covers the half of libc that says -1, so <code>check(open(path, O_RDONLY))</code>
+hands back the descriptor or raises; <code>check_ptr</code> covers the other half, the one
+that says NULL — <code>fopen</code>, <code>malloc</code>, <code>getcwd</code> — for which a test against a
+negative number says nothing. C has no answer to either,
+having no exceptions to raise: the nearest it comes is a macro of one's
+own that calls <code>perror</code> and then <code>exit</code>, which is not the same as being
+able to catch it.</p>
+<p><code>errno_name</code> answers for the platform it was built for. <code>EAGAIN</code> is 11 here
+and 35 on Darwin, and it says <code>EAGAIN</code> either way.</p>
+<h2 id="macros-that-are-functions">Macros that are functions<a class="headerlink" href="#macros-that-are-functions" title="Permanent link">&para;</a></h2>
+<p><code>WIFEXITED</code>, <code>WEXITSTATUS</code>, <code>WIFSIGNALED</code>, <code>WTERMSIG</code>, <code>WIFSTOPPED</code>,
+<code>WSTOPSIG</code> and <code>WCOREDUMP</code> are macros in C, which is to say they are text
+substitution: no types, no way to name one or pass it along, nothing for a
+debugger to step into. Here they are functions, and they were checked the
+only way worth checking — against glibc's macros, for all 65536 possible
+statuses, and they agree on every one.</p>
+<h2 id="differences-that-are-visible-instead-of-hidden">Differences that are visible instead of hidden<a class="headerlink" href="#differences-that-are-visible-instead-of-hidden" title="Permanent link">&para;</a></h2>
+<p>C handles a difference between platforms with <code>#ifdef</code>, and the reader of
+the header sees one of the two answers and not the fact that there was a
+choice. This writes the choice out:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">std.sys</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">CompilationTarget</span>
+
+<span class="n">comptime</span><span class="w"> </span><span class="n">EAGAIN</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">35</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">CompilationTarget</span><span class="o">.</span><span class="n">is_macos</span><span class="p">()</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="mi">11</span>
+</code></pre></div>
+<p>and then proves it on both, because CI runs on both. <code>EAGAIN</code> is the one
+worth watching: a value that is not the platform's own fails a test here
+rather than in somebody's error handling.</p>
+<h2 id="a-check-that-runs-against-c-itself">A check that runs against C itself<a class="headerlink" href="#a-check-that-runs-against-c-itself" title="Permanent link">&para;</a></h2>
+<p>This is the one with no counterpart. <code>scripts/check-prototypes.py</code>
+compares the binding against C on this machine: 
+every call is compared against the C prototype — 601 of them now, each
+compiled from the header on this machine — and a mismatch is reported
+rather than found later.</p>
+<p>And now <code>scripts/check-constants.py</code> does the same for the numbers. It
+includes every header either script knows, asks C to print each constant,
+and compares: 553 of them at this writing, of which 52 are written as
+expressions (<code>S_IRUSR | S_IWUSR</code>) rather than as numbers, so those are
+handed to C whole and a misspelled name inside one fails to compile. It
+runs on both platforms in CI, which is the point of it — the platform
+decides which side of an <code>if is_macos()</code> is under trial, and neither job
+can check the branch it is not standing on.</p>
+<p>It earned its place on the first run. Fifty-five constants were Darwin's
+values with no platform branch at all: <code>O_APPEND</code> was 8, which is what
+Darwin says and not what Linux says, Linux saying 1024, and the same for
+<code>O_CREAT</code>, <code>O_TRUNC</code>, every <code>LOG_*</code> and most of <code>F_*</code>. None of it failed
+a test, because nothing here asserted what the number <em>meant</em> — <code>open</code>
+received 512 where 64 was intended and created something other than was
+asked for, quietly, in the way these things do. A number read off <code>gcc
+-dM</code> by eye is right exactly once, and that was a long time ago.</p>
+<p>And <code>scripts/check-layouts.py</code> asks C how big each struct is and where it
+has to start, which <code>tests/test_layout.mojo</code> had been doing for thirty-two
+things about eight structs and nothing for the rest. Its first run found
+six wrong. Five were opaque blocks held as <code>Array[UInt8, N]</code> — <code>fenv_t</code>,
+<code>fexcept_t</code>, <code>pthread_attr_t</code>, <code>pthread_condattr_t</code>, <code>mbstate_t</code> — and a
+row of single bytes asks to be aligned on no boundary at all, so every
+call taking one was handed a pointer C asks for four or eight and never
+agreed to be given one byte off. Those now sit in words.</p>
+<p>The sixth was <code>qelem</code>, which is not opaque: it names the two links and
+nothing else, which made it sixteen bytes to C's twenty-four, because C's
+declares a third member, <code>char q_data[1]</code>, trailing after them. Nothing
+here ever looked at those eight bytes, so <code>insque</code> and <code>remque</code> work
+either way — until you put one next to anything else and it writes into
+the gap. A struct used for its size and never read has to be the right
+size for the reason that it is used for its size.</p>
+<p>Being larger than C needs is not a mistake and half of them are: an opaque
+block sized for whichever of the two platforms wanted most costs bytes and
+breaks nothing, since every call takes it by pointer and libc writes less
+than it was given. The script says which is which rather than treating any
+difference as failure.</p>
+<p>Field offsets were the half that stayed on trust: <code>size_of</code> and <code>align_of</code>
+reach Mojo without constructing anything, the offset of a member does not,
+because asking a pointer where a member lives asks for a member pointer and
+Mojo has none. But a struct held as bytes does not have to be asked — the
+numbers its accessors read at <em>are</em> the offsets, and C can be asked the
+same question about the same member. Every member this package reads out of a
+C struct is in that list now, and checked with <code>offsetof</code> on whichever
+platform is running — from the record <code>getutxent</code> hands back to <code>si_pid</code> and
+the one flag word in a <code>glob_t</code>. Thirteen of them are Linux's alone:
+<code>sys/sysinfo.h</code> and the <code>timer_create</code> <code>sigevent</code> are not on the other side at
+all, and Darwin's <code>sigevent</code> is a different struct with <code>sigev_notify</code> first,
+so asking it would compare a member against the wrong struct. Those are
+counted rather than asked, which is what the count is for.</p>
+<table>
+<thead>
+<tr>
+<th>what a struct does with its members</th>
+<th>how many</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>places one by hand, at an offset listed in <code>OFFSETS</code></td>
+<td>116</td>
+</tr>
+<tr>
+<td>declares them in order and leaves the layout to Mojo</td>
+<td>187</td>
+</tr>
+<tr>
+<td>reads none of them, and claims only a size</td>
+<td>17</td>
+</tr>
+<tr>
+<td>has a struct only Linux has</td>
+<td>13</td>
+</tr>
+</tbody>
+</table>
+<p>One struct is sized the other way round from the rest. Most of the blocks
+here are as wide as the wider platform wants, because they are written <em>by</em>
+libc and a generous buffer costs nothing; a <code>sigaction_t</code> is handed <em>to</em> libc,
+so it is 152 bytes on glibc and 16 on Darwin, counting its slots per platform.
+Being 152 bytes on Darwin would not fail — the kernel would read the first 16
+and write the same — it would just mean this process wrote 136 bytes of its own
+memory into a call it had no business writing to.</p>
+<p>Those four numbers are the state of the whole exercise, and they are in a
+table because a number in a paragraph is a number that goes stale quietly.
+<code>scripts/check-layouts.py</code> counts the same four things and compares, so the
+paragraphs below and the package cannot drift apart without one of them
+failing.</p>
+<p>The first twenty-two were already right, which is what a check written after
+the fact tends to find. Of the ones that came after, one was not:
+<code>gl_flags</code> was read from the high half of the word it begins in, which
+answers 0 for a <code>glob</code> that was given flags, and no test had ever asked. That
+is the argument for the rest of it — an offset written by hand is a claim,
+and a claim nothing checks is only usually true — so they are named offsets
+at the top of the module now, which is a layout a script can read, rather
+than slot numbers and shift counts, which is a layout you have to
+reconstruct in your head. <code>Statvfs</code> is why that matters: four of its members
+share two words on Darwin and take four words on glibc, so the same struct
+has <code>f_flag</code> at 48 and at 72, and one number written from the other
+platform's header would leave nine members reading the right bytes of the
+wrong member.</p>
+<p>What is left is counted rather than trusted silently, and it splits in two.
+The members of a struct Mojo lays out itself rest on the order they are
+declared in, which is C's arrangement when the order is and says nothing
+when it is not. The ones that hold their bytes in a buffer and read no member
+at all are the other half — the eight pthread handles and attributes,
+<code>fenv_t</code> and <code>fexcept_t</code>, the two spawn types, <code>fpos_t</code>, <code>mbstate_t</code>,
+<code>fd_set</code>, <code>msqid_ds</code> and <code>shmid_ds</code>. Not one of them is a layout with numbers
+in it: nothing here ever reads a field that C's header names, so there is no
+offset to name and nothing for <code>offsetof</code> to disagree with. What they claim
+is a size, and that is what gets checked, in one direction only. A block
+larger than C's is safe, because libc is handed a pointer and writes what it
+thinks is there; a block smaller than C's is whatever came next in memory
+being overwritten, which is why the script calls that a failure and calls the
+generous ones loose.</p>
+<p>The last thing nothing here checked was whether a test would <em>notice</em>.
+Every script above asks about the binding; <code>scripts/check-tests.py</code> asks that
+each one be called, which is a lower bar than it sounds: <code>_ = f(...)</code> counts,
+and a test that asks for an answer and then throws it away passes just as
+quietly when the binding underneath is calling the wrong function. <code>gamma</code> was
+in exactly that state for a while — it called <code>tgamma</code>, the gamma function
+rather than its logarithm, and every check on this list was green — and what
+tells that apart is a test failing when the symbol changes.</p>
+<p><code>scripts/mutation-probe.py</code> changes it on purpose. Two bindings in one file
+with the same signature are interchangeable as far as the compiler is
+concerned, so one is pointed at the other's symbol and the tests that call it
+are run — a rebuild each, which is why it samples instead of sweeping. The
+first two samples were twenty-four mutants and found four calls whose tests
+could not tell: <code>strncmp</code>, whose two strings were the same case, so
+<code>strncasecmp</code> answered identically; <code>endhostent</code>, called and never observed,
+so <code>endprotoent</code> — next line, same shape — passed; <code>alarm</code>, asked twice for
+nothing, which <code>close</code> also answers 0 to; and <code>getdomainname</code>, held only to
+writing fewer than 256 bytes into a 256 byte buffer, which <code>gethostname</code>
+does too. Each has an assertion now that only the right call passes: a
+case-differing <code>strncmp</code>, a second <code>gethostent</code> after the database was shut —
+the first row again, which is what shutting it means — ten seconds armed and
+taken back unspent, and <code>uname</code>'s <code>domainname</code> agreeing on the one platform
+whose <code>utsname</code> carries it. The same twenty-four come back as 21 caught by an
+assertion, 2 that are the same function under two names (<code>scalbn</code> and
+<code>ldexp</code>), and 1 that took the process down rather than fail an assertion.</p>
+<p>A third sample of twenty-four, from a different seed, found three more.
+<code>pow</code> was held to a bound from above, and <code>fmod(2, 10)</code> is 2, which is under
+1024; <code>getpgid</code> was held to being positive, which <code>getsid</code> is too; <code>chown</code> was
+asked only about a file that is not there, which <code>lchown</code> answers the same
+way. Each has an assertion now that only the right call passes: two to the
+tenth exactly, a new process group named after the process that made it, and a
+link whose target is not there — <code>chown</code> follows it and finds nothing,
+<code>lchown</code> changes the link itself, and no privilege is needed to tell them
+apart. Two more were explained instead of fixed, because they are the same
+call under two names: <code>cfgetospeed</code> and <code>cfgetispeed</code> read the same <code>CBAUD</code>
+bits on glibc, where a terminal has one speed and not two, and <code>endgrent</code> and
+<code>setgrent</code> leave the next <code>getgrent</code> at the same row, the descriptor they
+differ over being one the API never hands out.</p>
+<p>Explaining one puts it in a table, and a table of reasons is a thing that rots
+in a way nothing notices: the reason is read only when the mutant survives, so
+an entry that has outlived its pair sits there excusing a mistake nothing makes
+any more. <code>--check-tables</code> reads both tables back against the mutants that can
+still be built and takes seconds, because the ways an entry goes stale are all
+in the shape of the call rather than in what the suite does: rename a
+parameter, add a third binding to a file so a different sibling is the first
+one found, change a signature so the call is no longer handed its own
+parameters. The other direction only a run can see, and it says so too: an
+entry whose mutant is caught now is an entry that has been answered and can go
+— which is what happens to every reason the day somebody thinks of the input
+that separates the pair.</p>
+<p>The fifth verdict came out of that sample too. One mutant — a read lock
+pointed at <code>pthread_rwlock_destroy</code> — left the test waiting rather than
+failing, and the script stopped where it stood: the traceback was the last
+thing the run printed, the mutants after it were never asked, and the tally
+was a number nobody got. A test that waits is not a test that passed, and it
+is worse than a survivor, because nothing after it in that file is asked
+either. <code>hung</code> is a verdict now, counted with the rest, and the run goes on.</p>
+<p>Every one of those mutants changes <em>which</em> function is called. The other half
+of a binding is the order its arguments go over in, and nothing above asks
+about that: <code>chown(path, owner, group)</code> and <code>chown(path, group, owner)</code> are the
+same string, the same return type and three arguments of two types, so the
+compiler has nothing to say — and a test only has something to say if the two
+numbers in those positions differ. <code>--kind order</code> makes that mistake instead,
+and the first sample of twenty-four came back 13 caught, 2 that took the
+process down rather than fail an assertion, and 9 that passed. Nine against
+three on the symbol axis of the same size is the measure of how much more of
+this suite proves which call ran than proves how it was asked.</p>
+<p>Five of the nine had an assertion to write. <code>socketpair(AF_UNIX, SOCK_STREAM,
+...)</code> is handed 1 and 1 — those are the two constants — so both orders are the
+same call; a datagram pair is type 2, and <code>getsockopt</code> says which kind came
+back. <code>strncasecmp</code> was asserted equal to a string that differs only in case,
+and equal is the answer a swap gives too, so it is asserted to sort two
+different strings now. <code>atan2(1, 1)</code> is on the diagonal, where the answer does
+not depend on which argument is which; three quarters of pi is off it.
+<code>iconv_open("UTF-8", "UTF-8")</code> is one name written twice, and the swap is
+invisible until the two names differ — UTF-8 to UTF-16LE turns two bytes into
+four, and the other way round turns the same two into three. And <code>execve</code> was
+only ever watched failing: a program that is not there fails the same way
+whichever list is in which slot, so the test now runs <code>/bin/echo</code> and reads
+what it printed.</p>
+<p>Four were explained rather than fixed, and each says why where a reader will
+find it: <code>fmax</code> and <code>hypot</code> are commutative, <code>openlog</code>'s two integers are read
+by a daemon that writes a file this process never reads, <code>catgets</code> has only a
+catalog that did not open, and every <code>chown</code> a suite without a privilege can
+ask about is one that fails before the two ids are looked at.</p>
+<p>A second sample of twenty-four, from a different seed, found 10 more of the
+same kind. Five had an assertion to write. <code>posix_memalign(slot, 32, 64)</code> was
+handed a size that is a valid alignment, so the swap was answered: 48 is not,
+and a binding handing it over as the alignment is refused with <code>EINVAL</code>.
+<code>tcsendbreak</code> was given a duration of 0, which put the real descriptor in a
+place the call ignores and a 0 where the descriptor goes — and whether 0 is a
+terminal is a property of the runner. It is given 100000 now: not a descriptor
+any process has, so the swap asks for that one and gets <code>EBADF</code> where the test
+is holding out for <code>ENOTTY</code>. <code>strncasecmp_l</code> and <code>wcsncasecmp_l</code> were asserted
+"not zero", which is the answer both ways round; the sign of the answer is
+not. And <code>nextafter</code> is the one worth keeping: it was bounded above and below,
+and a step in <em>either</em> direction passes both bounds, because both directions
+land between the two numbers. What is asserted now is the size of the step —
+one ulp past the argument it steps away from — which is 1 past the one and
+under the four the other way round.</p>
+<p>The other five are the same call with the arguments exchanged, and each says
+why: <code>fminf</code> and the <code>x</code> and <code>y</code> of <code>fma</code> are a minimum and a product,
+<code>calloc</code>'s block is the product of <code>nmemb</code> and <code>size</code> and its overflow check is
+on the same product, <code>scandir</code>'s two callbacks are both NULL because this FFI
+cannot hand C a function address, and <code>fchownat</code>'s call is refused before the
+two ids are read.</p>
+<p>Two more samples of the same size followed. The second one's survivors were
+<code>fmaxf</code>, which is commutative, and <code>sigaction</code>, which was not a weak assertion
+but a struct that was not there — that one is in <code>sigaction_t</code>. The third came
+back 18 caught, 2 that took the process down, 1 that is the same call and 3
+that passed, and all three had an assertion to write.</p>
+<p><code>fchown(-1, ...)</code> is refused before the two ids are read, so the swap answered
+<code>-1</code> as well; a descriptor that exists is what tells them apart, and a file
+given to the owner it already has answers 0 where the swap asks for descriptor
+1000, which no process has. <code>wcscoll(one, two) != 0</code> and <code>wcscasecmp_l(hello,
+shout) == 0</code> are the same failure twice: an answer that is the same either way
+round. <code>abc</code> and <code>abd</code> do not stop differing when asked in the other order, and
+<code>Hello</code> and <code>hELLO</code> do not stop agreeing, so what is asked now is which way
+each leans — in both directions, and a binding that swaps the two gets the
+first one backwards.</p>
+<p>A fourth sample of twenty-four came back 19 caught, 2 that took the process
+down, 1 that is the same call and 2 that passed. <code>wmemcmp(abc, abd, 3) != 0</code>
+is the "same either way round" failure again — two different strings stay
+different in either order — so it is asked which way it leans now. <code>tcflow</code>
+is the descriptor one in a new place: on a descriptor that is not a terminal
+neither argument is looked at past the descriptor, so both positions answered
+<code>ENOTTY</code>. A descriptor that is not one at all is refused before the action is
+read, so <code>-1</code> answers <code>EBADF</code> where the swap asks for descriptor <code>TCOOFF</code> — 0
+on glibc, 1 on Darwin — and gets <code>ENOTTY</code> or <code>EINVAL</code> back instead.</p>
+<p>After five samples the axis was swept instead of sampled: all 191 swaps, in
+one run. That came back 146 caught, 11 that took the process down, 13 that are
+the same call and 20 that passed — and the twenty are worth reading as one
+number, because five samples of twenty-four had found eleven between them. The
+remaining nine were in candidates no sample had happened to draw.</p>
+<p>After the twenty were dealt with the same sweep comes back 152 caught, 11 that
+took the process down, 27 that are the same call and none unaccounted for — the
+axis, not a sample of it, with every swap either caught or written down.</p>
+<p>Five of the twenty had an assertion to write, and two of those are the same
+mistake as the ulp — <code>powf</code> was asserted as <code>powf(2, 10) - 1024 &lt; 1e-6</code>, which
+is true of every answer below 1024 and so is true of <code>powf(10, 2)</code>, and
+<code>nextafterf</code> was bounded on each side, which a step from either end satisfies.
+<code>tcflush</code> is the descriptor lesson again. <code>pthread_sigmask</code> was asked twice
+with the same empty mask in both positions, so it never mattered which came
+first; it blocks <code>SIGWINCH</code> and watches the mask change now, and puts it back.
+<code>setpgid</code> was asked with two zeroes, which are the two arguments that mean
+"this process" and "its own group"; it names the group it is in now, which is a
+move to where it already is.</p>
+<p>Nine were explained: <code>fmin</code>, <code>hypotf</code> and <code>fmaf</code> are the float twins of calls
+already in the table, <code>pthread_equal</code> is a question with no order to it, and
+the rest are the two shapes this suite keeps meeting — an id this process does
+not have the privilege to change (<code>setreuid</code>, <code>setregid</code>, <code>lchown</code>,
+<code>adjtime</code>), and a call that fails at its first argument before reading the
+second (<code>getnetgrent</code>, <code>innetgr</code>, <code>aligned_alloc</code>, <code>mbsnrtowcs</code>,
+<code>wcsnrtombs</code>, <code>sched_setscheduler</code>).</p>
+<p>The twentieth was the <code>sigaction</code> story again, and it closed the same way:
+<code>sigaltstack</code> was asked with two NULLs because there was no <code>stack_t</code> to give
+it, and there is one now.</p>
+<p>It is also the sharpest lesson of the three, because there was nothing to see.
+glibc's <code>stack_t</code> is a pointer, four bytes of flags and a size; Darwin's is a
+pointer, a size and four bytes of flags. Both are 24 bytes, 8-aligned, and the
+same three types — a header read on one platform is a header that looks right.
+The struct was written with glibc's order and the offsets were checked against
+glibc, so the layout check agreed with it, the tests passed, and the first
+sample to say otherwise was the macOS job: a stack installed with the size
+where the flags go is a stack with flags of 131072, which is not a flag, and
+the call answers <code>EINVAL</code>. The offsets are two numbers now, and the header
+checks in the test job run before the suite, so that the next one fails in the
+check that names the member rather than in the test that used it.</p>
+<p>Writing the test turned up something else worth knowing: the runtime puts a
+handler on <code>SIGUSR1</code> and an alternate stack under it, so the process the suite
+runs in is not one that has never set a stack. The test therefore measures the
+restore against the first read rather than against zero.</p>
+<p>The symbol axis was swept too, and the sample had been flattering it as well:
+574 mutants, 376 caught, 4 that took the process down, 7 that hung, 9 that are
+the same call and 175 that passed. Two thirds of a pair going unnoticed is not
+a corner. The first module worked through was <code>math</code>, and its 31 came down to
+two shapes.</p>
+<p>The trigonometry was asked at nothing, where six of the functions answer
+nothing and two answer one, so most of the twelve could have been pointed at
+<code>fabs</code> without a test saying otherwise. They are asked at a half now.</p>
+<p>The complex half of the same family was asked the same way: <code>csin</code> and its
+neighbours all at nothing, where each answers nothing and <code>conj</code> answers nothing
+too, so sixteen of them could have been pointed at the conjugate. At a half plus
+a half of i every one of them answers a number whose imaginary part is not
+nothing, and the conjugate cannot stand in.</p>
+<p><code>pthread</code> had eighteen, and they were of two shapes. The <code>_init</code> calls were
+asserted for their return of 0, which <code>_destroy</code> also answers, and the <code>get</code>
+calls were asked for what a new object has -- so a <code>get</code> that wrote instead of
+reading left the same number behind. Both are answered now by moving the object
+off its default and asking <code>_init</code> for it back, and by writing a value no
+default has: a priority of seven under FIFO, a policy of FIFO, FIFO against the
+detach state's 1.</p>
+<p>Four of the eighteen are not the same call and cannot be told apart either, and
+there is a third table for those now: <code>pthread_attr_destroy</code> and <code>_init</code> both
+answer 0, and what separates them is what may be done with the object
+afterwards, which after a destroy is undefined. Calling that "the same answer"
+would have been the kind of entry that reads as an answer when it is a hole.</p>
+<p>The last twenty-nine needed a real line more than anything else. The <code>tc</code>
+calls had only ever been asked on <code>/dev/null</code>, where they all refuse the same
+way, and a pty is what telling them apart took: <code>tcflush</code> is held to having
+emptied a queue that had bytes in it, <code>tcflow</code> to the stop character arriving
+at the other end, and <code>tcgetsid</code> to answering with a session -- which needed a
+child that becomes a session leader and takes the line for its own terminal.
+<code>sigemptyset</code> and <code>sigpending</code> were told apart by making a signal wait: block
+it, raise it, and ask both of them, since an emptied set and a pending set
+differ only while something is standing in the queue. The spawn <code>init</code> calls
+are given a block full of bytes no allocator made, which <code>init</code> cleans and
+<code>destroy</code> dies on. And three <code>termios</code> speed setters are one storage on this
+platform, measured: two different speeds were set and one came back through
+both getters.</p>
+<p>Four more modules between them had nineteen, and the habits were the ones
+already named: <code>memcpy</code> called for its side effect and not asked what it
+returned, <code>sched_getparam</code> given zeroed room -- which is exactly what a
+<code>sched_setparam</code> would leave -- and <code>gmtime</code> read on a machine that keeps UTC,
+where it and <code>localtime</code> are the same call. That last one needed the test to
+arrange the difference: a <code>TZ</code> five hours from Greenwich for as long as the
+question is being asked.</p>
+<p>Six of the nineteen are one routine under two names, and <code>dlsym</code> is what says
+so: <code>memcpy</code> and <code>memmove</code> are one address in glibc, as are <code>mktime</code> and
+<code>timelocal</code>, and the byte-order pairs are the same arithmetic whichever way
+round they are written.</p>
+<p><code>stdio</code> and <code>stdlib</code> were twenty-three, and the pattern was a call being asked
+for the answer another call with the same signature gives. <code>pclose</code> was never
+asked for its status, so <code>getc</code> would have done; <code>fgetpos</code> was never asked
+whether writing the place down moved the stream, which is what <code>fsetpos</code> does;
+<code>setlinebuf</code> was checked by reading the line back through the stream it was set
+on, which flushes it, so a stream left fully buffered answered the same. What
+ended that one was asking from outside: a second descriptor on the same path,
+opened by name. <code>valloc</code> was never asked where its room begins, which is the
+whole of what it is for -- and turning a pointer into a number is enough to ask
+it, which the docstring there had said was not possible.</p>
+<p><code>sys</code> had fourteen, and they were not one habit but five. A call that only
+promises it worked is untestable until something else is asked about its
+effect: <code>munmap</code> is asked through a <code>mprotect</code> on the address it gave back,
+<code>mprotect</code> through a child that writes to the page it took away -- the only way
+to see a refusal that would end the process asking. <code>mlock</code> and <code>munlock</code> are
+separated by the one condition that tells them apart, a lock limit of nothing,
+where the first is refused and the second still answers 0. <code>msync</code> is told from
+<code>madvise</code> by a number that is a flag to one and an advice to the other, and
+<code>posix_madvise</code> from <code>madvise</code> by where the error goes: the number itself from
+one, -1 and errno from the other.</p>
+<p>The rest was <code>answer - expected &lt; epsilon</code>, which is the one-sided bound the
+<code>pow</code> test had above, written as a tolerance. Eight lines were like that, and
+one of them was in <code>test_stdlib</code> where no probe sample had ever landed:
+<code>(Float64(strtof(..)) - 2.5) &lt; 1e-6</code>. <code>scripts/check-magnitudes.py</code> asks the
+whole suite the question — is the thing compared with the tolerance the
+absolute value of the difference, or the absolute value of one end of it — and
+found one more the day it was written.</p>
+<p>A fifth sample came back 17 caught, 2 that took the process down, 3 that are
+the same call and 2 that passed. <code>lockf(-1, 3, 0)</code> is the descriptor lesson
+again — <code>-1</code> is refused before the command is read — and is asked about a real
+file now, where <code>F_TEST</code> on a range nobody holds is 0. <code>sscanf</code> is the first
+one that no input can separate: the format it is given has no conversion in it,
+because the places a conversion writes to are in the variadic part this cannot
+pass, and a format with nothing to convert answers 0 for any input at all. That
+one is written down as the same call, with the reason.</p>
+<p>Seven of the survivors across those samples were one shape: an assertion that
+is true whichever way round the two arguments went. <code>!= 0</code> on two strings that
+differ, <code>== 0</code> on two that agree, a bound above and a bound below — each is the
+half of a comparison's answer that survives the swap. A sample that finds the
+same shape seven times in a hundred and twenty is not sampling any more; it is
+finding a rule, and a rule can be asked of the whole family at once.</p>
+<p><code>scripts/check-comparisons.py</code> does that. Every binding whose symbol ends in
+<code>cmp</code> or <code>coll</code> — nineteen of them, <code>strcoll_l</code> and <code>wcsncasecmp</code> included —
+must have one assertion that compares the answer with zero rather than with
+<code>!= 0</code>, because a sign is the part that changes when the arguments do. It found
+<code>strcasecmp_l</code> on its first run, which no sample had landed on yet, and it will
+find the next one when a comparison is bound. <code>bcmp</code> is in the family by name
+and answers only zero or not, which is written down in the script next to the
+reason.</p>
+<p>glibc, for its part, does not come with anything that checks glibc.</p>
+<h2 id="next-to-rusts-libc">Next to Rust's <code>libc</code><a class="headerlink" href="#next-to-rusts-libc" title="Permanent link">&para;</a></h2>
+<p>The nearest thing to this that is not this: <a href="https://github.com/rust-lang/libc">rust-lang/libc</a>. It binds the same C and implements
+none of it, which is what this does too. Four of its Linux files declare
+681 C functions; this binds 567; 293 are in both.</p>
+<p>The difference is not the count. Rust answers "what is <code>EAGAIN</code>" with a
+file per platform and a <code>cfg</code> that picks one, so the answer for the
+platform you are not on is somewhere else in the tree. This writes both
+numbers on one line and runs CI on both. Rust supports more platforms than
+two, and this supports two and proves both — which is the trade, stated
+as the trade rather than as a win.</p>
+<h2 id="one-thing-that-is-awkward-and-said-out-loud">One thing that is awkward, and said out loud<a class="headerlink" href="#one-thing-that-is-awkward-and-said-out-loud" title="Permanent link">&para;</a></h2>
+<p>Mojo's pointers are non-null by design: <code>Bool(ptr)</code> is refused, and the
+type says a pointer always points at something. C's half of the binding
+does not share that opinion, and a call that fails answers with NULL
+whatever the type says, so NULL is what arrives — a pointer whose address
+is 0. <code>check_ptr</code> turns it into an exception, and <code>Int</code> is how it sees it,
+being the one way left to ask.</p>
+<p>The other awkward one is C's <code>...</code>. <code>external_call</code> wants every type written
+out, so a call whose C declaration ends in a variadic parameter is bound with
+the arguments in front of it and none of it: a conversion, or the address a
+request answers through, is not something the binding can be given. Writing
+the extra type out anyway is not a way round it — on arm64 a variadic callee
+reads its anonymous arguments from the stack, while a call that describes
+itself that way passes them in registers, so what the callee reads is a slot
+nobody wrote. <code>open</code> is bound as <code>openat</code> here because of it; <code>FIONREAD</code>
+through <code>ioctl</code> answers 0 on Apple silicon and leaves the integer it was asked
+about untouched, which is what a probe on a runner showed; and <code>fcntl</code>'s
+three-argument form is dependable only where that slot happens to hold what
+was meant, which is not a thing to promise.</p>
+<p>There is a second way the wall shows up, in the binding rather than in the
+call. <code>fcntl</code> was bound twice, once with the two arguments C lets you give it
+and once with the three that the commands take, and each form compiled and
+worked — but a program that made both calls did not build: one symbol
+declared with two signatures, and the compiler stops at lowering with
+<code>existing function with conflicting signature</code>. So there is one form, the
+three-argument one, and the commands that read nothing are given 0. It is the
+same lesson as <code>isascii_l</code> a few paragraphs down, from the other side: what a
+name can be called with is one thing, and what can be built is the evidence.</p>
+<p>What found it was wanting to ask the two-argument form something — <code>F_GETFD</code>
+is a question and not a command, so it was the form to ask it with — and
+finding that the suite would not build once the test did. Every other check
+was green while there were two forms, and would be again: each of them is
+right about itself, and the compiler only complains at lowering, where it
+names the symbol and not the call that was written second.</p>
+<p><code>scripts/check-duplicates.py</code> asks for the rule now, rather than leaving it to
+whoever writes the second form: one signature per symbol, in one file or
+across two.</p>
+<p>Everything the suite cannot ask, and why, is in <a href="../modules/">Modules</a>.</p>
+<h2 id="what-c-does-and-this-does-not">What C does and this does not<a class="headerlink" href="#what-c-does-and-this-does-not" title="Permanent link">&para;</a></h2>
+<p>Being fair about the other direction:</p>
+<ul>
+<li><strong>Variadic functions.</strong> <code>printf</code>, <code>scanf</code>, <code>fcntl</code>, <code>ioctl</code>. An external
+  call has to name every type it passes, and C's own variadic convention
+  on arm64 Darwin passes on the stack, where the call cannot reach.</li>
+<li><strong>Callbacks.</strong> Nothing here can hand C a function pointer, so <code>qsort</code>,
+  <code>bsearch</code> and a signal handler of one's own are out. A struct that carries
+  one is not always out with it, though: <code>struct sigaction</code> is here as
+  <code>sigaction_t</code>, with the handler kept as the number C stores there, because
+  two of the three things that can go in that union are not addresses at all —
+  <code>SIG_DFL</code> is 0 and <code>SIG_IGN</code> is 1. So a signal can be told to be ignored,
+  asked what it is doing, and put back; it cannot be given a function to run.</li>
+<li><strong>Bodies that live in another library.</strong> <code>&lt;arpa/inet.h&gt;</code> declares
+  <code>inet_net_pton</code>, <code>inet_net_ntop</code>, <code>inet_neta</code> and the two <code>inet_nsap_*</code>
+  on both platforms, and on Linux they are not in libc: they are in
+  <code>libresolv</code>, which a C program is linked against without ever saying
+  so. Nothing here links it, and the call does not resolve —
+  <code>undefined reference to inet_net_pton</code> — while the header goes on
+  saying the function is there. The declaration is not the evidence; the
+  link is, and the quickest place to look is
+  <code>nm -D /lib/x86_64-linux-gnu/libresolv.so.2</code>.</li>
+<li><strong>Declarations written inside <code>#if 0</code>.</strong> Four of <code>&lt;spawn.h&gt;</code>'s functions
+  are spelled out in full in Darwin's header and cannot be called:
+  <code>posix_spawnattr_setschedparam</code>, <code>posix_spawnattr_setschedpolicy</code> and
+  the two getters are inside <code>#if 0 /* _POSIX_PRIORITY_SCHEDULING : not
+  supported */</code>. A prototype listing, and a <code>gcc -aux-info</code> run on the
+  other platform, both say they are there. So <code>spawn.h</code> is bound to 27 of
+  its 31, and the four left over are less a gap in this than a gap in the
+  platform.</li>
+<li><strong>Names that are only a macro.</strong> <code>isascii_l</code> is spelled in glibc's
+  <code>&lt;ctype.h&gt;</code> as <code>#define isascii_l(c,l) __isascii_l((c),(l))</code>, which is
+  itself a macro over <code>__isascii</code>, so there is no symbol for a loader to
+  find, and Darwin's <code>xlocale/_ctype.h</code> does not carry the name at all.
+  <code>sched_getcpucount</code> went with it: that one is FreeBSD's, and neither
+  platform declares it. Both were bound here, compiled, and could be called
+  nowhere — a name in a string can outlive both the header and the compiler
+  while naming nothing. <code>scripts/check-symbols.py</code> now reads
+  <code>NOT_DECLARED_HERE</code> out of <code>scripts/check-prototypes.py</code>, and a name
+  excused by both lists fails the run.</li>
+<li><strong>Names that are zero and mean something.</strong> <code>timer_create</code> writes a
+  <code>timer_t</code> that can be 0 and be valid: the kernel numbers its timers
+  from zero, so the first one a process makes is named 0. A binding that
+  checks the name for NULL throws away a working timer, and a test that
+  does it fails on the first timer and passes on the second.</li>
+<li><strong>Coverage.</strong> The share above, and no more than that intended. <code>open</code> here
+  is bound as <code>openat</code> with <code>AT_FDCWD</code> filled in, which is what POSIX says
+  the two amount to, and is the sort of thing that happens when the real
+  name cannot be called.</li>
+<li><strong>Variadic arguments, and the argument after them.</strong> <code>openat</code> is variadic
+  too, so the mode is not a named argument on macOS either and does not
+  arrive: a file asked for with 0o644 came out as 0o150, which is no umask
+  of 0o644 but whatever was on the stack. <code>fchmod</code> afterwards is the way to
+  be sure, and both docstrings say so.</li>
+<li><strong>Semaphores.</strong> <code>&lt;semaphore.h&gt;</code> is read and not bound, for two reasons
+  that meet in the same header. Darwin has no unnamed semaphores:
+  <code>sem_init</code> is declared, marked deprecated, and answers -1 with <code>ENOSYS</code>,
+  because Apple never implemented them — what its <code>sem_t</code> is, is an <code>int</code>
+  naming a semaphore the kernel holds. The named ones work, <code>sem_open</code>
+  being a syscall there, but the count a new one starts at is an argument
+  after a variadic one, which is the <code>openat</code> problem again: on arm64
+  Darwin whatever arrives as the count is what was on the stack, and a
+  semaphore that starts at the wrong number is worse than one that is not
+  there at all. A round was written and taken back for this. The failure
+  signature is worth knowing if anyone tries again: the call answers 0 and
+  the semaphore exists, and only a <code>sem_trywait</code> says the count was not
+  the one asked for.</li>
+<li><strong>Speed.</strong> <code>scripts/bench-call.sh</code> runs it: a hundred million calls of
+  <code>strlen</code>, <code>strcmp</code> and <code>getpid</code>, five times over, keeping the fastest of
+  the five, with a first row that is the same loop with no call in it. A
+  call's cost is the distance from that row, and nothing else says what the
+  loop itself cost. On the machine this was last run on:</li>
+</ul>
+<div class="highlight"><pre><span></span><code>call        through C    through the binding
+nothing         282 ps              454 ps
+strlen         2504 ps             1499 ps
+strcmp         2087 ps             1904 ps
+getpid       327878 ps           329006 ps
+</code></pre></div>
+<p>The row that settles anything is <code>getpid</code>. A syscall costs what a syscall
+  costs through either side — 0.4% apart — which is the whole claim: an
+  external call adds nothing measurable to a call. The two cheap rows are
+  another matter, and the honest reading is that they cannot be read at
+  all: run the script again and <code>strlen</code> through C moves by 500 ps, which
+  is the size of the gap that was supposed to be measured between the two
+  languages. An earlier version of this paragraph quoted <strong>1.6 ns</strong> against
+  <strong>2.2 ns</strong> for <code>strlen</code>, taken the same way and without the <code>nothing</code> row
+  to hold them down; a repeat will not give either number back. What
+  repeats is the shape — the binding is not slower — and the syscall row,
+  which does not move at all.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; <a target="_blank" href="https://github.com/llango">llango</a>
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+    <a href="https://github.com/mojothon" target="_blank" rel="noopener" title="llango" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tabs", "navigation.tracking", "content.code.copy", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
