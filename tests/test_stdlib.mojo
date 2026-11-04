@@ -75,18 +75,25 @@ from libc.stdlib import (
     srand48,
     srandom,
     strtod,
+    strtod_l,
     strtof,
+    strtof_l,
     strtol,
+    strtol_l,
     strtoll,
+    strtoll_l,
     strtoq,
     strtoul,
+    strtoul_l,
     strtoull,
+    strtoull_l,
     strtouq,
     unlockpt,
     unsetenv,
     valloc,
     wctomb,
 )
+from libc.locale import LC_ALL_MASK, Locale, freelocale, newlocale
 from libc.utils import char_ptr_to_string, is_null, null_ptr, string_to_char_ptr
 
 
@@ -132,6 +139,82 @@ def test_conversions() raises:
     var hex = string_to_char_ptr("ff")
     assert_equal(strtol(hex, 16), 255)
     hex.unsafe_free()
+
+
+def test_the_l_variants_read_the_same_numbers() raises:
+    """The `_l` ones read a number for a locale handed in instead of the
+    thread's, and the number parsing is the part the C locale has no say
+    in: every digit is one of ten, a sign is a sign, and 16 base is 16
+    base everywhere. So in the C locale each has to read what the plain
+    one reads, and reading the same text through both spellings is the
+    two of them witnessing each other.
+    """
+    var c_locale = string_to_char_ptr("C")
+    var loc = newlocale(LC_ALL_MASK, c_locale, null_ptr[Locale]())
+    assert_true(Int(loc) != 0, "the locale object was made")
+
+    var tail = unsafe_alloc[c_ptr[c_char]](1)
+
+    var hex = string_to_char_ptr("ff")
+    assert_equal(strtol_l(hex, tail, 16, loc), 255, "ff is 255 in base 16")
+    assert_equal(
+        Int(tail.unsafe_offset(0)[]),
+        Int(hex) + 2,
+        "and the reading stops at the end of the number",
+    )
+
+    var negative = string_to_char_ptr("-1024 rest")
+    assert_equal(strtol_l(negative, tail, 10, loc), -1024, "a sign is a sign")
+    assert_equal(
+        Int(tail.unsafe_offset(0)[]),
+        Int(negative) + 5,
+        "and what is left over is left over",
+    )
+
+    var big = string_to_char_ptr("123456789012")
+    assert_equal(
+        strtoll_l(big, tail, 10, loc),
+        123456789012,
+        "the long long reading takes the long number",
+    )
+    assert_equal(
+        Int(strtoull_l(big, tail, 10, loc)),
+        123456789012,
+        "and the unsigned one reads the same digits",
+    )
+
+    var unsigned = string_to_char_ptr("4294967296")
+    assert_equal(
+        Int(strtoul_l(unsigned, tail, 10, loc)),
+        4294967296,
+        "a number past what an int holds still reads whole",
+    )
+
+    var decimal = string_to_char_ptr("3.5")
+    assert_true(
+        fabs(strtod_l(decimal, tail, loc) - 3.5) < 1e-12,
+        "the double reading takes the fraction",
+    )
+    assert_true(
+        fabs(Float64(strtof_l(decimal, tail, loc)) - 3.5) < 1e-6,
+        "and so does the float one",
+    )
+
+    # The whole string was the number: in the C locale the dot is the
+    # decimal point, so the reading ends where the string does.
+    assert_equal(
+        Int(tail.unsafe_offset(0)[]),
+        Int(decimal) + 3,
+        "and the end of the number is the end of the string",
+    )
+
+    tail.unsafe_free()
+    hex.unsafe_free()
+    negative.unsafe_free()
+    big.unsafe_free()
+    unsigned.unsafe_free()
+    decimal.unsafe_free()
+    freelocale(loc)
 
 
 def test_environment() raises:
@@ -1109,6 +1192,7 @@ def main() raises:
     test_calloc()
     test_realloc()
     test_conversions()
+    test_the_l_variants_read_the_same_numbers()
     test_environment()
     test_rand()
     test_random()

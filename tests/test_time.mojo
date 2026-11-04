@@ -34,6 +34,7 @@ from libc.time import (
     strftime,
     strftime_l,
     strptime,
+    strptime_l,
     time,
     timegm,
     timelocal,
@@ -222,6 +223,56 @@ def test_strptime() raises:
         )
         == 0
     )
+
+
+def test_strptime_l_reads_the_same_date() raises:
+    """`strptime_l` is `strptime` with the locale named, and the numbers
+    a date is made of are digits in every locale there is. Reading the
+    same text through both spellings in the C locale is the two of them
+    witnessing each other, and what each fills in -- the whole date, the
+    parts the format never mentioned left as they were -- says parsing
+    happened and did not happen anywhere else.
+    """
+    var loc = newlocale(
+        LC_ALL_MASK, string_to_char_ptr("C"), null_ptr[Locale]()
+    )
+    assert_true(Int(loc) != 0, "the locale object was made")
+
+    var slot = unsafe_alloc[tm](1)
+    slot[] = tm()
+
+    var rest = strptime_l(
+        string_to_char_ptr("2026-03-04 05:06:07"),
+        string_to_char_ptr("%Y-%m-%d %H:%M:%S"),
+        slot,
+        loc,
+    )
+    assert_true(Int(rest) != 0, "strptime_l consumed the whole format")
+
+    var got = slot[]
+    assert_equal(Int(got.tm_year), 126, "the year is 2026")
+    assert_equal(Int(got.tm_mon), 2, "the month is March")
+    assert_equal(Int(got.tm_mday), 4)
+    assert_equal(Int(got.tm_hour), 5)
+
+    # A format that does not match reports failure there too.
+    var bad = unsafe_alloc[tm](1)
+    bad[] = tm()
+    assert_true(
+        Int(
+            strptime_l(
+                string_to_char_ptr("nope"),
+                string_to_char_ptr("%Y-%m-%d"),
+                bad,
+                loc,
+            )
+        )
+        == 0
+    )
+
+    bad.unsafe_free()
+    slot.unsafe_free()
+    freelocale(loc)
 
 
 def test_clocks() raises:
@@ -538,6 +589,7 @@ def main() raises:
     test_utc_round_trip()
     test_strftime()
     test_strftime_l_writes_the_names_in_the_locale_it_is_given()
+    test_strptime_l_reads_the_same_date()
     test_asctime_and_ctime()
     test_strptime()
     test_clocks()

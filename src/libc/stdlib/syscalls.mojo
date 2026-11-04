@@ -13,6 +13,7 @@ from std.ffi import external_call
 from std.memory import unsafe_stack_allocation
 
 from libc.limits import LONG_MAX, LONG_MIN, PATH_MAX, ULLONG_MAX, ULONG_MAX
+from libc.locale import locale_t
 
 from libc.constant import (
     c_char,
@@ -758,6 +759,230 @@ def strtof(nptr: c_ptr[c_char], endptr: c_ptr[c_ptr[c_char]]) -> c_float:
     return external_call[
         "strtof", c_float, c_ptr[c_char], c_ptr[c_ptr[c_char]]
     ](nptr, endptr)
+
+
+def strtol_l(
+    nptr: c_ptr[c_char],
+    endptr: c_ptr[c_ptr[c_char]],
+    base: c_int,
+    loc: locale_t,
+) -> c_long:
+    """C library <stdlib.h> function `strtol_l`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/strtol.3.html
+
+    Prototype:
+        long strtol_l(const char *nptr, char **endptr, int base, locale_t loc)
+
+    Description:
+        Converts the leading integer of `nptr` in the given base, for a
+        locale handed in rather than the one the thread is in.
+
+    Args:
+        nptr: The string to convert.
+        endptr: Receives the address of the first unconverted character.
+        base: 0 for autodetection, or 2 through 36.
+        loc: The locale to read it in, as `newlocale` hands one out.
+
+    Returns:
+        The converted value. On overflow `LONG_MAX` or `LONG_MIN` is
+        returned and `errno` is set to `ERANGE`.
+    """
+
+    return external_call[
+        "strtol_l", c_long, c_ptr[c_char], c_ptr[c_ptr[c_char]], c_int, locale_t
+    ](nptr, endptr, base, loc)
+
+
+def strtoul_l(
+    nptr: c_ptr[c_char],
+    endptr: c_ptr[c_ptr[c_char]],
+    base: c_int,
+    loc: locale_t,
+) -> c_ulong:
+    """C library <stdlib.h> function `strtoul_l`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/strtoul.3.html
+
+    Prototype:
+        unsigned long strtoul_l(const char *nptr, char **endptr, int base,
+            locale_t loc)
+
+    Description:
+        Converts the leading unsigned integer of `nptr` in the given
+        base, for a locale handed in rather than the one the thread is
+        in.
+
+    Args:
+        nptr: The string to convert.
+        endptr: Receives the address of the first unconverted character.
+        base: 0 for autodetection, or 2 through 36.
+        loc: The locale to read it in, as `newlocale` hands one out.
+
+    Returns:
+        The converted value. On overflow `ULONG_MAX` is returned and
+        `errno` is set to `ERANGE`.
+    """
+
+    return external_call[
+        "strtoul_l",
+        c_ulong,
+        c_ptr[c_char],
+        c_ptr[c_ptr[c_char]],
+        c_int,
+        locale_t,
+    ](nptr, endptr, base, loc)
+
+
+def strtoll_l(
+    nptr: c_ptr[c_char],
+    endptr: c_ptr[c_ptr[c_char]],
+    base: c_int,
+    loc: locale_t,
+) -> c_longlong:
+    """C library <stdlib.h> function `strtoll_l`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/strtoll.3.html
+
+    Prototype:
+        long long strtoll_l(const char *nptr, char **endptr, int base,
+            locale_t loc)
+
+    Description:
+        Converts the leading long long integer of `nptr` in the given
+        base, for a locale handed in rather than the one the thread is
+        in.
+
+    Args:
+        nptr: The string to convert.
+        endptr: Receives the address of the first unconverted character.
+        base: 0 for autodetection, or 2 through 36.
+        loc: The locale to read it in, as `newlocale` hands one out.
+
+    Returns:
+        The converted value. On overflow `LLONG_MAX` or `LLONG_MIN` is
+        returned and `errno` is set to `ERANGE`.
+    """
+
+    return external_call[
+        "strtoll_l",
+        c_longlong,
+        c_ptr[c_char],
+        c_ptr[c_ptr[c_char]],
+        c_int,
+        locale_t,
+    ](nptr, endptr, base, loc)
+
+
+def strtoull_l(
+    nptr: c_ptr[c_char],
+    endptr: c_ptr[c_ptr[c_char]],
+    base: c_int,
+    loc: locale_t,
+) -> c_ulonglong:
+    """C library <stdlib.h> function `strtoull_l`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/strtoull.3.html
+
+    Prototype:
+        unsigned long long strtoull_l(const char *nptr, char **endptr,
+            int base, locale_t loc)
+
+    Description:
+        Converts the leading unsigned long long integer of `nptr` in
+        the given base, for a locale handed in rather than the one the
+        thread is in.
+
+    Args:
+        nptr: The string to convert.
+        endptr: Receives the address of the first unconverted character.
+        base: 0 for autodetection, or 2 through 36.
+        loc: The locale to read it in, as `newlocale` hands one out.
+
+    Returns:
+        The converted value. On overflow `ULLONG_MAX` is returned and
+        `errno` is set to `ERANGE`.
+    """
+
+    return external_call[
+        "strtoull_l",
+        c_ulonglong,
+        c_ptr[c_char],
+        c_ptr[c_ptr[c_char]],
+        c_int,
+        locale_t,
+    ](nptr, endptr, base, loc)
+
+
+def strtod_l(
+    nptr: c_ptr[c_char], endptr: c_ptr[c_ptr[c_char]], loc: locale_t
+) -> c_double:
+    """C library <stdlib.h> function `strtod_l`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/strtod.3.html
+
+    Prototype:
+        double strtod_l(const char *nptr, char **endptr, locale_t loc)
+
+    Description:
+        Converts the leading floating-point number of `nptr` to a
+        `double`, for a locale handed in rather than the one the thread
+        is in.
+
+    Args:
+        nptr: The string to convert.
+        endptr: Receives the address of the first unconverted character.
+        loc: The locale to read it in, as `newlocale` hands one out.
+
+    Returns:
+        The converted value; `HUGE_VAL` with `errno` set to `ERANGE` on
+        overflow.
+
+    Notes:
+        The decimal point is the locale's to say, and this is the one
+        part of the reading the locale decides: in a locale that puts a
+        comma there, `3.5` stops at the dot and reads as 3.
+    """
+
+    return external_call[
+        "strtod_l", c_double, c_ptr[c_char], c_ptr[c_ptr[c_char]], locale_t
+    ](nptr, endptr, loc)
+
+
+def strtof_l(
+    nptr: c_ptr[c_char], endptr: c_ptr[c_ptr[c_char]], loc: locale_t
+) -> c_float:
+    """C library <stdlib.h> function `strtof_l`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/strtod.3.html
+
+    Prototype:
+        float strtof_l(const char *nptr, char **endptr, locale_t loc)
+
+    Description:
+        Converts the leading floating-point number of `nptr` to a
+        `float`, for a locale handed in rather than the one the thread
+        is in.
+
+    Args:
+        nptr: The string to convert.
+        endptr: Receives the address of the first unconverted character.
+        loc: The locale to read it in, as `newlocale` hands one out.
+
+    Returns:
+        The converted value; `HUGE_VALF` with `errno` set to `ERANGE` on
+        overflow.
+    """
+
+    return external_call[
+        "strtof_l", c_float, c_ptr[c_char], c_ptr[c_ptr[c_char]], locale_t
+    ](nptr, endptr, loc)
 
 
 def strtol(nptr: c_ptr[c_char], base: c_int) -> c_long:

@@ -493,6 +493,47 @@ def strptime(
     ](buf, format, broken)
 
 
+def strptime_l(
+    buf: c_ptr[UInt8],
+    format: c_ptr[UInt8],
+    broken: c_ptr[tm],
+    locale: locale_t,
+) -> c_ptr[UInt8]:
+    """Libc POSIX `strptime_l` function.
+
+    Args:
+        buf: The string to parse.
+        format: A `strftime`-style format string.
+        broken: Where to store the parsed time. Members the format does not
+            mention are left alone, so zero `tm` first.
+        locale: The locale the letters and names are read in, as `newlocale`
+            or `duplocale` hand one out.
+
+    Returns:
+        A pointer to the first byte of `buf` that was not consumed, or a null
+        pointer if the format did not match.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/strptime.3.html).
+        Fn signature: `char *strptime_l(const char *buf, const char *format,
+            struct tm *tm, locale_t locale)`.
+
+        This is `strptime` with the locale in the call instead of taken
+        from whatever the program is running under. What the locale
+        decides is the words the format asks for by name: `%A` and `%B`
+        have to be spelled as the locale spells them, and `%p` likewise.
+        The numbers — `%Y`, `%m`, `%d`, `%H` — are digits on all.
+    """
+    return external_call[
+        "strptime_l",
+        c_ptr[UInt8],
+        c_ptr[UInt8],
+        c_ptr[UInt8],
+        c_ptr[tm],
+        locale_t,
+    ](buf, format, broken, locale)
+
+
 def clock_gettime(clockid: c_int, tp: c_ptr[timespec]) -> c_int:
     """Libc POSIX `clock_gettime` function.
 

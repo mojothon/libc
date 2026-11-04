@@ -7,7 +7,7 @@ the bottom.
 | Module | C header | Symbols |
 | --- | --- | --- |
 | `libc.math` | `<math.h>` | 124 |
-| `libc.stdlib` | `<stdlib.h>` | 76 |
+| `libc.stdlib` | `<stdlib.h>` | 82 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.limits` | `<limits.h>` the widths of the integer types, and what a process may have | 24 |
 | `libc.unistd` | `<unistd.h>` | 206 |
@@ -16,7 +16,7 @@ the bottom.
 | `libc.sys.socket` | `<sys/socket.h>` | 35 |
 | `libc.sys.stat` | `<sys/stat.h>` | 36 |
 | `libc.sys.times` | `<sys/times.h>` | 2 |
-| `libc.time` | `<time.h>` | 38 |
+| `libc.time` | `<time.h>` | 39 |
 | `libc.fenv` | `<fenv.h>` | 26 |
 | `libc.sys.mman` | `<sys/mman.h>` | 15 |
 | `libc.sys.sigqueue` | `<signal.h>` a signal sent with a number, and the two waits | 5 |
@@ -139,7 +139,7 @@ is about the call rather than about the suite:
 
 None of them is known to be broken; they are simply not asked.
 
-1012 bindings are asked something, and the 3 that are not have a reason
+1019 bindings are asked something, and the 3 that are not have a reason
 each. Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.

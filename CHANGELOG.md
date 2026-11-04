@@ -7,6 +7,17 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **The six `strto*_l` readers and `strptime_l`.** The sieve's next clean
+  family: `strtol_l`, `strtoul_l`, `strtoll_l`, `strtoull_l`, `strtod_l`
+  and `strtof_l` read a number for a locale handed in, and `strptime_l`
+  reads a date the same way. The number parsing is the part the C locale
+  has no say in — ten digits, a sign, a base — so the test reads the same
+  text through both spellings and lets each answer be the witness for
+  the other, with `endptr` asked where the reading stopped and the one
+  fraction `float` loses that `double` keeps. What a locale *does*
+  decide — the decimal point, the month names `%B` asks for — is said in
+  the docstrings, and waits for a runner that has such a locale to make.
+
 - **The fourteen `_l` forms of the wide-character classes.** `iswalnum_l`
   through `iswxdigit_l`, plus `towlower_l` and `towupper_l` — each is the
   plain call with the locale named instead of the thread's borrowed, and
