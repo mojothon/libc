@@ -213,6 +213,13 @@ BREAKS = [
     ),
     Break(
         "check-layouts",
+        "a member written at a number rather than at a named offset",
+        "src/libc/utmpx/syscalls.mojo",
+        "self._set_u32(UT_PID_OFFSET, UInt32(pid))",
+        "self._set_u32(4, UInt32(pid))",
+    ),
+    Break(
+        "check-layouts",
         "a member written narrower than the member is",
         "src/libc/utmpx/syscalls.mojo",
         "self._set_u32(UT_PID_OFFSET, UInt32(pid))",

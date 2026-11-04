@@ -50,7 +50,10 @@ All notable changes to this project are documented here. The format follows
   `_set_u16` returns `4321` through `ut_pid` exactly as a correct one does.
   `check-layouts` now compares all eleven setters with `sizeof`, and a test
   writes a pid with something in its upper half so the behavioral half of the
-  claim is asked for too.
+  claim is asked for too. The same sweep now catches a setter at a literal
+  offset, which was the one place a member could be placed without appearing
+  in any count: `write_widths` only sees `_set_u32(NAME_OFFSET, ...)`, so
+  `_set_u32(4, ...)` would have been invisible to both.
 
 ### Changed
 

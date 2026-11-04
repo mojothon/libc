@@ -313,7 +313,10 @@ def module_of(path: Path) -> str:
 # is the shape of the mistake the list exists to prevent, caught wherever it
 # is made rather than where somebody remembered to register it.
 PLACED = re.compile(r"^comptime (\w*_OFFSET)\b", re.M)
-READ_AT = re.compile(r"self\._(?:byte|u16|u32|u64)\((\d+)\)")
+READ_AT = re.compile(
+    r"self\._(?:byte|u16|u32|u64)\((\d+)\)"
+    r"|self\._set_(?:byte|u16|u32|u64|at)\((\d+),"
+)
 
 
 def placed_by_hand() -> dict[tuple[str, str], str]:
@@ -335,21 +338,27 @@ def placed_by_hand() -> dict[tuple[str, str], str]:
 
 
 def read_at_a_literal() -> list[str]:
-    """Places where a member is read at a number written in the call.
+    """Places where a member is read or written at a number written in the call.
 
     `self._u64(0)` is an offset claimed inline, where no list can see it and
     no `offsetof` can be compared with it. Naming it costs a line and puts
-    the claim where the rest of them are.
+    the claim where the rest of them are. Both directions, because a setter
+    at a literal offset is not in `write_widths` to be counted either, and
+    would otherwise be the one place a member is placed without anyone
+    knowing how many there are.
     """
     found = []
     for path in SOURCES:
         for number, line in enumerate(path.read_text().split("\n"), 1):
             match = READ_AT.search(line)
-            if match is not None:
-                found.append(
-                    f"{module_of(path)} reads at {match.group(1)}"
-                    f"  ({path.relative_to(ROOT)}:{number})"
-                )
+            if match is None:
+                continue
+            did = "reads" if match.group(1) is not None else "writes"
+            at = match.group(1) if match.group(1) is not None else match.group(2)
+            found.append(
+                f"{module_of(path)} {did} at {at}"
+                f"  ({path.relative_to(ROOT)}:{number})"
+            )
     return found
 
 
@@ -1219,8 +1228,8 @@ def main() -> int:
     unsaid = read_at_a_literal()
     if unsaid:
         print(
-            f"\n  {len(unsaid)} read a member at a number written in the call,"
-            f" where no list can see it:"
+            f"\n  {len(unsaid)} read or write a member at a number written in"
+            f" the call, where no list can see it:"
         )
         for line in unsaid:
             print(f"      {line}")
@@ -1252,7 +1261,7 @@ def main() -> int:
     if unlisted:
         print("  *** constants that place a member and are not asked about ***")
     if unsaid:
-        print("  *** members read at a number that is not written down ***")
+        print("  *** members read or written at a number that is not named ***")
     if width_disagree:
         print("  *** constants that say the wrong width for a C type ***")
     if read_disagree or read_half:
