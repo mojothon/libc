@@ -489,10 +489,12 @@ def test_the_one_that_is_left() raises:
     found, since what it does with a thing that was never initialised is
     nothing anyone should rely on.
 
-    `pthread_atfork` is the one of the twelve not called at all: glibc
-    exports it with no default version, so looking it up by name finds
-    nothing and the call cannot be made from Mojo, however it is given
-    its three function pointers. The binding says so.
+    `pthread_atfork` is the one of the twelve not called at all, and it is
+    the run that fails rather than the call: glibc exports it with no
+    default version, so the just-in-time run's lookup of the bare name
+    finds nothing, while a built binary resolves it at link time and gets
+    0 back. This suite is the just-in-time run, so the call is not made
+    here; the binding's docstring records both answers.
     """
     var cond = unsafe_alloc[pthread_condattr_t](1)
     cond.unsafe_offset(0)[] = pthread_condattr_t()

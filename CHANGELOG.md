@@ -794,6 +794,14 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- **`pthread_atfork` was said to be unreachable from Mojo, and it is only
+  unreachable from the JIT.** The docstring said a lookup by name finds
+  nothing, "so the call cannot be made from Mojo at all". Built and run, the
+  same source answers 0: the linker resolves `pthread_atfork@GLIBC_2.2.5`
+  once, where the just-in-time run asks for the bare name and is told
+  `Symbols not found: [ pthread_atfork ]`. Both were measured before the
+  sentence was rewritten, and the test file says the same thing now.
+
 - **The README still said the version was `0.2.0`, ten releases after it
   stopped being.** Nothing reads the front page, so nothing noticed: the
   places `check-release` compared all agreed with each other, and the one a

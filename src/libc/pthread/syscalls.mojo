@@ -68,11 +68,14 @@ def pthread_atfork(
         All three are C function pointers. Mojo cannot make one, so the only
         thing a Mojo caller can honestly pass is a null pointer for each.
 
-        That is not the end of it. glibc exports this one as
-        pthread_atfork@GLIBC_2.2.5 and exports no default version, so a
-        lookup by name does not find it: the call cannot be made from
-        Mojo at all, null pointers or not. A C program links it easily
-        enough, which is what makes the difference easy to miss.
+        That is not the end of it, and what stands in the way is the name
+        rather than the call. glibc exports this one only as
+        pthread_atfork@GLIBC_2.2.5, with no default version, so a lookup of
+        the bare name finds nothing: `mojo run` stops at "JIT session
+        error: Symbols not found: [ pthread_atfork ]". A built binary never
+        looks the name up — the linker resolves it once — and the same call
+        there answers 0. Measured both ways from one source file: `mojo
+        build` links and runs, `mojo run` does not.
 
     Returns:
         0 on success, or -1 on error.
