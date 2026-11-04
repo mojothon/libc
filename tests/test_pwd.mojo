@@ -102,15 +102,19 @@ def test_whoever_is_running_is_in_the_database() raises:
 
     Which user this comes back as is the platform's business, so what is
     asked is that asking works and agrees with itself.
+
+    The name is copied out of the first answer before the second question
+    is put, for the reason given in the test above: both answers sit in
+    the same place, so reading them both afterwards would ask whether the
+    row agrees with itself.
     """
     var row = getpwuid(UInt32(getuid()))
     assert_false(is_null(row), "the user running this is a user")
-    assert_true(row[].pw_name().byte_length() > 0, "and has a name")
+    var name = row[].pw_name()
+    assert_true(name.byte_length() > 0, "and has a name")
 
     var again = getpwuid(UInt32(getuid()))
-    assert_equal(
-        row[].pw_name(), again[].pw_name(), "asking twice says the same"
-    )
+    assert_equal(again[].pw_name(), name, "asking twice says the same")
 
 
 def test_the_reentrant_pair_puts_the_user_in_the_caller_s_room() raises:
