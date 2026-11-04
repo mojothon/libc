@@ -70,6 +70,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    # CI deploys the site on every push to main; a tag then deploys the same
+    # tree again. One group, so the two never push gh-pages at once.
+    concurrency:
+      group: pages
     steps:
       - uses: actions/checkout@v4
         with:

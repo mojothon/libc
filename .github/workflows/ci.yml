@@ -140,11 +140,28 @@ jobs:
   docs:
     name: Docs
     runs-on: ubuntu-latest
+    # The site is what a reader meets before any of this: it went four
+    # releases telling them `-c mojo-force`, and the correction sat on main
+    # unread because only a tag deployed. A push to main deploys as well, and
+    # the group keeps this job and the release's deploy off each other's
+    # branch.
+    permissions:
+      contents: write
+    concurrency:
+      group: pages
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: prefix-dev/setup-pixi@v0.11.0
         with:
           cache: true
           environments: docs
       - name: Build the site
         run: pixi run -e docs doc-build
+      - name: Deploy to GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          pixi run -e docs mkdocs gh-deploy --force
