@@ -2,8 +2,8 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
-from libc.constant import AT_FDCWD
-from libc.fcntl import O_CREAT, O_RDWR, O_WRONLY, open
+from libc.constant import AT_FDCWD, c_int, c_uint
+from libc.fcntl import O_CREAT, O_RDWR, O_TRUNC, O_WRONLY, open
 from libc.sys.stat import (
     Stat,
     chmod,
@@ -27,8 +27,19 @@ from libc.sys.stat import (
     utimensat,
     utimes,
 )
-from libc.unistd import access, close, rmdir, symlink, unlink
-from libc.utils import string_to_char_ptr
+from libc.unistd import (
+    access,
+    chown,
+    close,
+    getegid,
+    geteuid,
+    getgroups,
+    rmdir,
+    symlink,
+    unlink,
+    write,
+)
+from libc.utils import null_ptr, string_to_char_ptr
 
 # POSIX keeps the file type in the top bits of `st_mode`. Nothing here
 # names them, so they are written out: `S_IFMT` is the mask that selects
@@ -381,6 +392,122 @@ def test_umask_answers_with_what_it_replaced() raises:
     assert_equal(umask(was), 0o022, "and asking again answers the last one")
 
 
+def test_the_access_time_is_read_from_its_own_slot() raises:
+    """`utimensat` takes the access time first and the modified one second,
+    and the two accessors that read them back are in different slots.
+
+    Every test above hands both slots the same number and asks back
+    through `mtime`, which is the right question for what those are
+    testing and cannot tell the two accessors apart: with both slots
+    holding 2000000, an `atime` that read `mtime`'s bytes answers the
+    same number. So the two are given different ones here. `ctime` is
+    the third: setting the times is itself a status change, so it has to
+    come back as now rather than as either of the two dates, and the
+    moment to compare it against is 2020.
+    """
+    var path = string_to_char_ptr("/tmp/libc_stat_two_times")
+    var fd = open(path, O_CREAT | O_TRUNC | O_RDWR, 0o644)
+    assert_true(fd >= 0, "a file to date")
+
+    var ts = unsafe_alloc[timespec](2)
+    ts.unsafe_offset(0)[].tv_sec = 1111111
+    ts.unsafe_offset(0)[].tv_nsec = 0
+    ts.unsafe_offset(1)[].tv_sec = 2222222
+    ts.unsafe_offset(1)[].tv_nsec = 0
+    assert_equal(
+        utimensat(AT_FDCWD, path, ts, 0), 0, "the two times are set apart"
+    )
+    ts.unsafe_free()
+
+    var st = unsafe_alloc[Stat](1)
+    assert_equal(stat(path, st), 0, "and the file can be asked")
+    assert_equal(
+        st.unsafe_offset(0)[].atime(), 1111111, "atime is the first of them"
+    )
+    assert_equal(st.unsafe_offset(0)[].mtime(), 2222222, "mtime is the second")
+    assert_true(
+        st.unsafe_offset(0)[].ctime() > 1577836800,
+        "and ctime is now, not either date",
+    )
+
+    st.unsafe_free()
+    _ = close(fd)
+    _ = unlink(path)
+    path.unsafe_free()
+
+
+def test_the_device_and_group_of_a_file_this_test_made() raises:
+    """Four members whose values are known before the file is asked about.
+
+    A regular file has a device and no device number of its own, so `dev`
+    is non-zero and `rdev` is exactly zero — an accessor that read the
+    other's bytes fails one of the two whichever way round the mistake
+    was made, which is not true of any assertion that only says "not
+    zero". The group is this process's effective group, since nothing
+    else could have set it on a file made a moment ago, and the blocks
+    are the sectors the file's own bytes took, which is the size rounded
+    up to a block: more than the size, and not a whole block more.
+    """
+    var path = string_to_char_ptr("/tmp/libc_stat_members")
+    var fd = open(path, O_CREAT | O_TRUNC | O_WRONLY, 0o644)
+    assert_true(fd >= 0, "a file to ask about")
+
+    comptime SIZE = 65536
+    var buffer = unsafe_alloc[UInt8](SIZE)
+    for i in range(SIZE):
+        buffer.unsafe_offset(i)[] = UInt8(ord("x"))
+    assert_equal(
+        Int(write(fd, buffer, UInt32(SIZE))), SIZE, "sixty-four kilobytes of it"
+    )
+    buffer.unsafe_free()
+    _ = close(fd)
+
+    var st = unsafe_alloc[Stat](1)
+    assert_equal(stat(path, st), 0, "and the file can be asked")
+    assert_equal(st.unsafe_offset(0)[].size(), SIZE, "its size is the bytes")
+    assert_true(
+        st.unsafe_offset(0)[].dev() != 0, "a file has the device it is on"
+    )
+    assert_equal(
+        st.unsafe_offset(0)[].rdev(), 0, "and no device number of its own"
+    )
+    # The group on it is the one this process makes files in, and if it is
+    # also in a second group the file is moved into that one. The move is
+    # what makes the assertion below able to fail: with the owner and the
+    # group the same number, an accessor that read the owner's bytes
+    # answers the same number, and the test would be asking a question
+    # whose two answers agree. `chgrp` to a group this process belongs to
+    # needs no privilege, and nothing here names one it does not.
+    var chosen = getegid()
+    var many = getgroups(0, null_ptr[c_uint]())
+    if many > 0:
+        var groups = unsafe_alloc[c_uint](Int(many))
+        _ = getgroups(many, groups)
+        for i in range(Int(many)):
+            var gid = Int32(groups.unsafe_offset(i)[])
+            if gid != getegid() and gid != geteuid():
+                chosen = gid
+                break
+        groups.unsafe_free()
+    if chosen != getegid():
+        assert_equal(
+            chown(path, Int32(-1), chosen),
+            0,
+            "the file is moved into the second group",
+        )
+        assert_equal(stat(path, st), 0, "and asked about again")
+    assert_equal(
+        Int(st.unsafe_offset(0)[].gid()), Int(chosen), "the group it is in"
+    )
+    var held = st.unsafe_offset(0)[].blocks() * 512
+    assert_true(held >= SIZE, "the blocks it takes hold all of it")
+    assert_true(held <= SIZE + 16384, "and not a block more than that")
+
+    st.unsafe_free()
+    _ = unlink(path)
+    path.unsafe_free()
+
+
 def main() raises:
     test_mkdir_and_mkdirat()
     test_chmod_and_fchmodat()
@@ -390,4 +517,6 @@ def main() raises:
     test_setting_times_in_microseconds()
     test_stat_at_the_working_directory_agrees_with_stat()
     test_umask_answers_with_what_it_replaced()
+    test_the_access_time_is_read_from_its_own_slot()
+    test_the_device_and_group_of_a_file_this_test_made()
     print("test_stat: ok")

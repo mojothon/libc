@@ -55,6 +55,25 @@ All notable changes to this project are documented here. The format follows
   in any count: `write_widths` only sees `_set_u32(NAME_OFFSET, ...)`, so
   `_set_u32(4, ...)` would have been invisible to both.
 
+- **Nine of the fifty-five accessors no test called now have one, and the
+  five in `stat` found their oracles in the file itself.** `dev` and `rdev`
+  are the pair that answers without a second file: a regular file has a
+  device and no device number of its own, so `dev` is non-zero and `rdev` is
+  exactly zero, and an accessor reading the other's bytes fails one of the
+  two whichever way round the mistake was made. `atime` and `ctime` are told
+  apart from `mtime` by setting the two times to different values and asking
+  each for its own — `ctime` is the one that has to be now. `blocks` is
+  asserted as a range the file's own size fixes.
+- **The twelve `termios` accessors are asked of a real pty.** `cfmakeraw` and
+  `cfsetspeed` are C's writers of the words the accessors read, and what the
+  accessors write is handed to `tcsetattr` and read back into a fresh block.
+  Two are asked as pairs instead, and the reason is worth knowing: on glibc
+  `cfgetispeed` answers from the baud bits of `c_cflag` and never looks at
+  `c_ispeed`, so no glibc call can confirm where `set_ispeed` put its number —
+  the fields are two storages, but C's reader of them is not. `cflag`'s bits
+  mean different things on the two platforms and none of them is named here,
+  so what is written into it is a number no line would take.
+
 ### Changed
 
 - **`siginfo_t.si_ptr` reads the other half of the union `si_value` reads

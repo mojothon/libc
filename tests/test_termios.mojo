@@ -23,6 +23,7 @@ from libc.constant import (
 from libc.errno import get_errno, set_errno
 from libc.fcntl import O_NOCTTY, O_NONBLOCK, O_RDWR, openat
 from libc.termios import (
+    B4800,
     B9600,
     NCCS,
     TCSADRAIN,
@@ -246,6 +247,168 @@ def test_the_queue_and_action_constants_are_which_they_say() raises:
     )
 
 
+def test_the_settings_accessors_against_the_line_itself() raises:
+    """The twelve accessors of `Termios`, asked of a line that is real.
+
+    A block this test fills in by hand proves only that the accessors
+    agree with each other. One that C fills in says where the members
+    are: `cfgetispeed` and `cfgetospeed` are C's own readers of the two
+    speeds and are asked the same question as `ispeed` and `ospeed` on
+    the same block, and `cfmakeraw` is C's writer of the flag words, so
+    three of the four have to move in it — `cflag` keeps its character
+    size and does not move at all. What `set_iflag`, `set_oflag`, the two
+    speed setters and `set_cc` put in is then handed to `tcsetattr`, read
+    back into a fresh block by `tcgetattr`, and asked of again.
+
+    Two of the twelve are asked as a pair instead. `cflag`'s bits mean
+    different things on the two platforms and none of them is named in
+    this package, so a value written into it is not one any line would
+    take; and the subscripts of `c_cc` are numbered differently, so `cc`
+    is asked at a subscript below both platforms' `NCCS` and its
+    neighbour is recorded, which is what says the write landed on the
+    byte it named rather than on the slot it is in.
+    """
+    var master = posix_openpt(O_RDWR | O_NOCTTY | O_NONBLOCK)
+    assert_true(master >= 0, "a pty is opened, and it does not wait")
+    assert_equal(grantpt(master), 0, "the slave side is given away")
+    assert_equal(unlockpt(master), 0, "and unlocked")
+    var named = ptsname(master)
+    assert_true(not is_null(named), "and it has a name")
+    var name = char_ptr_to_string(named)
+    var slave = openat(
+        AT_FDCWD, string_to_char_ptr(name), O_RDWR | O_NOCTTY | O_NONBLOCK
+    )
+    assert_true(slave >= 0, "the slave side opens, and does not wait either")
+
+    var settings = _a_settings_block()
+    assert_equal(tcgetattr(slave, settings), 0, "C fills in a termios")
+
+    # The two speeds, asked of C's own reader of each.
+    assert_equal(
+        Int(settings.unsafe_offset(0)[].ispeed()),
+        Int(cfgetispeed(settings)),
+        "ispeed is the number C reads there",
+    )
+    assert_equal(
+        Int(settings.unsafe_offset(0)[].ospeed()),
+        Int(cfgetospeed(settings)),
+        "and ospeed the other one",
+    )
+
+    # C's writer of the flag words. Three of the four move in it, and each
+    # is read by a different accessor, so a pair that had been swapped
+    # would leave one of them unchanged.
+    var iflag_was = settings.unsafe_offset(0)[].iflag()
+    var oflag_was = settings.unsafe_offset(0)[].oflag()
+    var cflag_was = settings.unsafe_offset(0)[].cflag()
+    var lflag_was = settings.unsafe_offset(0)[].lflag()
+    cfmakeraw(settings)
+    assert_true(
+        settings.unsafe_offset(0)[].iflag() != iflag_was,
+        "cfmakeraw clears the input modes",
+    )
+    assert_true(
+        settings.unsafe_offset(0)[].oflag() != oflag_was,
+        "and the output ones",
+    )
+    assert_true(
+        settings.unsafe_offset(0)[].lflag() != lflag_was, "and the local ones"
+    )
+
+    # The fourth, as a pair, on a block that is not handed to the line.
+    settings.unsafe_offset(0)[].set_cflag(0x1234)
+    assert_equal(
+        Int(settings.unsafe_offset(0)[].cflag()),
+        0x1234,
+        "cflag is read where it was written",
+    )
+    settings.unsafe_offset(0)[].set_cflag(cflag_was)
+
+    # The two speeds, asked of C's writer of each: two different numbers,
+    # so that a reader answering out of the other field's bytes is
+    # visible. `cfsetispeed` and `cfsetospeed` write the two words.
+    assert_equal(cfsetispeed(settings, B4800), 0, "C writes the input speed")
+    assert_equal(cfsetospeed(settings, B9600), 0, "and a different output one")
+    assert_equal(
+        Int(settings.unsafe_offset(0)[].ispeed()),
+        Int(B4800),
+        "ispeed is the number C put there",
+    )
+    assert_equal(
+        Int(settings.unsafe_offset(0)[].ospeed()),
+        Int(B9600),
+        "and ospeed its own",
+    )
+
+    # And the two setters, the other way round, with the two numbers the
+    # other way round as well. `cfgetispeed` reads the field they write on
+    # Darwin and confirms where they put it; glibc answers from `c_cflag`
+    # instead and never looks at `c_ispeed`, so there the two are asked of
+    # each other, which is all that field can be asked on that platform.
+    settings.unsafe_offset(0)[].set_ispeed(UInt64(B9600))
+    settings.unsafe_offset(0)[].set_ospeed(UInt64(B4800))
+    assert_equal(
+        Int(settings.unsafe_offset(0)[].ispeed()),
+        Int(B9600),
+        "the input speed is read where it was written",
+    )
+    assert_equal(
+        Int(settings.unsafe_offset(0)[].ospeed()),
+        Int(B4800),
+        "and so is the output one",
+    )
+    comptime if CompilationTarget.is_macos():
+        assert_equal(
+            Int(cfgetispeed(settings)),
+            Int(B9600),
+            "and C's reader of that field agrees",
+        )
+        assert_equal(Int(cfgetospeed(settings)), Int(B4800), "on both of them")
+
+    # Two flag words with two different numbers in them, and neither of
+    # them the zero `cfmakeraw` left, so that an accessor reading where
+    # the other one writes is visible afterwards: a write that landed in
+    # the neighbour would leave the number here as it was.
+    settings.unsafe_offset(0)[].set_iflag(1)
+    settings.unsafe_offset(0)[].set_oflag(0)
+    assert_equal(tcsetattr(slave, TCSANOW, settings), 0, "the modes are taken")
+
+    var back = _a_settings_block()
+    assert_equal(tcgetattr(slave, back), 0, "and read back into a fresh block")
+    assert_equal(back.unsafe_offset(0)[].iflag(), 1, "iflag is the one put in")
+    assert_equal(back.unsafe_offset(0)[].oflag(), 0, "and oflag its own zero")
+
+    # And a control character, which is one byte of an array: the one
+    # beside it is recorded first, so a write that landed a byte out is
+    # visible as a number that moved when it should not have.
+    var neighbour = back.unsafe_offset(0)[].cc(4)
+    back.unsafe_offset(0)[].set_cc(3, 0x2A)
+    assert_equal(
+        Int(back.unsafe_offset(0)[].cc(3)), 0x2A, "the subscript it was put at"
+    )
+    assert_equal(
+        Int(back.unsafe_offset(0)[].cc(4)),
+        Int(neighbour),
+        "and not at the one beside it",
+    )
+    assert_equal(
+        tcsetattr(slave, TCSANOW, back), 0, "the character is handed over"
+    )
+    var again = _a_settings_block()
+    assert_equal(tcgetattr(slave, again), 0, "and read back")
+    assert_equal(
+        Int(again.unsafe_offset(0)[].cc(3)),
+        0x2A,
+        "C kept it at the subscript it was given",
+    )
+
+    again.unsafe_free()
+    back.unsafe_free()
+    settings.unsafe_free()
+    _ = close(slave)
+    _ = close(master)
+
+
 def test_the_calls_that_need_a_real_line() raises:
     """A pty, which is a line that is real: `tcdrain` empties one and
     answers 0, `tcflush` throws a queue away, `tcflow` says so on the
@@ -365,5 +528,6 @@ def main() raises:
     test_tcgetattr_refuses_what_is_not_a_terminal()
     test_the_tc_calls_all_refuse_the_same_file()
     test_the_queue_and_action_constants_are_which_they_say()
+    test_the_settings_accessors_against_the_line_itself()
     test_the_calls_that_need_a_real_line()
     print("test_termios: ok")
