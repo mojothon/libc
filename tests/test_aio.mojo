@@ -15,6 +15,7 @@ has finished is asked for, up to a number of times, and if it never
 does the test says so rather than waiting.
 """
 from std.memory.alloc import unsafe_alloc
+from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.aio import (
@@ -251,15 +252,30 @@ def test_cancel_and_sync_are_answered_about() raises:
     sync[] = Aiocb()
     sync[].set_fildes(fd)
     sync[].set_offset(0)
-    # And it is the sync that is asked for, which is what the answer says.
+    # And it is the sync that is asked for, which is what the answer says:
     # `aio_cancel` -- the call next to it, with the same two arguments --
     # answers 2 about the block the write left behind, because that block has
-    # already finished; the sync of it is taken, and 0 is what taken is.
-    assert_equal(
-        Int(aio_fsync(O_SYNC, cb)), 0, "the sync of the finished block is taken"
-    )
-    var asked = Int(aio_fsync(O_SYNC, sync))
-    assert_equal(asked, 0, "and so is a sync of a block of its own")
+    # already finished. Linux takes the sync of it and answers 0; Darwin
+    # answers -1 for the same block, so there what is held to is the older
+    # shape, answered at all.
+    comptime if CompilationTarget.is_macos():
+        var answered_done = Int(aio_fsync(O_SYNC, cb))
+        assert_true(
+            answered_done == 0 or answered_done == -1,
+            "the sync of the finished block is answered",
+        )
+        var asked = Int(aio_fsync(O_SYNC, sync))
+        assert_true(
+            asked == 0 or asked == -1, "and so is a sync of a block of its own"
+        )
+    else:
+        assert_equal(
+            Int(aio_fsync(O_SYNC, cb)),
+            0,
+            "the sync of the finished block is taken",
+        )
+        var asked = Int(aio_fsync(O_SYNC, sync))
+        assert_equal(asked, 0, "and so is a sync of a block of its own")
     assert_true(
         _wait_for(sync) != Int(EINPROGRESS),
         "and the block it was given is settled either way",
