@@ -1,7 +1,14 @@
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import c_longlong, c_ptr, c_ulonglong, c_void, c_wchar
+from libc.constant import (
+    c_longlong,
+    c_ptr,
+    c_ulonglong,
+    c_void,
+    c_wchar,
+    c_wint,
+)
 from libc.utils import (
     char_ptr_to_string,
     is_null,
@@ -32,17 +39,29 @@ from libc.wchar import (
     fwide,
     getwc,
     iswalnum,
+    iswalnum_l,
     iswalpha,
+    iswalpha_l,
     iswblank,
+    iswblank_l,
     iswcntrl,
+    iswcntrl_l,
     iswdigit,
+    iswdigit_l,
     iswgraph,
+    iswgraph_l,
     iswlower,
+    iswlower_l,
     iswprint,
+    iswprint_l,
     iswpunct,
+    iswpunct_l,
     iswspace,
+    iswspace_l,
     iswupper,
+    iswupper_l,
     iswxdigit,
+    iswxdigit_l,
     mbrlen,
     mbrtowc,
     mbsinit,
@@ -53,7 +72,9 @@ from libc.wchar import (
     mbstowcs,
     putwc,
     towlower,
+    towlower_l,
     towupper,
+    towupper_l,
     ungetwc,
     wcpcpy,
     wcpncpy,
@@ -308,6 +329,94 @@ def test_classify() raises:
     assert_true(Int(iswxdigit(102)) != 0, "f is a hexadecimal digit")
     assert_true(Int(iswxdigit(103)) == 0, "g is not")
     assert_true(Int(iswxdigit(48)) != 0, "and 0 is both")
+
+
+def test_the_l_variants_of_the_wide_classes() raises:
+    """The `_l` ones take a locale as their second argument, and in the C
+    locale each has to say what the plain one says. They are the same
+    call with the locale named, so the two spellings are the witness for
+    each other: a class read where another one was meant shows up as a
+    disagreement somewhere in what ASCII holds.
+    """
+    var c_locale = string_to_char_ptr("C")
+    var loc = newlocale(LC_ALL_MASK, c_locale, null_ptr[Locale]())
+    assert_true(Int(loc) != 0, "the locale object was made")
+
+    var bad_l = 0
+    for c in range(128):
+        var wc = c_wint(c)
+        if (iswalnum_l(wc, loc) != 0) != (iswalnum(wc) != 0):
+            bad_l += 1
+        if (iswalpha_l(wc, loc) != 0) != (iswalpha(wc) != 0):
+            bad_l += 1
+        if (iswblank_l(wc, loc) != 0) != (iswblank(wc) != 0):
+            bad_l += 1
+        if (iswcntrl_l(wc, loc) != 0) != (iswcntrl(wc) != 0):
+            bad_l += 1
+        if (iswdigit_l(wc, loc) != 0) != (iswdigit(wc) != 0):
+            bad_l += 1
+        if (iswgraph_l(wc, loc) != 0) != (iswgraph(wc) != 0):
+            bad_l += 1
+        if (iswlower_l(wc, loc) != 0) != (iswlower(wc) != 0):
+            bad_l += 1
+        if (iswprint_l(wc, loc) != 0) != (iswprint(wc) != 0):
+            bad_l += 1
+        if (iswpunct_l(wc, loc) != 0) != (iswpunct(wc) != 0):
+            bad_l += 1
+        if (iswspace_l(wc, loc) != 0) != (iswspace(wc) != 0):
+            bad_l += 1
+        if (iswupper_l(wc, loc) != 0) != (iswupper(wc) != 0):
+            bad_l += 1
+        if (iswxdigit_l(wc, loc) != 0) != (iswxdigit(wc) != 0):
+            bad_l += 1
+    assert_equal(
+        bad_l, 0, "every _l class agrees with its plain one over ASCII"
+    )
+
+    # And the answers are the class, not an echo of the input: one that
+    # is what each asks after and one that is not, with the pairs that
+    # come closest to each other asked about the character between them.
+    assert_true(Int(iswalpha_l(65, loc)) != 0, "A is a letter there")
+    assert_equal(Int(iswalpha_l(48, loc)), 0, "0 is not")
+
+    assert_true(Int(iswblank_l(32, loc)) != 0, "space is blank")
+    assert_true(Int(iswblank_l(10, loc)) == 0, "and a newline is space only")
+
+    assert_true(Int(iswcntrl_l(9, loc)) != 0, "tab is a control character")
+    assert_equal(Int(iswcntrl_l(32, loc)), 0, "space is printable")
+
+    assert_true(Int(iswgraph_l(65, loc)) != 0, "A has a glyph")
+    assert_equal(Int(iswgraph_l(32, loc)), 0, "space has none")
+
+    assert_true(Int(iswlower_l(97, loc)) != 0, "a is lower")
+    assert_equal(Int(iswlower_l(65, loc)), 0, "A is not")
+
+    assert_true(Int(iswprint_l(32, loc)) != 0, "space is printable")
+    assert_equal(Int(iswprint_l(9, loc)), 0, "a tab is not")
+
+    assert_true(Int(iswpunct_l(46, loc)) != 0, ". is punctuation")
+    assert_equal(Int(iswpunct_l(65, loc)), 0, "A is not")
+
+    assert_true(Int(iswspace_l(10, loc)) != 0, "a newline is space")
+    assert_equal(Int(iswspace_l(65, loc)), 0, "A is not")
+
+    assert_true(Int(iswupper_l(65, loc)) != 0, "A is upper")
+    assert_equal(Int(iswupper_l(97, loc)), 0, "a is not")
+
+    # f is the hexadecimal digit g is not, which is what tells this
+    # class from the decimal one.
+    assert_true(Int(iswxdigit_l(102, loc)) != 0, "f is a hexadecimal digit")
+    assert_true(Int(iswxdigit_l(103, loc)) == 0, "g is not")
+    assert_equal(Int(iswdigit_l(103, loc)), 0, "and g is no decimal digit")
+
+    # The folding, in both directions, and the character that has no
+    # other form handed back as itself.
+    assert_equal(Int(towupper_l(97, loc)), 65, "a folds up to A")
+    assert_equal(Int(towlower_l(65, loc)), 97, "A folds down to a")
+    assert_equal(Int(towupper_l(49, loc)), 49, "1 folds to itself")
+    assert_equal(Int(towlower_l(49, loc)), 49, "and so it does down")
+
+    freelocale(loc)
 
 
 def test_single_byte() raises:

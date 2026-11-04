@@ -54,7 +54,7 @@ the bottom.
 | `libc.fcntl` | `<fcntl.h>` | 49 |
 | `libc.getopt` | `<getopt.h>` taking a command line apart | 12 |
 | `libc.dlfcn` | `<dlfcn.h>` | 9 |
-| `libc.wchar` | `<wchar.h>` | 85 |
+| `libc.wchar` | `<wchar.h>` | 99 |
 | `libc.wordexp` | `<wordexp.h>` shell-style word splitting | 6 |
 | `libc.wctype` | `<wctype.h>` | 5 |
 | `libc.uchar` | `<uchar.h>` the UTF-16 and UTF-32 conversions | 4 |

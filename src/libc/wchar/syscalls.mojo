@@ -509,6 +509,50 @@ def towlower(wc: c_wint) -> c_wint:
     return external_call["towlower", c_wint, c_wint](wc)
 
 
+def towlower_l(wc: c_wint, loc: locale_t) -> c_wint:
+    """Libc POSIX `towlower_l` function.
+
+    Description:
+        The lower case form of a wide character, for a locale handed
+        in rather than the one the thread is in.
+
+    Args:
+        wc: A wide character.
+        loc: The locale to fold it in. It is a `locale_t` from
+            `newlocale`.
+
+    Returns:
+        The lower case form of `wc`, or `wc` itself if it has none.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/towlower.3.html).
+        Fn signature: `wint_t towlower_l(wint_t wc, locale_t loc)`.
+    """
+    return external_call["towlower_l", c_wint, c_wint, locale_t](wc, loc)
+
+
+def towupper_l(wc: c_wint, loc: locale_t) -> c_wint:
+    """Libc POSIX `towupper_l` function.
+
+    Description:
+        The upper case form of a wide character, for a locale handed
+        in rather than the one the thread is in.
+
+    Args:
+        wc: A wide character.
+        loc: The locale to fold it in. It is a `locale_t` from
+            `newlocale`.
+
+    Returns:
+        The upper case form of `wc`, or `wc` itself if it has none.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/towupper.3.html).
+        Fn signature: `wint_t towupper_l(wint_t wc, locale_t loc)`.
+    """
+    return external_call["towupper_l", c_wint, c_wint, locale_t](wc, loc)
+
+
 def btowc(c: Int32) -> Int32:
     """C library <wchar.h> function `btowc`.
 
@@ -681,6 +725,267 @@ def iswxdigit(wc: c_wint) -> c_int:
         `g` is what tells this one from `iswdigit`.
     """
     return external_call["iswxdigit", c_int, c_wint](wc)
+
+
+def iswalnum_l(wc: c_wint, loc: locale_t) -> c_int:
+    """Libc POSIX `iswalnum_l` function.
+
+    Description:
+        Says whether `wc` is alphanumeric, for a locale handed in
+        rather than the one the thread is in.
+
+    Args:
+        wc: A wide character.
+        loc: The locale to ask in. It is a `locale_t` from `newlocale`.
+
+    Returns:
+        Non-zero if it is one, else 0.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/iswalnum.3.html).
+        Fn signature: `int iswalnum_l(wint_t wc, locale_t loc)`.
+    """
+    return external_call["iswalnum_l", c_int, c_wint, locale_t](wc, loc)
+
+
+def iswalpha_l(wc: c_wint, loc: locale_t) -> c_int:
+    """Libc POSIX `iswalpha_l` function.
+
+    Description:
+        Says whether `wc` is a letter, for a locale handed in rather
+        than the one the thread is in.
+
+    Args:
+        wc: A wide character.
+        loc: The locale to ask in. It is a `locale_t` from `newlocale`.
+
+    Returns:
+        Non-zero if it is one, else 0.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/iswalpha.3.html).
+        Fn signature: `int iswalpha_l(wint_t wc, locale_t loc)`.
+    """
+    return external_call["iswalpha_l", c_int, c_wint, locale_t](wc, loc)
+
+
+def iswblank_l(wc: c_wint, loc: locale_t) -> c_int:
+    """Libc POSIX `iswblank_l` function.
+
+    Description:
+        Says whether `wc` is a blank — a space or a tab, and whatever
+        else the locale says — for a locale handed in rather than the
+        one the thread is in.
+
+    Args:
+        wc: A wide character.
+        loc: The locale to ask in. It is a `locale_t` from `newlocale`.
+
+    Returns:
+        Non-zero if it is one, else 0.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/iswblank.3.html).
+        Fn signature: `int iswblank_l(wint_t wc, locale_t loc)`.
+    """
+    return external_call["iswblank_l", c_int, c_wint, locale_t](wc, loc)
+
+
+def iswcntrl_l(wc: c_wint, loc: locale_t) -> c_int:
+    """Libc POSIX `iswcntrl_l` function.
+
+    Description:
+        Says whether `wc` is a control character, for a locale handed
+        in rather than the one the thread is in.
+
+    Args:
+        wc: A wide character.
+        loc: The locale to ask in. It is a `locale_t` from `newlocale`.
+
+    Returns:
+        Non-zero if it is one, else 0.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/iswcntrl.3.html).
+        Fn signature: `int iswcntrl_l(wint_t wc, locale_t loc)`.
+    """
+    return external_call["iswcntrl_l", c_int, c_wint, locale_t](wc, loc)
+
+
+def iswdigit_l(wc: c_wint, loc: locale_t) -> c_int:
+    """Libc POSIX `iswdigit_l` function.
+
+    Description:
+        Says whether `wc` is a decimal digit, for a locale handed in
+        rather than the one the thread is in.
+
+    Args:
+        wc: A wide character.
+        loc: The locale to ask in. It is a `locale_t` from `newlocale`.
+
+    Returns:
+        Non-zero if it is one, else 0.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/iswdigit.3.html).
+        Fn signature: `int iswdigit_l(wint_t wc, locale_t loc)`.
+
+        Digits are the ten there are of them in every locale, so this
+        is the one class the locale cannot change the answer of.
+    """
+    return external_call["iswdigit_l", c_int, c_wint, locale_t](wc, loc)
+
+
+def iswgraph_l(wc: c_wint, loc: locale_t) -> c_int:
+    """Libc POSIX `iswgraph_l` function.
+
+    Description:
+        Says whether `wc` is printable and not a space, for a locale
+        handed in rather than the one the thread is in.
+
+    Args:
+        wc: A wide character.
+        loc: The locale to ask in. It is a `locale_t` from `newlocale`.
+
+    Returns:
+        Non-zero if it is one, else 0.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/iswgraph.3.html).
+        Fn signature: `int iswgraph_l(wint_t wc, locale_t loc)`.
+    """
+    return external_call["iswgraph_l", c_int, c_wint, locale_t](wc, loc)
+
+
+def iswlower_l(wc: c_wint, loc: locale_t) -> c_int:
+    """Libc POSIX `iswlower_l` function.
+
+    Description:
+        Says whether `wc` is a lower case letter, for a locale handed
+        in rather than the one the thread is in.
+
+    Args:
+        wc: A wide character.
+        loc: The locale to ask in. It is a `locale_t` from `newlocale`.
+
+    Returns:
+        Non-zero if it is one, else 0.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/iswlower.3.html).
+        Fn signature: `int iswlower_l(wint_t wc, locale_t loc)`.
+    """
+    return external_call["iswlower_l", c_int, c_wint, locale_t](wc, loc)
+
+
+def iswprint_l(wc: c_wint, loc: locale_t) -> c_int:
+    """Libc POSIX `iswprint_l` function.
+
+    Description:
+        Says whether `wc` is printable, for a locale handed in rather
+        than the one the thread is in.
+
+    Args:
+        wc: A wide character.
+        loc: The locale to ask in. It is a `locale_t` from `newlocale`.
+
+    Returns:
+        Non-zero if it is one, else 0.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/iswprint.3.html).
+        Fn signature: `int iswprint_l(wint_t wc, locale_t loc)`.
+    """
+    return external_call["iswprint_l", c_int, c_wint, locale_t](wc, loc)
+
+
+def iswpunct_l(wc: c_wint, loc: locale_t) -> c_int:
+    """Libc POSIX `iswpunct_l` function.
+
+    Description:
+        Says whether `wc` is punctuation — printable and neither a
+        letter, a digit, a space nor what `iswcntrl` holds — for a
+        locale handed in rather than the one the thread is in.
+
+    Args:
+        wc: A wide character.
+        loc: The locale to ask in. It is a `locale_t` from `newlocale`.
+
+    Returns:
+        Non-zero if it is one, else 0.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/iswpunct.3.html).
+        Fn signature: `int iswpunct_l(wint_t wc, locale_t loc)`.
+    """
+    return external_call["iswpunct_l", c_int, c_wint, locale_t](wc, loc)
+
+
+def iswspace_l(wc: c_wint, loc: locale_t) -> c_int:
+    """Libc POSIX `iswspace_l` function.
+
+    Description:
+        Says whether `wc` is white space, for a locale handed in
+        rather than the one the thread is in.
+
+    Args:
+        wc: A wide character.
+        loc: The locale to ask in. It is a `locale_t` from `newlocale`.
+
+    Returns:
+        Non-zero if it is one, else 0.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/iswspace.3.html).
+        Fn signature: `int iswspace_l(wint_t wc, locale_t loc)`.
+    """
+    return external_call["iswspace_l", c_int, c_wint, locale_t](wc, loc)
+
+
+def iswupper_l(wc: c_wint, loc: locale_t) -> c_int:
+    """Libc POSIX `iswupper_l` function.
+
+    Description:
+        Says whether `wc` is an upper case letter, for a locale handed
+        in rather than the one the thread is in.
+
+    Args:
+        wc: A wide character.
+        loc: The locale to ask in. It is a `locale_t` from `newlocale`.
+
+    Returns:
+        Non-zero if it is one, else 0.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/iswupper.3.html).
+        Fn signature: `int iswupper_l(wint_t wc, locale_t loc)`.
+    """
+    return external_call["iswupper_l", c_int, c_wint, locale_t](wc, loc)
+
+
+def iswxdigit_l(wc: c_wint, loc: locale_t) -> c_int:
+    """Libc POSIX `iswxdigit_l` function.
+
+    Description:
+        Says whether `wc` is a hexadecimal digit, for a locale handed
+        in rather than the one the thread is in.
+
+    Args:
+        wc: A wide character.
+        loc: The locale to ask in. It is a `locale_t` from `newlocale`.
+
+    Returns:
+        Non-zero if it is one, else 0.
+
+    Notes:
+        [Reference](https://man7.org/linux/man-pages/man3/iswxdigit.3.html).
+        Fn signature: `int iswxdigit_l(wint_t wc, locale_t loc)`.
+
+        A hexadecimal digit is wider than a decimal one by six
+        letters, `a` through `f` and `A` through `F`, so asking about
+        `g` is what tells this one from `iswdigit_l`.
+    """
+    return external_call["iswxdigit_l", c_int, c_wint, locale_t](wc, loc)
 
 
 # `WEOF` is the wide character that is not one: what a read hands back

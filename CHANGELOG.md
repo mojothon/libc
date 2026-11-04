@@ -7,6 +7,18 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **The fourteen `_l` forms of the wide-character classes.** `iswalnum_l`
+  through `iswxdigit_l`, plus `towlower_l` and `towupper_l` — each is the
+  plain call with the locale named instead of the thread's borrowed, and
+  the sieve that looks for what is left to bind found them as one family:
+  declared in the headers, exported by Darwin's libraries, and of one
+  signature (`wint_t` and a `locale_t`) that the package already speaks.
+  The test makes a C locale, asks every class about every ASCII
+  character both ways — the plain spelling and the `_l` one are the
+  witness for each other — and then asks each class about the character
+  between it and its nearest neighbour, the pairs that come closest
+  being where a symbol pointed at a sibling shows up.
+
 - **`libc.signal.sigaction_t` — the `struct sigaction` the binding said did not
   exist.** Third sample of `--kind order`: 19 caught, 2 crashed, 1 already
   explained, and 2 survivors — `fmaxf`, which is commutative, and `sigaction`,
