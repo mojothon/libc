@@ -197,6 +197,13 @@ BREAKS = [
         "return self._u64(DIRENT_INO_OFFSET)",
         "return self._u64(0)",
     ),
+    Break(
+        "check-layouts",
+        "a constant that says a C type is wider than it is",
+        "src/libc/termios/syscalls.mojo",
+        "comptime TERMIOS_FLAG_BYTES: Int = 8 if CompilationTarget.is_macos() else 4",
+        "comptime TERMIOS_FLAG_BYTES: Int = 8",
+    ),
 ]
 
 

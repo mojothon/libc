@@ -252,6 +252,17 @@ same claim made where no list can see it. There was one of those:
 was true by luck rather than by anything asked. It is `DIRENT_INO_OFFSET`
 now, in the list, and both directions are counted, so the next one fails.
 
+An offset is not the only number a struct accessor writes down. `termios`
+reads a flag word out of its slot, and how much of the slot is the word is
+C's answer rather than this package's: four bytes of `unsigned int` on
+glibc, eight of `unsigned long` on Darwin. `TERMIOS_FLAG_BYTES` and
+`TERMIOS_SPEED_BYTES` say so, and until recently nothing used them — the
+width was decided a second time inside the read and the write, by asking
+which platform this is, so the constants were two exported claims with no
+reader and no question. They are what the accessors read and write with
+now, and `sizeof(tcflag_t)` and `sizeof(speed_t)` are what they are
+compared against, so the decision is in one place and that place is asked.
+
 What is left is counted rather than trusted silently, and it splits in two.
 The members of a struct Mojo lays out itself rest on the order they are
 declared in, which is C's arrangement when the order is and says nothing

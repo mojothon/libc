@@ -221,6 +221,18 @@ OFFSETS: dict[tuple[str, str], tuple[str, str]] = {
     ("libc.utmpx", "UT_HOST_OFFSET"): ("utmpx", "ut_host"),
 }
 
+# Constants that state how wide a C type is, rather than standing for one.
+# `libc.termios` reads its flag and speed words out of a slot, and how much of
+# that slot is the word is C's answer: four bytes of `unsigned int` on glibc,
+# eight of `unsigned long` on Darwin. Neither is a type alias, so
+# `check-constants` has no `sizeof` to ask; the type is written down here
+# beside the constant, and asked the way the struct sizes are.
+WIDTHS: dict[tuple[str, str], str] = {
+    ("libc.termios", "TERMIOS_FLAG_BYTES"): "tcflag_t",
+    ("libc.termios", "TERMIOS_SPEED_BYTES"): "speed_t",
+}
+
+
 # The members whose struct only one platform has. `sys/sysinfo.h` is glibc's
 # and XNU has no header by that name. `struct sigevent` exists on both, but
 # it is not the same struct twice: the only thing that uses it on Darwin is
@@ -453,8 +465,10 @@ def c_layouts(items: list[tuple[str, str]]) -> tuple[dict[str, tuple[int, int]],
     return said, refused
 
 
-def mojo_offsets() -> tuple[dict[tuple[str, str], int], list[tuple[str, str]]]:
-    """What Mojo says each of those numbers is on this platform.
+def mojo_numbers(
+    keys: list[tuple[str, str]],
+) -> tuple[dict[tuple[str, str], int], list[tuple[str, str]]]:
+    """What Mojo says each of these numbers is on this platform.
 
     Read out of the compiler rather than out of the source, for the same
     reason the sizes are: the values are conditional on the platform, and
@@ -504,7 +518,7 @@ def mojo_offsets() -> tuple[dict[tuple[str, str], int], list[tuple[str, str]]]:
         ask(batch[:middle])
         ask(batch[middle:])
 
-    ask(list(OFFSETS))
+    ask(keys)
     return said, missing
 
 
@@ -700,7 +714,7 @@ def main() -> int:
         for label, why in not_a_struct:
             print(f"      {label:<28} {why}")
 
-    placed_here, unread = mojo_offsets()
+    placed_here, unread = mojo_numbers(list(OFFSETS))
     placed_by_c, unheard_of = c_offsets()
     offset_agree = 0
     offset_disagree = []
@@ -736,6 +750,34 @@ def main() -> int:
         print(f"      {len(offset_unchecked)} could not be checked:")
         for line in offset_unchecked:
             print(f"      {line}")
+
+    wide_here, wide_unread = mojo_numbers(list(WIDTHS))
+    wide_by_c, wide_absent = c_layouts(
+        [(f"{module}.{name}", WIDTHS[(module, name)]) for module, name in WIDTHS]
+    )
+    width_disagree = []
+    width_agree = 0
+    for module, name in WIDTHS:
+        label = f"{module}.{name}"
+        if (module, name) in wide_unread or label not in wide_by_c:
+            continue
+        if wide_here[(module, name)] == wide_by_c[label][0]:
+            width_agree += 1
+        else:
+            width_disagree.append(
+                (label, WIDTHS[(module, name)], wide_here[(module, name)], wide_by_c[label][0])
+            )
+
+    print(f"\n  {len(WIDTHS)} constants state how wide a C type is:")
+    print(f"      {width_agree} agree with sizeof")
+    for label, c_type, said, actual in width_disagree:
+        print(f"      {label:<40} says {said}  sizeof({c_type}) is {actual}")
+    for module, name in WIDTHS:
+        label = f"{module}.{name}"
+        if (module, name) in wide_unread:
+            print(f"      {label:<40} Mojo will not say")
+        elif label in wide_absent:
+            print(f"      {label:<40} C has no {WIDTHS[(module, name)]}")
 
     fielded = [f for _l, _m, _n, fields in declared for f in fields]
     held_as_bytes = [
@@ -813,7 +855,16 @@ def main() -> int:
         print("  *** constants that place a member and are not asked about ***")
     if unsaid:
         print("  *** members read at a number that is not written down ***")
-    if disagree or offset_disagree or wrong_stated or unlisted or unsaid:
+    if width_disagree:
+        print("  *** constants that say the wrong width for a C type ***")
+    if (
+        disagree
+        or offset_disagree
+        or wrong_stated
+        or unlisted
+        or unsaid
+        or width_disagree
+    ):
         return 1
     print("  nothing disagrees with C")
     return 0

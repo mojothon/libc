@@ -145,13 +145,28 @@ struct Termios:
             acc |= UInt64(self._byte(off + i)) << UInt64(i * 8)
         return acc
 
-    def _flag(self, off: Int) -> UInt64:
-        """The flag word at `off`, which is four bytes on glibc and eight here.
+    def _word[width: Int](self, off: Int) -> UInt64:
+        """The word at `off`, which is `width` bytes there.
+
+        Args:
+            off: Where the word starts.
+
+        Returns:
+            The word, four bytes wide on glibc and eight on Darwin, which
+            is what `TERMIOS_FLAG_BYTES` and `TERMIOS_SPEED_BYTES` say.
         """
-        comptime if CompilationTarget.is_macos():
+        comptime if width == 8:
             return self._u64(off)
         else:
             return UInt64(self._u32(off))
+
+    def _flag(self, off: Int) -> UInt64:
+        """The flag word at `off`, which is `TERMIOS_FLAG_BYTES` wide."""
+        return self._word[TERMIOS_FLAG_BYTES](off)
+
+    def _speed(self, off: Int) -> UInt64:
+        """The speed word at `off`, which is `TERMIOS_SPEED_BYTES` wide."""
+        return self._word[TERMIOS_SPEED_BYTES](off)
 
     def _set_byte(mut self, off: Int, to: UInt8):
         """Puts the single byte at `off`, leaving the rest of its slot."""
@@ -160,14 +175,24 @@ struct Termios:
         var mask: UInt64 = ~(UInt64(0xFF) << shift)
         self._slots[slot] = (self._slots[slot] & mask) | (UInt64(to) << shift)
 
+    def _set_word[width: Int](mut self, off: Int, to: UInt64):
+        """Puts the word at `off`, `width` bytes of it, leaving the rest of the
+        slot.
+
+        Args:
+            off: Where the word starts.
+            to: The word to put there.
+        """
+        for i in range(width):
+            self._set_byte(off + i, UInt8((to >> UInt64(i * 8)) & 0xFF))
+
     def _set_flag(mut self, off: Int, to: UInt64):
         """Puts the flag word at `off`, however wide one is here."""
-        comptime if CompilationTarget.is_macos():
-            for i in range(8):
-                self._set_byte(off + i, UInt8((to >> UInt64(i * 8)) & 0xFF))
-        else:
-            for i in range(4):
-                self._set_byte(off + i, UInt8((to >> UInt64(i * 8)) & 0xFF))
+        self._set_word[TERMIOS_FLAG_BYTES](off, to)
+
+    def _set_speed(mut self, off: Int, to: UInt64):
+        """Puts the speed word at `off`, however wide one is here."""
+        self._set_word[TERMIOS_SPEED_BYTES](off, to)
 
     def iflag(self) -> UInt64:
         """Input modes: what is done to what comes in before it is read."""
@@ -187,11 +212,11 @@ struct Termios:
 
     def ispeed(self) -> UInt64:
         """The input baud rate, as `speed_t` gives it back."""
-        return self._flag(TERMIOS_ISPEED_OFFSET)
+        return self._speed(TERMIOS_ISPEED_OFFSET)
 
     def ospeed(self) -> UInt64:
         """The output baud rate, as `speed_t` gives it back."""
-        return self._flag(TERMIOS_OSPEED_OFFSET)
+        return self._speed(TERMIOS_OSPEED_OFFSET)
 
     def set_iflag(mut self, to: UInt64):
         """Puts the input modes."""
@@ -211,11 +236,11 @@ struct Termios:
 
     def set_ispeed(mut self, to: UInt64):
         """Puts the input baud rate, in the numbering this libc uses."""
-        self._set_flag(TERMIOS_ISPEED_OFFSET, to)
+        self._set_speed(TERMIOS_ISPEED_OFFSET, to)
 
     def set_ospeed(mut self, to: UInt64):
         """Puts the output baud rate, in the numbering this libc uses."""
-        self._set_flag(TERMIOS_OSPEED_OFFSET, to)
+        self._set_speed(TERMIOS_OSPEED_OFFSET, to)
 
     def cc(self, at: Int) -> UInt8:
         """The control character at subscript `at`, such as `VMIN`.

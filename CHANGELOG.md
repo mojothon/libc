@@ -19,6 +19,15 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- **`termios` reads and writes its flag words at the width it says, and the
+  width is asked of C.** `TERMIOS_FLAG_BYTES` and `TERMIOS_SPEED_BYTES` state
+  how wide a `tcflag_t` and a `speed_t` are here — four bytes on glibc, eight
+  on Darwin — and nothing used either one: the width was decided again inside
+  `_flag`, `_set_flag` and their speed callers, by asking which platform this
+  is. Two exported claims, no reader, no question. The accessors are
+  `_word[width]` and `_set_word[width]` now, called with those constants, and
+  `check-layouts` puts `sizeof(tcflag_t)` and `sizeof(speed_t)` beside them,
+  which is a third question it did not ask before.
 - **`check-layouts` asks about the offsets it does not have, and found one.**
   The report over `OFFSETS` walked the list: a name in it that had been
   renamed or dropped came back unchecked, which is the list going stale. A
