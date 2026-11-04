@@ -917,8 +917,9 @@ constant written as a plain number was checked by asking what that number
 meant, and <code>EACCES = 13</code> was asked about <code>13</code>. It agreed with itself 1078
 times. Floating point had the same hole from the other side: the name
 question was only asked about integers, so <code>LDBL_EPSILON</code> was compared
-with the number <code>LDBL_EPSILON</code> was written as. Asked by name, three constants were wrong on the first run:
-<code>O_RSYNC</code> was -1 on Linux, where it is <code>0x101000</code>; <code>O_DSYNC</code> was -1 in
+with the number <code>LDBL_EPSILON</code> was written as.</p>
+<p>Asked by name, three constants were wrong on the first run: <code>O_RSYNC</code>
+was -1 on Linux, where it is <code>0x101000</code>; <code>O_DSYNC</code> was -1 in
 <code>libc.constant.file</code> and <code>0x400000</code> in <code>libc.fcntl</code>, two files that could
 not hear each other disagree; and Darwin's <code>BUFSIZ</code> was Linux's 8192
 where its own header says 1024, along with the <code>LDBL_*</code> limits of a
@@ -926,6 +927,26 @@ where its own header says 1024, along with the <code>LDBL_*</code> limits of a
 which is the point of it — the platform decides which side of an
 <code>if is_macos()</code> is under trial, and neither job can check the branch it
 is not standing on.</p>
+<p>Three more things were in the way of asking, and each of them was quiet.
+A value too long for one line comes back from the formatter inside
+brackets, and a branch of it is usually a Mojo type call —
+<code>Int32(0) if not is_macos() else Int32(2)</code> — so every <code>LC_*</code> category was
+reported as "computed in Mojo" and compared with nothing. Both wrappers
+come off now, and that is how Darwin turned out to be holding its
+categories with its <em>mask</em> numbers: <code>setlocale(LC_NUMERIC, …)</code> there set
+the time category. An enumerator is not a macro, so <code>#ifdef</code> cannot see
+<code>PTHREAD_MUTEX_NORMAL</code>; the preprocessed headers can, and asking about
+the names that appear in them is what compares the fifteen constants
+nothing had compared since they were written — including
+<code>PTHREAD_MUTEX_DEFAULT = PTHREAD_MUTEX_NORMAL</code>, which is a claim about
+the header and now gets checked like one. And <code>is_x86()</code> is answerable
+the same way <code>is_macos()</code> is, because the check runs on the machine that
+would compile the package, which puts the <code>FE_*</code> bits under trial on both
+architectures rather than on neither. It also made the reader nest: a
+conditional inside a conditional is what <code>FE_ALL_EXCEPT</code> is, since Darwin
+counts a sixth flag — the x86 denormal operand on Intel, flush-to-zero on
+arm — and settling only the outer question would have read the wrong
+half.</p>
 <p>Two kinds it cannot follow, and it says so rather than passing them.
 glibc 2.42 redefined the <code>B*</code> line speeds from indices into <code>c_cflag</code>
 to the rates themselves, so 13 used to mean 9600 baud and now 9600 does,
