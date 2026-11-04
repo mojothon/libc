@@ -1019,7 +1019,7 @@ counted rather than asked, which is what the count is for.</p>
 <tbody>
 <tr>
 <td>places one by hand, at an offset listed in <code>OFFSETS</code></td>
-<td>116</td>
+<td>117</td>
 </tr>
 <tr>
 <td>declares them in order and leaves the layout to Mojo</td>
@@ -1060,6 +1060,26 @@ share two words on Darwin and take four words on glibc, so the same struct
 has <code>f_flag</code> at 48 and at 72, and one number written from the other
 platform's header would leave nine members reading the right bytes of the
 wrong member.</p>
+<p>Two other things can go wrong with that list, and both are asked now. A name
+in it that is no longer in the package is the list going stale, and was
+already reported as unchecked. A constant that places a member and is <em>not</em>
+in it is the list going incomplete, which nothing said anything about, since
+the report only ever walked the list itself. And a member read at a number
+written into the call — <code>self._u64(0)</code> rather than a named offset — is the
+same claim made where no list can see it. There was one of those:
+<code>dirent.ino</code> read offset 0 directly, which is <code>d_ino</code> on both platforms and
+was true by luck rather than by anything asked. It is <code>DIRENT_INO_OFFSET</code>
+now, in the list, and both directions are counted, so the next one fails.</p>
+<p>An offset is not the only number a struct accessor writes down. <code>termios</code>
+reads a flag word out of its slot, and how much of the slot is the word is
+C's answer rather than this package's: four bytes of <code>unsigned int</code> on
+glibc, eight of <code>unsigned long</code> on Darwin. <code>TERMIOS_FLAG_BYTES</code> and
+<code>TERMIOS_SPEED_BYTES</code> say so, and until recently nothing used them — the
+width was decided a second time inside the read and the write, by asking
+which platform this is, so the constants were two exported claims with no
+reader and no question. They are what the accessors read and write with
+now, and <code>sizeof(tcflag_t)</code> and <code>sizeof(speed_t)</code> are what they are
+compared against, so the decision is in one place and that place is asked.</p>
 <p>What is left is counted rather than trusted silently, and it splits in two.
 The members of a struct Mojo lays out itself rest on the order they are
 declared in, which is C's arrangement when the order is and says nothing
