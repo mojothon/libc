@@ -2264,35 +2264,35 @@ def tcsetpgrp(fildes: c_int, pgrp_id: c_int) -> c_int:
     return external_call["tcsetpgrp", c_int, c_int, c_int](fildes, pgrp_id)
 
 
-def brk(addr: c_ptr[c_void]) -> c_int:
-    """Libc BSD `brk` function.
-
-    Reference:
-        https://man7.org/linux/man-pages/man2/brk.2.html
+def brk(addr: c_ptr[c_void]):
+    """Libc BSD `brk` function, bound without the value it hands back.
 
     Args:
         addr: Where the end of the data segment is to be put.
 
     Returns:
-        0 where the end was moved there, or -1 where it was not, with
-        `errno` set.
+        Nothing. Where the end went is read back with `sbrk(0)`, which is
+        the reading this call is paired with.
 
     Notes:
         [Reference](https://man7.org/linux/man-pages/man2/brk.2.html).
         Fn signature: `int brk(void *addr)`.
 
-        The data segment ends where the program break is, and this
-        moves the break. `sbrk` is the same knob said as a distance
-        rather than a place, and `sbrk(0)` reads where the break is
-        without moving it, which is how the place to hand this is come
-        by.
+        Darwin declares this one as a `void *` returning `void *` taker, so
+        the two platforms do not agree about what the call hands back, and
+        what is bound is the call rather than the answer: reading an int out
+        of a returned pointer is reading whatever the low half of it holds.
 
-        The break is not this program's alone to move: the allocator
-        grows the segment by the same means, so a caller that moves the
-        break owes it a move back before anything is asked of the
-        allocator again.
+        glibc moves the break and says whether it went. Darwin does not
+        implement the call at all: `Libc/emulated/brk.c` sets `errno` to
+        `ENOMEM` and returns without looking at its argument, so the break
+        there is moved by `sbrk` and never moved back.
+
+        The break is not this program's alone to move: the allocator grows
+        the segment by the same means, so a caller that moves the break owes
+        it a move back before anything is asked of the allocator again.
     """
-    return external_call["brk", c_int, c_ptr[c_void]](addr)
+    external_call["brk", NoneType, c_ptr[c_void]](addr)
 
 
 def sbrk(increment: c_long) -> c_ptr[c_void]:

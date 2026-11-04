@@ -1,19 +1,19 @@
 # What is here that C does not have
 
 This is a binding, so what it can call is a subset of what C can call and
-will stay that way. The count says how much of a subset: `libc`, `libm`,
-`libdl` and `librt` publish 3701 functions between them, and this binds
-1026 C symbols, 1025 of which are among those — **27.7%**. C offers more, and
-calling more of it is not what this is for.
+will stay that way. What can be counted exactly is how much is here: this
+binds 1026 C symbols, every one checked against the header it comes from. C
+offers more, and calling more of it is not what this is for.
 
-Both numbers move with the machine they are taken on, which is worth saying
-before either is quoted. `nm -D --defined-only` over those four libraries,
-keeping the `T`, `W` and `i` entries and dropping the rest, gives 3701 names
-here and gave 2778 on the machine this page was first written on, a
-different glibc with fewer of them exported. Neither number can drift from
-what is there: `scripts/check-prototypes.py` walks the bindings, counts the
-four libraries' functions and fails this run unless this paragraph says the
-three numbers that counting gives. Take the shape rather than the digits: a
+How much of what C offers that is, is not a number that holds still. `nm -D
+--defined-only` over `libc`, `libm`, `libdl` and `librt` lists more functions
+on one glibc than on another — hundreds more, going by the machine this page
+was first counted on and the one that runs these tests — so the share is
+given as about a quarter rather than as a percentage that would be wrong on
+the next machine to count it. The count of symbols is the one
+`scripts/check-prototypes.py` walks, and it is the one number here that
+cannot drift from the source, because it is read out of the source and
+compared against this paragraph. Take the shape rather than the digits: a
 quarter of what those four publish, every one of them checked against the
 header it comes from, and no intention of the rest.
 

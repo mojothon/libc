@@ -6,6 +6,7 @@ from std.testing import assert_equal, assert_true
 from libc.fcntl import O_CREAT, O_RDONLY, open as open_with_mode
 from libc.constant import (
     AT_FDCWD,
+    ENOMEM,
     ENOENT,
     ERANGE,
     c_ptr,
@@ -1605,16 +1606,24 @@ def test_pause_comes_back_because_a_signal_arrived() raises:
 
 
 def test_brk_and_sbrk_move_the_end_of_the_data_segment() raises:
-    """`sbrk` moves the program break a distance and says where it was;
-    `brk` moves it to a place and says whether it went. Each is the
-    other's witness: the place `sbrk` was asked for is read back with
-    `sbrk(0)`, which moves nothing, and the place `brk` was given is
-    where reading finds the break after it said yes.
+    """`sbrk` moves the program break a distance and says where it was, and
+    `sbrk(0)` reads the break without moving it — which is what makes the
+    two answer each other: the place the move reports is the place the
+    reading had, and the reading afterwards is that place plus what was
+    asked for.
 
-    The move is one made and one taken back, and nothing is asked of
-    the allocator in between: the break is the allocator's to grow by
-    the same means, and a caller that leaves it somewhere else has
-    rearranged a house it does not keep the keys to.
+    Putting it back with `brk` is asked only where it can be done. glibc
+    moves the break to whatever it is handed; Darwin does not implement the
+    call at all — `Libc/emulated/brk.c` answers `ENOMEM` and returns without
+    looking at its argument — so what is asserted there is the refusal and
+    the reading that says nothing moved. The call is bound without a return
+    value for the same reason: one platform says `int` and the other
+    `void *`.
+
+    The move is one made and one taken back, and nothing is asked of the
+    allocator in between: the break is the allocator's to grow by the same
+    means, and a caller that leaves it somewhere else has rearranged a
+    house it does not keep the keys to.
     """
     var here = sbrk(0)
     assert_true(Int(UInt(here)) != 0, "the break is somewhere")
@@ -1631,11 +1640,26 @@ def test_brk_and_sbrk_move_the_end_of_the_data_segment() raises:
         "and the break has moved by what was asked",
     )
 
-    assert_equal(brk(here), 0, "and it is put back where reading found it")
-    var back = sbrk(0)
-    assert_equal(
-        Int(UInt(back)), Int(UInt(here)), "which is where the break is now"
-    )
+    comptime if CompilationTarget.is_macos():
+        set_errno(0)
+        brk(here)
+        assert_equal(
+            get_errno(),
+            ENOMEM,
+            "the call Darwin does not have refuses, and says why",
+        )
+        assert_equal(
+            Int(UInt(sbrk(0))),
+            Int(UInt(now)),
+            "and the break has not moved, which is what refusing means here",
+        )
+    else:
+        brk(here)
+        assert_equal(
+            Int(UInt(sbrk(0))),
+            Int(UInt(here)),
+            "and it is back where reading found it",
+        )
 
 
 def main() raises:

@@ -23,9 +23,14 @@ All notable changes to this project are documented here. The format follows
   alarm it never held, so being ended by `SIGALRM` is what says it waited.
 
   `sbrk` is asked to move the break and to read it back without moving it
-  (`sbrk(0)`), and `brk` to put it back where the reading found it. Each is
-  the other's witness, and nothing is asked of the allocator in between,
-  which is the whole of what a caller may do with these.
+  (`sbrk(0)`), so the place the move reports and the place the reading had
+  are the same number, and the reading after it is that number plus 64.
+  `brk` is asked only where it is implemented: glibc moves the break to what
+  it is given and the reading confirms it, while Darwin's is a stub in
+  `Libc/emulated/brk.c` that answers `ENOMEM` without looking at its
+  argument, so what is asserted there is the refusal and the break that did
+  not move. The call is bound without a return value for the same reason:
+  `int` on one platform and `void *` on the other.
 
 - **The six `strto*_l` readers and `strptime_l`.** The sieve's next clean
   family: `strtol_l`, `strtoul_l`, `strtoll_l`, `strtoull_l`, `strtod_l`
@@ -796,13 +801,18 @@ All notable changes to this project are documented here. The format follows
   above was written, and each of the three fails the check with the file
   named and the two answers shown.
 
-- **`docs/beyond-c.md` was dividing one count by another.** The paragraph
-  that opens the page said the four libraries publish 3574 functions, that
-  1012 of the bound symbols are among them, and that the two make 28.3% —
-  three numbers, from two different `nm` filters, and none of them what the
-  counting gives (3701, 1025, 27.7%). One listing is counted now, in
-  `scripts/check-prototypes.py`, which prints the three numbers it finds and
-  fails the run unless the page says the same three.
+- **`docs/beyond-c.md` was dividing one count by another, and neither could
+  be right everywhere.** The page opened with three figures — 3574 functions
+  published, 1012 of the bound symbols among them, 28.3% — taken from two
+  different `nm` filters, so the percentage divided one set by another.
+
+  Counting them was put into `check-prototypes` and taken back out again the
+  same day: the denominator is whatever glibc the run happens to have, and
+  the same commit counted 3701 of them on one machine and 3985 on the next,
+  which makes a check that compares the page against this machine and passes
+  only on this machine. What the page says now is the number that is the same
+  everywhere — 1026 symbols, read out of the source — and a quarter, with the
+  digits left out because they would be wrong somewhere.
 
 - **The new signal test freed the same block twice.** Its second scenario
   reused the `status` buffer the first had already freed, so the second
