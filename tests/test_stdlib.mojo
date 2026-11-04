@@ -265,6 +265,24 @@ def test_the_untried_calls() raises:
     var p = aligned_alloc(64, 128)
     assert_true(Int(UInt(p)) != 0, "aligned_alloc hands back memory")
     assert_equal(Int(UInt(p)) % 64, 0, "and it starts on the alignment")
+    _ = free(p)
+    # Four blocks alive at once, each asked to start on a boundary of 1024.
+    # An allocator that fills this call with its ordinary stock lands on a
+    # boundary of 16 at best, and four live addresses in a row all landing
+    # on one in 64 is not a run anything should bet the suite on.
+    var a = aligned_alloc(1024, 1024)
+    var b = aligned_alloc(1024, 1024)
+    var c = aligned_alloc(1024, 1024)
+    var d = aligned_alloc(1024, 1024)
+    assert_true(Int(UInt(a)) != 0, "the first of the four is given")
+    assert_equal(Int(UInt(a)) % 1024, 0, "and it starts on the alignment")
+    assert_equal(Int(UInt(b)) % 1024, 0, "and so does the second")
+    assert_equal(Int(UInt(c)) % 1024, 0, "and the third")
+    assert_equal(Int(UInt(d)) % 1024, 0, "and the fourth")
+    _ = free(a)
+    _ = free(b)
+    _ = free(c)
+    _ = free(d)
 
     # The two are of one type and in that order, and the size is the half that
     # can make a swap visible: 48 is not a power of two, so a binding handing
@@ -278,7 +296,6 @@ def test_the_untried_calls() raises:
     assert_equal(Int(UInt(q)) % 32, 0, "that starts where it was asked to")
     _ = free(q)
     slot.unsafe_free()
-    _ = free(p)
 
     var big = string_to_char_ptr("123456789012")
     assert_equal(

@@ -447,6 +447,28 @@ def test_process_groups() raises:
     assert_true(getpgid(0) > 0, "this process is in a process group")
     assert_equal(getpgid(0), getpgrp(), "the group `getpgrp` names, also")
     assert_true(getsid(0) > 0, "and this process is in a session")
+    # A child that moves itself into a group of its own keeps the session it
+    # was born into, so the two answers come apart there: `getpgid`, the call
+    # one signature away, reads the group and would name the child itself.
+    var session = getsid(0)
+    var grouped = fork()
+    if grouped == 0:
+        _ = setpgid(0, 0)
+        if getsid(0) != session or getsid(0) == getpid():
+            _ = exit(8)
+        _ = exit(0)
+    assert_true(grouped > 0, "there is a child to ask")
+    var its_session = unsafe_alloc[Int32](1)
+    its_session.unsafe_store(0, 0)
+    assert_equal(
+        waitpid(grouped, its_session, 0), grouped, "and it is waited for"
+    )
+    assert_equal(
+        Int(WEXITSTATUS(its_session.unsafe_load())),
+        0,
+        "and the session it kept is not the group it made",
+    )
+    its_session.unsafe_free()
     # The group this process is in is not its own -- not yet -- and naming it
     # is a move to where it already is, which answers 0. Both numbers are then
     # not 0, which is what lets the two be told apart: handed over swapped, the
@@ -694,6 +716,26 @@ def test_the_ids_and_the_terminal() raises:
         assert_equal(
             Int(gettid()), Int(getpid()), "and it is this process's own"
         )
+
+    # A child knows which process its parent is, and "a positive number" is
+    # not that: `fork` itself answers with one of those here. The only
+    # witness is a child comparing what it is told with who told it.
+    var parent = getpid()
+    var child = fork()
+    if child == 0:
+        if getppid() != parent:
+            _ = exit(8)
+        _ = exit(0)
+    assert_true(child > 0, "there is a child to ask")
+    var by_whom = unsafe_alloc[Int32](1)
+    by_whom.unsafe_store(0, 0)
+    assert_equal(waitpid(child, by_whom, 0), child, "and it is waited for")
+    assert_equal(
+        Int(WEXITSTATUS(by_whom.unsafe_load())),
+        0,
+        "and the child named the process that forked it",
+    )
+    by_whom.unsafe_free()
 
     # Not standard input, which is a terminal when somebody is watching
     # and not when they are not: `/dev/null` is never one.
@@ -1285,6 +1327,15 @@ def test_access_dup_and_link() raises:
     var hard = string_to_char_ptr("/tmp/libc_link_name")
     _ = unlink(hard)
     assert_equal(link(path, hard), 0, "link gives the file a second name")
+    # `symlink`, the call one signature away, would have made a name that
+    # points at the file instead of one that is it: the inode's link count
+    # is what says which of the two happened.
+    var counted = unsafe_alloc[Stat](1)
+    assert_equal(stat(path, counted), 0, "the file can be asked")
+    assert_equal(
+        counted.unsafe_offset(0)[].nlink(), 2, "a second name is a second link"
+    )
+    counted.unsafe_free()
     assert_equal(access(hard, 0), 0, "which is a path like any other")
     _ = unlink(hard)
     assert_equal(access(hard, 0), -1, "and unlinking it takes it away")

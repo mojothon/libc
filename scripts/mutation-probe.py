@@ -583,6 +583,19 @@ NO_OBSERVATION = {
         "can be seen. It is the same wall the four above run into: what a "
         "lock does is only visible to whoever cannot have it"
     ),
+    "pthread_mutexattr_destroy->pthread_mutexattr_init": (
+        "the same pair as the attribute objects above, for the mutex's: "
+        "`_destroy` answers 0 and hands the object back, `_init` answers 0 "
+        "and fills one in, and after a destroy no read of the object is "
+        "defined -- so no observation this suite may make separates them"
+    ),
+    "sync->setusershell": (
+        "neither answers anything, and what each does happens outside this "
+        "address space: `sync` starts the kernel's held-back writes, and "
+        "`setusershell` opens the shells file for the next `getusershell`, "
+        "which this suite only reads from the top -- the walk starts the "
+        "same way however many times the file was opened before"
+    ),
     "getenv->secure_getenv": (
         "measured in a process that is not privileged, which is every process "
         "this suite runs in: `secure_getenv` answers nothing only when the "

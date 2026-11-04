@@ -79,6 +79,13 @@ def test_what_the_scheduler_says() raises:
     # there for the assertion to find.
     var param = unsafe_alloc[sched_param](1)
     param.unsafe_offset(0)[].set_sched_priority(99)
+    comptime if not CompilationTarget.is_macos():
+        # The refusal is the part that tells setting from reading: the
+        # ordinary policy has no 99 in it, and a call that reads where it
+        # was asked to write would answer 0 and leave the real number there.
+        assert_equal(
+            sched_setparam(0, param), -1, "the ordinary policy refuses 99"
+        )
     assert_equal(
         sched_getparam(0, param), 0, "sched_getparam fills in what it has"
     )

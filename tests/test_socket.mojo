@@ -19,6 +19,7 @@ from libc.constant import (
     SOCK_DGRAM,
     SOCK_STREAM,
     SOL_SOCKET,
+    SO_RCVTIMEO,
     SO_TYPE,
     c_ulong,
 )
@@ -44,8 +45,10 @@ from libc.sys.socket import (
     socket,
     socketaddr,
     socketpair,
+    setsockopt,
 )
 from libc.poll import poll, pollfd
+from libc.sys.stat import timeval
 from libc.unistd import close
 from libc.utils import null_ptr
 
@@ -96,6 +99,26 @@ def ask_the_port(of: Int32) raises -> Int:
     addr.unsafe_free()
     length.unsafe_free()
     return port
+
+
+def give_a_receive_timeout(fd: Int32) raises:
+    """A second in which to answer, so a call that reads where it was
+    asked to write comes back refused instead of holding the suite until
+    the harness gives up on it.
+    """
+    var wait = unsafe_alloc[timeval](1)
+    wait.unsafe_offset(0)[].tv_sec = 1
+    wait.unsafe_offset(0)[].tv_usec = 0
+    assert_equal(
+        Int(
+            setsockopt(
+                fd, SOL_SOCKET, SO_RCVTIMEO, wait.unsafe_bitcast[NoneType](), 16
+            )
+        ),
+        0,
+        "a receive timeout is set",
+    )
+    wait.unsafe_free()
 
 
 def test_a_connection_over_the_loopback() raises:
@@ -158,6 +181,7 @@ def test_a_connection_over_the_loopback() raises:
         mine,
         "and the far end of the accepted socket is the client",
     )
+    give_a_receive_timeout(client)
     var going = unsafe_alloc[UInt8](1)
     going.unsafe_offset(0)[] = 0x5A
     assert_equal(
@@ -232,6 +256,7 @@ def test_socketpair() raises:
     var left = ends.unsafe_load(0)
     var right = ends.unsafe_load(1)
 
+    give_a_receive_timeout(left)
     var going = unsafe_alloc[UInt8](1)
     going.unsafe_offset(0)[] = 0x37
     assert_equal(send(left, going, 1, 0), 1, "one byte goes into the left")
@@ -365,6 +390,7 @@ def test_sendmsg() raises:
     message.unsafe_offset(0)[].set_msg_iov(pieces)
     message.unsafe_offset(0)[].set_msg_iovlen(1)
 
+    give_a_receive_timeout(left)
     assert_equal(
         Int(sendmsg(left, message, 0)),
         1,
@@ -426,6 +452,7 @@ def test_recvmsg_gathers_without_taking() raises:
     out.unsafe_offset(0)[] = msghdr()
     out.unsafe_offset(0)[].set_msg_iov(sending)
     out.unsafe_offset(0)[].set_msg_iovlen(2)
+    give_a_receive_timeout(left)
     assert_equal(
         Int(sendmsg(left, out, 0)), 5, "five bytes out over two pieces"
     )
@@ -528,6 +555,7 @@ def test_the_mark_that_out_of_band_data_leaves() raises:
 
     assert_equal(sockatmark(taken), 0, "no mark where none was made")
 
+    give_a_receive_timeout(client)
     var going = unsafe_alloc[UInt8](2)
     going.unsafe_offset(0)[] = 97  # a
     going.unsafe_offset(1)[] = 98  # b
