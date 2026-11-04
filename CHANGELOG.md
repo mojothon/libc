@@ -784,6 +784,18 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- **The README still said the version was `0.2.0`, ten releases after it
+  stopped being.** Nothing reads the front page, so nothing noticed: the
+  places `check-release` compared all agreed with each other, and the one a
+  stranger reads first was the only one that did not. It states `0.12.0` now,
+  and `scripts/check-release.py` reads that line back out of `README.md`.
+
+  The Mojo range on the same page is read the same way, and it was a place
+  nothing had ever compared. Three ways of getting it wrong — the number, the
+  range, and the line going missing — were each tried before the sentence
+  above was written, and each of the three fails the check with the file
+  named and the two answers shown.
+
 - **`docs/beyond-c.md` was dividing one count by another.** The paragraph
   that opens the page said the four libraries publish 3574 functions, that
   1012 of the bound symbols are among them, and that the two make 28.3% —

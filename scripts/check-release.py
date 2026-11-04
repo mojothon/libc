@@ -7,15 +7,21 @@ build, the docs would build, every other check here would pass, and a reader
 following the install page would be told to ask conda for a release that is
 no longer the one being shipped.
 
-The five are the workspace in `pixi.toml`, the context in
-`recipe/recipe.yaml`, `comptime __version__` in `src/libc/version.mojo`, and
-the two pages that state it — `docs/version.md` in a table and
-`docs/install.md` in a specifier. The specifier is not compared as a string:
-`>=0.12.0,<0.13` is a claim about which versions can be installed, so the
-question asked of it is whether the version this checkout is actually
+The six are the workspace in `pixi.toml`, the context in
+`recipe/recipe.yaml`, `comptime __version__` in `src/libc/version.mojo`,
+`README.md`, and the two pages that state it — `docs/version.md` in a table
+and `docs/install.md` in a specifier. The specifier is not compared as a
+string: `>=0.12.0,<0.13` is a claim about which versions can be installed, so
+the question asked of it is whether the version this checkout is actually
 satisfies it.
 
-The toolchain range is the same kind of fact in four places, and is compared
+The README is here because it was the one that had drifted: it still said
+`0.2.0` ten releases later, and the five places this script knew about all
+agreed with each other while the front page of the repository disagreed with
+all of them. A number written once and never read again is a number that is
+wrong by the next release, so what the README says is read here now.
+
+The toolchain range is the same kind of fact in five places, and is compared
 as the string each of them states, since it is a constraint rather than a
 number.
 """
@@ -32,12 +38,14 @@ def stated_versions() -> dict[str, str]:
         "pixi.toml": (ROOT / "pixi.toml").read_text(),
         "recipe/recipe.yaml": (ROOT / "recipe" / "recipe.yaml").read_text(),
         "src/libc/version.mojo": (ROOT / "src" / "libc" / "version.mojo").read_text(),
+        "README.md": (ROOT / "README.md").read_text(),
         "docs/version.md": (ROOT / "docs" / "version.md").read_text(),
     }
     patterns = {
         "pixi.toml": r"^version = \"([^\"]+)\"",
         "recipe/recipe.yaml": r"^\s*version: \"([^\"]+)\"",
         "src/libc/version.mojo": r"^comptime __version__ = \"([^\"]+)\"",
+        "README.md": r"`libc\.__version__`\s+is\s+`([^`]+)`",
         "docs/version.md": r"\|\s*`libc\.__version__`\s*\|\s*`([^`]+)`\s*\|",
     }
     found = {}
@@ -53,15 +61,18 @@ def stated_toolchain() -> dict[str, str]:
     sources = {
         "pixi.toml": (ROOT / "pixi.toml").read_text(),
         "recipe/recipe.yaml": (ROOT / "recipe" / "recipe.yaml").read_text(),
+        "README.md": (ROOT / "README.md").read_text(),
         "docs/version.md": (ROOT / "docs" / "version.md").read_text(),
         "docs/install.md": (ROOT / "docs" / "install.md").read_text(),
     }
-    # `docs/version.md` puts it in a table cell, and the other three write it
-    # after the name — `mojo = "..."` in the two TOML blocks and
+    # `docs/version.md` puts it in a table cell, and the other four write it
+    # after the name — `mojo = "..."` in the two TOML blocks and the install
+    # page, `- **Mojo:** \`...\`` on the README, and
     # `- mojo >=1.1.0,<2` in the recipe, which quotes nothing.
     patterns = {
         "pixi.toml": r"^mojo\s*=\s*\"([^\"]+)\"",
         "recipe/recipe.yaml": r"^\s*-\s*mojo\s+(>=[\d.]+,<[\d.]+)",
+        "README.md": r"\*\*Mojo:\*\*\s*`([^`]+)`",
         "docs/version.md": r"\|\s*Mojo\s*\|\s*`([^`]+)`\s*\|",
         "docs/install.md": r"^\s*mojo = \"([^\"]+)\"",
     }
@@ -115,6 +126,7 @@ def main() -> int:
         "pixi.toml",
         "recipe/recipe.yaml",
         "src/libc/version.mojo",
+        "README.md",
         "docs/version.md",
     ):
         if where not in versions:
@@ -135,7 +147,13 @@ def main() -> int:
         )
 
     toolchains = stated_toolchain()
-    for where in ("pixi.toml", "recipe/recipe.yaml", "docs/version.md", "docs/install.md"):
+    for where in (
+        "pixi.toml",
+        "recipe/recipe.yaml",
+        "README.md",
+        "docs/version.md",
+        "docs/install.md",
+    ):
         if where not in toolchains:
             problems.append(f"{where}: no Mojo range found, so it cannot be compared")
     if len(set(toolchains.values())) > 1:
