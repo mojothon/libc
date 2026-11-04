@@ -658,13 +658,14 @@ def test_the_four_old_ones_hold_release_ignore_and_pause() raises:
     the point of the ending is that the signal, once let through, ends
     the child by the default and by nothing else.
 
-    The holding child is made to hold a signal that is already waiting:
-    the mask says it is held and the pending set says it is still
-    there, which is what holding means and what ignoring would not
-    have left behind. It takes the waiting one back with `sigwait`,
-    opens the door with `sigrelse`, and raises it -- and that one ends
-    it, because the door is open now and nothing is standing in the
-    way. How far it came is said down a pipe, so a child that died
+    The holding child holds a signal and only then raises it: the mask
+    says it is held, and the pending set says the raising is still
+    there rather than having been acted on, which is the whole of what
+    holding means. Hold run as a raise would end the child at that
+    line instead. It takes the waiting one back with `sigwait` and
+    finds the pending set empty, opens the door with `sigrelse`, and
+    raises it once more -- and that one does end it, because the door
+    is open now and nothing is standing in the way. How far it came is said down a pipe, so a child that died
     before it said so died of the holding, and a child that died after
     saying so died of the signal it let come.
 
@@ -694,16 +695,17 @@ def test_the_four_old_ones_hold_release_ignore_and_pause() raises:
         dfl.unsafe_free()
 
         _ = sigprocmask(SIG_SETMASK, empty_set(), null_ptr[UInt8]())
-        var held = empty_set()
-        _ = sigaddset(held, SIGTERM)
-        _ = sigprocmask(SIG_BLOCK, held, null_ptr[UInt8]())
+        assert_equal(sighold(SIGTERM), 0, "the signal is held")
         _ = craise(SIGTERM)
 
-        assert_equal(sighold(SIGTERM), 0, "the signal is held")
         var mask = empty_set()
         _ = sigprocmask(SIG_BLOCK, null_ptr[UInt8](), mask)
         if sigismember(mask, SIGTERM) != 1:
             _ = exit(3)
+        var waiting = empty_set()
+        _ = sigpending(waiting)
+        if sigismember(waiting, SIGTERM) != 1:
+            _ = exit(4)
 
         var said = unsafe_alloc[UInt8](1)
         said.unsafe_store(0, UInt8(1))
@@ -720,6 +722,11 @@ def test_the_four_old_ones_hold_release_ignore_and_pause() raises:
             Int(taken.unsafe_load()), Int(SIGTERM), "and it is the one held"
         )
         taken.unsafe_free()
+
+        var emptied = empty_set()
+        _ = sigpending(emptied)
+        if sigismember(emptied, SIGTERM) != 0:
+            _ = exit(5)
 
         _ = ualarm(999999, 0)
         assert_equal(sigrelse(SIGTERM), 0, "and the door is opened")

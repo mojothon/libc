@@ -14,13 +14,18 @@ All notable changes to this project are documented here. The format follows
   said as the end of the data segment and as a distance from it.
 
   The four are asked in children, because two of them end the process that
-  uses them. A child holds a signal with `sighold` while it is already
-  waiting, takes it back out of the pending set with `sigwait`, and is ended
-  by that same signal once `sigrelse` opens the door — a byte down a pipe
-  says how far it came, so a child that died of the holding and one that died
-  of the release are told apart. `sigignore` is asked against `sigpending`:
-  an ignored signal is not a waiting one. And `sigpause` is asked with an
-  alarm it never held, so being ended by `SIGALRM` is what says it waited.
+  uses them. A child holds a signal with `sighold` and only then raises it,
+  so the holding is the only thing between the raise and the end of the
+  child: the mask says it is held, the pending set says the raise is still
+  there to be acted on, `sigwait` takes it out, and once `sigrelse` opens the
+  door the same signal ends the process. A byte down a pipe says how far it
+  came, which is what tells a child that died of the holding from one that
+  died of the release — and the first draft of this test could not tell them
+  apart, because it had blocked the signal by hand beforehand, which the
+  mutation probe found by pointing `sighold` at `raise` and watching nothing
+  happen. `sigignore` is asked against `sigpending`: an ignored signal is not
+  a waiting one. And `sigpause` is asked with an alarm it never held, so being
+  ended by `SIGALRM` is what says it waited.
 
   `sbrk` is asked to move the break and to read it back without moving it
   (`sbrk(0)`), so the place the move reports and the place the reading had
