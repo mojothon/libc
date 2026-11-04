@@ -70,6 +70,23 @@ jobs:
       - name: Check that every reason in the probe still has a pair
         run: pixi run mutation-tables
 
+  checks:
+    # Each check above is a claim that something bad would be caught, and
+    # nothing checked the claim: `check-channels` spent its first ten
+    # minutes passing by finding no channel names at all. This breaks one
+    # thing at a time on a copy of the tree and asks the check that owns
+    # it to say so. A hundred seconds, which is its own job rather than
+    # one more step of the lint job for exactly that reason.
+    name: The checks themselves
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.11.0
+        with:
+          cache: true
+      - name: Check that each check fails on a tree that is wrong
+        run: pixi run check-checks
+
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

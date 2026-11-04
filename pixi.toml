@@ -18,6 +18,11 @@ package = "mkdir -p dist && mojo precompile src/libc -o dist/libc.mojoc"
 # build and failing none of them. `check-docstrings` parses the same
 # sections by hand and never saw them, so this asks the compiler.
 check-warnings = "python3 scripts/check-warnings.py"
+# Every check above is a claim that something bad would be caught, and
+# nothing checks the claim: `check-channels` passed by finding no channel
+# names at all. This breaks one thing at a time on a copy of the tree and
+# asks the check that owns it to say so.
+check-checks = "python3 scripts/check-checks.py"
 # Every other check reads `src/`. What a reader installs is `dist/libc.mojoc`,
 # and nothing asked whether the package holds what the tree does: a name
 # `precompile` drops, or a sub-package it does not carry, would pass all of

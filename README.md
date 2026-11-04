@@ -41,6 +41,7 @@ pixi run check-release    # fail if the version is not the same everywhere it is
 pixi run check-channels   # fail if the docs name a conda channel that cannot resolve
 pixi run check-warnings   # fail if the compiler cannot read a docstring as written
 pixi run check-package    # fail if a name does not import through dist/libc.mojoc
+pixi run check-checks     # fail if a check no longer fails on a broken tree
 pixi run doc              # serve the docs locally
 ```
 
