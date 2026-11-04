@@ -8,19 +8,37 @@ rechecks it, a value that differs between platforms cannot be checked by
 eye at all without a machine of each, and a header that changes under a
 newer libc leaves the number sitting there looking correct.
 
-So this asks the compiler. The same headers this package binds are
-included, each constant is printed as C sees it, and the two numbers are
-compared:
+So this asks the compiler, twice, and the two questions are different
+ones:
+
+    what C makes of the value as it is written here -- `0x100` is 256
+    what C makes of the name -- `EACCES` is 13
+
+The first catches a number the two languages read differently: octal
+spelt the Mojo way, a literal past what the type holds, a sum of C's own
+macros. The second catches a number that was simply copied wrong, and
+until it was added nothing did: `EACCES = 14` agreed with itself, because
+the only question asked was what `14` meant. Three of the four numbers
+below came out of that second question on the day it was written --
+`O_RSYNC` said -1 on Linux, where it is `0x101000`, and `O_DSYNC` was
+the one file of two that disagreed about Darwin.
 
     $ python3 scripts/check-constants.py
-    331 constants agree with C
-      2 disagree
-     23 could not be checked
+    1076 agree with C
+       2 are C's number read as a signed 32-bit word
+       2 written as expressions, which C accepts
+      89 could not be checked
 
 Which platform it is decides which side of a `X if is_macos() else Y` is
 the right one, so this is also how those get checked: the Linux job asks
 about the Linux side and the macOS job about the macOS side, and neither
 side is trusted to have been read correctly.
+
+The second line is `EPOLLET` and `WEOF`, which are `0x80000000` and
+`(wint_t)-1`: written here as `Int32`, the same bits read negative, and
+C asked through `long long` reads them unsigned. Everything else that
+differs still differs -- 13 and -13 are not one word -- so this is a
+narrow allowance rather than a tolerance.
 
 Three kinds of constant are reported rather than compared, and each says
 why when it can:
@@ -328,6 +346,99 @@ def from_c(
     return said, refused
 
 
+def mode_of(value: float | None, expr: str) -> str:
+    """How C has to be asked about this one: float, unsigned, or ordinary."""
+    if (value is not None and isinf(value)) or (
+        "." in expr and not expr.lstrip().startswith("0x")
+    ):
+        return "f"
+    if value is not None and value >= 2**63:
+        return "u"
+    return "i"
+
+
+def from_c_names(items: list[tuple[str, str]], mode: str) -> dict[str, float]:
+    """What C says the constant called that is, for the names it has.
+
+    This is the comparison the older form could not make. It asked C what
+    the *written value* meant -- `EACCES = 14` was checked by asking C
+    about `14`, which answered `14` -- so every constant written as a
+    plain number agreed with itself, and 1078 of them agreed that way. A
+    number copied wrong out of a header is exactly the mistake that
+    leaves, and it is the mistake this file opens by describing.
+
+    Asked by name instead. `#ifdef` rather than a bare expression,
+    because the names here are not all C's: `c_char` and the rest are
+    Mojo's own, and one undefined name in a file of a thousand would fail
+    the compilation for all of them. A name with no `#define` prints
+    nothing and is asked about its written value afterwards, as before.
+
+    A macro that takes arguments, or a name the headers spell as a
+    pointer, still fails to compile; the group is halved until whoever
+    caused it is alone, at which point that name is left to the other
+    path.
+    """
+    said: dict[str, float] = {}
+    if not items:
+        return said
+
+    def ask(group: list[tuple[str, str]]) -> None:
+        if not group:
+            return
+        includes = "\n".join(f"#include <{h}>" for h in headers())
+        body = "\n".join(
+            f"#ifdef {expr}\n{print_in_c(label, expr, mode)}\n#endif"
+            for label, expr in group
+        )
+        source = (
+            f"#include <stdio.h>\n{includes}\nint main(void) {{\n{body}\n"
+            "    return 0;\n}\n"
+        )
+        work = ROOT / ".build-check"
+        work.mkdir(exist_ok=True)
+        src = work / "constants-by-name.c"
+        exe = work / "constants-by-name"
+        src.write_text(source)
+        built = subprocess.run(
+            [*CC, *DEFINES, "-w", "-o", str(exe), str(src)],
+            capture_output=True,
+            text=True,
+        )
+        if built.returncode != 0:
+            if len(group) == 1:
+                return
+            middle = len(group) // 2
+            ask(group[:middle])
+            ask(group[middle:])
+            return
+        running = subprocess.run([str(exe)], capture_output=True, text=True)
+        for line in running.stdout.strip().splitlines():
+            if "=" not in line:
+                continue
+            label, value = line.split("=", 1)
+            said[label] = float(value) if mode == "f" else float(int(value))
+
+    ask(items)
+    return said
+
+
+def same_word(mine: float, theirs: float) -> bool:
+    """Whether these are the same 32-bit word, one of them read signed.
+
+    `EPOLLET` is `0x80000000` and `WEOF` is `(wint_t)-1`; both are written
+    here as `Int32`, where the same bits read -2147483648 and -1. C
+    prints them through `long long`, which reads them unsigned, so the
+    two numbers differ while the word does not. Everything else that
+    differs still differs after this: 13 and -13 are not one word, and
+    neither are 4096 and 1052672.
+    """
+    if mine == theirs:
+        return True
+    if mine < 0 <= theirs or theirs < 0 <= mine:
+        return int(mine) % 2**32 == int(theirs) % 2**32
+    return False
+
+
 def show(value: float) -> str:
     """A number as it should be printed, including the ones that are not
     quite numbers.
@@ -384,6 +495,7 @@ def main() -> int:
     # sometimes written in more than one file and C answers about every
     # one of them; without this the second would hide the first.
     groups: dict[str, list[tuple[str, str]]] = {}
+    modes: dict[int, str] = {}
     for index, (name, _place, raw, value) in enumerate(listed):
         expr = c_expression(raw)
         if expr is None:
@@ -392,22 +504,31 @@ def main() -> int:
         # Infinity answers true to `>= 2**63`, which is how an earlier
         # version came to print `HUGE_VAL` as an integer and read the
         # wreckage back as the package having got it wrong.
-        if (value is not None and isinf(value)) or (
-            "." in expr and not expr.lstrip().startswith("0x")
-        ):
-            mode = "f"
-        elif value is not None and value >= 2**63:
-            mode = "u"
-        else:
-            mode = "i"
+        mode = mode_of(value, expr)
+        modes[index] = mode
         groups.setdefault(mode, []).append((label, expr))
+
+    # First, the question that compares the written number with the header's
+    # own: only for the ones written as a number, which is where the older
+    # form was asking the number about itself.
+    named: dict[str, float] = {}
+    for mode in ("i", "u"):
+        items = [
+            (f"{index}:{name}", name)
+            for index, (name, _place, _raw, value) in enumerate(listed)
+            if modes.get(index) == mode and value is not None
+        ]
+        named.update(from_c_names(items, mode))
 
     said: dict[str, float] = {}
     for mode, group in groups.items():
-        told, _ = from_c(group, mode)
+        left = [(label, expr) for label, expr in group if label not in named]
+        told, _ = from_c(left, mode)
         said.update(told)
+    said.update(named)
 
     agree: list[str] = []
+    signed: list[tuple[str, str, float, float]] = []
     disagree: list[tuple[str, str, float, float]] = []
     accepted: list[tuple[str, str, float]] = []
     uncounted: list[tuple[str, str, str]] = []
@@ -424,12 +545,19 @@ def main() -> int:
             accepted.append((name, place, truth))
         elif truth == value:
             agree.append(name)
+        elif same_word(value, truth):
+            signed.append((name, place, value, truth))
         else:
             disagree.append((name, place, value, truth))
 
     platform = "Darwin" if sys.platform == "darwin" else "Linux"
     print(f"Checking constants against the headers on {platform}.\n")
     print(f"  {len(agree)} agree with C")
+    if signed:
+        print(f"  {len(signed)} are C's number read as a signed 32-bit word:")
+        for name, place, mine, theirs in signed:
+            print(f"      {name:<28} here {show(mine):>14}  C says"
+                  f" {show(theirs):>14}  ({place})")
     if accepted:
         print(f"  {len(accepted)} written as expressions, which C accepts")
         if "--values" in sys.argv:
