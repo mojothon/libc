@@ -114,6 +114,11 @@ jobs:
         # so twenty is room rather than a limit.
         timeout-minutes: 20
         run: pixi run test
+      # Every build printed sixteen warnings about docstrings the compiler
+      # read differently than they were meant, and every build exited 0, so
+      # the seventeenth would have gone past too.
+      - name: Check that the package compiles without a warning
+        run: pixi run check-warnings
       - name: Precompile the package
         run: pixi run package
       # Two platforms, because half the work this does is deciding which

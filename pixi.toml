@@ -13,6 +13,11 @@ mojo = ">=1.1.0,<2"
 test = "mojo run -I src -I tests tests/test_main.mojo"
 # `mojo precompile` will not create the output directory.
 package = "mkdir -p dist && mojo precompile src/libc -o dist/libc.mojoc"
+# The compiler reads the docstrings too, and warns where it reads one
+# differently than it was meant: sixteen had collected, printed by every
+# build and failing none of them. `check-docstrings` parses the same
+# sections by hand and never saw them, so this asks the compiler.
+check-warnings = "python3 scripts/check-warnings.py"
 run = "mojo run -I src src/main.mojo"
 format = "mojo format src tests"
 # `mojo format` has no --check flag, so format a copy and diff it.
