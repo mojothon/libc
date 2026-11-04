@@ -42,6 +42,16 @@ All notable changes to this project are documented here. The format follows
   written in a test that asserts it stops at the room and leaves the fields
   beside it empty.
 
+- **A check on the width a setter writes a member at.** The read side has been
+  compared with `sizeof` since the widths were first asked about; the write
+  side was not, and it is the one that hides: a four-byte member written two
+  bytes wide reads back correctly for every value that fits in two, because the
+  half nobody wrote is the zero the struct started as. `set_ut_pid` changed to
+  `_set_u16` returns `4321` through `ut_pid` exactly as a correct one does.
+  `check-layouts` now compares all eleven setters with `sizeof`, and a test
+  writes a pid with something in its upper half so the behavioral half of the
+  claim is asked for too.
+
 ### Changed
 
 - **`siginfo_t.si_ptr` reads the other half of the union `si_value` reads

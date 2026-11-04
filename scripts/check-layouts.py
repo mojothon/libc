@@ -526,6 +526,63 @@ def read_widths() -> tuple[
     return found, places
 
 
+# And the same claim made in the other direction: a setter puts a value into a
+# member and the width it writes has to be the member's width, for the same
+# reason. It is the one that hides best — a member written four bytes wide
+# reads back correctly for every value that fits in four, because the high
+# half is the zero it was already initialised to.
+WRITERS = {"_set_byte": 1, "_set_u16": 2, "_set_u32": 4, "_set_u64": 8, "_set_at": 8}
+WRITE = re.compile(r"self\.(_set_(?:byte|u16|u32|u64|at))\((\w+_OFFSET),")
+
+
+def write_widths() -> tuple[
+    dict[tuple[str, str, str], dict[str, set[int]]],
+    dict[tuple[str, str, str], str],
+]:
+    """How wide each setter writes its member, per platform, and where it is.
+
+    The same shape as `read_widths` and for the same reason: a setter inside
+    `comptime if CompilationTarget.is_macos():` is writing the Darwin member,
+    and only that platform's width is compared with a Darwin `sizeof`.
+    """
+    found: dict[tuple[str, str, str], dict[str, set[int]]] = {}
+    places: dict[tuple[str, str, str], str] = {}
+    DECLARED = re.compile(r"^    def (\w+)")
+    for path in SOURCES:
+        module = module_of(path)
+        guard: str | None = None
+        accessor: str | None = None
+        for number, line in enumerate(path.read_text().split("\n"), 1):
+            if GUARDED in line:
+                guard = "macos"
+                continue
+            stripped = line.strip()
+            if guard == "macos" and stripped == "else:":
+                guard = "linux"
+                continue
+            if guard is not None and (
+                line.startswith("    def ")
+                or (stripped and not line.startswith("        "))
+            ):
+                guard = None
+            named = DECLARED.match(line)
+            if named is not None:
+                accessor = named.group(1)
+                continue
+            match = WRITE.search(line)
+            if match is None or accessor is None:
+                continue
+            width = WRITERS.get(match.group(1))
+            if width is None:
+                continue
+            key = (module, match.group(2), accessor)
+            per = found.setdefault(key, {"linux": set(), "macos": set()})
+            for platform in (("linux", "macos") if guard is None else (guard,)):
+                per[platform].add(width)
+                places.setdefault(key, f"{path.relative_to(ROOT)}:{number}")
+    return found, places
+
+
 # A room this package gives itself for one of those members: `_string` reads
 # at most that many bytes of it and `_set_string` writes at most that many, so
 # the number is a claim about how wide the member is, in the same terms the
@@ -1020,6 +1077,41 @@ def main() -> int:
                 f" {member_width}   {read_at[(module, constant, accessor)]}"
             )
 
+    wrote_here, wrote_at = write_widths()
+    write_agree = 0
+    write_disagree = []
+    write_unchecked = []
+    for key, per in sorted(wrote_here.items()):
+        module, offset, accessor = key
+        widths = sorted(per[here])
+        if not widths:
+            continue
+        member_width = member_sizes.get((module, offset))
+        if member_width is None:
+            struct, member = OFFSETS.get((module, offset), ("", ""))
+            write_unchecked.append(
+                f"{module + '.' + accessor:<40} writes {offset}, and C has no"
+                f" width for {struct}.{member}"
+            )
+        elif widths == [member_width]:
+            write_agree += 1
+        else:
+            write_disagree.append((module, offset, accessor, widths, member_width))
+
+    if wrote_here:
+        asked = write_agree + len(write_disagree) + len(write_unchecked)
+        print(f"\n  Written widths, for the {asked} setters that write a member:")
+        print(f"      {write_agree} agree with sizeof")
+        for module, offset, accessor, widths, member_width in write_disagree:
+            struct, member = OFFSETS.get((module, offset), ("", ""))
+            print(
+                f"      {module + '.' + accessor:<40} writes "
+                f"{'/'.join(str(w) for w in widths)}  sizeof({struct}.{member})"
+                f" is {member_width}   {wrote_at[(module, offset, accessor)]}"
+            )
+        for line in write_unchecked:
+            print(f"      {line}")
+
     roomed = rooms()
     room_agree = 0
     room_disagree = []
@@ -1167,6 +1259,8 @@ def main() -> int:
         print("  *** members read at a width or an offset C does not agree with ***")
     if room_disagree:
         print("  *** members given a room C says they do not have ***")
+    if write_disagree:
+        print("  *** members written at a width C does not agree with ***")
     if (
         disagree
         or offset_disagree
@@ -1177,6 +1271,7 @@ def main() -> int:
         or read_disagree
         or read_half
         or room_disagree
+        or write_disagree
     ):
         return 1
     print("  nothing disagrees with C")

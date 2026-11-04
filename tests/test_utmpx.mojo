@@ -87,6 +87,20 @@ def test_a_record_reads_back_what_was_put_in_it() raises:
     assert_equal(record.ut_user(), "someone", "running into the user's name")
 
 
+def test_a_number_wider_than_two_bytes_survives_the_write() raises:
+    """The pid is four bytes, and a narrower write would still read back.
+
+    A member written with fewer bytes than C gives it does not fail on a
+    small value: the high half is the zero the record starts out as, so
+    four thousand read back through a two-byte write is still four
+    thousand. Only a number with something in its upper half tells the
+    two apart, which is the reason this one is large.
+    """
+    var record = utmpx()
+    record.set_ut_pid(300000)
+    assert_equal(record.ut_pid(), 300000, "the whole pid is written")
+
+
 def test_a_name_too_long_for_its_field_stops_at_the_field() raises:
     """The room is the field's width, and the field beside it is next.
 
@@ -401,6 +415,7 @@ def test_endutxent_ends_the_walk_and_setutxent_starts_it_again() raises:
 def main() raises:
     test_a_new_record_is_the_empty_one()
     test_a_record_reads_back_what_was_put_in_it()
+    test_a_number_wider_than_two_bytes_survives_the_write()
     test_a_name_too_long_for_its_field_stops_at_the_field()
     test_a_record_written_back_comes_out_again()
     test_bytes_written_at_these_offsets_are_bytes_libc_reads()

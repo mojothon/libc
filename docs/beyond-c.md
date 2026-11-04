@@ -298,6 +298,16 @@ which is the half the shift keeps, and that is what it is compared with: take
 the other half and the number is the right size and the wrong value, which is
 what `gl_flags` did for three releases before anyone looked.
 
+The same width question is asked in the other direction, of what a setter
+writes. Eleven setters put a value into a member at a width they name —
+`_set_u32(UT_PID_OFFSET, ...)` — and all eleven agree with that member's
+`sizeof`. This is the claim that hides best of the three: a four-byte member
+written two bytes wide reads back correctly for every value that fits in two,
+because the half nobody wrote is the zero the struct started as, so `4321`
+written two bytes wide and `4321` written four come back the same number. Only
+a value with something in its upper half tells them apart, which is what the
+`utmpx` test writes.
+
 What is left is counted rather than trusted silently, and it splits in two.
 The members of a struct Mojo lays out itself rest on the order they are
 declared in, which is C's arrangement when the order is and says nothing

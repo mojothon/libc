@@ -213,6 +213,13 @@ BREAKS = [
     ),
     Break(
         "check-layouts",
+        "a member written narrower than the member is",
+        "src/libc/utmpx/syscalls.mojo",
+        "self._set_u32(UT_PID_OFFSET, UInt32(pid))",
+        "self._set_u16(UT_PID_OFFSET, UInt16(pid))",
+    ),
+    Break(
+        "check-layouts",
         "a room given to a member that is wider than the member",
         "src/libc/utmpx/syscalls.mojo",
         "comptime UT_LINE_ROOM: Int = 32",
