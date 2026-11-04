@@ -133,6 +133,63 @@ MORE_HEADERS = [
 ]
 
 
+# Names where this package and the header disagree and neither is wrong.
+#
+# Each was found by asking about the name rather than the number, and each
+# is a place where the header moved and a `comptime` number could not
+# follow: the number is written once and compiled against whichever libc
+# is there. They are listed with what happened rather than left to pass,
+# because a disagreement nobody has to explain is one that spreads.
+SPELLED_DIFFERENTLY: dict[str, str] = {
+    # glibc 2.42 (August 2025) redefined these from indices into `c_cflag`
+    # to the baud rates themselves, and changed `cfsetispeed` to take them
+    # that way: 13 used to mean 9600 baud and now 9600 does. A constant
+    # written here is compiled against one libc or the other, so it cannot
+    # be both; these are the indices, which is what every glibc before
+    # 2.42 says and what the Darwin branch beside them already says. The
+    # other half of the same change -- a system where `cfsetispeed` wants
+    # the rate -- is served by `libc.termios` taking the number from the
+    # caller, which is where the `termios` documentation says so.
+    **{
+        speed: "glibc 2.42 turned this index into the rate itself"
+        for speed in (
+            "B50",
+            "B75",
+            "B110",
+            "B134",
+            "B150",
+            "B200",
+            "B300",
+            "B600",
+            "B1200",
+            "B1800",
+            "B2400",
+            "B4800",
+            "B9600",
+            "B19200",
+            "B38400",
+            "B57600",
+            "B115200",
+            "B230400",
+        )
+    },
+    # glibc 2.34 did the same to this one: `SIGSTKSZ` became
+    # `sysconf(_SC_SIGSTKSZ)`, which answers 13504 on a machine with
+    # AVX-512 and 8192 without -- a number that depends on the machine the
+    # program runs on and not the one it was compiled for. 8192 is the
+    # constant it used to be, and still a size a stack can be.
+    "SIGSTKSZ": "glibc 2.34 made this `sysconf(_SC_SIGSTKSZ)`",
+    # These four are in modules whose own headers say Linux-only: Darwin
+    # has no `sigqueue` and no POSIX timers, and numbers its `siginfo` and
+    # `sigevent` differently because they are different things. What is
+    # written here is glibc's answer, which is the one that can be used.
+    "SI_USER": "`libc.sys.sigqueue` is Linux-only",
+    "SI_QUEUE": "`libc.sys.sigqueue` is Linux-only",
+    "SIGEV_NONE": "`libc.sys.timer` is Linux-only",
+    "SIGEV_SIGNAL": "`libc.sys.timer` is Linux-only",
+}
+
+
 @lru_cache(maxsize=None)
 def headers() -> list[str]:
     """Every header either script knows about, that exists here."""
@@ -529,6 +586,7 @@ def main() -> int:
 
     agree: list[str] = []
     signed: list[tuple[str, str, float, float]] = []
+    excused: list[tuple[str, str, float, float]] = []
     disagree: list[tuple[str, str, float, float]] = []
     accepted: list[tuple[str, str, float]] = []
     uncounted: list[tuple[str, str, str]] = []
@@ -547,6 +605,8 @@ def main() -> int:
             agree.append(name)
         elif same_word(value, truth):
             signed.append((name, place, value, truth))
+        elif name in SPELLED_DIFFERENTLY:
+            excused.append((name, place, value, truth))
         else:
             disagree.append((name, place, value, truth))
 
@@ -558,6 +618,14 @@ def main() -> int:
         for name, place, mine, theirs in signed:
             print(f"      {name:<28} here {show(mine):>14}  C says"
                   f" {show(theirs):>14}  ({place})")
+    if excused:
+        print(f"  {len(excused)} the header spells differently, and cannot be followed:")
+        reasons: dict[str, list[str]] = {}
+        for name, _place, _mine, _theirs in excused:
+            reasons.setdefault(SPELLED_DIFFERENTLY[name], []).append(name)
+        for reason, names in reasons.items():
+            print(f"      {reason}")
+            print(f"          {' '.join(names)}")
     if accepted:
         print(f"  {len(accepted)} written as expressions, which C accepts")
         if "--values" in sys.argv:

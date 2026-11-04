@@ -90,23 +90,46 @@ every call is compared against the C prototype — 601 of them now, each
 compiled from the header on this machine — and a mismatch is reported
 rather than found later.
 
-And now `scripts/check-constants.py` does the same for the numbers. It
-includes every header either script knows, asks C to print each constant,
-and compares: 553 of them at this writing, of which 52 are written as
-expressions (`S_IRUSR | S_IWUSR`) rather than as numbers, so those are
-handed to C whole and a misspelled name inside one fails to compile. It
-runs on both platforms in CI, which is the point of it — the platform
-decides which side of an `if is_macos()` is under trial, and neither job
-can check the branch it is not standing on.
+And `scripts/check-constants.py` does the same for the numbers, by asking
+C two different questions. What does it make of the value *as written* —
+`0x100` is 256, `0644` is 420 — which catches a number the two languages
+read differently: octal spelt the Mojo way, a literal past what its type
+holds, a sum of C's own macros. And what does it make of the *name* —
+`EACCES` is 13 — which is the one that compares the package against the
+header.
 
-It earned its place on the first run. Fifty-five constants were Darwin's
-values with no platform branch at all: `O_APPEND` was 8, which is what
-Darwin says and not what Linux says, Linux saying 1024, and the same for
-`O_CREAT`, `O_TRUNC`, every `LOG_*` and most of `F_*`. None of it failed
-a test, because nothing here asserted what the number *meant* — `open`
-received 512 where 64 was intended and created something other than was
-asked for, quietly, in the way these things do. A number read off `gcc
--dM` by eye is right exactly once, and that was a long time ago.
+The second question was missing for as long as the file existed, and its
+absence made the first one useless for most of what it looked at: a
+constant written as a plain number was checked by asking what that number
+meant, and `EACCES = 13` was asked about `13`. It agreed with itself 1078
+times. Asked by name, three constants were wrong on the first run:
+`O_RSYNC` was -1 on Linux, where it is `0x101000`; `O_DSYNC` was -1 in
+`libc.constant.file` and `0x400000` in `libc.fcntl`, two files that could
+not hear each other disagree; and Darwin's `BUFSIZ` was Linux's 8192
+where its own header says 1024, along with the `LDBL_*` limits of a
+80-bit `long double` it does not have. Both platforms run it in CI,
+which is the point of it — the platform decides which side of an
+`if is_macos()` is under trial, and neither job can check the branch it
+is not standing on.
+
+Two kinds it cannot follow, and it says so rather than passing them.
+glibc 2.42 redefined the `B*` line speeds from indices into `c_cflag`
+to the rates themselves, so 13 used to mean 9600 baud and now 9600 does,
+and a `comptime` number compiled against one libc cannot be right on
+both; the values here are the indices, with the reason printed beside
+them. glibc 2.34 did the same to `SIGSTKSZ`, which became
+`sysconf(_SC_SIGSTKSZ)` and answers 13504 on a machine with AVX-512 and
+8192 without — a number that depends on the machine the program runs on.
+
+An earlier form of the check earned its place on its first run all the
+same. Fifty-five constants were Darwin's values with no platform branch
+at all: `O_APPEND` was 8, which is what Darwin says and not what Linux
+says, Linux saying 1024, and the same for `O_CREAT`, `O_TRUNC`, every
+`LOG_*` and most of `F_*`. None of it failed a test, because nothing here
+asserted what the number *meant* — `open` received 512 where 64 was
+intended and created something other than was asked for, quietly, in the
+way these things do. A number read off `gcc -dM` by eye is right exactly
+once, and that was a long time ago.
 
 And `scripts/check-layouts.py` asks C how big each struct is and where it
 has to start, which `tests/test_layout.mojo` had been doing for thirty-two
