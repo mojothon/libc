@@ -904,22 +904,43 @@ compares the binding against C on this machine:
 every call is compared against the C prototype — 601 of them now, each
 compiled from the header on this machine — and a mismatch is reported
 rather than found later.</p>
-<p>And now <code>scripts/check-constants.py</code> does the same for the numbers. It
-includes every header either script knows, asks C to print each constant,
-and compares: 553 of them at this writing, of which 52 are written as
-expressions (<code>S_IRUSR | S_IWUSR</code>) rather than as numbers, so those are
-handed to C whole and a misspelled name inside one fails to compile. It
-runs on both platforms in CI, which is the point of it — the platform
-decides which side of an <code>if is_macos()</code> is under trial, and neither job
-can check the branch it is not standing on.</p>
-<p>It earned its place on the first run. Fifty-five constants were Darwin's
-values with no platform branch at all: <code>O_APPEND</code> was 8, which is what
-Darwin says and not what Linux says, Linux saying 1024, and the same for
-<code>O_CREAT</code>, <code>O_TRUNC</code>, every <code>LOG_*</code> and most of <code>F_*</code>. None of it failed
-a test, because nothing here asserted what the number <em>meant</em> — <code>open</code>
-received 512 where 64 was intended and created something other than was
-asked for, quietly, in the way these things do. A number read off <code>gcc
--dM</code> by eye is right exactly once, and that was a long time ago.</p>
+<p>And <code>scripts/check-constants.py</code> does the same for the numbers, by asking
+C two different questions. What does it make of the value <em>as written</em> —
+<code>0x100</code> is 256, <code>0644</code> is 420 — which catches a number the two languages
+read differently: octal spelt the Mojo way, a literal past what its type
+holds, a sum of C's own macros. And what does it make of the <em>name</em> —
+<code>EACCES</code> is 13 — which is the one that compares the package against the
+header.</p>
+<p>The second question was missing for as long as the file existed, and its
+absence made the first one useless for most of what it looked at: a
+constant written as a plain number was checked by asking what that number
+meant, and <code>EACCES = 13</code> was asked about <code>13</code>. It agreed with itself 1078
+times. Asked by name, three constants were wrong on the first run:
+<code>O_RSYNC</code> was -1 on Linux, where it is <code>0x101000</code>; <code>O_DSYNC</code> was -1 in
+<code>libc.constant.file</code> and <code>0x400000</code> in <code>libc.fcntl</code>, two files that could
+not hear each other disagree; and Darwin's <code>BUFSIZ</code> was Linux's 8192
+where its own header says 1024, along with the <code>LDBL_*</code> limits of a
+80-bit <code>long double</code> it does not have. Both platforms run it in CI,
+which is the point of it — the platform decides which side of an
+<code>if is_macos()</code> is under trial, and neither job can check the branch it
+is not standing on.</p>
+<p>Two kinds it cannot follow, and it says so rather than passing them.
+glibc 2.42 redefined the <code>B*</code> line speeds from indices into <code>c_cflag</code>
+to the rates themselves, so 13 used to mean 9600 baud and now 9600 does,
+and a <code>comptime</code> number compiled against one libc cannot be right on
+both; the values here are the indices, with the reason printed beside
+them. glibc 2.34 did the same to <code>SIGSTKSZ</code>, which became
+<code>sysconf(_SC_SIGSTKSZ)</code> and answers 13504 on a machine with AVX-512 and
+8192 without — a number that depends on the machine the program runs on.</p>
+<p>An earlier form of the check earned its place on its first run all the
+same. Fifty-five constants were Darwin's values with no platform branch
+at all: <code>O_APPEND</code> was 8, which is what Darwin says and not what Linux
+says, Linux saying 1024, and the same for <code>O_CREAT</code>, <code>O_TRUNC</code>, every
+<code>LOG_*</code> and most of <code>F_*</code>. None of it failed a test, because nothing here
+asserted what the number <em>meant</em> — <code>open</code> received 512 where 64 was
+intended and created something other than was asked for, quietly, in the
+way these things do. A number read off <code>gcc -dM</code> by eye is right exactly
+once, and that was a long time ago.</p>
 <p>And <code>scripts/check-layouts.py</code> asks C how big each struct is and where it
 has to start, which <code>tests/test_layout.mojo</code> had been doing for thirty-two
 things about eight structs and nothing for the rest. Its first run found
