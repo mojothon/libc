@@ -57,6 +57,7 @@ listed, because silently ignoring them is how a gap becomes permanent.
 
 from __future__ import annotations
 
+import platform
 import re
 import subprocess
 import sys
@@ -88,6 +89,7 @@ cp = sibling("check-prototypes")
 SOURCES = sorted((ROOT / "src" / "libc").rglob("*.mojo"))
 CONSTANT = re.compile(r"^comptime (\w+)(?::[^=]+)? = (.+)$", re.MULTILINE)
 MACOS_ONLY = "CompilationTarget.is_macos()"
+X86_ONLY = "CompilationTarget.is_x86()"
 
 # `cc` rather than `gcc`, because on macOS it is clang and clang is what
 # has the right to say what Darwin's headers mean.
@@ -207,6 +209,30 @@ def headers() -> list[str]:
     return [h for h in dict.fromkeys(wanted) if exists(h)]
 
 
+@lru_cache(maxsize=1)
+def header_text() -> str:
+    """Everything the headers say, with the macros already expanded.
+
+    Half of what this checks is a macro, and `#ifdef` finds those. The
+    other half is an enumeration constant -- `PTHREAD_MUTEX_NORMAL` and
+    its neighbours -- which no preprocessing question can ask about, so
+    they were compared with the numbers they are written as. What the
+    preprocessor can say is whether a header mentions the name at all,
+    and that is the difference between a constant C has and the package's
+    own `*_OFFSET` machinery. Comments are gone by this point, so a name
+    in prose does not count, and a header that mentions a name this
+    compiler cannot evaluate is still refused by the compile that follows.
+    """
+    includes = "\n".join(f"#include <{h}>" for h in headers())
+    expanded = subprocess.run(
+        [*CC, *DEFINES, "-E", "-x", "c", "-"],
+        input=includes,
+        capture_output=True,
+        text=True,
+    )
+    return expanded.stdout
+
+
 def literals_are_floats(values: list[str]) -> bool:
     """Whether these have to be asked about as floating point."""
     return any("." in v.replace("0x", "").lower() or "e" in v.lower() for v in values)
@@ -244,13 +270,29 @@ def read_literal(raw: str) -> float | None:
     return None
 
 
+def is_x86() -> bool:
+    """Whether this machine compiles as x86, in the sense `is_x86()` means.
+
+    `platform.machine()` says `x86_64` on Intel Linux and on an Intel Mac,
+    and `arm64` on Apple silicon; both spellings of the 32-bit case are
+    here for the reader who runs this on one.
+    """
+    return platform.machine().lower() in {"x86_64", "amd64", "i386", "i686"}
+
+
 def each_side(raw: str) -> str | None:
     """The branch of a platform conditional that this machine decides.
 
-    Every conditional written here is about macOS and nothing else, which
-    is the whole reason one codebase can hold both sets of numbers: pick
-    the side that answers here, and let a CI job on the other platform
-    pick the other one.
+    Every conditional written here is about macOS or about x86, which is
+    the whole reason one codebase can hold both sets of numbers: pick the
+    side that answers here, and let a CI job on the other platform pick
+    the other one. The architecture counts as answerable for the same
+    reason the platform does — the check runs on the machine that would
+    compile the package, so `is_x86()` here is the branch that gets built.
+
+    That is what `FE_DIVBYZERO` needed: the same bit is a different
+    exception on x86 and on arm, and until this asked, the seven `FE_*`
+    constants were compared with nothing on either architecture.
     """
     m = re.fullmatch(r"(.+?) if (.+?) else (.+)", raw.strip())
     if m is None:
@@ -258,16 +300,18 @@ def each_side(raw: str) -> str | None:
     condition = m.group(2).strip()
     # Some are written from the other side round — `if not is_macos()`
     # — and the constant is no less a platform constant for being phrased
-    # that way. Anything conditional on something else, such as
-    # `CompilationTarget.is_x86()`, is not answered here at all: nothing
-    # this can run knows which machine will compile the package.
+    # that way.
     inverted = condition.startswith("not ")
     if inverted:
         condition = condition[len("not ") :].strip()
-    if condition != MACOS_ONLY:
+    answers = {MACOS_ONLY: sys.platform == "darwin", X86_ONLY: is_x86()}
+    if condition not in answers:
+        # Anything else — `is_linux()`, a feature test — is not answered:
+        # a guess here would report the package wrong for disagreeing with
+        # a branch this machine never compiles.
         return None
-    on_macos = (sys.platform == "darwin") != inverted
-    return m.group(1).strip() if on_macos else m.group(3).strip()
+    here = answers[condition] != inverted
+    return m.group(1).strip() if here else m.group(3).strip()
 
 
 def constants() -> list[tuple[str, str, str, float | None]]:
@@ -628,16 +672,53 @@ def main() -> int:
         # difference this cannot see and does not need to.
         items = [
             (f"{index}:{name}", name)
-            for index, (name, _place, _raw, value) in enumerate(listed)
-            if modes.get(index) == mode and value is not None
+            for index, (name, _place, _raw, _value) in enumerate(listed)
+            if modes.get(index) == mode
         ]
         named.update(from_c_names(items, mode))
 
+    # Then the names that `#ifdef` cannot see. Most of what is left over is
+    # a type -- `size_t`, `c_int` -- and no constant at all; the ones worth
+    # asking about are the enumerators, which the headers spell but which
+    # are not macros: `PTHREAD_MUTEX_NORMAL` is 0 because the header says
+    # so, and nothing here had ever asked it.
+    spelled = header_text()
+    for mode in ("i", "u", "f"):
+        enumerators = [
+            (f"{index}:{name}", name)
+            for index, (name, _place, _raw, _value) in enumerate(listed)
+            if modes.get(index) == mode
+            and f"{index}:{name}" not in named
+            and re.search(rf"\b{re.escape(name)}\b", spelled)
+        ]
+        found, _ = from_c(enumerators, mode)
+        named.update(found)
+
+    # Which of these were written as an expression rather than as a number,
+    # so that C has to be asked twice about them: once for the name, once
+    # for the sum. `PTHREAD_MUTEX_DEFAULT = PTHREAD_MUTEX_NORMAL` is the
+    # shape of it — the header says the first is the second, and nothing
+    # compared the two before.
+    expressions = {
+        f"{index}:{name}"
+        for index, (name, _place, _raw, value) in enumerate(listed)
+        if value is None
+    }
+
     said: dict[str, float] = {}
+    computed: dict[str, float] = {}
     for mode, group in groups.items():
-        left = [(label, expr) for label, expr in group if label not in named]
-        told, _ = from_c(left, mode)
+        asked = [(label, expr) for label, expr in group if label not in named]
+        told, _ = from_c(asked, mode)
         said.update(told)
+
+        sums = [
+            (label, expr)
+            for label, expr in group
+            if label in expressions and label in named
+        ]
+        added, _ = from_c(sums, mode)
+        computed.update(added)
     said.update(named)
 
     agree: list[str] = []
@@ -645,6 +726,7 @@ def main() -> int:
     excused: list[tuple[str, str, float, float]] = []
     disagree: list[tuple[str, str, float, float]] = []
     accepted: list[tuple[str, str, float]] = []
+    confirmed: list[tuple[str, str, float]] = []
     uncounted: list[tuple[str, str, str]] = []
 
     for index, (name, place, raw, value) in enumerate(listed):
@@ -655,8 +737,19 @@ def main() -> int:
         elif value is None:
             # Written as a sum of other people's constants. C computing it
             # without complaint is the check, and it says what the answer
-            # is besides, which nobody had written down before.
-            accepted.append((name, place, truth))
+            # is besides, which nobody had written down before. Where the
+            # name is a macro as well, the sum has the header's own answer
+            # to be compared with, and that is the stronger question:
+            # `PTHREAD_MUTEX_DEFAULT` is `PTHREAD_MUTEX_NORMAL` and not
+            # `PTHREAD_MUTEX_ERRORCHECK`, and the sum would compile either
+            # way.
+            by_sum = computed.get(label)
+            if by_sum is None:
+                accepted.append((name, place, truth))
+            elif by_sum == truth:
+                confirmed.append((name, place, truth))
+            else:
+                disagree.append((name, place, by_sum, truth))
         elif truth == value:
             agree.append(name)
         elif same_word(value, truth):
@@ -666,8 +759,9 @@ def main() -> int:
         else:
             disagree.append((name, place, value, truth))
 
-    platform = "Darwin" if sys.platform == "darwin" else "Linux"
-    print(f"Checking constants against the headers on {platform}.\n")
+    system = "Darwin" if sys.platform == "darwin" else "Linux"
+    arch = "x86" if is_x86() else "arm"
+    print(f"Checking constants against the headers on {system} ({arch}).\n")
     print(f"  {len(agree)} agree with C")
     if signed:
         print(f"  {len(signed)} are C's number read as a signed 32-bit word:")
@@ -682,6 +776,12 @@ def main() -> int:
         for reason, names in reasons.items():
             print(f"      {reason}")
             print(f"          {' '.join(names)}")
+    if confirmed:
+        print(f"  {len(confirmed)} written as expressions, and equal to the")
+        print("  header's own answer for the same name")
+        if "--values" in sys.argv:
+            for name, place, truth in confirmed:
+                print(f"      {name:<28} C says {truth:.0f}  ({place})")
     if accepted:
         print(f"  {len(accepted)} written as expressions, which C accepts")
         if "--values" in sys.argv:

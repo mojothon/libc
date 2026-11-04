@@ -148,6 +148,20 @@ BREAKS = [
         "comptime EACCES = 13",
         "comptime EACCES = 14",
     ),
+    Break(
+        "check-constants",
+        "an enumeration constant the header numbers differently",
+        "src/libc/pthread/syscalls.mojo",
+        "comptime PTHREAD_MUTEX_NORMAL: Int32 = 0",
+        "comptime PTHREAD_MUTEX_NORMAL: Int32 = 1",
+    ),
+    Break(
+        "check-constants",
+        "an alias of another constant that the header does not make",
+        "src/libc/pthread/syscalls.mojo",
+        "comptime PTHREAD_MUTEX_DEFAULT = PTHREAD_MUTEX_NORMAL",
+        "comptime PTHREAD_MUTEX_DEFAULT = PTHREAD_MUTEX_ERRORCHECK",
+    ),
 ]
 
 

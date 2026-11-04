@@ -104,8 +104,10 @@ constant written as a plain number was checked by asking what that number
 meant, and `EACCES = 13` was asked about `13`. It agreed with itself 1078
 times. Floating point had the same hole from the other side: the name
 question was only asked about integers, so `LDBL_EPSILON` was compared
-with the number `LDBL_EPSILON` was written as. Asked by name, three constants were wrong on the first run:
-`O_RSYNC` was -1 on Linux, where it is `0x101000`; `O_DSYNC` was -1 in
+with the number `LDBL_EPSILON` was written as.
+
+Asked by name, three constants were wrong on the first run: `O_RSYNC`
+was -1 on Linux, where it is `0x101000`; `O_DSYNC` was -1 in
 `libc.constant.file` and `0x400000` in `libc.fcntl`, two files that could
 not hear each other disagree; and Darwin's `BUFSIZ` was Linux's 8192
 where its own header says 1024, along with the `LDBL_*` limits of a
@@ -113,6 +115,23 @@ where its own header says 1024, along with the `LDBL_*` limits of a
 which is the point of it — the platform decides which side of an
 `if is_macos()` is under trial, and neither job can check the branch it
 is not standing on.
+
+Three more things were in the way of asking, and each of them was quiet.
+A value too long for one line comes back from the formatter inside
+brackets, and a branch of it is usually a Mojo type call —
+`Int32(0) if not is_macos() else Int32(2)` — so every `LC_*` category was
+reported as "computed in Mojo" and compared with nothing. Both wrappers
+come off now, and that is how Darwin turned out to be holding its
+categories with its *mask* numbers: `setlocale(LC_NUMERIC, …)` there set
+the time category. An enumerator is not a macro, so `#ifdef` cannot see
+`PTHREAD_MUTEX_NORMAL`; the preprocessed headers can, and asking about
+the names that appear in them is what compares the fifteen constants
+nothing had compared since they were written — including
+`PTHREAD_MUTEX_DEFAULT = PTHREAD_MUTEX_NORMAL`, which is a claim about
+the header and now gets checked like one. And `is_x86()` is answerable
+the same way `is_macos()` is, because the check runs on the machine that
+would compile the package, which puts the seven `FE_*` bits under trial
+on both architectures rather than on neither.
 
 Two kinds it cannot follow, and it says so rather than passing them.
 glibc 2.42 redefined the `B*` line speeds from indices into `c_cflag`

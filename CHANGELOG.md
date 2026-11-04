@@ -19,6 +19,22 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- **`check-constants` asks about enumerators, about the architecture, and
+  compares a sum with the header's own answer.** `#ifdef` cannot see an
+  enumeration constant, so `PTHREAD_MUTEX_NORMAL` and the fourteen other
+  enumerators in the package were compared with the numbers they are written
+  as; the preprocessed headers can see them, and asking about the names they
+  spell is what puts them under trial. `PTHREAD_MUTEX_DEFAULT` is an alias of
+  another constant, and the sum it is written as now has the header's answer
+  for the same name to be compared with — on Linux, `PTHREAD_MUTEX_ERRORCHECK`
+  would compile and be wrong. `CompilationTarget.is_x86()` is answerable the
+  way `is_macos()` is, since the check runs on the machine that would compile
+  the package, which brings the seven `FE_*` bits under trial on both
+  architectures. And an expression too long for one line comes back from the
+  formatter inside brackets with a Mojo type call in each branch: neither was
+  read, so every `LC_*` category was reported as "computed in Mojo" and
+  compared with nothing. That one found Darwin's categories holding their
+  mask numbers.
 - **`check-constants` reads past the brackets Mojo puts round a value, and
   asks about floats by name too.** A conditional too long for one line comes
   back from the formatter inside brackets of its own, and a branch of it is
