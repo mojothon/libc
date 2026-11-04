@@ -947,6 +947,18 @@ conditional inside a conditional is what <code>FE_ALL_EXCEPT</code> is, since Da
 counts a sixth flag — the x86 denormal operand on Intel, flush-to-zero on
 arm — and settling only the outer question would have read the wrong
 half.</p>
+<p>Then there is the question that fits a type rather than a number.
+<code>comptime off_t = Int64</code> is not a constant with a value; it is a claim
+about how wide C's <code>off_t</code> is, and nothing had asked it. It does now —
+<code>sizeof</code> and <code>(T)-1 &lt; 0</code> from the same compiler that answers everything
+else — and two came back wrong. <code>ssize_t</code> was <code>UInt64</code> while the
+<code>c_ssize_t</code> written beside it was signed, so <code>read(...) &lt; 0</code> was a
+comparison that could never be true; and <code>mode_t</code> was four bytes on
+Darwin, whose <code>mode_t</code> is two. Three more disagree about signedness on
+purpose, and the reasons are printed with them: <code>size_t</code> is <code>Int</code> so that
+lengths do not wrap, <code>c_char</code> is unsigned because a byte is read as a
+byte, and <code>c_wint</code> is signed because <code>WEOF</code> is written as -1, the way a
+caller tests for it.</p>
 <p>Two kinds it cannot follow, and it says so rather than passing them.
 glibc 2.42 redefined the <code>B*</code> line speeds from indices into <code>c_cflag</code>
 to the rates themselves, so 13 used to mean 9600 baud and now 9600 does,
