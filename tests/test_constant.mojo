@@ -138,7 +138,7 @@ def test_the_rest() raises:
     assert_equal(IPPROTO_IPV6, 41)
     assert_equal(IPPROTO_RAW, 255)
     assert_equal(IPPROTO_ICMPV6, 58)
-    assert_equal(BUFSIZ, 8192)
+    assert_equal(Int(BUFSIZ), 1024 if CompilationTarget.is_macos() else 8192)
     assert_equal(LOG_UPTO(4), 31)
     assert_equal(LOG_UPTO(7), 255)
     assert_equal(LOG_MASK(0), 1)
