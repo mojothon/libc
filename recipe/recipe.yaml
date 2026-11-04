@@ -51,6 +51,12 @@ tests:
       # here. The suite itself is run, against the sources, by the two
       # test jobs above.
       - mojo run -I ${PREFIX}/lib/mojo -I tests tests/test_smoke.mojo
+      # And every public name, not just the ones the smoke test calls:
+      # this one imports them all and calls none, so the `write` above is
+      # not reached. What it asks of the installed package is whether it
+      # carries what `src/` does -- a sub-package `precompile` left out
+      # would otherwise only be missed by whoever imported it first.
+      - mojo run -I ${PREFIX}/lib/mojo -I tests tests/test_import_all.mojo
     files:
       source:
         - tests
