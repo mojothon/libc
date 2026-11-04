@@ -1087,11 +1087,15 @@ bytes, <code>_u64(st_size)</code> eight. Taking four of an eight-byte member tru
 it, and taking eight of a four-byte one carries the member beside it into the
 answer, and neither mistake is visible to <code>offsetof</code> or to <code>sizeof</code>, both of
 which are right whichever width the accessor reads at. Those widths are
-compared with <code>sizeof(((struct stat *)0)-&gt;st_mode)</code> now — fifty-eight of them,
-and fifty-seven agree. The one that does not is <code>si_value</code>, which is four
-bytes of an eight-byte union on purpose and says so: it is <code>sival_int</code>, the
-half that shares the union with <code>sival_ptr</code>, and an exemption that stops being
-true is one <code>sizeof</code> disagrees with.</p>
+compared with <code>sizeof(((struct stat *)0)-&gt;st_mode)</code> now — fifty-nine accessors
+read a member at one, and fifty-eight agree. The count is of accessors rather
+than of members, which matters for the one that does not agree: <code>si_value</code> is
+four bytes of the eight-byte union <code>sigval</code> and <code>si_ptr</code> is the other four,
+they read the same <code>sizeof</code>, and asking per member would have let a four-byte
+read pass on the strength of the eight-byte one beside it. <code>si_value</code> is the
+exemption, then, and written down as one: it is <code>sival_int</code>, the half that
+shares the union with <code>sival_ptr</code>, and an exemption that stops being true is
+one <code>sizeof</code> disagrees with.</p>
 <p>The same reading of the source answers which half of a slot a member is in.
 <code>pw_uid</code> and <code>pw_gid</code> share one eight-byte slot on both platforms — glibc puts
 them side by side with no padding, and Darwin does the same — so one accessor
