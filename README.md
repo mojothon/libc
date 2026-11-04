@@ -40,6 +40,7 @@ pixi run check-prototypes # fail if a call does not match the C prototype
 pixi run check-release    # fail if the version is not the same everywhere it is said
 pixi run check-channels   # fail if the docs name a conda channel that cannot resolve
 pixi run check-warnings   # fail if the compiler cannot read a docstring as written
+pixi run check-package    # fail if a name does not import through dist/libc.mojoc
 pixi run doc              # serve the docs locally
 ```
 

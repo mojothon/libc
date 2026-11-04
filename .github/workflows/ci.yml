@@ -119,8 +119,12 @@ jobs:
       # the seventeenth would have gone past too.
       - name: Check that the package compiles without a warning
         run: pixi run check-warnings
-      - name: Precompile the package
-        run: pixi run package
+      # Every check above reads `src/`. What a reader installs is
+      # `dist/libc.mojoc`, so this builds it and imports every public name
+      # through the package -- the file the lint job points at `src/`, aimed
+      # at the artifact instead.
+      - name: Check that every name imports through the package
+        run: pixi run check-package
       # Two platforms, because half the work this does is deciding which
       # side of an `if is_macos()` is the true one: neither job can check
       # the branch it is not standing on.
