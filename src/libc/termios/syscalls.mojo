@@ -74,6 +74,14 @@ comptime TCION: c_int = 4 if CompilationTarget.is_macos() else 3
 # ones up to 38400 and then 4097 upward for the faster ones. Darwin
 # names each one after the speed it is — `B9600` is 9600 — so the two
 # schemes agree only at 0.
+#
+# glibc 2.42 (August 2025) gave up the numbering and now names them the
+# way Darwin does, taking the rate itself in `cfsetispeed`. A constant
+# here is compiled against one libc or the other, so these are the
+# indices: passing them to a `cfsetispeed` from 2.42 or later asks for
+# thirteen baud rather than 9600. On such a system pass the rate to
+# `cfsetspeed` and let the header be the one that translates, and see
+# `docs/beyond-c.md` for why the number cannot be both.
 comptime B0: c_uint = 0
 comptime B50: c_uint = 50 if CompilationTarget.is_macos() else 1
 comptime B75: c_uint = 75 if CompilationTarget.is_macos() else 2

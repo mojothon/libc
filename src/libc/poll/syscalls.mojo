@@ -4,6 +4,7 @@
 # github: github.com/llango
 # ----------------------------------
 from std.ffi import external_call
+from std.sys import CompilationTarget
 
 from libc.constant import c_ptr, c_short, c_ulong
 from libc.time import timespec
@@ -32,10 +33,11 @@ comptime POLLRDNORM = 0x0040
 comptime POLLRDBAND = 0x0080
 """There is priority data to read."""
 
-comptime POLLWRNORM = 0x0100
-"""Writing ordinary data would not block, which is the same as `POLLOUT`."""
+comptime POLLWRNORM = 4 if CompilationTarget.is_macos() else 0x0100
+"""Writing ordinary data would not block. Darwin spells it as `POLLOUT`
+itself; Linux gives it a bit of its own, which is why the number differs."""
 
-comptime POLLWRBAND = 0x0200
+comptime POLLWRBAND = 256 if CompilationTarget.is_macos() else 0x0200
 """Writing priority data would not block."""
 
 comptime POLL_TIMEOUT_INFINITE = -1

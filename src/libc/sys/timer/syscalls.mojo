@@ -19,9 +19,10 @@ from libc.constant import c_int, c_ptr
 from libc.time import timespec
 
 
-# What a timer is to do when it runs out. Both platforms number these
-# the same way, but there are no timers on Darwin to be asked about, so
-# they are numbered here rather than in a header of its own.
+# What a timer is to do when it runs out, as glibc numbers it. Darwin
+# has no timers to be asked about, and numbers its own `sigevent`
+# differently — `SIGEV_NONE` is 0 there — because its `sigevent` is
+# the one `aio` uses and not this one.
 #
 # `SIGEV_SIGNAL` is what a timer does when made with nothing to say
 # otherwise and is offered for that reason alone: the signal arrives

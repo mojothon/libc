@@ -15,6 +15,7 @@
 # without variadic arguments.
 # ----------------------------------
 from std.ffi import external_call
+from std.sys import CompilationTarget
 
 from libc.constant import c_char, c_int, c_ptr, c_size_t, c_void
 from libc.file import FILE
@@ -203,7 +204,10 @@ def open_memstream(
     ](bufloc, sizeloc)
 
 
-comptime BUFSIZ = 8192
+# Darwin's is 1024 and glibc's 8192: nothing here depends on the
+# number, and a program that sizes a buffer by it is asking the
+# header it was compiled against, which is this one.
+comptime BUFSIZ: c_size_t = 1024 if CompilationTarget.is_macos() else 8192
 
 
 def fwrite(
@@ -1010,7 +1014,8 @@ def setbuffer(stream: c_ptr[FILE], buf: c_ptr[c_char], size: c_size_t):
 
         The room is the caller's, and it has to outlive the stream:
         nothing here copies it, and `fclose` does not give it back.
-        `BUFSIZ` is the size the two platforms agree on.
+        `BUFSIZ` is a size both platforms accept, not one they agree
+        on: Darwin's is 1024 and glibc's 8192.
     """
     external_call["setbuffer", NoneType, c_ptr[FILE], c_ptr[c_char], c_size_t](
         stream, buf, size

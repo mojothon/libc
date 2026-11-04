@@ -9,7 +9,14 @@
 # (LP64, IEEE-754 binary32/binary64). `long double` on that ABI is the
 # 80-bit x87 format, for which Mojo has no type, so the `LDBL_*`
 # extremes that overflow a `Float64` are deliberately not defined.
+#
+# Darwin has no 80-bit type at all: its `long double` is `double`, and
+# every `LDBL_*` below is the `DBL_*` beside it. That is a difference
+# the header makes, so it is a difference made here rather than a line
+# of Darwin being told it is wrong.
 # ----------------------------------
+from std.sys import CompilationTarget
+
 from libc.constant import c_double, c_float, c_int
 
 
@@ -22,7 +29,7 @@ comptime FLT_ROUNDS: c_int = 1
 comptime FLT_EVAL_METHOD: c_int = 0
 """0: operations are evaluated in the precision of their own type."""
 
-comptime DECIMAL_DIG: c_int = 21
+comptime DECIMAL_DIG: c_int = 17 if CompilationTarget.is_macos() else 21
 """Number of decimal digits needed to round-trip the widest
 floating-point type (`long double`) without loss."""
 
@@ -39,7 +46,7 @@ comptime FLT_MANT_DIG: c_int = 24
 comptime DBL_MANT_DIG: c_int = 53
 """Number of base-`FLT_RADIX` digits in a `double` significand."""
 
-comptime LDBL_MANT_DIG: c_int = 64
+comptime LDBL_MANT_DIG: c_int = 53 if CompilationTarget.is_macos() else 64
 """Number of base-`FLT_RADIX` digits in a `long double` significand."""
 
 comptime FLT_DIG: c_int = 6
@@ -48,7 +55,7 @@ comptime FLT_DIG: c_int = 6
 comptime DBL_DIG: c_int = 15
 """Decimal digits that survive a `double` round-trip."""
 
-comptime LDBL_DIG: c_int = 18
+comptime LDBL_DIG: c_int = 15 if CompilationTarget.is_macos() else 18
 """Decimal digits that survive a `long double` round-trip."""
 
 
@@ -62,7 +69,7 @@ minus 1 is a normalized `float`."""
 comptime DBL_MIN_EXP: c_int = -1021
 """Minimum exponent of a normalized `double` (base `FLT_RADIX`)."""
 
-comptime LDBL_MIN_EXP: c_int = -16381
+comptime LDBL_MIN_EXP: c_int = -1021 if CompilationTarget.is_macos() else -16381
 """Minimum exponent of a normalized `long double` (base `FLT_RADIX`)."""
 
 comptime FLT_MIN_10_EXP: c_int = -37
@@ -73,7 +80,7 @@ comptime DBL_MIN_10_EXP: c_int = -307
 """Minimum negative integer such that 10 raised to that power is a
 normalized `double`."""
 
-comptime LDBL_MIN_10_EXP: c_int = -4931
+comptime LDBL_MIN_10_EXP: c_int = -307 if CompilationTarget.is_macos() else -4931
 """Minimum negative integer such that 10 raised to that power is a
 normalized `long double`."""
 
@@ -84,7 +91,7 @@ is a representable `float`."""
 comptime DBL_MAX_EXP: c_int = 1024
 """Maximum exponent of a `double` (base `FLT_RADIX`)."""
 
-comptime LDBL_MAX_EXP: c_int = 16384
+comptime LDBL_MAX_EXP: c_int = 1024 if CompilationTarget.is_macos() else 16384
 """Maximum exponent of a `long double` (base `FLT_RADIX`)."""
 
 comptime FLT_MAX_10_EXP: c_int = 38
@@ -95,7 +102,7 @@ comptime DBL_MAX_10_EXP: c_int = 308
 """Maximum integer such that 10 raised to that power is a
 representable `double`."""
 
-comptime LDBL_MAX_10_EXP: c_int = 4932
+comptime LDBL_MAX_10_EXP: c_int = 308 if CompilationTarget.is_macos() else 4932
 """Maximum integer such that 10 raised to that power is a
 representable `long double`."""
 

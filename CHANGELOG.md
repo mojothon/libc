@@ -5,6 +5,31 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **Fourteen constants that held Linux's number on a platform whose header
+  says otherwise**, found by asking C about the constant's name for the first
+  time. The `LDBL_*` limits and `DECIMAL_DIG` described an 80-bit `long
+  double` that Darwin does not have — its `long double` is `double`, so the
+  answers are 53, 15, -1021, -307, 1024 and 308, and 17 rather than 21;
+  `POLLWRNORM` and `POLLWRBAND` were 256 and 512 where Darwin spells them 4
+  and 256; `BUFSIZ` was 8192 where Darwin's is 1024, and the docstring beside
+  `setbuffer` said the two platforms agreed on it. None of these had ever
+  failed a test, because nothing here asserts what a number means.
+
+### Changed
+
+- **`scripts/check-constants.py` compares a constant with the header of the
+  same name, not with itself.** It asked C what the written value meant, so
+  `EACCES = 13` was checked by asking what `13` is: that agreed 1078 times and
+  could not see a number copied wrong. Asked by name it found `O_RSYNC` at -1
+  on Linux, where it is `0x101000`, and `O_DSYNC` at -1 in
+  `libc.constant.file` while `libc.fcntl` said `0x400000` for the same
+  constant. Three kinds cannot be followed and are listed with the reason
+  instead of passing: glibc 2.42 redefined the `B*` line speeds from indices
+  to the rates themselves, glibc 2.34 turned `SIGSTKSZ` into a `sysconf`, and
+  the `SI_*` and `SIGEV_*` numbers are glibc's in modules that are Linux-only.
+
 ## [0.13.0] - 2026-11-04
 
 ### Added
