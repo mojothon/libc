@@ -9,25 +9,31 @@ from std.sys import CompilationTarget
 from libc.constant import c_ptr
 
 # The categories are numbered differently on the two platforms: glibc counts
-# from `LC_CTYPE` and Darwin from `LC_ALL`.
+# from `LC_CTYPE` and Darwin from `LC_ALL`, and Darwin's then run in BSD's
+# order -- collate, ctype, monetary, numeric, time, messages -- which is not
+# the alphabetical order the masks below use. That confusion had four of these
+# holding their mask's number instead of their category's: `LC_NUMERIC` was 5
+# there, so `setlocale(LC_NUMERIC, ...)` set the time category and nothing
+# said so. `check-constants` asks the header for each of these by name now,
+# which is what found it.
 comptime LC_CTYPE: Int32 = Int32(
     0
 ) if not CompilationTarget.is_macos() else Int32(2)
 comptime LC_NUMERIC: Int32 = Int32(
     1
-) if not CompilationTarget.is_macos() else Int32(5)
+) if not CompilationTarget.is_macos() else Int32(4)
 comptime LC_TIME: Int32 = Int32(
     2
-) if not CompilationTarget.is_macos() else Int32(6)
+) if not CompilationTarget.is_macos() else Int32(5)
 comptime LC_COLLATE: Int32 = Int32(
     3
 ) if not CompilationTarget.is_macos() else Int32(1)
 comptime LC_MONETARY: Int32 = Int32(
     4
-) if not CompilationTarget.is_macos() else Int32(4)
+) if not CompilationTarget.is_macos() else Int32(3)
 comptime LC_MESSAGES: Int32 = Int32(
     5
-) if not CompilationTarget.is_macos() else Int32(3)
+) if not CompilationTarget.is_macos() else Int32(6)
 comptime LC_ALL: Int32 = Int32(
     6
 ) if not CompilationTarget.is_macos() else Int32(0)
