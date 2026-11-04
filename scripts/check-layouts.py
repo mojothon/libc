@@ -108,6 +108,7 @@ OFFSETS: dict[tuple[str, str], tuple[str, str]] = {
     ("libc.aio", "AIOCB_BUF"): ("aiocb", "aio_buf"),
     ("libc.aio", "AIOCB_NBYTES"): ("aiocb", "aio_nbytes"),
     ("libc.aio", "AIOCB_OFFSET"): ("aiocb", "aio_offset"),
+    ("libc.dirent", "DIRENT_INO_OFFSET"): ("dirent", "d_ino"),
     ("libc.dirent", "DIRENT_RECLEN_OFFSET"): ("dirent", "d_reclen"),
     ("libc.dirent", "DIRENT_TYPE_OFFSET"): ("dirent", "d_type"),
     ("libc.dirent", "DIRENT_NAME_OFFSET"): ("dirent", "d_name"),
@@ -292,6 +293,52 @@ def module_of(path: Path) -> str:
     """The name this file is imported by."""
     relative = path.relative_to(ROOT / "src").with_suffix("")
     return ".".join(relative.parts[:-1] if relative.name == "syscalls" else relative.parts)
+
+
+# A constant named for the member it places, and a member read at a number
+# that is not one. The first is how `OFFSETS` is kept complete; the second
+# is the shape of the mistake the list exists to prevent, caught wherever it
+# is made rather than where somebody remembered to register it.
+PLACED = re.compile(r"^comptime (\w*_OFFSET)\b", re.M)
+READ_AT = re.compile(r"self\._(?:byte|u16|u32|u64)\((\d+)\)")
+
+
+def placed_by_hand() -> dict[tuple[str, str], str]:
+    """Every constant in src that places a member by hand, and where it is.
+
+    The list above is what gets asked; this is what exists to be asked. A
+    constant that places a member and is not up there would never be put to
+    `offsetof`, and nothing outside this function would say so: the report
+    over `OFFSETS` catches a name that was renamed or dropped, which is the
+    list going stale, and not one that was added, which is it going
+    incomplete.
+    """
+    found: dict[tuple[str, str], str] = {}
+    for path in SOURCES:
+        module = module_of(path)
+        for match in PLACED.finditer(path.read_text()):
+            found[(module, match.group(1))] = str(path.relative_to(ROOT))
+    return found
+
+
+def read_at_a_literal() -> list[str]:
+    """Places where a member is read at a number written in the call.
+
+    `self._u64(0)` is an offset claimed inline, where no list can see it and
+    no `offsetof` can be compared with it. Naming it costs a line and puts
+    the claim where the rest of them are.
+    """
+    found = []
+    for path in SOURCES:
+        if not path.read_text().count("_slots"):
+            continue
+        for number, line in enumerate(path.read_text().split("\n"), 1):
+            if READ_AT.search(line):
+                found.append(
+                    f"{module_of(path)} reads at {READ_AT.search(line).group(1)}"
+                    f"  ({path.relative_to(ROOT)}:{number})"
+                )
+    return found
 
 
 def structs() -> list[tuple[str, str, str, list[str]]]:
@@ -718,6 +765,28 @@ def main() -> int:
             f" one: {', '.join(not_listed[:6])}{', ...' if len(not_listed) > 6 else ''}"
         )
 
+    unlisted = [
+        (module, name, place)
+        for (module, name), place in placed_by_hand().items()
+        if (module, name) not in OFFSETS
+    ]
+    if unlisted:
+        print(
+            f"\n  {len(unlisted)} place a member by hand and are not in the list,"
+            f" so nothing asks `offsetof` about them:"
+        )
+        for module, name, place in sorted(unlisted):
+            print(f"      {module + '.' + name:<44} not asked  ({place})")
+
+    unsaid = read_at_a_literal()
+    if unsaid:
+        print(
+            f"\n  {len(unsaid)} read a member at a number written in the call,"
+            f" where no list can see it:"
+        )
+        for line in unsaid:
+            print(f"      {line}")
+
     stated = {
         "offsets": len(OFFSETS),
         "fielded": len(fielded),
@@ -741,7 +810,11 @@ def main() -> int:
         print("  *** structs that disagree with C ***")
     if wrong_stated:
         print("  *** docs/beyond-c.md no longer says what is true ***")
-    if disagree or offset_disagree or wrong_stated:
+    if unlisted:
+        print("  *** constants that place a member and are not asked about ***")
+    if unsaid:
+        print("  *** members read at a number that is not written down ***")
+    if disagree or offset_disagree or wrong_stated or unlisted or unsaid:
         return 1
     print("  nothing disagrees with C")
     return 0

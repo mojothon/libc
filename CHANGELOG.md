@@ -19,6 +19,15 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- **`check-layouts` asks about the offsets it does not have, and found one.**
+  The report over `OFFSETS` walked the list: a name in it that had been
+  renamed or dropped came back unchecked, which is the list going stale. A
+  constant that places a member and is not in the list said nothing at all,
+  which is the list going incomplete, and a member read at a number written
+  into the call (`self._u64(0)`) was invisible either way. Both are counted
+  now and both fail. There was one of the second kind: `dirent.ino` read
+  offset 0 directly, which is `d_ino` on glibc and Darwin alike and was true
+  by luck. It is `DIRENT_INO_OFFSET`, registered, and `offsetof` agrees.
 - **`check-constants` asks how wide a type alias is, and found two wrong.**
   `comptime off_t = Int64` is a claim about C rather than a number, so no
   value question could touch it: the aliases were the largest silent block

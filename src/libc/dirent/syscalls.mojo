@@ -28,6 +28,8 @@ from libc.constant import *
 # difference.
 comptime DIRENT_BYTES = 1048 if CompilationTarget.is_macos() else 280
 comptime DIRENT_SLOTS = DIRENT_BYTES // 8
+# `d_ino` is first in both: glibc's opens with it, and so does Darwin's.
+comptime DIRENT_INO_OFFSET = 0
 comptime DIRENT_NAME_OFFSET = 21 if CompilationTarget.is_macos() else 19
 comptime DIRENT_TYPE_OFFSET = 20 if CompilationTarget.is_macos() else 18
 comptime DIRENT_RECLEN_OFFSET = 16
@@ -83,7 +85,7 @@ struct dirent:
 
     def ino(self) -> UInt64:
         """The inode number of the entry."""
-        return self._u64(0)
+        return self._u64(DIRENT_INO_OFFSET)
 
     def reclen(self) -> UInt16:
         """The length of this record, which is how `readdir` steps to the next.

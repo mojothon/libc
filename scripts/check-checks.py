@@ -183,6 +183,20 @@ BREAKS = [
         "comptime ptrdiff_t = Int64",
         "comptime ptrdiff_t = UInt64",
     ),
+    Break(
+        "check-layouts",
+        "an offset named in the source that nobody listed",
+        "src/libc/dirent/syscalls.mojo",
+        "comptime DIRENT_RECLEN_OFFSET = 16",
+        "comptime DIRENT_RECLEN_OFFSET = 16\ncomptime DIRENT_PAD_OFFSET = 17",
+    ),
+    Break(
+        "check-layouts",
+        "a member read at a number rather than at a named offset",
+        "src/libc/dirent/syscalls.mojo",
+        "return self._u64(DIRENT_INO_OFFSET)",
+        "return self._u64(0)",
+    ),
 ]
 
 

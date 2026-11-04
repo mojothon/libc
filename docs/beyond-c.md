@@ -208,7 +208,7 @@ counted rather than asked, which is what the count is for.
 
 | what a struct does with its members | how many |
 | --- | --- |
-| places one by hand, at an offset listed in `OFFSETS` | 116 |
+| places one by hand, at an offset listed in `OFFSETS` | 117 |
 | declares them in order and leaves the layout to Mojo | 187 |
 | reads none of them, and claims only a size | 17 |
 | has a struct only Linux has | 13 |
@@ -240,6 +240,17 @@ share two words on Darwin and take four words on glibc, so the same struct
 has `f_flag` at 48 and at 72, and one number written from the other
 platform's header would leave nine members reading the right bytes of the
 wrong member.
+
+Two other things can go wrong with that list, and both are asked now. A name
+in it that is no longer in the package is the list going stale, and was
+already reported as unchecked. A constant that places a member and is *not*
+in it is the list going incomplete, which nothing said anything about, since
+the report only ever walked the list itself. And a member read at a number
+written into the call — `self._u64(0)` rather than a named offset — is the
+same claim made where no list can see it. There was one of those:
+`dirent.ino` read offset 0 directly, which is `d_ino` on both platforms and
+was true by luck rather than by anything asked. It is `DIRENT_INO_OFFSET`
+now, in the list, and both directions are counted, so the next one fails.
 
 What is left is counted rather than trusted silently, and it splits in two.
 The members of a struct Mojo lays out itself rest on the order they are
