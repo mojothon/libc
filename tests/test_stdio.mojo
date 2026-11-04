@@ -660,7 +660,7 @@ def test_saying_how_a_stream_buffers() raises:
     Each is said before anything is written on the stream, as both
     require, and the room is given back only after the stream is shut.
     """
-    var room = unsafe_alloc[UInt8](BUFSIZ)
+    var room = unsafe_alloc[UInt8](Int(BUFSIZ))
     var f = tmpfile()
     setbuffer(f, room, BUFSIZ)
     _ = fputs(string_to_char_ptr("hello"), f)
