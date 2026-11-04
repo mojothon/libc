@@ -915,7 +915,9 @@ header.</p>
 absence made the first one useless for most of what it looked at: a
 constant written as a plain number was checked by asking what that number
 meant, and <code>EACCES = 13</code> was asked about <code>13</code>. It agreed with itself 1078
-times. Asked by name, three constants were wrong on the first run:
+times. Floating point had the same hole from the other side: the name
+question was only asked about integers, so <code>LDBL_EPSILON</code> was compared
+with the number <code>LDBL_EPSILON</code> was written as. Asked by name, three constants were wrong on the first run:
 <code>O_RSYNC</code> was -1 on Linux, where it is <code>0x101000</code>; <code>O_DSYNC</code> was -1 in
 <code>libc.constant.file</code> and <code>0x400000</code> in <code>libc.fcntl</code>, two files that could
 not hear each other disagree; and Darwin's <code>BUFSIZ</code> was Linux's 8192
