@@ -22,7 +22,25 @@ if [ -z "${PREFIX_API_KEY:-}" ]; then
     exit 1
 fi
 
+failed=0
 for package in "${packages[@]}"; do
     echo "uploading ${package} to ${CHANNEL}"
-    rattler-build upload prefix -c "${CHANNEL}" "${package}"
+    if output=$(rattler-build upload prefix -c "${CHANNEL}" "${package}" 2>&1); then
+        echo "${output}"
+        continue
+    fi
+    # A rebuild of a version the channel already has produces the same file
+    # name and a different hash -- the package metadata carries the time it
+    # was built -- and prefix.dev answers 409 rather than replace it. That
+    # is one platform's file already being there, which is not a reason to
+    # abandon the other platform's file in the same run. The body says
+    # "already exists" when the upload names the file and only "409
+    # Conflict" when it does not, so both are read.
+    if grep -qiE "already exists|409 conflict" <<<"${output}"; then
+        echo "already in ${CHANNEL}, left as it is: ${package}"
+        continue
+    fi
+    echo "${output}" >&2
+    failed=1
 done
+exit "${failed}"
