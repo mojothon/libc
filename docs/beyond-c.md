@@ -137,6 +137,19 @@ counts a sixth flag — the x86 denormal operand on Intel, flush-to-zero on
 arm — and settling only the outer question would have read the wrong
 half.
 
+Then there is the question that fits a type rather than a number.
+`comptime off_t = Int64` is not a constant with a value; it is a claim
+about how wide C's `off_t` is, and nothing had asked it. It does now —
+`sizeof` and `(T)-1 < 0` from the same compiler that answers everything
+else — and two came back wrong. `ssize_t` was `UInt64` while the
+`c_ssize_t` written beside it was signed, so `read(...) < 0` was a
+comparison that could never be true; and `mode_t` was four bytes on
+Darwin, whose `mode_t` is two. Three more disagree about signedness on
+purpose, and the reasons are printed with them: `size_t` is `Int` so that
+lengths do not wrap, `c_char` is unsigned because a byte is read as a
+byte, and `c_wint` is signed because `WEOF` is written as -1, the way a
+caller tests for it.
+
 Two kinds it cannot follow, and it says so rather than passing them.
 glibc 2.42 redefined the `B*` line speeds from indices into `c_cflag`
 to the rates themselves, so 13 used to mean 9600 baud and now 9600 does,

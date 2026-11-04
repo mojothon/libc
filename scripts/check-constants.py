@@ -192,6 +192,85 @@ SPELLED_DIFFERENTLY: dict[str, str] = {
 }
 
 
+# The type aliases are not constants at all: `comptime off_t = Int64` says
+# which Mojo type stands in for a C one, and the question that fits it is
+# how many bytes each of them takes. Nothing ever asked, so `mode_t` was
+# four bytes on a platform whose `mode_t` is two, and `ssize_t` was the
+# unsigned type that `c_ssize_t` beside it was not.
+#
+# `c_char` and its neighbours are ctypes' spellings, and no header has
+# heard of any of them; the C name is what to ask about.
+SPELLED_IN_C = {
+    "c_char": "char",
+    "c_schar": "signed char",
+    "c_uchar": "unsigned char",
+    "c_short": "short",
+    "c_ushort": "unsigned short",
+    "c_int": "int",
+    "c_uint": "unsigned int",
+    "c_long": "long",
+    "c_ulong": "unsigned long",
+    "c_longlong": "long long",
+    "c_ulonglong": "unsigned long long",
+    "c_float": "float",
+    "c_double": "double",
+    "c_size_t": "size_t",
+    "c_ssize_t": "ssize_t",
+    "c_wchar": "wchar_t",
+    "c_wint": "wint_t",
+}
+
+# What a Mojo type is worth, in bytes, and whether it is signed. `Int` and
+# `UInt` are the machine word, which is eight bytes everywhere a pointer
+# this package binds is eight bytes.
+WORD = 8
+MOJO_WIDTH: dict[str, tuple[int, bool | None]] = {
+    "Bool": (1, None),
+    "Int8": (1, True),
+    "UInt8": (1, False),
+    "Int16": (2, True),
+    "UInt16": (2, False),
+    "Int32": (4, True),
+    "UInt32": (4, False),
+    "Int64": (8, True),
+    "UInt64": (8, False),
+    "Int": (WORD, True),
+    "UInt": (WORD, False),
+    "Float32": (4, None),
+    "Float64": (8, None),
+}
+
+# Signedness C and this package disagree about, where the package's side is
+# the one it wants. Both are the same width as C's, so the bits are the
+# bits; what differs is how arithmetic on the value behaves, and the answer
+# here is deliberate.
+SIGNEDNESS_ON_PURPOSE = {
+    "c_char": "a byte is read as a byte; C's own `char` is unsigned on aarch64 Linux",
+    "size_t": "a length is `Int` here, so that arithmetic on it does not wrap",
+    "c_wint": "`WEOF` is written as -1, the way a caller tests for it; the bits are C's",
+}
+
+# Types with no size of their own, and why they are written anyway.
+NO_SIZE = {
+    "c_void": "`void` has no size; this is the byte a `void *` points at",
+}
+
+# The rest of what is written as a `comptime` and is not a number, with
+# where its truth lives instead. Nine names, each with a reason, because
+# "could not be checked" without one is the answer this file exists to
+# stop giving.
+NO_COUNTERPART = {
+    **{
+        name: "one letter of an `fopen` mode string, which C has no constant for"
+        for name in ("FM_READ", "FM_WRITE", "FM_APPEND", "FM_BINARY", "FM_PLUS")
+    },
+    "DIRENT_SLOTS": "`check-layouts` measures the struct this buffer holds",
+    "UTMPX_SLOTS": "`check-layouts` measures the struct this buffer holds",
+    "_BASENAME": "a symbol name, which `check-symbols` goes looking for",
+    "__version__": "this package's own version, which C has never heard of",
+}
+
+
 @lru_cache(maxsize=None)
 def headers() -> list[str]:
     """Every header either script knows about, that exists here."""
@@ -231,6 +310,83 @@ def header_text() -> str:
         text=True,
     )
     return expanded.stdout
+
+
+def shape_of(text: str) -> tuple[int, bool | None] | None:
+    """How many bytes a Mojo type takes, and whether it is signed.
+
+    A pointer is the word, and its signedness is not a question. Anything
+    not in the table is not a type this can ask about.
+    """
+    if re.match(r"(c_ptr|Pointer)\[", text):
+        return (WORD, None)
+    return MOJO_WIDTH.get(text)
+
+
+def written_type(raw: str) -> str | None:
+    """The Mojo type a `comptime` alias stands for on this machine.
+
+    `wctrans_t` is `Int32 if is_macos() else c_ptr[Int32]`, so the
+    conditional is settled first; `UInt8(0x41)` is a number rather than a
+    type, and comes back as None because its brackets are a call.
+    """
+    side = each_side(raw)
+    if side is None:
+        return None
+    text = unwrapped(side).strip()
+    return text if shape_of(text) is not None else None
+
+
+def sizes_from_c(items: list[tuple[str, str, bool]]) -> dict[str, tuple[int, int]]:
+    """What C says each type's size is, and whether it is signed.
+
+    Asked in one program and halved when it does not compile, the way the
+    constant questions are: `c_void` is `void`, and one of those among
+    thirty would otherwise take the other twenty-nine with it.
+    """
+    said: dict[str, tuple[int, int]] = {}
+
+    def ask(group: list[tuple[str, str, bool]]) -> None:
+        if not group:
+            return
+        includes = "\n".join(f"#include <{h}>" for h in headers())
+        body = "\n".join(
+            f'    printf("{label}=%llu:%d\\n", (unsigned long long)sizeof({name}), '
+            + (f"(int)(({name})-1 < 0)" if signed else "(-1)")
+            + ");"
+            for label, name, signed in group
+        )
+        source = (
+            f"#include <stdio.h>\n{includes}\nint main(void) {{\n{body}\n"
+            "    return 0;\n}\n"
+        )
+        work = ROOT / ".build-check"
+        work.mkdir(exist_ok=True)
+        src = work / "constants-sizes.c"
+        exe = work / "constants-sizes"
+        src.write_text(source)
+        built = subprocess.run(
+            [*CC, *DEFINES, "-w", "-o", str(exe), str(src)],
+            capture_output=True,
+            text=True,
+        )
+        if built.returncode != 0:
+            if len(group) == 1:
+                return
+            middle = len(group) // 2
+            ask(group[:middle])
+            ask(group[middle:])
+            return
+        running = subprocess.run([str(exe)], capture_output=True, text=True)
+        for line in running.stdout.strip().splitlines():
+            if "=" not in line:
+                continue
+            label, answer = line.split("=", 1)
+            size, signed = answer.split(":")
+            said[label] = (int(size), int(signed))
+
+    ask(items)
+    return said
 
 
 def literals_are_floats(values: list[str]) -> bool:
@@ -690,6 +846,11 @@ def main() -> int:
     groups: dict[str, list[tuple[str, str]]] = {}
     modes: dict[int, str] = {}
     for index, (name, _place, raw, value) in enumerate(listed):
+        # A type alias is not a number, and asking about the text it is
+        # written as only ever produced a refusal. How many bytes it takes
+        # is the question that fits it, and it is asked below.
+        if written_type(raw) is not None:
+            continue
         expr = c_expression(raw)
         if expr is None:
             continue
@@ -736,6 +897,24 @@ def main() -> int:
         found, _ = from_c(enumerators, mode)
         named.update(found)
 
+    # Then the type aliases, whose question is a width rather than a value.
+    # Nothing had asked it, which is how `mode_t` came to be four bytes on
+    # a platform whose `mode_t` is two, and `ssize_t` unsigned while the
+    # `c_ssize_t` beside it was signed.
+    types: dict[str, tuple[tuple[int, bool | None], int, int]] = {}
+    written: dict[str, tuple[int, bool | None]] = {}
+    asked: list[tuple[str, str, bool]] = []
+    for index, (name, _place, raw, _value) in enumerate(listed):
+        text = written_type(raw)
+        shape = shape_of(text) if text is not None else None
+        if shape is None or name in NO_SIZE:
+            continue
+        label = f"{index}:{name}"
+        written[label] = shape
+        asked.append((label, SPELLED_IN_C.get(name, name), shape[1] is not None))
+    for label, (size, their_signed) in sizes_from_c(asked).items():
+        types[label] = (written[label], size, their_signed)
+
     # Which of these were written as an expression rather than as a number,
     # so that C has to be asked twice about them: once for the name, once
     # for the sum. `PTHREAD_MUTEX_DEFAULT = PTHREAD_MUTEX_NORMAL` is the
@@ -770,9 +949,31 @@ def main() -> int:
     accepted: list[tuple[str, str, float]] = []
     confirmed: list[tuple[str, str, float]] = []
     uncounted: list[tuple[str, str, str]] = []
+    type_ok: list[str] = []
+    type_signed: list[tuple[str, str, bool, bool]] = []
+    wrong_size: list[tuple[str, str, int, int]] = []
+    wrong_sign: list[tuple[str, str, bool, bool]] = []
+    nowhere: list[tuple[str, str, str]] = []
 
     for index, (name, place, raw, value) in enumerate(listed):
         label = f"{index}:{name}"
+
+        if label in types:
+            (mine, my_signed), size, their_signed = types[label]
+            if mine != size:
+                wrong_size.append((name, place, mine, size))
+            elif my_signed is not None and my_signed != their_signed:
+                if name in SIGNEDNESS_ON_PURPOSE:
+                    type_signed.append((name, place, my_signed, their_signed))
+                else:
+                    wrong_sign.append((name, place, my_signed, their_signed))
+            else:
+                type_ok.append(name)
+            continue
+        if name in NO_SIZE:
+            nowhere.append((name, place, NO_SIZE[name]))
+            continue
+
         truth = said.get(label)
         if truth is None:
             uncounted.append((name, place, raw))
@@ -830,6 +1031,29 @@ def main() -> int:
             for name, place, truth in accepted:
                 print(f"      {name:<28} C says {truth:.0f}  ({place})")
 
+    if type_ok:
+        print(f"  {len(type_ok)} types are the width C gives them")
+    if type_signed:
+        print(f"  {len(type_signed)} types hold C's width and not its signedness,")
+        print("  which is the way this package wants them:")
+        for name, _place, mine, theirs in type_signed:
+            print(f"      {name:<28} here {'signed' if mine else 'unsigned':>8}"
+                  f"  C says {'signed' if theirs else 'unsigned':<8}")
+            print(f"          {SIGNEDNESS_ON_PURPOSE[name]}")
+    if nowhere:
+        print(f"  {len(nowhere)} a type with no size of its own:")
+        for name, place, reason in nowhere:
+            print(f"      {name:<28} {reason}  ({place})")
+
+    if wrong_size or wrong_sign:
+        print(f"  {len(wrong_size) + len(wrong_sign)} types disagree:")
+        for name, place, mine, theirs in wrong_size:
+            print(f"      {name:<28} here {mine:>2} bytes  C says"
+                  f" {theirs:>2} bytes  ({place})")
+        for name, place, mine, theirs in wrong_sign:
+            print(f"      {name:<28} here {'signed' if mine else 'unsigned':>8}"
+                  f"  C says {'signed' if theirs else 'unsigned':<8}  ({place})")
+
     if disagree:
         print(f"  {len(disagree)} disagree:")
         for name, place, mine, theirs in disagree:
@@ -840,7 +1064,9 @@ def main() -> int:
     if uncounted:
         print(f"\n  {len(uncounted)} could not be checked:")
         for name, place, raw in uncounted:
-            if re.search(r"\b0\d", raw):
+            if name in NO_COUNTERPART:
+                why = NO_COUNTERPART[name]
+            elif re.search(r"\b0\d", raw):
                 why = "written with a leading zero, which C reads as octal"
             elif re.search(r"[A-Za-z_]\w*\s*\(", raw):
                 why = "computed in Mojo rather than in the header"
@@ -849,7 +1075,7 @@ def main() -> int:
             print(f"      {name:<28} {why}  ({place})")
 
     print()
-    if disagree:
+    if disagree or wrong_size or wrong_sign:
         print("  *** constants that disagree with C ***")
         return 1
     print("  nothing disagrees with C")

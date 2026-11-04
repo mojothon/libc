@@ -169,6 +169,20 @@ BREAKS = [
         "Int32(0x3D) if CompilationTarget.is_x86() else Int32(0x1F)",
         "Int32(0x2D) if CompilationTarget.is_x86() else Int32(0x1F)",
     ),
+    Break(
+        "check-constants",
+        "a type alias half the width of the C type it stands for",
+        "src/libc/constant/file.mojo",
+        "comptime off_t = Int64",
+        "comptime off_t = Int32",
+    ),
+    Break(
+        "check-constants",
+        "a type alias with C's width and not C's signedness",
+        "src/libc/constant/ctype.mojo",
+        "comptime ptrdiff_t = Int64",
+        "comptime ptrdiff_t = UInt64",
+    ),
 ]
 
 

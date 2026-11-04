@@ -19,6 +19,19 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- **`check-constants` asks how wide a type alias is, and found two wrong.**
+  `comptime off_t = Int64` is a claim about C rather than a number, so no
+  value question could touch it: the aliases were the largest silent block
+  left, thirty names reported as "not something these headers give a number
+  for". `sizeof` and `(T)-1 < 0` from the compiler say what each one should
+  be, and `ssize_t` was `UInt64` — so `read(...) < 0`, the test for failure,
+  could never be true — while `c_ssize_t` beside it was signed, and `mode_t`
+  was four bytes on Darwin, whose `mode_t` is two. Three more differ from C
+  in signedness the way this package wants them to — `size_t` so lengths do
+  not wrap, `c_char` because a byte is read as a byte, `c_wint` because
+  `WEOF` is written as -1 — and each of those now prints its reason. The
+  nine names that remain unchecked each print one too, including the five
+  letters of an `fopen` mode string.
 - **`check-constants` asks about enumerators, about the architecture, and
   compares a sum with the header's own answer.** `#ifdef` cannot see an
   enumeration constant, so `PTHREAD_MUTEX_NORMAL` and the fourteen other
