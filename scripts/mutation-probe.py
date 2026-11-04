@@ -965,6 +965,11 @@ def main() -> int:
                             cwd=ROOT,
                             capture_output=True,
                             text=True,
+                            # A mutant can print bytes that are not text --
+                            # wide characters sent raw to the terminal are
+                            # the usual ones -- and that is output to judge,
+                            # not a reason for the probe itself to die.
+                            errors="replace",
                             timeout=TIMEOUT,
                         )
                     except subprocess.TimeoutExpired:
