@@ -58,6 +58,12 @@ jobs:
       # that sends readers to a release that is no longer the one shipped.
       - name: Check that the version is said the same everywhere
         run: pixi run check-release
+      # The install page asked for the package on `-c mojo-force`, which conda
+      # reads as an anaconda.org channel and answers with a 404, while the
+      # package was on prefix.dev behind a URL. A shell command compiles
+      # nowhere, so this asks what can be asked without the network.
+      - name: Check that every channel the docs name can resolve
+        run: pixi run check-channels
       # The two tables of reasons in the probe excuse a survivor, so an entry
       # that outlives the pair it was written for excuses nothing. This asks
       # only that the pair can still be made, and takes seconds.

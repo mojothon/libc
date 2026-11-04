@@ -38,6 +38,7 @@ pixi run format           # apply mojo format
 pixi run format-check     # fail if the tree is not formatted
 pixi run check-prototypes # fail if a call does not match the C prototype
 pixi run check-release    # fail if the version is not the same everywhere it is said
+pixi run check-channels   # fail if the docs name a conda channel that cannot resolve
 pixi run doc              # serve the docs locally
 ```
 
