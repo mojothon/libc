@@ -128,11 +128,15 @@ comptime FLT_EPSILON: c_float = 1.1920928955078125e-07
 comptime DBL_EPSILON: c_double = 2.2204460492503131e-16
 """Difference between 1.0 and the next representable `double`."""
 
-comptime LDBL_EPSILON: c_double = 1.0842021724855044e-19
+comptime LDBL_EPSILON: c_double = (
+    2.2204460492503131e-16 if CompilationTarget.is_macos() else 1.0842021724855044e-19
+)
 """Difference between 1.0 and the next representable `long double`.
 
 The x87 80-bit value is 1.08420217248550443401e-19; this is the nearest
-`Float64`, since Mojo has no 80-bit type.
+`Float64`, since Mojo has no 80-bit type. Darwin's `long double` is a
+`double`, so there the answer is `DBL_EPSILON` -- which is what the
+header says, and what `check-constants` asks it for by name.
 """
 
 comptime FLT_TRUE_MIN: c_float = 1.4012984643248171e-45
