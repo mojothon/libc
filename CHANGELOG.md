@@ -5,6 +5,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-04
+
 ### Added
 
 - **Six bindings: the old one-signal calls, and the two that move the
