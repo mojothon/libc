@@ -1080,6 +1080,18 @@ which platform this is, so the constants were two exported claims with no
 reader and no question. They are what the accessors read and write with
 now, and <code>sizeof(tcflag_t)</code> and <code>sizeof(speed_t)</code> are what they are
 compared against, so the decision is in one place and that place is asked.</p>
+<p>An offset is also not the whole of what an accessor claims about a member.
+Where the member starts is one number; how many bytes of it the accessor takes
+is another, and it is written in the reader it calls — <code>_u32(st_mode)</code> four
+bytes, <code>_u64(st_size)</code> eight. Taking four of an eight-byte member truncates
+it, and taking eight of a four-byte one carries the member beside it into the
+answer, and neither mistake is visible to <code>offsetof</code> or to <code>sizeof</code>, both of
+which are right whichever width the accessor reads at. Those widths are
+compared with <code>sizeof(((struct stat *)0)-&gt;st_mode)</code> now — fifty-eight of them,
+and fifty-seven agree. The one that does not is <code>si_value</code>, which is four
+bytes of an eight-byte union on purpose and says so: it is <code>sival_int</code>, the
+half that shares the union with <code>sival_ptr</code>, and an exemption that stops being
+true is one <code>sizeof</code> disagrees with.</p>
 <p>What is left is counted rather than trusted silently, and it splits in two.
 The members of a struct Mojo lays out itself rest on the order they are
 declared in, which is C's arrangement when the order is and says nothing
