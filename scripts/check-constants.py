@@ -306,7 +306,13 @@ def constants() -> list[tuple[str, str, str, float | None]]:
             inside = unwrapped(raw)
             if " if " in inside and " else " in inside:
                 branch = each_side(inside)
-                found.append((name, place, raw, read_literal(branch) if branch else None))
+                # The branch is often wrapped in Mojo's own type call --
+                # `Int32(0) if not is_macos() else Int32(2)` -- and reading
+                # that as a number read nothing, so every `LC_*` was
+                # reported as computed in Mojo and compared with nothing.
+                found.append(
+                    (name, place, raw, read_literal(unwrapped(branch)) if branch else None)
+                )
             else:
                 found.append((name, place, raw, read_literal(inside)))
     return found
@@ -509,6 +515,28 @@ def show(value: float) -> str:
     return f"{value:.0f}" if value == int(value) else f"{value}"
 
 
+def call_body(text: str) -> str | None:
+    """What a call that wraps the whole of `text` was given, or None.
+
+    `Int32(0x100)` is `0x100` with a Mojo type around it. `Int32(0) if
+    not is_macos() else Int32(2)` is not: the first call ends after the
+    `0`, and stripping it as though it wrapped everything left
+    `0 ) if not ... else Int32(2`, which is what a constant reported as
+    "computed in Mojo" turned out to be. The closing bracket has to be
+    the last character for this to be a wrapper.
+    """
+    m = re.match(r"[A-Za-z_]\w*\(", text)
+    if m is None:
+        return None
+    depth = 0
+    for at in range(m.end() - 1, len(text)):
+        depth += text[at] == "("
+        depth -= text[at] == ")"
+        if depth == 0:
+            return text[m.end() : at].strip() if at == len(text) - 1 else None
+    return None
+
+
 def unwrapped(raw: str) -> str:
     """A value with Mojo's outer type call taken off it.
 
@@ -517,8 +545,30 @@ def unwrapped(raw: str) -> str:
     ever heard of. The wrapper comes off and the number inside is what
     gets asked about.
     """
-    whole = re.fullmatch(r"([A-Za-z_]\w*)\((.*)\)", raw.strip())
-    return whole.group(2).strip() if whole else raw.strip()
+    text = raw.strip()
+    body = call_body(text)
+    if body is not None:
+        return body
+    # A conditional too long for one line comes back from the formatter
+    # inside brackets of its own:
+    #
+    #     comptime LDBL_EPSILON: c_double = (
+    #         2.2204460492503131e-16 if CompilationTarget.is_macos() else 1.08...
+    #     )
+    #
+    # Those brackets are the wrapping and not the value. Left on, neither
+    # side of the `if` can be read, and the constant is reported as one
+    # written in a form this refuses to guess at.
+    if text.startswith("(") and text.endswith(")"):
+        depth = 0
+        for at, character in enumerate(text):
+            depth += character == "("
+            depth -= character == ")"
+            if depth == 0:
+                if at == len(text) - 1:
+                    return text[1:-1].strip()
+                break
+    return text
 
 
 def c_expression(raw: str) -> str | None:
@@ -533,7 +583,7 @@ def c_expression(raw: str) -> str | None:
         branch = each_side(side)
         if branch is None:
             return None
-        side = branch
+        side = unwrapped(branch)
     text = re.sub(r"\b0[oO]([0-7]+)\b", r"0\1", side.strip())
     if re.search(r"[A-Za-z_]\w*\s*\(", text):
         return None
@@ -569,7 +619,13 @@ def main() -> int:
     # own: only for the ones written as a number, which is where the older
     # form was asking the number about itself.
     named: dict[str, float] = {}
-    for mode in ("i", "u"):
+    for mode in ("i", "u", "f"):
+        # Floating point is asked about the same way, and `%.17g` is why it
+        # can be: seventeen digits are enough to name any double uniquely,
+        # so a value that comes back different is a different double and
+        # not a rounding. `DBL_EPSILON` is 2.2204460492503131e-16 and
+        # `2.220446049250313e-16` is the same double, which is the one
+        # difference this cannot see and does not need to.
         items = [
             (f"{index}:{name}", name)
             for index, (name, _place, _raw, value) in enumerate(listed)

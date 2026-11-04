@@ -102,7 +102,9 @@ The second question was missing for as long as the file existed, and its
 absence made the first one useless for most of what it looked at: a
 constant written as a plain number was checked by asking what that number
 meant, and `EACCES = 13` was asked about `13`. It agreed with itself 1078
-times. Asked by name, three constants were wrong on the first run:
+times. Floating point had the same hole from the other side: the name
+question was only asked about integers, so `LDBL_EPSILON` was compared
+with the number `LDBL_EPSILON` was written as. Asked by name, three constants were wrong on the first run:
 `O_RSYNC` was -1 on Linux, where it is `0x101000`; `O_DSYNC` was -1 in
 `libc.constant.file` and `0x400000` in `libc.fcntl`, two files that could
 not hear each other disagree; and Darwin's `BUFSIZ` was Linux's 8192

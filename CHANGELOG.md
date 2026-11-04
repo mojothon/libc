@@ -19,6 +19,16 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- **`check-constants` reads past the brackets Mojo puts round a value, and
+  asks about floats by name too.** A conditional too long for one line comes
+  back from the formatter inside brackets of its own, and a branch of it is
+  usually a Mojo type call — `Int32(0) if not is_macos() else Int32(2)` — so
+  every `LC_*` category was reported as "computed in Mojo" and compared with
+  nothing. Both wrappers come off now, thirty-nine more constants are checked
+  than were, and the name question covers `FLT_MAX` and the rest: `%.17g`
+  names a double uniquely, so a value that comes back different is a
+  different double. That is how `LDBL_EPSILON` turned out to be the x87
+  number on a platform whose `long double` is a `double`.
 - **`scripts/check-constants.py` compares a constant with the header of the
   same name, not with itself.** It asked C what the written value meant, so
   `EACCES = 13` was checked by asking what `13` is: that agreed 1078 times and
