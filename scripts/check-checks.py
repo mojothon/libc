@@ -15,10 +15,10 @@ away, and the tree being checked is the one in the working directory, so
 a case that no longer applies -- because the line it edits was rewritten
 -- is a failure too, rather than a case that quietly stops running.
 
-Two of the ten are slow -- the one that builds every example and the one
+Two of the twenty-seven are slow -- the one that builds every example and the one
 that asks gcc about every constant, eighteen seconds each -- which is why
 this runs as its own job rather than as one more step of the lint job.
-The assurance is the same for all ten: a page of examples that compiles
+The assurance is the same for all twenty-seven: a page of examples that compiles
 nothing prints `all 0 examples compile`, which is the sentence this is
 here to make impossible to earn honestly.
 """
@@ -126,6 +126,27 @@ BREAKS = [
         "src/libc/unistd/syscalls.mojo",
         'return external_call["getpid", Int32]()',
         'return external_call["getpid", Int32, Int32](0)',
+    ),
+    Break(
+        "check-symbols",
+        "a binding pointed at a symbol no library exports",
+        "src/libc/string/syscalls.mojo",
+        'external_call["strcat",',
+        'external_call["strcatx",',
+    ),
+    Break(
+        "check-comparisons",
+        "the only sign assertion of a comparison flattened to zero or not",
+        "tests/test_string.mojo",
+        'Int(strcasecmp(abc, abd)) < 0, "abc sorts before abd ignoring case"',
+        'Int(strcasecmp(abc, abd)) == 0, "abc sorts before abd ignoring case"',
+    ),
+    Break(
+        "check-magnitudes",
+        "a tolerance held to one side of the distance, `fabs` dropped",
+        "tests/test_math.mojo",
+        "assert_true(fabs(ceil(2.1) - 3.0) < 1e-12)",
+        "assert_true(ceil(2.1) - 3.0 < 1e-12)",
     ),
     Break(
         "check-warnings",

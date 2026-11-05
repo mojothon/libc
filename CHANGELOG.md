@@ -73,6 +73,15 @@ All notable changes to this project are documented here. The format follows
   `CMSGHDR_SPACE_ONE` and friends now name the shape, `check-layouts` compares
   them with `sizeof` and `CMSG_SPACE` on each platform, and the descriptor test
   builds the message in the shape its platform says.
+- **The check-of-checks now asks the three checks it had never broken.**
+  `check-symbols` is asked with a binding pointed at `strcatx`, which no
+  library exports; `check-comparisons` with the one sign assertion
+  `strcasecmp` had flattened to a zero-or-not, which is the shape that
+  survived seven swaps; and `check-magnitudes` with the `fabs` taken off
+  a tolerance so the bound holds one side of the distance again. All
+  three said so. Twenty-seven ways of being wrong are now each caught by
+  the check that owns them, up from twenty-four, and every check in
+  `scripts/` has had its claim asked except this one.
 - **The speed table was run again, and the numbers it gave back are the
   first pair of runs this document has been able to compare.** Same
   machine, same day: every row within two percent of the run before —
