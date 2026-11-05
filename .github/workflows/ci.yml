@@ -86,6 +86,13 @@ jobs:
           cache: true
       - name: Check that each check fails on a tree that is wrong
         run: pixi run check-checks
+      - name: Check that the mutation tables answer pairs that can still be made
+        # The tables excuse a pair as being one call or the same answer, and
+        # a test can catch up to what was written: an entry about a mutant
+        # that the tests now tell apart reads as an answer when it is a
+        # hole. This is what keeps a written answer from outliving the pair
+        # it excuses, and it is cheap -- no mutant is built or run.
+        run: pixi run mutation-tables
 
   test:
     name: Test (${{ matrix.os }})
