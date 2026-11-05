@@ -836,7 +836,7 @@
 <h1 id="what-is-here-that-c-does-not-have">What is here that C does not have<a class="headerlink" href="#what-is-here-that-c-does-not-have" title="Permanent link">&para;</a></h1>
 <p>This is a binding, so what it can call is a subset of what C can call and
 will stay that way. What can be counted exactly is how much is here: this
-binds 1029 C symbols, every one checked against the header it comes from. C
+binds 1034 C symbols, every one checked against the header it comes from. C
 offers more, and calling more of it is not what this is for.</p>
 <p>How much of what C offers that is, is not a number that holds still. <code>nm -D
 --defined-only</code> over <code>libc</code>, <code>libm</code>, <code>libdl</code> and <code>librt</code> lists more functions
@@ -1527,13 +1527,33 @@ across two.</p>
 <li><strong>Variadic functions.</strong> <code>printf</code>, <code>scanf</code>, <code>fcntl</code>, <code>ioctl</code>. An external
   call has to name every type it passes, and C's own variadic convention
   on arm64 Darwin passes on the stack, where the call cannot reach.</li>
-<li><strong>Callbacks.</strong> Nothing here can hand C a function pointer, so <code>qsort</code>,
-  <code>bsearch</code> and a signal handler of one's own are out. A struct that carries
-  one is not always out with it, though: <code>struct sigaction</code> is here as
-  <code>sigaction_t</code>, with the handler kept as the number C stores there, because
-  two of the three things that can go in that union are not addresses at all —
-  <code>SIG_DFL</code> is 0 and <code>SIG_IGN</code> is 1. So a signal can be told to be ignored,
-  asked what it is doing, and put back; it cannot be given a function to run.</li>
+<li><strong>Callbacks, until recently.</strong> For most of this package's life nothing
+  here could hand C a function pointer, and <code>qsort</code>, <code>bsearch</code>,
+  <code>pthread_create</code> and a signal handler of one's own were out with it. They
+  are not: a <code>def</code> that captures nothing converts to a <code>thin</code> function
+  value, and a thin function value is a code address — the eight bytes a C
+  function pointer holds — so <code>qsort</code> and <code>bsearch</code> call back into Mojo and
+  <code>pthread_create</code> runs one on a second thread. What does not cross is
+  state: a thin function value carries no environment, so everything the
+  callback is to work on goes through C's <code>void *</code> argument, which is what
+  that argument is for.</li>
+</ul>
+<p>A struct that carries a handler is a different matter again. <code>struct
+  sigaction</code> is here as <code>sigaction_t</code>, with the handler kept as the number
+  C stores there, because two of the three things that can go in that union
+  are not addresses at all — <code>SIG_DFL</code> is 0 and <code>SIG_IGN</code> is 1 — and a
+  function value has no spelling as a number. So a signal can be told to be
+  ignored, asked what it is doing, and put back; it cannot be given a
+  function of one's own. That is a gap in the struct and not in the call,
+  and <code>signal</code> — which takes its handler as one address and no union — is
+  the way in the day it is filled.</p>
+<ul>
+<li><strong><code>atexit</code>.</strong> Not a callback problem: glibc has no <code>atexit</code> symbol. It
+  exports <code>__cxa_atexit</code> and <code>on_exit</code> and leaves <code>atexit</code> to the static
+  archive, so a binding has nothing to link against here, while Darwin's
+  libSystem does export it. A call that links on one platform and not the
+  other, for the header saying it is there on both, is worth knowing about
+  before writing it twice.</li>
 <li><strong>Bodies that live in another library.</strong> <code>&lt;arpa/inet.h&gt;</code> declares
   <code>inet_net_pton</code>, <code>inet_net_ntop</code>, <code>inet_neta</code> and the two <code>inet_nsap_*</code>
   on both platforms, and on Linux they are not in libc: they are in
