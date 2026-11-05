@@ -632,6 +632,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#two-sockets-on-the-loopback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two sockets on the loopback
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -829,6 +840,17 @@
     <span class="md-ellipsis">
       
         Giving a program a terminal to talk to
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#two-sockets-on-the-loopback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two sockets on the loopback
       
     </span>
   </a>
@@ -1140,6 +1162,111 @@ program that will not read what is sent to it is stopped.</p>
 <p>One thing not to use to tell the two ends apart: <code>isatty</code> says yes for
 both. The line discipline is on both ends, and the master answers
 <code>tcgetattr</code> as readily as the slave does.</p>
+<h2 id="two-sockets-on-the-loopback">Two sockets on the loopback<a class="headerlink" href="#two-sockets-on-the-loopback" title="Permanent link">&para;</a></h2>
+<p>A connection is made of an address and two sockets: one bound to the
+address and listening, one asking for it. <code>socketaddr</code> is the sixteen
+bytes C passes as a <code>struct sockaddr</code> whatever the family is, and it owns
+them, so it is filled in place rather than handed back. <code>set_family</code>
+writes Darwin's <code>sa_len</code> and the family where the two platforms keep
+them, <code>set_inet_port</code> writes the port in the order the wire counts in,
+and <code>set_inet_address</code> writes the four bytes as <code>in_addr</code> holds them.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">std.memory.alloc</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">unsafe_alloc</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.constant</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">AF_INET</span><span class="p">,</span><span class="w"> </span><span class="n">SOCK_STREAM</span><span class="p">,</span><span class="w"> </span><span class="n">c_char</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.network</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">in_addr</span><span class="p">,</span><span class="w"> </span><span class="n">inet_addr</span><span class="p">,</span><span class="w"> </span><span class="n">inet_ntoa</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.sys.socket</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">accept</span><span class="p">,</span>
+<span class="w">    </span><span class="n">bind</span><span class="p">,</span>
+<span class="w">    </span><span class="n">connect</span><span class="p">,</span>
+<span class="w">    </span><span class="n">getsockname</span><span class="p">,</span>
+<span class="w">    </span><span class="n">listen</span><span class="p">,</span>
+<span class="w">    </span><span class="n">socket</span><span class="p">,</span>
+<span class="w">    </span><span class="n">socketaddr</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.unistd</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">close</span><span class="p">,</span><span class="w"> </span><span class="n">read</span><span class="p">,</span><span class="w"> </span><span class="n">write</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.utils</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">char_ptr_to_string</span><span class="p">,</span><span class="w"> </span><span class="n">string_to_char_ptr</span>
+
+
+<span class="n">comptime</span><span class="w"> </span><span class="n">ADDRESS_SIZE</span><span class="p">:</span><span class="w"> </span><span class="nb">UInt32</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">16</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">at_the_loopback</span><span class="p">(</span><span class="n">mut</span><span class="w"> </span><span class="n">address</span><span class="p">:</span><span class="w"> </span><span class="n">socketaddr</span><span class="p">,</span><span class="w"> </span><span class="n">port</span><span class="p">:</span><span class="w"> </span><span class="nb">UInt16</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="s2">"""Fills `address` in as the loopback on `port`.</span>
+
+<span class="s2">    The struct owns its sixteen bytes, so it is filled in place rather</span>
+<span class="s2">    than handed back, and the four bytes of the address come from C's</span>
+<span class="s2">    own parser rather than from arithmetic here -- which is the short</span>
+<span class="s2">    way of saying 127.0.0.1 without also saying what order its bytes are</span>
+<span class="s2">    in.</span>
+
+<span class="s2">    Args:</span>
+<span class="s2">        address: The sixteen bytes to fill in.</span>
+<span class="s2">        port: The port, or 0 to let the kernel choose one.</span>
+<span class="s2">    """</span>
+<span class="w">    </span><span class="n">address</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">socketaddr</span><span class="p">()</span>
+<span class="w">    </span><span class="n">address</span><span class="o">.</span><span class="n">set_family</span><span class="p">(</span><span class="nb">UInt16</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">))</span>
+<span class="w">    </span><span class="n">address</span><span class="o">.</span><span class="n">set_inet_port</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">loopback</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">in_addr</span><span class="p">()</span>
+<span class="w">    </span><span class="n">loopback</span><span class="o">.</span><span class="n">s_addr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">inet_addr</span><span class="p">(</span><span class="n">string_to_char_ptr</span><span class="p">(</span><span class="s2">"127.0.0.1"</span><span class="p">))</span>
+<span class="w">    </span><span class="n">address</span><span class="o">.</span><span class="n">set_inet_address</span><span class="p">(</span><span class="n">loopback</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="n">raises</span><span class="p">:</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">listener</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span><span class="w"> </span><span class="n">SOCK_STREAM</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">here</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">unsafe_alloc</span><span class="p">[</span><span class="n">socketaddr</span><span class="p">](</span><span class="mi">1</span><span class="p">)</span>
+<span class="w">    </span><span class="n">at_the_loopback</span><span class="p">(</span><span class="n">here</span><span class="o">.</span><span class="n">unsafe_offset</span><span class="p">(</span><span class="mi">0</span><span class="p">)[],</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">    </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bind</span><span class="p">(</span><span class="n">listener</span><span class="p">,</span><span class="w"> </span><span class="n">here</span><span class="p">,</span><span class="w"> </span><span class="n">ADDRESS_SIZE</span><span class="p">)</span>
+<span class="w">    </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">listen</span><span class="p">(</span><span class="n">listener</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1"># Which port 0 turned out to be is only knowable by asking.</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">chosen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">unsafe_alloc</span><span class="p">[</span><span class="n">socketaddr</span><span class="p">](</span><span class="mi">1</span><span class="p">)</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">unsafe_alloc</span><span class="p">[</span><span class="nb">UInt32</span><span class="p">](</span><span class="mi">1</span><span class="p">)</span>
+<span class="w">    </span><span class="n">size</span><span class="o">.</span><span class="n">unsafe_offset</span><span class="p">(</span><span class="mi">0</span><span class="p">)[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ADDRESS_SIZE</span>
+<span class="w">    </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">getsockname</span><span class="p">(</span><span class="n">listener</span><span class="p">,</span><span class="w"> </span><span class="n">chosen</span><span class="p">,</span><span class="w"> </span><span class="n">size</span><span class="p">)</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">chosen</span><span class="o">.</span><span class="n">unsafe_offset</span><span class="p">(</span><span class="mi">0</span><span class="p">)[]</span><span class="o">.</span><span class="n">inet_port</span><span class="p">()</span>
+<span class="w">    </span><span class="nb">print</span><span class="p">(</span><span class="s2">"listening on"</span><span class="p">,</span><span class="w"> </span><span class="n">port</span><span class="p">)</span>
+
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">caller</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span><span class="w"> </span><span class="n">SOCK_STREAM</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">there</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">unsafe_alloc</span><span class="p">[</span><span class="n">socketaddr</span><span class="p">](</span><span class="mi">1</span><span class="p">)</span>
+<span class="w">    </span><span class="n">at_the_loopback</span><span class="p">(</span><span class="n">there</span><span class="o">.</span><span class="n">unsafe_offset</span><span class="p">(</span><span class="mi">0</span><span class="p">)[],</span><span class="w"> </span><span class="n">port</span><span class="p">)</span>
+<span class="w">    </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">connect</span><span class="p">(</span><span class="n">caller</span><span class="p">,</span><span class="w"> </span><span class="n">there</span><span class="p">,</span><span class="w"> </span><span class="n">ADDRESS_SIZE</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1"># `accept` writes whoever asked into a buffer of its own.</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">who</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">unsafe_alloc</span><span class="p">[</span><span class="n">socketaddr</span><span class="p">](</span><span class="mi">1</span><span class="p">)</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">length</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">unsafe_alloc</span><span class="p">[</span><span class="nb">UInt32</span><span class="p">](</span><span class="mi">1</span><span class="p">)</span>
+<span class="w">    </span><span class="n">length</span><span class="o">.</span><span class="n">unsafe_offset</span><span class="p">(</span><span class="mi">0</span><span class="p">)[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ADDRESS_SIZE</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">taken</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">accept</span><span class="p">(</span><span class="n">listener</span><span class="p">,</span><span class="w"> </span><span class="n">who</span><span class="p">,</span><span class="w"> </span><span class="n">length</span><span class="p">)</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">caller_text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">char_ptr_to_string</span><span class="p">(</span>
+<span class="w">        </span><span class="n">inet_ntoa</span><span class="p">(</span><span class="n">who</span><span class="o">.</span><span class="n">unsafe_offset</span><span class="p">(</span><span class="mi">0</span><span class="p">)[]</span><span class="o">.</span><span class="n">inet_address</span><span class="p">())</span>
+<span class="w">    </span><span class="p">)</span>
+<span class="w">    </span><span class="nb">print</span><span class="p">(</span><span class="s2">"connected from"</span><span class="p">,</span><span class="w"> </span><span class="n">caller_text</span><span class="p">)</span>
+
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">said</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">string_to_char_ptr</span><span class="p">(</span><span class="s2">"hello</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+<span class="w">    </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">write</span><span class="p">(</span><span class="n">caller</span><span class="p">,</span><span class="w"> </span><span class="n">said</span><span class="p">,</span><span class="w"> </span><span class="mi">6</span><span class="p">)</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">heard</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">unsafe_alloc</span><span class="p">[</span><span class="n">c_char</span><span class="p">](</span><span class="mi">64</span><span class="p">)</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">got</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">read</span><span class="p">(</span><span class="n">taken</span><span class="p">,</span><span class="w"> </span><span class="n">heard</span><span class="p">,</span><span class="w"> </span><span class="mi">64</span><span class="p">)</span>
+<span class="w">    </span><span class="nb">print</span><span class="p">(</span><span class="s2">"the other end read"</span><span class="p">,</span><span class="w"> </span><span class="n">got</span><span class="p">,</span><span class="w"> </span><span class="s2">"bytes"</span><span class="p">)</span>
+
+<span class="w">    </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">close</span><span class="p">(</span><span class="n">caller</span><span class="p">)</span>
+<span class="w">    </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">close</span><span class="p">(</span><span class="n">taken</span><span class="p">)</span>
+<span class="w">    </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">close</span><span class="p">(</span><span class="n">listener</span><span class="p">)</span>
+<span class="w">    </span><span class="n">heard</span><span class="o">.</span><span class="n">unsafe_free</span><span class="p">()</span>
+<span class="w">    </span><span class="n">length</span><span class="o">.</span><span class="n">unsafe_free</span><span class="p">()</span>
+<span class="w">    </span><span class="n">who</span><span class="o">.</span><span class="n">unsafe_free</span><span class="p">()</span>
+<span class="w">    </span><span class="n">there</span><span class="o">.</span><span class="n">unsafe_free</span><span class="p">()</span>
+<span class="w">    </span><span class="n">chosen</span><span class="o">.</span><span class="n">unsafe_free</span><span class="p">()</span>
+<span class="w">    </span><span class="n">size</span><span class="o">.</span><span class="n">unsafe_free</span><span class="p">()</span>
+<span class="w">    </span><span class="n">here</span><span class="o">.</span><span class="n">unsafe_free</span><span class="p">()</span>
+</code></pre></div>
+<p>Two things are worth knowing before the code. A port of 0 is not a port:
+it asks the kernel to choose one, and <code>getsockname</code> is the only way to
+learn which one it picked -- which is why nothing here can collide with
+anything else on the machine, and why the second address is built from a
+port that was already answered for rather than from a number guessed at.
+And <code>accept</code> hands back a socket of its own, because the listener's job
+is to keep listening; the address it fills in alongside is the caller's,
+not the listener's, which is the one place a connection's two ends are
+told apart by something other than which descriptor is which.</p>
 
 
 
