@@ -169,6 +169,18 @@ intended and created something other than was asked for, quietly, in the
 way these things do. A number read off `gcc -dM` by eye is right exactly
 once, and that was a long time ago.
 
+Telling a number from the answer it produces is the sharper form of the
+same lesson, and `TCP_NODELAY` is the small case of it. The number is 1 in
+both libcs, and glibc answers that 1 back when a socket with it set is
+read, so a test comparing the two passes. Darwin answered 4: the kernel
+hands back the flag it set -- `TF_NODELAY` is 0x4 -- rather than
+normalizing it to one. The constant is right in both places and the
+answer is not the constant, so what the test holds now is the answer each
+platform gives, measured on both. The alternative, asserting that the
+read was not zero, would have passed for a socket that had been given a
+wrong option number and had asked for something else entirely, which is
+the one thing that test exists to catch.
+
 And `scripts/check-layouts.py` asks C how big each struct is and where it
 has to start, which `tests/test_layout.mojo` had been doing for thirty-two
 things about eight structs and nothing for the rest. Its first run found
