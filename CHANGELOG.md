@@ -116,6 +116,11 @@ All notable changes to this project are documented here. The format follows
   `--check-tables` reads the reasons back against the pairs that can
   still be made, so a written answer cannot outlive its pair. The
   paragraph is in the doc, at the end of the mutation story.
+- **The order axis was swept again with the `pty` pair in it: 193 swaps,
+  none unaccounted for.** 156 caught, 10 that took the process down -- the
+  same ten as before, each a swap that hands a string where a pointer to
+  one belongs -- and 26 that are the same call. Four that used to crash
+  are caught now, where a test grew up around them.
 - **`<pty.h>`: a pseudo-terminal pair, and the three calls that take
   one.** `openpty` hands back the two descriptors, `login_tty` puts one
   on 0, 1 and 2 as the controlling terminal of a new session, and

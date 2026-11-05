@@ -486,6 +486,15 @@ After the twenty were dealt with the same sweep comes back 152 caught, 11 that
 took the process down, 27 that are the same call and none unaccounted for — the
 axis, not a sample of it, with every swap either caught or written down.
 
+It was swept once more when `pty` brought a pair of its own and the tests
+around it had moved on: 193 swaps, 156 caught, 10 that took the process down,
+26 that are the same call, and none unaccounted for. The ten are the same ten
+as before -- `popen`, `dlsym`, `realpath`, `wcsstr`, `strtok`, `getsubopt`,
+`strstr`, `wcstok`, `insque` and `strtok_r`, each taking the process down
+because the swap hands a string where a pointer to a string belongs -- and
+what changed is that four of them are caught now where a test grew up around
+them, and one written answer went with the entry that no longer held.
+
 Five of the twenty had an assertion to write, and two of those are the same
 mistake as the ulp — `powf` was asserted as `powf(2, 10) - 1024 < 1e-6`, which
 is true of every answer below 1024 and so is true of `powf(10, 2)`, and
