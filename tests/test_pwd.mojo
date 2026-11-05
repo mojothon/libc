@@ -181,30 +181,38 @@ def test_the_fields_the_two_structs_do_not_share() raises:
     Darwin-only members answer 0 and nothing on Linux, which is what
     the accessors promise rather than something read out of a slot
     that holds another member, and on Darwin they are the account's
-    own numbers, printed while the account is held so the run itself
-    says what they were.
+    own numbers: a password changed at no time, an account that does
+    not expire, and a class that is none.
     """
     var name = string_to_char_ptr("root")
     var by_name = getpwnam(name)
     assert_true(not is_null(by_name), "root is found as before")
 
     comptime if CompilationTarget.is_macos():
-        print("dbg passwd:", by_name[].pw_passwd())
-        print("dbg gecos:", by_name[].pw_gecos())
-        print("dbg change:", by_name[].pw_change())
-        print("dbg expire:", by_name[].pw_expire())
-        print("dbg class: '", by_name[].pw_class(), "'")
-        assert_true(
-            by_name[].pw_passwd().byte_length() > 0,
-            "the password field holds its placeholder",
+        assert_equal(
+            by_name[].pw_passwd(),
+            "*",
+            "the password field holds the star Darwin keeps for an "
+            + "account whose password is not in the file",
         )
         assert_true(
-            by_name[].pw_change() >= 0,
-            "the password was changed at no time before time began",
+            by_name[].pw_gecos().byte_length() > 0,
+            "the real name of the account is not empty",
         )
-        assert_true(
-            by_name[].pw_expire() >= 0,
-            "and the account does not expire before time began either",
+        assert_equal(
+            Int(by_name[].pw_change()),
+            0,
+            "the password has been changed at no time",
+        )
+        assert_equal(
+            Int(by_name[].pw_expire()),
+            0,
+            "and the account does not expire",
+        )
+        assert_equal(
+            by_name[].pw_class(),
+            "",
+            "and root has no login class",
         )
     else:
         assert_equal(

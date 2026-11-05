@@ -87,8 +87,9 @@ All notable changes to this project are documented here. The format follows
   differently on purpose: Linux's struct has no such members and the
   accessors promise 0 and nothing there rather than bytes read out of
   a slot that holds another member, which is exactly what the Linux
-  side asserts. On Darwin the run prints what the account says while
-  it holds it, so the values come from the machine itself.
+  side asserts. On Darwin the account's own answers are claimed: the
+  star the file keeps, a password changed at no time, an account that
+  does not expire, and a class that is none.
 - **Four more accessors no test called now have one, and one of them is
   asked two ways at once.** `netdb`'s `ai_canonname` and `ai_next` are
   asked of `localhost`, which every runner answers out of its own
