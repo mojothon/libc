@@ -64,6 +64,15 @@ All notable changes to this project are documented here. The format follows
   apart from `mtime` by setting the two times to different values and asking
   each for its own — `ctime` is the one that has to be now. `blocks` is
   asserted as a range the file's own size fixes.
+- **The shape of the ancillary data's header is now claimed and checked, and
+  the claim is a real platform difference found by the descriptor test.** C's
+  `struct cmsghdr` is not the same struct twice: glibc's is sixteen bytes with
+  a `size_t` length, XNU's is twelve with a `socklen_t` length, and a control
+  message built with glibc's shape answers EINVAL from XNU at every room
+  `CMSG_SPACE` suggests. `CMSGHDR_LEN_BYTES`, `CMSGHDR_HEADER_BYTES`,
+  `CMSGHDR_SPACE_ONE` and friends now name the shape, `check-layouts` compares
+  them with `sizeof` and `CMSG_SPACE` on each platform, and the descriptor test
+  builds the message in the shape its platform says.
 - **The nine `msghdr` accessors no test called now have one, and C answers
   for six of them.** `sendmsg` reads the name `set_msg_name` wrote, and
   `recvmsg` answers with the sender's address written through `msg_name` —

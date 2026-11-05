@@ -165,6 +165,9 @@ OFFSETS: dict[tuple[str, str], tuple[str, str]] = {
     ("libc.sys.socket", "MSGHDR_CONTROL_OFFSET"): ("msghdr", "msg_control"),
     ("libc.sys.socket", "MSGHDR_CONTROLLEN_OFFSET"): ("msghdr", "msg_controllen"),
     ("libc.sys.socket", "MSGHDR_FLAGS_OFFSET"): ("msghdr", "msg_flags"),
+    ("libc.sys.socket", "CMSGHDR_LEN_OFFSET"): ("cmsghdr", "cmsg_len"),
+    ("libc.sys.socket", "CMSGHDR_LEVEL_OFFSET"): ("cmsghdr", "cmsg_level"),
+    ("libc.sys.socket", "CMSGHDR_TYPE_OFFSET"): ("cmsghdr", "cmsg_type"),
     ("libc.regex", "REGMATCH_SO_OFFSET"): ("regmatch_t", "rm_so"),
     ("libc.regex", "REGMATCH_EO_OFFSET"): ("regmatch_t", "rm_eo"),
     ("libc.sched", "SCHED_PARAM_PRIORITY_OFFSET"): ("sched_param", "sched_priority"),
@@ -1121,6 +1124,52 @@ def main() -> int:
         for line in write_unchecked:
             print(f"      {line}")
 
+    cmsg_here, _ = mojo_numbers(
+        [
+            ("libc.sys.socket", "CMSGHDR_LEN_BYTES"),
+            ("libc.sys.socket", "CMSGHDR_HEADER_BYTES"),
+            ("libc.sys.socket", "CMSGHDR_SPACE_ONE"),
+        ]
+    )
+    cmsg_agree = 0
+    cmsg_disagree = []
+    if cmsg_here:
+        includes = "\n".join(f"#include <{h}>" for h in CHECK_CONSTANTS.headers())
+        source = ROOT / ".build-check" / "cmsghdr.c"
+        source.parent.mkdir(exist_ok=True)
+        source.write_text(
+            "#include <stdio.h>\n#include <stddef.h>\n" + includes + "\n"
+            "int main(void) {\n"
+            '    printf("%zu %zu %zu\\n", sizeof(struct cmsghdr),'
+            " CMSG_SPACE(sizeof(int)), sizeof(((struct cmsghdr *)0)->cmsg_len));\n"
+            "    return 0;\n}\n"
+        )
+        built = subprocess.run(
+            [*CC, *DEFINES, "-w", "-o", str(ROOT / ".build-check" / "cmsghdr"), str(source)],
+            capture_output=True,
+            text=True,
+        )
+        if built.returncode == 0:
+            ran = subprocess.run(
+                [str(ROOT / ".build-check" / "cmsghdr")], capture_output=True, text=True
+            )
+            header, space, length = (int(n) for n in ran.stdout.split())
+            asked = [
+                ("CMSGHDR_LEN_BYTES", length),
+                ("CMSGHDR_HEADER_BYTES", header),
+                ("CMSGHDR_SPACE_ONE", space),
+            ]
+            for name, actual in asked:
+                said = cmsg_here[("libc.sys.socket", name)]
+                if said == actual:
+                    cmsg_agree += 1
+                else:
+                    cmsg_disagree.append((name, said, actual))
+        print(f"\n  The shape of the ancillary data's header, for the 3:")
+        print(f"      {cmsg_agree} agree with C on this platform")
+        for name, said, actual in cmsg_disagree:
+            print(f"      libc.sys.socket.{name:<28} says {said}  C says {actual}")
+
     roomed = rooms()
     room_agree = 0
     room_disagree = []
@@ -1270,6 +1319,8 @@ def main() -> int:
         print("  *** members given a room C says they do not have ***")
     if write_disagree:
         print("  *** members written at a width C does not agree with ***")
+    if cmsg_disagree:
+        print("  *** the ancillary data's header is not the shape C says ***")
     if (
         disagree
         or offset_disagree
@@ -1281,6 +1332,7 @@ def main() -> int:
         or read_half
         or room_disagree
         or write_disagree
+        or cmsg_disagree
     ):
         return 1
     print("  nothing disagrees with C")

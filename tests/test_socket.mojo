@@ -10,7 +10,7 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
-from libc.errno import get_errno, set_errno
+from libc.errno import get_errno
 from libc.constant import (
     AF_INET,
     AF_UNIX,
@@ -27,6 +27,12 @@ from libc.constant import (
     c_ulong,
 )
 from libc.sys.socket import (
+    CMSGHDR_HEADER_BYTES,
+    CMSGHDR_LEN_BYTES,
+    CMSGHDR_LEN_ONE,
+    CMSGHDR_LEVEL_OFFSET,
+    CMSGHDR_SPACE_ONE,
+    CMSGHDR_TYPE_OFFSET,
     accept,
     accept4,
     bind,
@@ -38,17 +44,17 @@ from libc.sys.socket import (
     listen,
     msghdr,
     recv,
-    recvmsg,
     recvfrom,
+    recvmsg,
     send,
     sendmsg,
     sendto,
+    setsockopt,
     shutdown,
     sockatmark,
     socket,
     socketaddr,
     socketpair,
-    setsockopt,
 )
 from libc.poll import poll, pollfd
 from libc.sys.stat import timeval
@@ -802,14 +808,17 @@ def test_a_descriptor_traveling_as_ancillary_data() raises:
     of `msg_controllen` after the call, which is C's own answer rather
     than the number this test put there.
 
-    The line it travels over is a stream pair, because Darwin refuses
-    ancillary data on a datagram one outright — `sendmsg` answers -1
-    there — and a stream pair carries it on both platforms.
+    The shape of the message is the platform's own, because C's `struct
+    cmsghdr` is not the same struct twice: glibc's is sixteen bytes, the
+    length a `size_t` at 0 and the level and type ints at 8 and 12; XNU's
+    is twelve, the length a `socklen_t` at 0 and the level and type at 4
+    and 8. Every shape of glibc's on XNU answers EINVAL — which is how
+    the difference was found — so the message is built where the
+    `CMSGHDR_` constants beside `msghdr` say, and those constants are
+    compared with `sizeof` and `CMSG_SPACE` by `check-layouts`. The line
+    it travels over is a stream pair, which both platforms carry it on.
     """
     var ends = unsafe_alloc[Int32](2)
-    # A stream pair, because Darwin refuses ancillary data on a datagram
-    # one: `sendmsg` answers -1 there, so the line the descriptor travels
-    # over is the one kind both platforms carry it on.
     assert_equal(
         socketpair(AF_UNIX, SOCK_STREAM, 0, ends), 0, "a pair to send over"
     )
@@ -825,17 +834,25 @@ def test_a_descriptor_traveling_as_ancillary_data() raises:
     var leg_b = legs.unsafe_load(1)
     give_a_receive_timeout(right)
 
-    # A `cmsghdr` is the length, the level, the type, and then the data,
-    # which is one descriptor here. The room it travels in has to be
-    # `CMSG_SPACE` of one descriptor exactly: twenty-four bytes on glibc,
-    # whose `cmsghdr` is aligned to eight, and twenty on Darwin, whose is
-    # aligned to four — the four bytes glibc's rounding adds are trailing
-    # bytes to Darwin, and a sendmsg that carries them answers EINVAL.
-    var ancillary = unsafe_alloc[UInt64](4)
-    ancillary.unsafe_offset(0)[] = 20
-    ancillary.unsafe_offset(1)[] = UInt64(UInt32(SOL_SOCKET)) | (1 << 32)
-    ancillary.unsafe_offset(2)[] = UInt64(Int(leg_a) & 0xFFFFFFFF)
-    ancillary.unsafe_offset(3)[] = 0
+    # The message: the length, the level, the type, and one descriptor,
+    # written where this platform's `cmsghdr` says they sit.
+    var ancillary = unsafe_alloc[UInt8](32)
+    var words = ancillary.unsafe_bitcast[UInt32]()
+    var longs = ancillary.unsafe_bitcast[UInt64]()
+    if CMSGHDR_LEN_BYTES == 8:
+        longs.unsafe_offset(0)[] = UInt64(CMSGHDR_LEN_ONE)
+        longs.unsafe_offset(1)[] = UInt64(UInt32(SOL_SOCKET)) | (
+            UInt64(UInt32(SCM_RIGHTS)) << 32
+        )
+        longs.unsafe_offset(2)[] = UInt64(Int(leg_a) & 0xFFFFFFFF)
+        longs.unsafe_offset(3)[] = 0
+    else:
+        words.unsafe_offset(0)[] = UInt32(CMSGHDR_LEN_ONE)
+        words.unsafe_offset(1)[] = UInt32(SOL_SOCKET)
+        words.unsafe_offset(2)[] = UInt32(SCM_RIGHTS)
+        words.unsafe_offset(3)[] = UInt32(Int(leg_a) & 0xFFFFFFFF)
+        words.unsafe_offset(4)[] = 0
+        words.unsafe_offset(5)[] = 0
 
     var letter = unsafe_alloc[UInt8](1)
     letter.unsafe_offset(0)[] = 0x66
@@ -848,8 +865,7 @@ def test_a_descriptor_traveling_as_ancillary_data() raises:
     out.unsafe_offset(0)[].set_msg_name(null_ptr[UInt8]())
     out.unsafe_offset(0)[].set_msg_namelen(0)
     out.unsafe_offset(0)[].set_msg_control(ancillary.unsafe_bitcast[UInt8]())
-    comptime CONTROL_ROOM = 20 if CompilationTarget.is_macos() else 24
-    out.unsafe_offset(0)[].set_msg_controllen(UInt64(CONTROL_ROOM))
+    out.unsafe_offset(0)[].set_msg_controllen(UInt64(CMSGHDR_SPACE_ONE))
     give_a_receive_timeout(left)
     var went = sendmsg(left, out, 0)
     assert_true(
@@ -862,7 +878,9 @@ def test_a_descriptor_traveling_as_ancillary_data() raises:
     var taken = unsafe_alloc[UInt8](1)
     var one = unsafe_alloc[iovec](1)
     one.unsafe_offset(0)[] = iovec(taken, 1)
-    var arrived = unsafe_alloc[UInt64](16)
+    var arrived = unsafe_alloc[UInt8](64)
+    var seen = arrived.unsafe_bitcast[UInt32]()
+    var seen_longs = arrived.unsafe_bitcast[UInt64]()
     var in_msg = unsafe_alloc[msghdr](1)
     in_msg.unsafe_offset(0)[] = msghdr()
     in_msg.unsafe_offset(0)[].set_msg_iov(one)
@@ -870,20 +888,29 @@ def test_a_descriptor_traveling_as_ancillary_data() raises:
     in_msg.unsafe_offset(0)[].set_msg_name(null_ptr[UInt8]())
     in_msg.unsafe_offset(0)[].set_msg_namelen(0)
     in_msg.unsafe_offset(0)[].set_msg_control(arrived.unsafe_bitcast[UInt8]())
-    in_msg.unsafe_offset(0)[].set_msg_controllen(128)
+    in_msg.unsafe_offset(0)[].set_msg_controllen(32)
     assert_equal(Int(recvmsg(right, in_msg, 0)), 1, "and the byte comes back")
     assert_equal(
         Int(taken.unsafe_load()), 0x66, "and it is the byte that was sent"
     )
-    assert_true(
-        in_msg.unsafe_offset(0)[].msg_controllen() >= 20,
+    assert_equal(
+        Int(in_msg.unsafe_offset(0)[].msg_controllen()),
+        Int(CMSGHDR_SPACE_ONE),
         "C answers how much ancillary data it wrote",
     )
-    var level = UInt32(arrived.unsafe_offset(1)[] & 0xFFFFFFFF)
-    var kind = UInt32(arrived.unsafe_offset(1)[] >> 32)
+    var level: UInt32
+    var kind: UInt32
+    var traveled: Int32
+    if CMSGHDR_LEN_BYTES == 8:
+        level = UInt32(seen_longs.unsafe_offset(1)[] & 0xFFFFFFFF)
+        kind = UInt32(seen_longs.unsafe_offset(1)[] >> 32)
+        traveled = Int32(seen_longs.unsafe_offset(2)[] & 0xFFFFFFFF)
+    else:
+        level = seen.unsafe_offset(CMSGHDR_LEVEL_OFFSET // 4)[]
+        kind = seen.unsafe_offset(CMSGHDR_TYPE_OFFSET // 4)[]
+        traveled = Int32(seen.unsafe_offset(CMSGHDR_HEADER_BYTES // 4)[])
     assert_equal(Int(level), Int(SOL_SOCKET), "the message is at this level")
     assert_equal(Int(kind), Int(SCM_RIGHTS), "and of the descriptor kind")
-    var traveled = Int32(arrived.unsafe_offset(2)[] & 0xFFFFFFFF)
     assert_true(traveled >= 0, "and it names a descriptor")
 
     # What is sent through the descriptor that arrived comes out of the
@@ -916,122 +943,7 @@ def test_a_descriptor_traveling_as_ancillary_data() raises:
     _ = close(right)
 
 
-def diagnose_ancillary_variants() raises:
-    """One-off: every shape of the descriptor send, asked in the
-    platform's own words. Each result, and the errno captured before
-    anything else touched it, is printed.
-    """
-    for kind, named in [
-        (Int32(SOCK_STREAM), "stream"),
-        (Int32(SOCK_DGRAM), "datagram"),
-    ]:
-        var ends = unsafe_alloc[Int32](2)
-        assert_equal(socketpair(AF_UNIX, kind, 0, ends), 0, "a pair")
-        var left = ends.unsafe_load(0)
-        var right = ends.unsafe_load(1)
-        give_a_receive_timeout(right)
-        var legs = unsafe_alloc[Int32](2)
-        assert_equal(socketpair(AF_UNIX, SOCK_DGRAM, 0, legs), 0, "legs")
-        var leg_a = legs.unsafe_load(0)
-
-        var letter = unsafe_alloc[UInt8](1)
-        letter.unsafe_offset(0)[] = 0x66
-        var pieces = unsafe_alloc[iovec](1)
-        pieces.unsafe_offset(0)[] = iovec(letter, 1)
-
-        var ancillary = unsafe_alloc[UInt64](8)
-        var out = unsafe_alloc[msghdr](1)
-
-        for length in [20, 24, 28, 32]:
-            for room in [20, 24, 28, 32]:
-                if room < length:
-                    continue
-                ancillary.unsafe_offset(0)[] = UInt64(length)
-                ancillary.unsafe_offset(1)[] = UInt64(UInt32(SOL_SOCKET)) | (
-                    1 << 32
-                )
-                ancillary.unsafe_offset(2)[] = UInt64(Int(leg_a) & 0xFFFFFFFF)
-                ancillary.unsafe_offset(3)[] = 0
-                out.unsafe_offset(0)[] = msghdr()
-                out.unsafe_offset(0)[].set_msg_iov(pieces)
-                out.unsafe_offset(0)[].set_msg_iovlen(1)
-                out.unsafe_offset(0)[].set_msg_control(
-                    ancillary.unsafe_bitcast[UInt8]()
-                )
-                out.unsafe_offset(0)[].set_msg_controllen(UInt64(room))
-                var went = sendmsg(left, out, 0)
-                var said = Int(get_errno())
-                if went == 1:
-                    print(
-                        "diagnose:",
-                        named,
-                        "cmsg_len=",
-                        length,
-                        "room=",
-                        room,
-                        "-> sent",
-                        "(errno",
-                        said,
-                        ")",
-                    )
-                else:
-                    print(
-                        "diagnose:",
-                        named,
-                        "cmsg_len=",
-                        length,
-                        "room=",
-                        room,
-                        "->",
-                        Int(went),
-                        "errno",
-                        said,
-                    )
-
-        # Discriminators. (a) A SCM_RIGHTS of no descriptors at all:
-        # sixteen bytes, cmsg_len equal to the room, nothing to look up,
-        # so a refusal here is the header check and not the fd.
-        # (b) The same with level and type written where a kernel whose
-        # cmsg_len were four bytes would read them, which is what the
-        # comment in unp_internalize -- "64bit: cmsg_len is uint32_t" --
-        # would have a reader believe.
-        for probe, named in [(0, "no-fd"), (1, "short-header")]:
-            ancillary.unsafe_offset(0)[] = 16
-            ancillary.unsafe_offset(1)[] = 0
-            if probe == 0:
-                ancillary.unsafe_offset(1)[] = UInt64(UInt32(SOL_SOCKET)) | (
-                    1 << 32
-                )
-            else:
-                ancillary.unsafe_offset(0)[] = 16
-                ancillary.unsafe_offset(0)[] = (
-                    UInt64(UInt32(SOL_SOCKET)) << 32
-                ) | 16
-                ancillary.unsafe_offset(1)[] = 1
-            out.unsafe_offset(0)[] = msghdr()
-            out.unsafe_offset(0)[].set_msg_iov(pieces)
-            out.unsafe_offset(0)[].set_msg_iovlen(1)
-            out.unsafe_offset(0)[].set_msg_control(
-                ancillary.unsafe_bitcast[UInt8]()
-            )
-            out.unsafe_offset(0)[].set_msg_controllen(16)
-            var went = sendmsg(left, out, 0)
-            var said = Int(get_errno())
-            print("diagnose: probe", named, "->", Int(went), "errno", said)
-
-        ancillary.unsafe_free()
-        out.unsafe_free()
-        pieces.unsafe_free()
-        letter.unsafe_free()
-        legs.unsafe_free()
-        ends.unsafe_free()
-        _ = close(left)
-        _ = close(right)
-        _ = close(leg_a)
-
-
 def main() raises:
-    diagnose_ancillary_variants()
     test_a_connection_over_the_loopback()
     test_accept4()
     test_socketpair()

@@ -304,6 +304,30 @@ comptime MSGHDR_CONTROLLEN_OFFSET: Int = 40
 comptime MSGHDR_FLAGS_OFFSET: Int = 44 if CompilationTarget.is_macos() else 48
 
 
+# The `struct cmsghdr` that heads ancillary data is not the same struct
+# twice, and the difference is in the length's width, which moves every
+# member behind it. glibc's is sixteen bytes: the length is a `size_t`
+# at 0, the level and the type are ints at 8 and 12, and the data begins
+# at 16. XNU's is twelve: the length is a `socklen_t` at 0, the level and
+# the type are at 4 and 8, and the data begins at 12. A control message
+# built with glibc's shape answers EINVAL from XNU, which is how the
+# descriptor test found this — every shape of the wrong one, at every
+# room `CMSG_SPACE` of the right one suggests, refused.
+#
+# `CMSGHDR_LEN_ONE` is `CMSG_LEN` of one descriptor and
+# `CMSGHDR_SPACE_ONE` is `CMSG_SPACE` of it, the length and the room an
+# ancillary message of one descriptor travels in. The offsets and widths
+# are compared with C's `offsetof` and `sizeof` on both platforms by
+# `scripts/check-layouts.py`.
+comptime CMSGHDR_LEN_OFFSET: Int = 0
+comptime CMSGHDR_LEN_BYTES: Int = 4 if CompilationTarget.is_macos() else 8
+comptime CMSGHDR_LEVEL_OFFSET: Int = 4 if CompilationTarget.is_macos() else 8
+comptime CMSGHDR_TYPE_OFFSET: Int = 8 if CompilationTarget.is_macos() else 12
+comptime CMSGHDR_HEADER_BYTES: Int = 12 if CompilationTarget.is_macos() else 16
+comptime CMSGHDR_LEN_ONE: Int = 16 if CompilationTarget.is_macos() else 20
+comptime CMSGHDR_SPACE_ONE: Int = 16 if CompilationTarget.is_macos() else 24
+
+
 struct msghdr:
     """One message for `sendmsg`, holding the address it goes to and the
     pieces it is made of, which are not all in one place.

@@ -216,7 +216,7 @@ member on every `_set_string`, into whatever the struct holds next.
 
 | what a struct does with its members | how many |
 | --- | --- |
-| places one by hand, at an offset listed in `OFFSETS` | 117 |
+| places one by hand, at an offset listed in `OFFSETS` | 120 |
 | declares them in order and leaves the layout to Mojo | 187 |
 | reads none of them, and claims only a size | 17 |
 | has a struct only Linux has | 13 |
@@ -297,6 +297,17 @@ masks the low four bytes and the other shifts the high four away.
 which is the half the shift keeps, and that is what it is compared with: take
 the other half and the number is the right size and the wrong value, which is
 what `gl_flags` did for three releases before anyone looked.
+
+The ancillary data's own header is the claim this package got wrong longest
+without noticing, because it never had a reader until the descriptor test was
+written. C's `struct cmsghdr` is not the same struct twice: glibc's is sixteen
+bytes, the length a `size_t` at 0 and the level and type ints at 8 and 12;
+XNU's is twelve, the length a `socklen_t` at 0 and the level and type at 4 and
+8. A control message built with glibc's shape answers EINVAL from XNU — every
+shape of it, at every room — which is how the difference was found, and
+`CMSGHDR_LEN_BYTES`, `CMSGHDR_HEADER_BYTES` and `CMSGHDR_SPACE_ONE` now say
+which shape this platform has, compared with `sizeof` and `CMSG_SPACE` the
+same way the struct's offsets are.
 
 The same width question is asked in the other direction, of what a setter
 writes. Eleven setters put a value into a member at a width they name —

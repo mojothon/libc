@@ -213,6 +213,13 @@ BREAKS = [
     ),
     Break(
         "check-layouts",
+        "an ancillary header built in the other platform's shape",
+        "src/libc/sys/socket/syscalls.mojo",
+        "comptime CMSGHDR_HEADER_BYTES: Int = 12 if CompilationTarget.is_macos() else 16",
+        "comptime CMSGHDR_HEADER_BYTES: Int = 12",
+    ),
+    Break(
+        "check-layouts",
         "a member written at a number rather than at a named offset",
         "src/libc/utmpx/syscalls.mojo",
         "self._set_u32(UT_PID_OFFSET, UInt32(pid))",
