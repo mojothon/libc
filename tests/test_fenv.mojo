@@ -117,10 +117,20 @@ def test_environment_round_trip() raises:
     var env = unsafe_alloc[fenv_t](1)
     env[] = fenv_t()
 
-    assert_equal(fegetenv(env), 0, "the environment was saved")
-    assert_equal(fesetround(FE_UPWARD), 0, "the mode was changed")
+    assert_equal(fesetround(FE_UPWARD), 0, "the mode was set to upward")
+    assert_equal(fegetenv(env), 0, "the environment was saved as it stood")
+    assert_equal(
+        fegetround(),
+        FE_UPWARD,
+        "saving it left the mode alone, which reading is and writing is not",
+    )
+    assert_equal(fesetround(FE_TONEAREST), 0, "the mode was moved off it")
     assert_equal(fesetenv(env), 0, "the environment was restored")
-    assert_equal(fegetround(), FE_TONEAREST, "and the default mode is back")
+    assert_equal(
+        fegetround(),
+        FE_UPWARD,
+        "and the mode came back with the environment",
+    )
 
     # feholdexcept saves the environment and quiets the flags, and feupdateenv
     # puts the environment back while keeping whatever was raised meanwhile.
@@ -136,13 +146,14 @@ def test_environment_round_trip() raises:
         0,
         "and the flags are quiet, which saving alone would not have made them",
     )
-    assert_equal(fesetround(FE_UPWARD), 0, "the mode was changed")
+    assert_equal(fesetround(FE_TONEAREST), 0, "the mode was moved off it")
     assert_equal(feraiseexcept(FE_INEXACT), 0, "an exception was raised")
     assert_equal(feupdateenv(env), 0, "the environment was restored")
-    assert_equal(fegetround(), FE_TONEAREST, "the default mode is back")
+    assert_equal(fegetround(), FE_UPWARD, "and the mode came back with it")
     assert_true(fetestexcept(FE_INEXACT) != 0, "and the exception survived")
 
     assert_equal(feclearexcept(FE_ALL_EXCEPT), 0, "the flags were cleared")
+    assert_equal(fesetround(FE_TONEAREST), 0, "the default mode is put back")
     env.unsafe_free()
 
 

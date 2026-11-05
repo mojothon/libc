@@ -654,9 +654,27 @@ assertions: `fegetenv` by asking the mode before and after the saving,
 and a child whose ending says whether they took it. The axis is closed
 then:
 every mutant of it is caught, or answered by a test's own failure, or
-written down in one of the tables, and `--check-tables` reads the seventeen
+written down in one of the tables, and `--check-tables` reads the sixteen
 reasons of this axis back against the pairs that can still be made, which is
 what keeps a written answer from outliving the pair it excuses.
+
+The sweep had been made before the last few bindings came in, so before the
+axis was called closed its whole five hundred and ninety-two were asked
+again, on the tree as it now stands. Nothing passed. Three of the crashes
+stopped being crashes. `fegetenv` pointed at `fesetenv` was given a test of
+its own: saving the environment leaves the mode alone, so the test sets a
+mode before saving and expects it back twice, which the setter cannot do.
+`putenv` pointed at `system` stopped crashing by asking first whether
+`getenv` found the name at all -- the shell runs the string as an assignment
+in a child and answers 0, and the name never reaches this process, which is
+what made the old read of it come back as nothing and take the run with it.
+`calloc` pointed at `aligned_alloc` is the cleanest: `calloc` is asked for a
+hundred bytes, and a hundred is not a power of two, so a call that reads the
+count as an alignment cannot even answer, and glibc says so with nothing.
+
+One written answer went out of date the same day: `cfsetispeed` and
+`cfsetospeed` were written down as writing the same storage, which the
+tests have since told apart, so that table entry is gone.
 
 glibc, for its part, does not come with anything that checks glibc.
 

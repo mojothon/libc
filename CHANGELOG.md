@@ -116,6 +116,19 @@ All notable changes to this project are documented here. The format follows
   `--check-tables` reads the reasons back against the pairs that can
   still be made, so a written answer cannot outlive its pair. The
   paragraph is in the doc, at the end of the mutation story.
+- **The whole of the mutation sweep was asked again, and the three
+  crashes it found are assertions now.** The sweep had been made before
+  the last few bindings arrived, so all five hundred and ninety-two
+  mutants were asked on the tree as it stands, and nothing passed.
+  `fegetenv` pointed at `fesetenv` has a test of its own: saving the
+  environment leaves the mode alone, so a mode is set before saving and
+  expected back twice. `putenv` pointed at `system` is caught by asking
+  whether `getenv` found the name, which the shell never delivers to this
+  process. `calloc` pointed at `aligned_alloc` is asked for a hundred
+  bytes -- not a power of two, so no alignment can answer, and glibc
+  returns nothing. One written answer went out of date: `cfsetispeed` and
+  `cfsetospeed` had been written down as writing the same storage, and the
+  tests have since told them apart, so the entry is gone.
 - **The last of the untested accessors are tested, and one of the
   answers was printed rather than claimed.** `sysinfo`'s `sharedram`,
   `bufferram` and `freehigh` are asked beside what is already asked:

@@ -138,15 +138,6 @@ SAME_ANSWER = {
     "htons->ntohs": (
         "the same for the sixteen-bit pair, for the same reason"
     ),
-    # Measured on this platform: the classic `termios` encoding keeps one
-    # speed, and both setters write it -- two different speeds were set and
-    # one came back through both getters.
-    "cfsetispeed->cfsetospeed": (
-        "measured: the classic `termios` encoding keeps one speed and both "
-        "setters write the same bits of the same word -- two different speeds "
-        "were set and one came back through both getters, so the two calls "
-        "write the same storage here"
-    ),
     "cfsetspeed->cfsetispeed": (
         "the same one storage, which is what setting both at once comes to "
         "here: the input and the output speed are the same bits, and either "

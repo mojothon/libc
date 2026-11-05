@@ -107,10 +107,21 @@ def test_malloc() raises:
 
 
 def test_calloc() raises:
-    var p = calloc(16, 1)
+    # calloc promises count times size zeroes. The count is asked to be
+    # 100 on purpose: 100 is not a power of two, so a call that reads the
+    # first argument as an alignment -- which is what `aligned_alloc` is,
+    # and what calloc is not -- cannot even answer, and glibc says so with
+    # nothing. Whatever memory comes back is then read in full, because
+    # zeroed is the whole of the promise.
+    var p = calloc(100, 1)
+    assert_true(not is_null(p), "calloc answers for a hundred bytes")
     var i = 0
-    while i < 16:
-        assert_equal(Int(p.unsafe_load(i)), 0)
+    while i < 100:
+        assert_equal(
+            Int(p.unsafe_load(i)),
+            0,
+            "and what it hands back is zeroes",
+        )
         i += 1
     _ = free(p)
 
@@ -420,11 +431,12 @@ def test_the_untried_calls() raises:
     var assign = string_to_char_ptr("MOJO_LIBC_TRIED=1")
     assert_equal(putenv(assign), 0, "putenv takes the string")
     var name = string_to_char_ptr("MOJO_LIBC_TRIED")
-    assert_equal(
-        char_ptr_to_string(getenv(name)),
-        "1",
-        "and getenv finds what it was told",
+    var found = getenv(name)
+    assert_true(
+        not is_null(found),
+        "getenv finds what it was told, not nothing",
     )
+    assert_equal(char_ptr_to_string(found), "1", "and the value is the one")
     name.unsafe_free()
 
     var seed = unsafe_alloc[c_uint](1)
