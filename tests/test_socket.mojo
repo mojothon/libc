@@ -959,21 +959,6 @@ def diagnose_ancillary_variants() raises:
                     ancillary.unsafe_bitcast[UInt8]()
                 )
                 out.unsafe_offset(0)[].set_msg_controllen(UInt64(room))
-                if room == 20 and length == 20:
-                    for i in range(7):
-                        print(
-                            "diagnose:   slot",
-                            i,
-                            "=",
-                            out.unsafe_offset(0)[]._at(i * 8),
-                        )
-                    for i in range(4):
-                        print(
-                            "diagnose:   cmsg",
-                            i,
-                            "=",
-                            ancillary.unsafe_offset(i)[],
-                        )
                 var went = sendmsg(left, out, 0)
                 var said = Int(get_errno())
                 if went == 1:
@@ -1002,6 +987,37 @@ def diagnose_ancillary_variants() raises:
                         "errno",
                         said,
                     )
+
+        # Discriminators. (a) A SCM_RIGHTS of no descriptors at all:
+        # sixteen bytes, cmsg_len equal to the room, nothing to look up,
+        # so a refusal here is the header check and not the fd.
+        # (b) The same with level and type written where a kernel whose
+        # cmsg_len were four bytes would read them, which is what the
+        # comment in unp_internalize -- "64bit: cmsg_len is uint32_t" --
+        # would have a reader believe.
+        for probe, named in [(0, "no-fd"), (1, "short-header")]:
+            ancillary.unsafe_offset(0)[] = 16
+            ancillary.unsafe_offset(1)[] = 0
+            if probe == 0:
+                ancillary.unsafe_offset(1)[] = UInt64(UInt32(SOL_SOCKET)) | (
+                    1 << 32
+                )
+            else:
+                ancillary.unsafe_offset(0)[] = 16
+                ancillary.unsafe_offset(0)[] = (
+                    UInt64(UInt32(SOL_SOCKET)) << 32
+                ) | 16
+                ancillary.unsafe_offset(1)[] = 1
+            out.unsafe_offset(0)[] = msghdr()
+            out.unsafe_offset(0)[].set_msg_iov(pieces)
+            out.unsafe_offset(0)[].set_msg_iovlen(1)
+            out.unsafe_offset(0)[].set_msg_control(
+                ancillary.unsafe_bitcast[UInt8]()
+            )
+            out.unsafe_offset(0)[].set_msg_controllen(16)
+            var went = sendmsg(left, out, 0)
+            var said = Int(get_errno())
+            print("diagnose: probe", named, "->", Int(went), "errno", said)
 
         ancillary.unsafe_free()
         out.unsafe_free()
