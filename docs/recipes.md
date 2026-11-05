@@ -251,3 +251,76 @@ password was last changed, the time the account expires, and the login
 class — exist on Darwin's struct and not on Linux's; the accessors answer
 0 and nothing on Linux rather than reading a slot that holds another
 member.
+
+## Giving a program a terminal to talk to
+
+`forkpty` is `openpty`, `login_tty` and `fork` in one call: the child
+starts life with a pseudo-terminal's slave on descriptors 0, 1 and 2, and
+the parent holds the master. The master is the terminal's other end, so
+what the child prints arrives there and what is written there is the
+child's input.
+
+```mojo
+from std.memory.alloc import unsafe_alloc
+
+from libc.constant import c_char, c_int, c_ptr
+from libc.pty import Winsize, forkpty
+from libc.stdlib import exit
+from libc.sys.wait import waitpid
+from libc.termios import Termios
+from libc.unistd import close, read, write
+from libc.utils import null_ptr, string_to_char_ptr
+
+
+comptime SAID = "the child has a terminal\n"
+
+
+def main() raises:
+    var master = unsafe_alloc[c_int](1)
+    master.unsafe_offset(0)[] = -1
+
+    var child = forkpty(
+        master, null_ptr[c_char](), null_ptr[Termios](), null_ptr[Winsize]()
+    )
+    if child == 0:
+        # The slave is already on 0, 1 and 2 here: a program that insists
+        # on a terminal has one, and does not have to be told.
+        var said = string_to_char_ptr(SAID)
+        _ = write(1, said, UInt32(SAID.byte_length()))
+        _ = exit(0)
+
+    var m = master.unsafe_load()
+    var block = unsafe_alloc[c_char](128)
+    var got = read(m, block, 128)
+    while got > 0:
+        print(
+            String(unsafe_from_utf8=Span[UInt8](unsafe_ptr=block, length=Int(got))),
+            end="",
+        )
+        got = read(m, block, 128)
+
+    var status = unsafe_alloc[Int32](1)
+    status.unsafe_offset(0)[] = 0
+    _ = waitpid(child, status, 0)
+
+    _ = close(m)
+    block.unsafe_free()
+    status.unsafe_free()
+    master.unsafe_free()
+```
+
+Two things happen to those bytes on the way. The terminal translates as
+well as carries: at its default settings `ONLCR` turns each newline the
+child writes into a carriage return and a newline, so a child that wrote
+twenty-five bytes has a parent reading twenty-six. And there is no end of
+file to read while anything still holds the slave open -- the loop above
+ends because the child exited, and a pair taken with `openpty` whose
+slave the parent forgot to close has the parent waiting for that zero
+forever. `forkpty` closes the slave in the parent for exactly that
+reason, and `login_tty` makes the child a session leader so that closing
+the master hangs the terminal up and sends it `SIGHUP` -- which is how a
+program that will not read what is sent to it is stopped.
+
+One thing not to use to tell the two ends apart: `isatty` says yes for
+both. The line discipline is on both ends, and the master answers
+`tcgetattr` as readily as the slave does.
