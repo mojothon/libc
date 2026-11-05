@@ -599,6 +599,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#the-addresses-of-this-machines-interfaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The addresses of this machine's interfaces
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#looking-up-an-account" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Looking up an account
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -763,6 +785,28 @@
     <span class="md-ellipsis">
       
         Asking where a symbol is
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-addresses-of-this-machines-interfaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The addresses of this machine's interfaces
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#looking-up-an-account" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Looking up an account
       
     </span>
   </a>
@@ -947,6 +991,66 @@ same address under the public name and under an underscored one, and the
 loader reports whichever its linker settled on — <code>getpid</code> on one build
 and <code>__getpid</code> on another. The address is what identifies the symbol; the
 name is one of the things it is called.</p>
+<h2 id="the-addresses-of-this-machines-interfaces">The addresses of this machine's interfaces<a class="headerlink" href="#the-addresses-of-this-machines-interfaces" title="Permanent link">&para;</a></h2>
+<p><code>getifaddrs</code> answers a linked list of one record per address the machine
+has, walked through <code>ifa_next</code> until it runs out. The flags on each record
+say what the interface is, and the loopback is the one to skip when what
+is wanted is the addresses that reach other machines:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">std.memory.alloc</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">unsafe_alloc</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.constant</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">c_ptr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.ifaddrs</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">IFF_LOOPBACK</span><span class="p">,</span><span class="w"> </span><span class="n">freeifaddrs</span><span class="p">,</span><span class="w"> </span><span class="n">getifaddrs</span><span class="p">,</span><span class="w"> </span><span class="n">ifaddrs</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.utils</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">is_null</span><span class="p">,</span><span class="w"> </span><span class="n">null_ptr</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="n">raises</span><span class="p">:</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">list</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">unsafe_alloc</span><span class="p">[</span><span class="n">c_ptr</span><span class="p">[</span><span class="n">ifaddrs</span><span class="p">]](</span><span class="mi">1</span><span class="p">)</span>
+<span class="w">    </span><span class="nb">list</span><span class="o">.</span><span class="n">unsafe_offset</span><span class="p">(</span><span class="mi">0</span><span class="p">)[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">null_ptr</span><span class="p">[</span><span class="n">ifaddrs</span><span class="p">]()</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="n">getifaddrs</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mi">0</span><span class="p">:</span>
+<span class="w">        </span><span class="nb">print</span><span class="p">(</span><span class="s2">"getifaddrs failed"</span><span class="p">)</span>
+<span class="w">        </span><span class="k">return</span>
+
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">node</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">list</span><span class="p">[]</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="n">is_null</span><span class="p">(</span><span class="n">node</span><span class="p">):</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nb">Int</span><span class="p">(</span><span class="n">node</span><span class="p">[]</span><span class="o">.</span><span class="n">ifa_flags</span><span class="p">())</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">IFF_LOOPBACK</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">:</span>
+<span class="w">            </span><span class="nb">print</span><span class="p">(</span><span class="n">node</span><span class="p">[]</span><span class="o">.</span><span class="n">ifa_name</span><span class="p">())</span>
+<span class="w">        </span><span class="n">node</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="p">[]</span><span class="o">.</span><span class="n">ifa_next</span><span class="p">()</span>
+
+<span class="w">    </span><span class="n">freeifaddrs</span><span class="p">(</span><span class="nb">list</span><span class="p">[])</span>
+<span class="w">    </span><span class="nb">list</span><span class="o">.</span><span class="n">unsafe_free</span><span class="p">()</span>
+</code></pre></div>
+<p>The list is one allocation from the kernel, and <code>freeifaddrs</code> gives the
+whole of it back — there is nothing to free per record. One platform
+difference worth knowing before reading <code>ifa_dstaddr</code>: on a point-to-point
+link that member is the address at the far end, and glibc fills the
+loopback's with the loopback's own address, so a destination that equals
+the address does not mean the record is wrong.</p>
+<h2 id="looking-up-an-account">Looking up an account<a class="headerlink" href="#looking-up-an-account" title="Permanent link">&para;</a></h2>
+<p><code>getpwnam</code> takes a name and answers a row of the account database; the
+row lives in a buffer the next call to the same functions will reuse, so
+read it before asking again:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">libc.pwd</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">getpwnam</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.utils</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">is_null</span><span class="p">,</span><span class="w"> </span><span class="n">string_to_char_ptr</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="n">raises</span><span class="p">:</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">string_to_char_ptr</span><span class="p">(</span><span class="s2">"root"</span><span class="p">)</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">getpwnam</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="n">is_null</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
+<span class="w">        </span><span class="nb">print</span><span class="p">(</span><span class="s2">"no such account"</span><span class="p">)</span>
+<span class="w">        </span><span class="k">return</span>
+
+<span class="w">    </span><span class="nb">print</span><span class="p">(</span><span class="n">row</span><span class="p">[]</span><span class="o">.</span><span class="n">pw_name</span><span class="p">(),</span><span class="w"> </span><span class="s2">"is uid"</span><span class="p">,</span><span class="w"> </span><span class="nb">Int</span><span class="p">(</span><span class="n">row</span><span class="p">[]</span><span class="o">.</span><span class="n">pw_uid</span><span class="p">()),</span><span class="w"> </span><span class="s2">"with home"</span><span class="p">,</span><span class="w"> </span><span class="n">row</span><span class="p">[]</span><span class="o">.</span><span class="n">pw_dir</span><span class="p">())</span>
+<span class="w">    </span><span class="n">name</span><span class="o">.</span><span class="n">unsafe_free</span><span class="p">()</span>
+</code></pre></div>
+<p>The password member is a placeholder, not a password: the password left
+this row long ago — to <code>shadow</code> on Linux, which keeps <code>x</code> there, and out
+of the file on Darwin, which keeps <code>*</code>. Three more members — the time the
+password was last changed, the time the account expires, and the login
+class — exist on Darwin's struct and not on Linux's; the accessors answer
+0 and nothing on Linux rather than reading a slot that holds another
+member.</p>
 
 
 
