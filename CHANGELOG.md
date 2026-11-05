@@ -73,6 +73,18 @@ All notable changes to this project are documented here. The format follows
   `CMSGHDR_SPACE_ONE` and friends now name the shape, `check-layouts` compares
   them with `sizeof` and `CMSG_SPACE` on each platform, and the descriptor test
   builds the message in the shape its platform says.
+- **The three `ifaddrs` accessors no test called now have one, and the
+  members agree with each other.** Every IPv4 entry's `ifa_netmask` is in
+  the family of its address and only ever goes down — 255s and then 0s —
+  and the loopback's is an eight. An interface that broadcasts names its
+  broadcast in `ifa_dstaddr`, and that address is the interface's own
+  address with the mask turned inside out, byte by byte — which is an
+  answer one getter cannot give without the other two being right. glibc
+  also hands entries that do not broadcast a far end, the loopback gets
+  its own address there, and whatever it hands is in the family of the
+  address. The packet and link entries are told apart by their signature:
+  `ifa_data` filled, `ifa_netmask` empty, an address in neither Internet
+  family.
 - **The nine `msghdr` accessors no test called now have one, and C answers
   for six of them.** `sendmsg` reads the name `set_msg_name` wrote, and
   `recvmsg` answers with the sender's address written through `msg_name` —
