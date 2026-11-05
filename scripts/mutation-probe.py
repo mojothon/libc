@@ -705,6 +705,14 @@ NO_OBSERVATION = {
         "call left in this package that can see the difference, and any use of "
         "a destroyed condition is undefined in any case"
     ),
+    "cnd_init->cnd_signal": (
+        "glibc's zeroed cnd_t is a usable condition variable -- "
+        "PTHREAD_COND_INITIALIZER is all zeros -- so a call that skips "
+        "cnd_init and signals nothing behaves like one that initialised "
+        "and was never signaled: the tests see the same wait. Only "
+        "libc's own zero is that forgiving, and it is not a fact this "
+        "side can observe."
+    ),
 }
 
 

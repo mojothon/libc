@@ -7,6 +7,23 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **`libc.threads`, the last stub, written.** All twenty-five functions of
+  `<threads.h>` are bound: `thrd_create` and the rest of the `thrd` family,
+  `call_once`, the six `mtx` calls, the six `cnd` calls and the four `tss`
+  calls. The module had waited longer than any other on one argument --
+  `thrd_create` takes a function pointer -- and once that argument fell, the
+  whole module came with it: `call_once`'s function and the `tss` destructor
+  go over the same thin-function-value bridge. The handles are sized to
+  glibc and kept opaque (`thrd_t` one word, `tss_t` one unsigned int,
+  `once_flag` one int, `mtx_t` 40 bytes, `cnd_t` 48), `once_flag()` is C's
+  `ONCE_FLAG_INIT` spelled in Mojo, and the header comment says the thing a
+  Darwin user will find out anyway: importing this module there will not
+  link, there being no `<threads.h>` on that side at all. The tests run
+  real threads against each other, and the condition-variable handshake is
+  written so that the signal cannot arrive before anybody waits -- the
+  waiter signals from inside the mutex, and this side takes the mutex back
+  before waking, which is something only a sleeping waiter could allow.
+  Linux only; on Darwin the tests compile to nothing.
 - **A function of one's own, handed to C.** `qsort`, `bsearch`,
   `pthread_create`, `pthread_join` and `pthread_exit` are bound. All of
   them were waiting on the same reading -- that Mojo cannot hand C a

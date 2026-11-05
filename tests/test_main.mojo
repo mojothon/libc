@@ -28,6 +28,7 @@ from test_sysinfo import main as run_sysinfo
 from test_uchar import main as run_uchar
 from test_socket import main as run_socket
 from test_sigqueue import main as run_sigqueue
+from test_threads import main as run_threads
 from test_timer import main as run_timer
 from test_signal import main as run_signal
 from test_random import main as run_random
@@ -108,6 +109,7 @@ def main() raises:
     run_sysinfo()
     run_socket()
     run_sigqueue()
+    run_threads()
     run_timer()
     run_signal()
     run_random()

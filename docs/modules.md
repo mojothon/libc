@@ -26,6 +26,7 @@ the bottom.
 | `libc.sys.sysinfo` | `<sys/sysinfo.h>` | 18 |
 | `libc.sys.timer` | `<time.h>` the timers Darwin does not have | 12 |
 | `libc.pthread` | `<pthread.h>` | 103 |
+| `libc.threads` | `<threads.h>` Linux only, the C11 threads | 39 |
 | `libc.string` | `<string.h>` | 48 |
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 43 |
 | `libc.complex` | `<complex.h>` | 46 |
@@ -84,30 +85,30 @@ the bottom.
 
 ## Not started yet
 
-`libc.threads` (`<threads.h>`) exports nothing, and the reason is not the
-one the header suggests. Apple never shipped C11 threads — no Darwin SDK
-has `<threads.h>` — but a header that one platform does not have has never
-disqualified a module here: `libc.sys.epoll`, `libc.uchar` and others are
-Linux-only on purpose, and say so.
+`libc.threads` (`<threads.h>`) is Linux only: Apple never shipped C11
+threads, and no Darwin SDK has the header. A header that one platform
+does not have has never disqualified a module here — `libc.sys.epoll`,
+`libc.uchar` and others are Linux-only on purpose, and say so — and this
+one is the same kind of thing, so importing it on Darwin will not link.
 
-What did block it was `thrd_create`, which takes a function pointer, and
-this package could not hand C one. That is no longer so: a `def` that
-captures nothing converts to a `thin` function value, which is a code
-address, and `qsort`, `bsearch`, `pthread_create`, `pthread_join` and
-`pthread_exit` are bound on it. `tests/test_pthread.mojo` starts a real
-second thread, asserts that it is not this one, and reads back what it
-left.
+It is also the module that waited longest, and the reason was one
+argument: `thrd_create` takes a function pointer, and for most of this
+package's life nothing here could hand C one. That reading was wrong —
+a `def` that captures nothing converts to a `thin` function value, which
+is a code address, and `thrd_create` takes it where C takes its
+`thrd_start_t` — and once it was wrong, the whole module came with it:
+all twenty-five functions, including `call_once` and the thread-local
+`destructor`, are bound on the same discovery. `tests/test_threads.mojo`
+starts threads, hands a mutex and a condition variable to two of them at
+once, and proves a wake that cannot be lost.
 
-So `libc.threads` is now work rather than a wall: twenty-five functions,
-twenty-two of which are about meeting another thread. A mutex with one
-thread never blocks and a condition variable with one thread can only
-time out, which is why the module was not worth writing before the one
-call that makes a second thread possible. `libc.pthread` covers those
-same calls already and a hundred other entry points worth having on their
-own; `threads.h` is a wrapper over them with nothing else in it, and it
-is the wrapper that is missing rather than the calls.
+What `libc.pthread` owns and `libc.threads` does not is everything POSIX
+added on top: attributes, cancellation, process-shared mutexes, barriers
+once the other side has them. `threads.h` is the smaller vocabulary, and
+a program that wants C11 spellings — or wants to read C11 code — gets it
+here over the same libcs.
 
-One of the three calls this page used to name alongside it was never
+One call this page used to name alongside the missing module was never
 behind that wall: `atexit` has no symbol in glibc, which exports
 `__cxa_atexit` and `on_exit` in its place, so on this platform there is
 nothing for a binding to link against whatever the callback situation is.
@@ -117,8 +118,8 @@ because Mojo has no type to pass: on x86-64 the C type is the 80-bit x87
 format. `libc.locale` has no `FE_DFL_ENV`, see `fenv_t`.
 
 `libc.sys.epoll`, `libc.sys.prctl`, `libc.sys.sendfile`, `libc.sys.eventfd`,
-`libc.sys.inotify`, `libc.sys.sigqueue`, `libc.sys.timer`, `libc.sys.auxv`
-and `libc.uchar`
+`libc.sys.inotify`, `libc.sys.sigqueue`, `libc.sys.timer`, `libc.sys.auxv`,
+`libc.threads` and `libc.uchar`
 wrap Linux-only
 calls; importing them on Darwin will not link. `libc.uchar` is there because
 Darwin has no `<uchar.h>` — not in the 10.15 SDK, not in 14.4, and not in
@@ -153,7 +154,7 @@ is about the call rather than about the suite:
 
 None of them is known to be broken; they are simply not asked.
 
-1033 bindings are asked something, and the 3 that are not have a reason
+1058 bindings are asked something, and the 3 that are not have a reason
 each. Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.

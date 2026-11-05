@@ -1150,6 +1150,47 @@ def bring_in_libc_stdio():
     )
 
 
+def bring_in_libc_threads():
+    from libc.threads import (
+        TSS_DTOR_ITERATIONS,
+        call_once,
+        cnd_broadcast,
+        cnd_destroy,
+        cnd_init,
+        cnd_signal,
+        cnd_timedwait,
+        cnd_t,
+        cnd_wait,
+        mtx_destroy,
+        mtx_init,
+        mtx_lock,
+        mtx_plain,
+        mtx_recursive,
+        mtx_t,
+        mtx_timed,
+        mtx_timedlock,
+        mtx_trylock,
+        mtx_unlock,
+        once_flag,
+        thrd_create,
+        thrd_current,
+        thrd_detach,
+        thrd_equal,
+        thrd_exit,
+        thrd_join,
+        thrd_sleep,
+        thrd_success,
+        thrd_t,
+        thrd_timedout,
+        thrd_yield,
+        tss_create,
+        tss_delete,
+        tss_get,
+        tss_set,
+        tss_t,
+    )
+
+
 def bring_in_libc_stdlib():
     from libc.stdlib import (
         _Exit,

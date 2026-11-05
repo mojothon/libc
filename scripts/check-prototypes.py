@@ -68,7 +68,8 @@ HEADERS = [
     "sys/stat.h", "sys/statvfs.h", "sys/time.h", "sys/times.h",
     "sys/auxv.h", "sys/random.h", "sys/sysinfo.h", "sys/types.h",
     "sys/uio.h", "sys/un.h", "sys/utsname.h", "sys/wait.h",
-    "syslog.h", "termios.h", "time.h", "uchar.h",     "unistd.h", "util.h", "utime.h", "utmp.h",
+    "syslog.h", "termios.h",
+    "threads.h", "time.h", "uchar.h",     "unistd.h", "util.h", "utime.h", "utmp.h",
     "utmpx.h", "wchar.h", "wctype.h", "wordexp.h",
 ]
 
