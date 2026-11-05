@@ -800,10 +800,17 @@ def test_a_descriptor_traveling_as_ancillary_data() raises:
     descriptor arrives on the end that stayed home. The length is asked
     of `msg_controllen` after the call, which is C's own answer rather
     than the number this test put there.
+
+    The line it travels over is a stream pair, because Darwin refuses
+    ancillary data on a datagram one outright — `sendmsg` answers -1
+    there — and a stream pair carries it on both platforms.
     """
     var ends = unsafe_alloc[Int32](2)
+    # A stream pair, because Darwin refuses ancillary data on a datagram
+    # one: `sendmsg` answers -1 there, so the line the descriptor travels
+    # over is the one kind both platforms carry it on.
     assert_equal(
-        socketpair(AF_UNIX, SOCK_DGRAM, 0, ends), 0, "a pair to send over"
+        socketpair(AF_UNIX, SOCK_STREAM, 0, ends), 0, "a pair to send over"
     )
     var left = ends.unsafe_load(0)
     var right = ends.unsafe_load(1)
