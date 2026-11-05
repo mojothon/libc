@@ -89,6 +89,10 @@ NOT_A_C_STRUCT = {
     "FILE": "an opaque handle; C never says what is inside it",
     "Locale": "this package's own handle, not a C struct",
     "CString": "this package's own handle, not a C struct",
+    "sockaddr_un": (
+        "a view: the bytes are the caller's block, and the size claim is "
+        "checked as the SOCKADDR_UN_BYTES constant"
+    ),
 }
 
 # Where this package places a member itself rather than letting Mojo lay the
@@ -163,6 +167,7 @@ OFFSETS: dict[tuple[str, str], tuple[str, str]] = {
         "sockaddr_in",
         "sin_addr",
     ),
+    ("libc.sys.un", "SOCKADDR_UN_PATH_OFFSET"): ("sockaddr_un", "sun_path"),
     ("libc.sys.socket", "MSGHDR_NAME_OFFSET"): ("msghdr", "msg_name"),
     ("libc.sys.socket", "MSGHDR_NAMELEN_OFFSET"): ("msghdr", "msg_namelen"),
     ("libc.sys.socket", "MSGHDR_IOV_OFFSET"): ("msghdr", "msg_iov"),
@@ -238,6 +243,11 @@ OFFSETS: dict[tuple[str, str], tuple[str, str]] = {
 WIDTHS: dict[tuple[str, str], str] = {
     ("libc.termios", "TERMIOS_FLAG_BYTES"): "tcflag_t",
     ("libc.termios", "TERMIOS_SPEED_BYTES"): "speed_t",
+    # `sockaddr_un` is a view and not the struct itself, so this is where
+    # its size claim is checked: the struct is the caller's block, and the
+    # only number this package states about it is how many bytes that block
+    # has to be.
+    ("libc.sys.un", "SOCKADDR_UN_BYTES"): "sockaddr_un",
 }
 
 

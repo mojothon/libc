@@ -7,6 +7,19 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **`<sys/un.h>`: an address that is a path.** An `AF_UNIX` address was
+  the one thing this package could not build at all -- `socketaddr` is
+  sixteen bytes, which is a family, a port and four bytes of address, and
+  a path is longer than that. `sockaddr_un` writes and reads the path
+  where C keeps it, 108 bytes of it here and 104 on Darwin, where a
+  one-byte `sun_len` comes first; both sizes and the offset of `sun_path`
+  are put to C's `sizeof` and `offsetof`. The struct is a view of a
+  caller's block rather than an owner of one, because the calls it is
+  handed to read through a pointer and a copy would be an address they
+  never see. A test binds one, connects to it, takes the connection, and
+  then binds the same name again expecting `EADDRINUSE` -- which only
+  arrives if the first call really did put that path into the kernel's
+  table.
 - **An `AF_INET` view of `socketaddr`.** The struct held sixteen bytes and
   said that nothing here packed or unpacked them, so every caller filling in
   an address wrote `set_byte(2, ...)`, `set_byte(4, 127)` and hoped: the port

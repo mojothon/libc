@@ -434,3 +434,80 @@ And `accept` hands back a socket of its own, because the listener's job
 is to keep listening; the address it fills in alongside is the caller's,
 not the listener's, which is the one place a connection's two ends are
 told apart by something other than which descriptor is which.
+
+## A socket with a name instead of a port
+
+An `AF_UNIX` socket does not leave the machine, and its address is a path
+rather than a machine and a port. That makes it the easiest way for two
+programs on one machine to talk, and it makes its address longer than a
+`socketaddr` has room for: C gives it a struct of its own, 110 bytes here
+and 106 on Darwin, where a one-byte length comes first and the path has
+104 bytes rather than 108.
+
+`sockaddr_un` is a view of a block rather than a struct holding one,
+because the calls that read the address are handed a pointer into the
+block and would not see a copy. So the block is allocated first, and every
+address in the conversation is built over one.
+
+```mojo
+from std.memory.alloc import unsafe_alloc
+
+from libc.constant import AF_UNIX, SOCK_STREAM, c_char
+from libc.sys.socket import accept, bind, connect, listen, recv, send, socket
+from libc.sys.un import SOCKADDR_UN_BYTES, sockaddr_un
+from libc.unistd import close, getpid, unlink
+from libc.utils import string_to_char_ptr
+
+
+def main() raises:
+    var name = "/tmp/libc-recipe-" + String(Int(getpid())) + ".sock"
+    _ = unlink(string_to_char_ptr(name))
+
+    # The address is a view of this block, which has to outlive every call
+    # that is given the pointer.
+    var here_block = unsafe_alloc[UInt8](SOCKADDR_UN_BYTES)
+    var here = sockaddr_un(here_block)
+    here.set_path(name)
+
+    var listener = socket(AF_UNIX, SOCK_STREAM, 0)
+    _ = bind(listener, here.as_socketaddr(), here.length())
+    _ = listen(listener, 1)
+    print("listening on", name)
+
+    var caller = socket(AF_UNIX, SOCK_STREAM, 0)
+    _ = connect(caller, here.as_socketaddr(), here.length())
+
+    # `accept` writes the caller's address into a block of its own.
+    var there_block = unsafe_alloc[UInt8](SOCKADDR_UN_BYTES)
+    var there = sockaddr_un(there_block)
+    var size = unsafe_alloc[UInt32](1)
+    size.unsafe_offset(0)[] = there.length()
+    var taken = accept(listener, there.as_socketaddr(), size)
+    print("the caller's name is", there.path().byte_length(), "bytes long")
+
+    var said = string_to_char_ptr("hello\n")
+    _ = send(caller, said, 6, 0)
+    var heard = unsafe_alloc[c_char](64)
+    var got = recv(taken, heard, 64, 0)
+    print("the other end read", got, "bytes")
+
+    _ = close(caller)
+    _ = close(taken)
+    _ = close(listener)
+    _ = unlink(string_to_char_ptr(name))
+    heard.unsafe_free()
+    size.unsafe_free()
+    there_block.unsafe_free()
+    here_block.unsafe_free()
+```
+
+Three things differ from a port and are worth having in mind. `bind`
+creates a file, and the file outlives the socket: closing everything does
+not take the name away, and the next `bind` to it is refused with
+`EADDRINUSE` until it is `unlink`ed -- which is why the name carries the
+process id here and why the last line is `unlink`. The address that
+`accept` fills in is the caller's, and a caller that never bound a name of
+its own has none, which is what the zero above is: the kernel is not
+refusing to answer, there being nothing to say. And the length handed to
+`bind` and `connect` is the whole struct, `length()`, the same number C
+passes as `sizeof(struct sockaddr_un)`.

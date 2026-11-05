@@ -372,6 +372,15 @@ def bring_in_libc_getopt():
     )
 
 
+def bring_in_libc_sys_un():
+    from libc.sys.un import (
+        SOCKADDR_UN_BYTES,
+        SOCKADDR_UN_PATH_BYTES,
+        SOCKADDR_UN_PATH_OFFSET,
+        sockaddr_un,
+    )
+
+
 def bring_in_libc_tcp():
     from libc.tcp import (
         TCP_KEEPCNT,
@@ -1967,6 +1976,7 @@ def main() raises:
     bring_in_libc_sys_statvfs()
     bring_in_libc_sys_utsname()
     bring_in_libc_sys_wait()
+    bring_in_libc_sys_un()
     bring_in_libc_tcp()
     bring_in_libc_time()
     bring_in_libc_unistd()
