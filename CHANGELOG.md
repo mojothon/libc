@@ -77,9 +77,11 @@ All notable changes to this project are documented here. The format follows
   answered by a room the tests build.** `dirent`'s `type` and `reclen` are
   asked of a directory made in `/tmp` with an ordinary file in it: the
   dots every directory carries answer `DT_DIR`, the file answers `DT_REG`,
-  and every record is big enough to hold its header and its name and not
-  much more, which is the bound that keeps `reclen` reading its own two
-  bytes. Naming the type byte meant naming three constants — `DT_UNKNOWN`,
+  and every record is big enough to hold its header and its name — and
+  on glibc, whose records are packed, not much more, which is the bound
+  that keeps `reclen` reading its own two bytes; Darwin's filesystems
+  pad records to a grain of their own, so there the only bound asked is
+  the buffer. Naming the type byte meant naming three constants — `DT_UNKNOWN`,
   `DT_DIR` and `DT_REG` — that had been raw numbers in no header of this
   package. `siginfo_t`'s `si_signo`, `si_uid` and `si_errno` are asked of
   the answer `sigtimedwait` already gives: which signal arrived, whose

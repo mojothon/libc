@@ -1,10 +1,12 @@
 from std.memory.alloc import unsafe_alloc
+from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.constant import O_CREAT, O_RDONLY, O_TRUNC, O_WRONLY, c_ptr, c_void
 from libc.dirent import (
     DT_DIR,
     DT_REG,
+    DIRENT_BYTES,
     DIRENT_NAME_OFFSET,
     alphasort,
     closedir,
@@ -272,9 +274,12 @@ def test_the_type_of_each_entry_and_the_room_its_record_takes() raises:
     which is what says the type reader is over the type byte and not
     over the name. The room the record takes is asked of every entry:
     it has to hold the header in front of the name and the name
-    itself, and it cannot hold much more than that, which is the
-    bound that keeps `reclen` reading its own two bytes and not some
-    other member's.
+    itself, and — on glibc, whose records are packed — it cannot hold
+    much more than that, which is the bound that keeps `reclen`
+    reading its own two bytes and not some other member's. Darwin's
+    filesystems pad the record to a grain of their own, so the only
+    bound asked of it there is that it fit the buffer it was read
+    into.
     """
     comptime ROOM = "/tmp/libc_dirent_room"
     var room = string_to_char_ptr(ROOM)
@@ -302,7 +307,14 @@ def test_the_type_of_each_entry_and_the_room_its_record_takes() raises:
             takes >= DIRENT_NAME_OFFSET + held,
             "the record holds the header and the name",
         )
-        assert_true(takes <= held + 28, "and not much more than that")
+        comptime if CompilationTarget.is_macos():
+            assert_true(
+                takes <= DIRENT_BYTES,
+                "and it fits the buffer, APFS padding records to its "
+                + "own grain",
+            )
+        else:
+            assert_true(takes <= held + 28, "and not much more than that")
 
         if named == "." or named == "..":
             assert_equal(
