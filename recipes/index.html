@@ -621,6 +621,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#giving-a-program-a-terminal-to-talk-to" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giving a program a terminal to talk to
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -807,6 +818,17 @@
     <span class="md-ellipsis">
       
         Looking up an account
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#giving-a-program-a-terminal-to-talk-to" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giving a program a terminal to talk to
       
     </span>
   </a>
@@ -1051,6 +1073,73 @@ password was last changed, the time the account expires, and the login
 class — exist on Darwin's struct and not on Linux's; the accessors answer
 0 and nothing on Linux rather than reading a slot that holds another
 member.</p>
+<h2 id="giving-a-program-a-terminal-to-talk-to">Giving a program a terminal to talk to<a class="headerlink" href="#giving-a-program-a-terminal-to-talk-to" title="Permanent link">&para;</a></h2>
+<p><code>forkpty</code> is <code>openpty</code>, <code>login_tty</code> and <code>fork</code> in one call: the child
+starts life with a pseudo-terminal's slave on descriptors 0, 1 and 2, and
+the parent holds the master. The master is the terminal's other end, so
+what the child prints arrives there and what is written there is the
+child's input.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">std.memory.alloc</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">unsafe_alloc</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.constant</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">c_char</span><span class="p">,</span><span class="w"> </span><span class="n">c_int</span><span class="p">,</span><span class="w"> </span><span class="n">c_ptr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.pty</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">Winsize</span><span class="p">,</span><span class="w"> </span><span class="n">forkpty</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.stdlib</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">exit</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.sys.wait</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">waitpid</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.termios</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">Termios</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.unistd</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">close</span><span class="p">,</span><span class="w"> </span><span class="n">read</span><span class="p">,</span><span class="w"> </span><span class="n">write</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.utils</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">null_ptr</span><span class="p">,</span><span class="w"> </span><span class="n">string_to_char_ptr</span>
+
+
+<span class="n">comptime</span><span class="w"> </span><span class="n">SAID</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"the child has a terminal</span><span class="se">\n</span><span class="s2">"</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="n">raises</span><span class="p">:</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">master</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">unsafe_alloc</span><span class="p">[</span><span class="n">c_int</span><span class="p">](</span><span class="mi">1</span><span class="p">)</span>
+<span class="w">    </span><span class="n">master</span><span class="o">.</span><span class="n">unsafe_offset</span><span class="p">(</span><span class="mi">0</span><span class="p">)[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">-</span><span class="mi">1</span>
+
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">child</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">forkpty</span><span class="p">(</span>
+<span class="w">        </span><span class="n">master</span><span class="p">,</span><span class="w"> </span><span class="n">null_ptr</span><span class="p">[</span><span class="n">c_char</span><span class="p">](),</span><span class="w"> </span><span class="n">null_ptr</span><span class="p">[</span><span class="n">Termios</span><span class="p">](),</span><span class="w"> </span><span class="n">null_ptr</span><span class="p">[</span><span class="n">Winsize</span><span class="p">]()</span>
+<span class="w">    </span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="n">child</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">:</span>
+<span class="w">        </span><span class="c1"># The slave is already on 0, 1 and 2 here: a program that insists</span>
+<span class="w">        </span><span class="c1"># on a terminal has one, and does not have to be told.</span>
+<span class="w">        </span><span class="k">var</span><span class="w"> </span><span class="nv">said</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">string_to_char_ptr</span><span class="p">(</span><span class="n">SAID</span><span class="p">)</span>
+<span class="w">        </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">write</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">said</span><span class="p">,</span><span class="w"> </span><span class="nb">UInt32</span><span class="p">(</span><span class="n">SAID</span><span class="o">.</span><span class="n">byte_length</span><span class="p">()))</span>
+<span class="w">        </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">master</span><span class="o">.</span><span class="n">unsafe_load</span><span class="p">()</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">block</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">unsafe_alloc</span><span class="p">[</span><span class="n">c_char</span><span class="p">](</span><span class="mi">128</span><span class="p">)</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">got</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">read</span><span class="p">(</span><span class="n">m</span><span class="p">,</span><span class="w"> </span><span class="n">block</span><span class="p">,</span><span class="w"> </span><span class="mi">128</span><span class="p">)</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="n">got</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">:</span>
+<span class="w">        </span><span class="nb">print</span><span class="p">(</span>
+<span class="w">            </span><span class="nb">String</span><span class="p">(</span><span class="n">unsafe_from_utf8</span><span class="o">=</span><span class="n">Span</span><span class="p">[</span><span class="nb">UInt8</span><span class="p">](</span><span class="n">unsafe_ptr</span><span class="o">=</span><span class="n">block</span><span class="p">,</span><span class="w"> </span><span class="n">length</span><span class="o">=</span><span class="nb">Int</span><span class="p">(</span><span class="n">got</span><span class="p">))),</span>
+<span class="w">            </span><span class="n">end</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span>
+<span class="w">        </span><span class="p">)</span>
+<span class="w">        </span><span class="n">got</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">read</span><span class="p">(</span><span class="n">m</span><span class="p">,</span><span class="w"> </span><span class="n">block</span><span class="p">,</span><span class="w"> </span><span class="mi">128</span><span class="p">)</span>
+
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">unsafe_alloc</span><span class="p">[</span><span class="nb">Int32</span><span class="p">](</span><span class="mi">1</span><span class="p">)</span>
+<span class="w">    </span><span class="n">status</span><span class="o">.</span><span class="n">unsafe_offset</span><span class="p">(</span><span class="mi">0</span><span class="p">)[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">waitpid</span><span class="p">(</span><span class="n">child</span><span class="p">,</span><span class="w"> </span><span class="n">status</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+
+<span class="w">    </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">close</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+<span class="w">    </span><span class="n">block</span><span class="o">.</span><span class="n">unsafe_free</span><span class="p">()</span>
+<span class="w">    </span><span class="n">status</span><span class="o">.</span><span class="n">unsafe_free</span><span class="p">()</span>
+<span class="w">    </span><span class="n">master</span><span class="o">.</span><span class="n">unsafe_free</span><span class="p">()</span>
+</code></pre></div>
+<p>Two things happen to those bytes on the way. The terminal translates as
+well as carries: at its default settings <code>ONLCR</code> turns each newline the
+child writes into a carriage return and a newline, so a child that wrote
+twenty-five bytes has a parent reading twenty-six. And there is no end of
+file to read while anything still holds the slave open -- the loop above
+ends because the child exited, and a pair taken with <code>openpty</code> whose
+slave the parent forgot to close has the parent waiting for that zero
+forever. <code>forkpty</code> closes the slave in the parent for exactly that
+reason, and <code>login_tty</code> makes the child a session leader so that closing
+the master hangs the terminal up and sends it <code>SIGHUP</code> -- which is how a
+program that will not read what is sent to it is stopped.</p>
+<p>One thing not to use to tell the two ends apart: <code>isatty</code> says yes for
+both. The line discipline is on both ends, and the master answers
+<code>tcgetattr</code> as readily as the slave does.</p>
 
 
 
