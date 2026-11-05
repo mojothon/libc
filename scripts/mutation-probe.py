@@ -61,7 +61,9 @@ entry that has been answered, and the run says so.
 import argparse
 import concurrent.futures
 import importlib.util
+import os
 import random
+import signal
 import re
 import queue
 import shutil
@@ -205,6 +207,11 @@ SAME_ORDER = {
     "pthread_equal:t1 <-> t2": (
         "whether two handles name the same thread is the same question with "
         "them either way round, and the answer is zero or not"
+    ),
+    "thrd_equal:lhs <-> rhs": (
+        "the C11 spelling of the same question: equality of two handles is a "
+        "symmetric ask, and swapping the operands asks it of the same pair "
+        "either way"
     ),
     "setreuid:ruid <-> euid": (
         "this process has no privilege, so the only ids it may ask for are the "
@@ -748,13 +755,13 @@ def unobservable_for(mutant: Mutant) -> str:
     return NO_OBSERVATION.get(key) or NO_OBSERVATION.get(reverse_key(key), "")
 
 
-def classify(result: subprocess.CompletedProcess) -> str:
-    if result.returncode == 0:
+def classify(returncode: int, text: str) -> str:
+    if returncode == 0:
         return "survived"
-    both = (result.stdout or "") + (result.stderr or "")
+    both = text
     if "AssertionError" in both or "Unhandled exception" in both:
         return "caught"
-    if "execution crashed" in both or result.returncode < 0:
+    if "execution crashed" in both or returncode < 0:
         return "crashed"
     return "error"
 
@@ -948,8 +955,17 @@ def main() -> int:
                     return
                 outs = []
                 for test in callers(mutant.name):
-                    try:
-                        result = subprocess.run(
+                    # The answer is written to a file, not a pipe, and the run
+                    # is a session of its own. Both halves of one lesson: a run
+                    # that the verdict `hung` ends in is killed as a whole --
+                    # every process its forks left behind -- and a run that a
+                    # forked child outlives would hold a pipe open until
+                    # somebody reading it died with it, which turns an answer
+                    # the run gave into one the probe waits for forever.
+                    with tempfile.NamedTemporaryFile(
+                        mode="w+b", suffix=".out", delete=True
+                    ) as answer:
+                        proc = subprocess.Popen(
                             [
                                 "pixi",
                                 "run",
@@ -962,23 +978,25 @@ def main() -> int:
                                 str(test.relative_to(ROOT)),
                             ],
                             cwd=ROOT,
-                            capture_output=True,
-                            text=True,
-                            # A mutant can print bytes that are not text --
-                            # wide characters sent raw to the terminal are
-                            # the usual ones -- and that is output to judge,
-                            # not a reason for the probe itself to die.
-                            errors="replace",
-                            timeout=TIMEOUT,
+                            stdout=answer,
+                            stderr=answer,
+                            stdin=subprocess.DEVNULL,
+                            start_new_session=True,
                         )
-                    except subprocess.TimeoutExpired:
-                        # A mutated lock or wait can leave the file waiting
-                        # rather than failing, and that is a verdict of its own:
-                        # the run does not stop at it, and the mutant after it
-                        # still gets asked.
-                        outs.append("hung")
-                        continue
-                    outs.append(classify(result))
+                        try:
+                            returncode = proc.wait(timeout=TIMEOUT)
+                        except subprocess.TimeoutExpired:
+                            # A mutated lock or wait can leave the file waiting
+                            # rather than failing, and that is a verdict of its
+                            # own: the run does not stop at it, and the mutant
+                            # after it still gets asked.
+                            os.killpg(proc.pid, signal.SIGKILL)
+                            proc.wait()
+                            outs.append("hung")
+                            continue
+                        answer.seek(0)
+                        said_text = answer.read().decode(errors="replace")
+                        outs.append(classify(returncode, said_text))
                 target.write_text(pristine)
                 verdict = "caught" if "caught" in outs else outs[0]
                 where = f"{Path(mutant.path).relative_to(SRC / 'libc')}:{mutant.name}"
@@ -1002,7 +1020,7 @@ def main() -> int:
                     if verdict == "caught" and known:
                         answered.append(where)
                     if verdict == "error":
-                        tail = (result.stderr or "").strip().splitlines()
+                        tail = said_text.strip().splitlines()
                         for line in tail[-3:]:
                             print(f"            {line.strip()[:110]}")
             finally:
