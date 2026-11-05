@@ -58,17 +58,19 @@ comptime TCSAFLUSH: c_int = 2
 # Two of the local modes, and the two a program that reads a terminal's
 # output rather than a person's typing turns off: `ECHO` sends what is
 # written to the other side back again, and `ICANON` holds input until a
-# whole line has arrived. Both are bits of `c_lflag`, and both are the
-# same bit on the two platforms.
+# whole line has arrived. Both are bits of `c_lflag`, and the two libcs
+# number the second differently: `ECHO` is the same bit, and `ICANON` is
+# 2 on glibc and 256 on Darwin, which is why it is written both ways.
 comptime ECHO: UInt64 = 8
-comptime ICANON: UInt64 = 2
+comptime ICANON: UInt64 = 256 if CompilationTarget.is_macos() else 2
 
 # And one of the output modes, which is the other half of reading a
 # terminal's output rather than a person's typing: `ONLCR` sends a
 # newline as a carriage return and a newline, so a program comparing what
 # it sent with what came back finds one byte more than it sent. A bit of
-# `c_oflag`, and the same bit on the two platforms.
-comptime ONLCR: UInt64 = 4
+# `c_oflag`, and not the same bit on the two platforms: 4 on glibc and 2
+# on Darwin, where `OPOST` and the newline mapping are the first two.
+comptime ONLCR: UInt64 = 2 if CompilationTarget.is_macos() else 4
 
 # What `tcflush` is to throw away. Darwin numbers these from 1 and
 # glibc from 0, so the same integer means a different direction on
