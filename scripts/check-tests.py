@@ -44,8 +44,7 @@ def load(name: str):
 # calls this suite can make — so the point is that the reason is written
 # down rather than that the call is gone.
 CANNOT_ASK = {
-    "pthread_atfork": "the suite is run just-in-time, and the JIT run does not resolve this one — a built binary links and answers fine",
-    "putwchar": "standard output is process-wide and narrow-oriented by the suite already, and a forked child inherits that orientation — a wide write to it is not defined by C",
+    "pthread_atfork": "glibc exports it only as pthread_atfork@GLIBC_2.2.5 with no default version, and the just-in-time run the suite uses looks the bare name up and finds nothing — a built binary links and answers fine",
     "ioctl": "variadic, and its third argument is the address every request writes through: `external_call` emits a fixed-argument call, which arm64 hands to a variadic callee differently, so the request reads a slot nobody wrote instead",
 }
 

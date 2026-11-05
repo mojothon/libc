@@ -52,7 +52,9 @@ struct pthread_condattr_t:
 
 
 def pthread_atfork(
-    prepare: c_ptr[UInt8], parent: c_ptr[UInt8], child: c_ptr[UInt8]
+    prepare: def() thin -> None,
+    parent: def() thin -> None,
+    child: def() thin -> None,
 ) -> Int32:
     """C library <pthread.h> function `pthread_atfork`.
 
@@ -60,28 +62,38 @@ def pthread_atfork(
         https://man7.org/linux/man-pages/man3/pthread_atfork.3.html
 
     Args:
-        prepare: The function to be called before the fork.
-        parent: The function to be called in the parent process.
-        child: The function to be called in the child process.
+        prepare: The function to be called in the context of the forking
+            thread, before the fork happens.
+        parent: The function to be called in the parent process, after the
+            fork.
+        child: The function to be called in the child process, after the
+            fork.
 
     Notes:
-        All three are C function pointers. Mojo cannot make one, so the only
-        thing a Mojo caller can honestly pass is a null pointer for each.
+        Each is a `def` that captures nothing -- a thin function value,
+        which is a code address, and the shape C asks for. What is handed
+        over the fork is only the address: a handler that captures
+        nothing can reach nothing but its own code, so everything it is
+        to work on has to be reachable without an argument.
 
-        That is not the end of it, and what stands in the way is the name
-        rather than the call. glibc exports this one only as
-        pthread_atfork@GLIBC_2.2.5, with no default version, so a lookup of
-        the bare name finds nothing: `mojo run` stops at "JIT session
-        error: Symbols not found: [ pthread_atfork ]". A built binary never
-        looks the name up — the linker resolves it once — and the same call
-        there answers 0. Measured both ways from one source file: `mojo
-        build` links and runs, `mojo run` does not.
+        What still stands in the way is the name rather than the call.
+        glibc exports this one only as pthread_atfork@GLIBC_2.2.5, with
+        no default version, so a lookup of the bare name finds nothing:
+        `mojo run` stops at "JIT session error: Symbols not found: [
+        pthread_atfork ]". A built binary never looks the name up — the
+        linker resolves it once — and the same call there answers 0.
+        Measured both ways from one source file: `mojo build` links and
+        runs, `mojo run` does not.
 
     Returns:
         0 on success, or -1 on error.
     """
     return external_call[
-        "pthread_atfork", Int32, c_ptr[UInt8], c_ptr[UInt8], c_ptr[UInt8]
+        "pthread_atfork",
+        Int32,
+        def() thin -> None,
+        def() thin -> None,
+        def() thin -> None,
     ](prepare, parent, child)
 
 

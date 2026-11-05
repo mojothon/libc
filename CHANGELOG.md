@@ -7,6 +7,32 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **`putwchar` is asked, and a reason on the books was not one.** The call
+  writes to standard output itself, and standard output's orientation is
+  set by its first write and lasts as long as the process does, which is
+  why the page said it could not be asked: a fork hands the child the
+  stream the suite has already oriented, and a wide write to a
+  narrow-oriented stream is not defined by C. What the reading missed is
+  that the C library exports `stdout` as a variable, which `dlsym`
+  reaches, and that `freopen` starts a stream over -- unoriented, and
+  pointed at whatever descriptor 1 holds. The test's child reopens the
+  stream at nowhere first, which drains the buffer the fork would
+  otherwise hand over, then points descriptor 1 at a pipe, reopens,
+  turns the stream wide, and calls `putwchar`: the pipe receives one
+  byte, and the call answers the character it was given. The child ends
+  through `fclose`, closing being the flush this package has -- an
+  `fflush` binding is off the table, the Mojo standard library declaring
+  that name already. 1059 bindings are now asked something and 2 are not.
+- **`pthread_atfork` takes real handlers now.** It was bound with three
+  byte pointers and a note that Mojo cannot make a C function pointer,
+  which stopped being true when the thin-function bridge went in; the
+  three parameters are `def() thin -> None` values, which are code
+  addresses, the shape C asks for. What still stands between the call
+  and a test is the name, not the call: glibc exports it only as
+  pthread_atfork@GLIBC_2.2.5, with no default version, and the
+  just-in-time run the suite uses looks the bare name up and finds
+  nothing. That is the whole reason now, on the books in one place
+  rather than two.
 - **`libc.threads`, the last stub, written.** All twenty-five functions of
   `<threads.h>` are bound: `thrd_create` and the rest of the `thrd` family,
   `call_once`, the six `mtx` calls, the six `cnd` calls and the four `tss`

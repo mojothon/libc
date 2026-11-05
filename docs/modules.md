@@ -136,7 +136,7 @@ Mojo has no 80-bit type.
 
 ## What the suite does not ask
 
-Three bindings are not asked anything, and every one of them has a reason that
+Two bindings are not asked anything, and every one of them has a reason that
 is about the call rather than about the suite:
 
 - `ioctl` is variadic, and its third argument is the address that nearly every
@@ -146,15 +146,21 @@ is about the call rather than about the suite:
   nobody wrote. `FIONREAD` through this binding answers 0 on Apple silicon and
   leaves the integer it was asked about untouched. It is the same wall that
   makes the call that opens a file here be openat rather than open.
-- `putwchar` writes to a stream the whole process shares, and orients it:
-  forking a child does not get a fresh stream to try it on, only the one the
-  suite has already written to as bytes.
 - `pthread_atfork` registers a fork handler that the just-in-time run this
   suite uses cannot resolve; a built binary links and answers fine.
 
 None of them is known to be broken; they are simply not asked.
 
-1058 bindings are asked something, and the 3 that are not have a reason
+The wide putwchar call used to be on this list, on the reading that a fork only hands a
+child the stream the suite has already oriented. That was wrong twice over:
+the C library exports its standard output as a variable that the dynamic
+loader reaches, and reopening that stream starts it over -- unoriented, and
+pointed at whatever descriptor 1 holds. A child that points descriptor 1 at
+a pipe, reopens, turns the stream wide, and only then makes the wide write
+gets a real wide standard output to write to, and the pipe receives what
+the call wrote. The reasons on this page are claims, and claims get tested.
+
+1059 bindings are asked something, and the 2 that are not have a reason
 each. Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
