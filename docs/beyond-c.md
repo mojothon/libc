@@ -228,7 +228,7 @@ member on every `_set_string`, into whatever the struct holds next.
 
 | what a struct does with its members | how many |
 | --- | --- |
-| places one by hand, at an offset listed in `OFFSETS` | 120 |
+| places one by hand, at an offset listed in `OFFSETS` | 122 |
 | declares them in order and leaves the layout to Mojo | 191 |
 | reads none of them, and claims only a size | 17 |
 | has a struct only Linux has | 13 |

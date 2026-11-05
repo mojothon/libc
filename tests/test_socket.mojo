@@ -56,12 +56,25 @@ from libc.sys.socket import (
     socketaddr,
     socketpair,
 )
+from libc.network import in_addr, inet_addr, ntohs
 from libc.poll import poll, pollfd
 from libc.sys.stat import timeval
 from libc.unistd import close
-from libc.utils import null_ptr
+from libc.utils import null_ptr, string_to_char_ptr
 
 comptime ADDRESS_SIZE: UInt32 = 16
+
+
+def loopback_address() -> in_addr:
+    """127.0.0.1, in the four bytes C's `inet_addr` makes of the text.
+
+    Written through C rather than as a number here, so what goes into
+    the socket address is what C's own parser says an address is, and
+    not this package's idea of one.
+    """
+    var answer = in_addr()
+    answer.s_addr = inet_addr(string_to_char_ptr("127.0.0.1"))
+    return answer
 
 
 def loopback(mut addr: socketaddr, port: Int) -> None:
@@ -78,17 +91,13 @@ def loopback(mut addr: socketaddr, port: Int) -> None:
     """
     addr = socketaddr()
     addr.set_family(UInt16(AF_INET))
-    addr.set_byte(2, UInt8((port >> 8) & 0xFF))
-    addr.set_byte(3, UInt8(port & 0xFF))
-    addr.set_byte(4, 127)
-    addr.set_byte(5, 0)
-    addr.set_byte(6, 0)
-    addr.set_byte(7, 1)
+    addr.set_inet_port(UInt16(port))
+    addr.set_inet_address(loopback_address())
 
 
 def port_of(ref addr: socketaddr) -> Int:
     """The port, read back out of the two bytes it was written into."""
-    return Int(addr.byte(2)) * 256 + Int(addr.byte(3))
+    return Int(addr.inet_port())
 
 
 def ask_the_port(of: Int32) raises -> Int:
@@ -943,6 +952,68 @@ def test_a_descriptor_traveling_as_ancillary_data() raises:
     _ = close(right)
 
 
+def test_the_inet_view_is_the_layout_c_has() raises:
+    """`set_inet_port` and `set_inet_address` put the two numbers where
+    C's `sockaddr_in` keeps them, in the byte orders the wire wants, and
+    the reading halves give back what C's own parser put in.
+
+    Three claims, checked apart so that one cannot carry another: the
+    port's high byte goes down first, C's `ntohs` makes 8080 of the same
+    two bytes, and 127 leads the address where C's `inet_addr` puts it. A
+    reversed byte order satisfies a round trip and none of the three.
+    """
+    var addr = socketaddr()
+    addr.set_family(UInt16(AF_INET))
+    addr.set_inet_port(8080)  # 0x1F90
+
+    assert_equal(Int(addr.byte(2)), 0x1F, "the port's high byte first")
+    assert_equal(Int(addr.byte(3)), 0x90, "and the low byte after it")
+    # The machine holds those two bytes as 0x901F, and `ntohs` is what
+    # makes 8080 of them without this package's help.
+    assert_equal(Int(ntohs(UInt16(0x901F))), 8080, "which C reads as 8080")
+    assert_equal(Int(addr.inet_port()), 8080, "and so does this one")
+
+    var written = loopback_address()
+    addr.set_inet_address(written)
+    assert_equal(Int(addr.byte(4)), 127, "the address leads with 127")
+    assert_equal(Int(addr.byte(5)), 0, "then a zero")
+    assert_equal(Int(addr.byte(6)), 0, "then another")
+    assert_equal(Int(addr.byte(7)), 1, "and ends with 1")
+    assert_equal(
+        addr.inet_address().s_addr,
+        written.s_addr,
+        "and reads back as the word C parsed",
+    )
+
+    comptime if CompilationTarget.is_macos():
+        # Darwin's `sa_len` sits in front of the family and wants the
+        # whole size of the address in it.
+        assert_equal(Int(addr.byte(0)), 16, "sa_len is the whole sixteen")
+
+    # And the kernel reads the same layout: a socket bound to it with the
+    # port left open comes back with the address C parsed and a port it
+    # chose itself.
+    var server = socket(AF_INET, SOCK_STREAM, 0)
+    assert_true(server >= 0, "a socket to bind")
+    var bound = unsafe_alloc[socketaddr](1)
+    loopback(bound.unsafe_offset(0)[], 0)
+    assert_equal(bind(server, bound, ADDRESS_SIZE), 0, "bound to the loopback")
+    var back = unsafe_alloc[socketaddr](1)
+    var length = unsafe_alloc[UInt32](1)
+    length.unsafe_offset(0)[] = ADDRESS_SIZE
+    assert_equal(getsockname(server, back, length), 0, "and it can be asked")
+    assert_equal(
+        back.unsafe_offset(0)[].inet_address().s_addr,
+        written.s_addr,
+        "which answers the address it was given",
+    )
+    assert_true(back.unsafe_offset(0)[].inet_port() > 0, "and a port it chose")
+    _ = close(server)
+    back.unsafe_free()
+    length.unsafe_free()
+    bound.unsafe_free()
+
+
 def main() raises:
     test_a_connection_over_the_loopback()
     test_accept4()
@@ -953,4 +1024,5 @@ def main() raises:
     test_the_mark_that_out_of_band_data_leaves()
     test_a_message_sent_to_a_name_and_answered_with_one()
     test_a_descriptor_traveling_as_ancillary_data()
+    test_the_inet_view_is_the_layout_c_has()
     print("test_socket: ok")

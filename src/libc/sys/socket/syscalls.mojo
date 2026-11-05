@@ -8,6 +8,7 @@ from std.sys import CompilationTarget
 from std.memory import Pointer
 from std.utils.static_tuple import StaticTuple
 from libc.constant import c_int, c_ptr
+from libc.network import in_addr
 
 
 # What `accept4` is asked for, and both of them differ: SOCK_NONBLOCK is
@@ -29,6 +30,16 @@ comptime SOCKADDR_SLOTS: Int = 8
 comptime SOCKADDR_LEN_OFFSET: Int = 0
 comptime SOCKADDR_FAMILY_OFFSET: Int = 1 if CompilationTarget.is_macos() else 0
 
+# Where an `AF_INET` address keeps its two numbers. C names them `sin_port`
+# and `sin_addr`, and they land in the same place on both platforms: the
+# two bytes after the family, then the four after those. They are the same
+# offsets on Darwin because its `sa_len` and family fill the same two bytes
+# between them that glibc spends on a two-byte family alone -- which is the
+# reason one pair of numbers serves both, and `check-layouts.py` asks C's
+# `offsetof` about `sockaddr_in` on each.
+comptime SOCKADDR_INET_PORT_OFFSET: Int = 2
+comptime SOCKADDR_INET_ADDRESS_OFFSET: Int = 4
+
 
 struct socketaddr:
     """A socket address, as C's `struct sockaddr` has it: a family and
@@ -38,8 +49,10 @@ struct socketaddr:
     really is, because that is what C asks for and how it tells them
     apart. For `AF_INET` the first two bytes of `sa_data` are the port in
     network order and the four after that are the address, with the rest
-    zero; for `AF_UNIX` it is a path. Nothing here packs or unpacks any
-    of that for you.
+    zero; for `AF_UNIX` it is a path, and nothing here packs or unpacks
+    that one for you. `AF_INET` is packed and unpacked: `set_inet_port`
+    and `set_inet_address` write the two numbers where C's `sockaddr_in`
+    keeps them, and the reading halves give them back.
 
     The two platforms do not put the family in the same place. glibc's
     leads with a two-byte `sa_family` and Darwin's puts a `sa_len` byte
@@ -81,6 +94,36 @@ struct socketaddr:
         var keep = (UInt16(0xFF) << shift) ^ UInt16(0xFFFF)
         self._slots[slot] = (self._slots[slot] & keep) | (value << shift)
 
+    def _u16be(self, off: Int) -> UInt16:
+        """The two bytes at a two-aligned `off`, big-endian.
+
+        Which is the order the network counts in and this machine does
+        not, so these are the two bytes as they lie with the first one
+        high: 0x1F, 0x90 reads as 0x1F90.
+        """
+        return (UInt16(self._byte(off)) << 8) | UInt16(self._byte(off + 1))
+
+    def _set_u16be(mut self, off: Int, value: UInt16) -> None:
+        """Writes the two bytes at a two-aligned `off`, first one high."""
+        self._set_byte(off, UInt8((value >> 8) & 0xFF))
+        self._set_byte(off + 1, UInt8(value & 0xFF))
+
+    def _u32(self, off: Int) -> UInt32:
+        """The four bytes at a four-aligned `off`, as the word they lie in.
+
+        Little-endian, like the machine: the byte at `off` is the low one.
+        This is how `s_addr` holds an address -- the wire's bytes, read as
+        the number this machine would make of them.
+        """
+        var at = off // 2
+        return UInt32(self._slots[at]) | (UInt32(self._slots[at + 1]) << 16)
+
+    def _set_u32(mut self, off: Int, value: UInt32) -> None:
+        """Writes four bytes at a four-aligned `off`, low byte first."""
+        var at = off // 2
+        self._slots[at] = UInt16(value & 0xFFFF)
+        self._slots[at + 1] = UInt16((value >> 16) & 0xFFFF)
+
     def family(self) -> UInt16:
         """The address family, `AF_INET` and friends."""
         comptime if CompilationTarget.is_macos():
@@ -105,6 +148,55 @@ struct socketaddr:
     def set_byte(mut self, off: Int, value: UInt8) -> None:
         """Writes the byte at `off` of the sixteen, as the family asks."""
         self._set_byte(off, value)
+
+    def inet_port(self) -> UInt16:
+        """The `AF_INET` port, in the order a port is said in.
+
+        The two bytes are in network order on the wire, which is the
+        opposite of the order this machine counts in: port 8080 goes down
+        as 0x1F and then 0x90, and reads back here as 8080 rather than as
+        0x901F. This is the `ntohs` half of the pair, done on the bytes
+        already in place.
+        """
+        return self._u16be(SOCKADDR_INET_PORT_OFFSET)
+
+    def set_inet_port(mut self, port: UInt16) -> None:
+        """Writes an `AF_INET` port into the two bytes, in network order.
+
+        This is the `htons` half, and it is what `bind` and `connect` read:
+        a port written the other way round is a different port, and the
+        one call would wait on a number the other never asks for.
+
+        Args:
+            port: The port, in the order a port is said in. 0 leaves the
+                choice to the kernel, which `getsockname` is then asked
+                about.
+        """
+        self._set_u16be(SOCKADDR_INET_PORT_OFFSET, port)
+
+    def inet_address(self) -> in_addr:
+        """The `AF_INET` address, as C's `struct in_addr` holds one.
+
+        The four bytes go in as they lie, which is network order and so
+        also what `s_addr` holds: on these little-endian machines the 0x7F
+        of 127.0.0.1 is the low byte of the word and the number reads
+        0x0100007F, the one `inet_addr` gives for the same text.
+        `inet_ntoa` is what prints it back, and `INADDR_LOOPBACK` is that
+        same number.
+        """
+        var answer = in_addr()
+        answer.s_addr = self._u32(SOCKADDR_INET_ADDRESS_OFFSET)
+        return answer
+
+    def set_inet_address(mut self, address: in_addr) -> None:
+        """Writes an `AF_INET` address into the four bytes, as `in_addr`
+        holds one: network order, the bytes as they lie.
+
+        Args:
+            address: The address, from `inet_addr` or `inet_pton` or one of
+                the `INADDR_*` numbers.
+        """
+        self._set_u32(SOCKADDR_INET_ADDRESS_OFFSET, address.s_addr)
 
 
 def bind(

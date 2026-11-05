@@ -158,6 +158,11 @@ OFFSETS: dict[tuple[str, str], tuple[str, str]] = {
     ("libc.pwd", "PASSWD_EXPIRE_OFFSET"): ("passwd", "pw_expire"),
     ("libc.sys.socket", "SOCKADDR_LEN_OFFSET"): ("sockaddr", "sa_len"),
     ("libc.sys.socket", "SOCKADDR_FAMILY_OFFSET"): ("sockaddr", "sa_family"),
+    ("libc.sys.socket", "SOCKADDR_INET_PORT_OFFSET"): ("sockaddr_in", "sin_port"),
+    ("libc.sys.socket", "SOCKADDR_INET_ADDRESS_OFFSET"): (
+        "sockaddr_in",
+        "sin_addr",
+    ),
     ("libc.sys.socket", "MSGHDR_NAME_OFFSET"): ("msghdr", "msg_name"),
     ("libc.sys.socket", "MSGHDR_NAMELEN_OFFSET"): ("msghdr", "msg_namelen"),
     ("libc.sys.socket", "MSGHDR_IOV_OFFSET"): ("msghdr", "msg_iov"),
@@ -380,6 +385,7 @@ READERS = {
     "i8": 1,
     "u16": 2,
     "i16": 2,
+    "u16be": 2,
     "u32": 4,
     "i32": 4,
     "u64": 8,
@@ -543,7 +549,14 @@ def read_widths() -> tuple[
 # reason. It is the one that hides best — a member written four bytes wide
 # reads back correctly for every value that fits in four, because the high
 # half is the zero it was already initialised to.
-WRITERS = {"_set_byte": 1, "_set_u16": 2, "_set_u32": 4, "_set_u64": 8, "_set_at": 8}
+WRITERS = {
+    "_set_byte": 1,
+    "_set_u16": 2,
+    "_set_u16be": 2,
+    "_set_u32": 4,
+    "_set_u64": 8,
+    "_set_at": 8,
+}
 WRITE = re.compile(r"self\.(_set_(?:byte|u16|u32|u64|at))\((\w+_OFFSET),")
 
 

@@ -324,3 +324,113 @@ program that will not read what is sent to it is stopped.
 One thing not to use to tell the two ends apart: `isatty` says yes for
 both. The line discipline is on both ends, and the master answers
 `tcgetattr` as readily as the slave does.
+
+## Two sockets on the loopback
+
+A connection is made of an address and two sockets: one bound to the
+address and listening, one asking for it. `socketaddr` is the sixteen
+bytes C passes as a `struct sockaddr` whatever the family is, and it owns
+them, so it is filled in place rather than handed back. `set_family`
+writes Darwin's `sa_len` and the family where the two platforms keep
+them, `set_inet_port` writes the port in the order the wire counts in,
+and `set_inet_address` writes the four bytes as `in_addr` holds them.
+
+```mojo
+from std.memory.alloc import unsafe_alloc
+
+from libc.constant import AF_INET, SOCK_STREAM, c_char
+from libc.network import in_addr, inet_addr, inet_ntoa
+from libc.sys.socket import (
+    accept,
+    bind,
+    connect,
+    getsockname,
+    listen,
+    socket,
+    socketaddr,
+)
+from libc.unistd import close, read, write
+from libc.utils import char_ptr_to_string, string_to_char_ptr
+
+
+comptime ADDRESS_SIZE: UInt32 = 16
+
+
+def at_the_loopback(mut address: socketaddr, port: UInt16) -> None:
+    """Fills `address` in as the loopback on `port`.
+
+    The struct owns its sixteen bytes, so it is filled in place rather
+    than handed back, and the four bytes of the address come from C's
+    own parser rather than from arithmetic here -- which is the short
+    way of saying 127.0.0.1 without also saying what order its bytes are
+    in.
+
+    Args:
+        address: The sixteen bytes to fill in.
+        port: The port, or 0 to let the kernel choose one.
+    """
+    address = socketaddr()
+    address.set_family(UInt16(AF_INET))
+    address.set_inet_port(port)
+    var loopback = in_addr()
+    loopback.s_addr = inet_addr(string_to_char_ptr("127.0.0.1"))
+    address.set_inet_address(loopback)
+
+
+def main() raises:
+    var listener = socket(AF_INET, SOCK_STREAM, 0)
+    var here = unsafe_alloc[socketaddr](1)
+    at_the_loopback(here.unsafe_offset(0)[], 0)
+    _ = bind(listener, here, ADDRESS_SIZE)
+    _ = listen(listener, 1)
+
+    # Which port 0 turned out to be is only knowable by asking.
+    var chosen = unsafe_alloc[socketaddr](1)
+    var size = unsafe_alloc[UInt32](1)
+    size.unsafe_offset(0)[] = ADDRESS_SIZE
+    _ = getsockname(listener, chosen, size)
+    var port = chosen.unsafe_offset(0)[].inet_port()
+    print("listening on", port)
+
+    var caller = socket(AF_INET, SOCK_STREAM, 0)
+    var there = unsafe_alloc[socketaddr](1)
+    at_the_loopback(there.unsafe_offset(0)[], port)
+    _ = connect(caller, there, ADDRESS_SIZE)
+
+    # `accept` writes whoever asked into a buffer of its own.
+    var who = unsafe_alloc[socketaddr](1)
+    var length = unsafe_alloc[UInt32](1)
+    length.unsafe_offset(0)[] = ADDRESS_SIZE
+    var taken = accept(listener, who, length)
+    var caller_text = char_ptr_to_string(
+        inet_ntoa(who.unsafe_offset(0)[].inet_address())
+    )
+    print("connected from", caller_text)
+
+    var said = string_to_char_ptr("hello\n")
+    _ = write(caller, said, 6)
+    var heard = unsafe_alloc[c_char](64)
+    var got = read(taken, heard, 64)
+    print("the other end read", got, "bytes")
+
+    _ = close(caller)
+    _ = close(taken)
+    _ = close(listener)
+    heard.unsafe_free()
+    length.unsafe_free()
+    who.unsafe_free()
+    there.unsafe_free()
+    chosen.unsafe_free()
+    size.unsafe_free()
+    here.unsafe_free()
+```
+
+Two things are worth knowing before the code. A port of 0 is not a port:
+it asks the kernel to choose one, and `getsockname` is the only way to
+learn which one it picked -- which is why nothing here can collide with
+anything else on the machine, and why the second address is built from a
+port that was already answered for rather than from a number guessed at.
+And `accept` hands back a socket of its own, because the listener's job
+is to keep listening; the address it fills in alongside is the caller's,
+not the listener's, which is the one place a connection's two ends are
+told apart by something other than which descriptor is which.

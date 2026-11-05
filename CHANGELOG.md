@@ -5,7 +5,33 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **An `AF_INET` view of `socketaddr`.** The struct held sixteen bytes and
+  said that nothing here packed or unpacked them, so every caller filling in
+  an address wrote `set_byte(2, ...)`, `set_byte(4, 127)` and hoped: the port
+  in network order, the address as four bytes, and the two platforms' family
+  offsets all in the caller's head. `set_inet_port` and `set_inet_address`
+  now write the two numbers where C's `sockaddr_in` keeps them -- the same
+  offsets on both platforms, which C's `offsetof` confirms -- and
+  `inet_port` and `inet_address` read them back. The port answers in the
+  order a port is said in; the address answers as C's `in_addr` holds one,
+  so `inet_addr` and `inet_ntoa` hand one in and take one out.
+- **A recipe for two sockets on the loopback**, from `socket` to `accept`
+  and a byte each way, built on those four.
+- **The byte order is checked by two claims rather than one.** The test
+  asserts the port's high byte lands first and that C's `ntohs` makes 8080
+  of the same two bytes; a round trip through this package's own reader
+  would agree with itself whichever order it wrote.
+
 ### Fixed
+
+- **`test_pty` read once where a pseudo-terminal is free to answer
+  twice.** A read at the master came back with twenty-five of twenty-six
+  bytes on a machine that was busy compiling, which is a property of a pipe
+  with a line discipline rather than of the binding: so the four reads there
+  now gather until they have what they asked for, and a short answer is no
+  longer a failure.
 
 - **`test_pwd` compared a row with itself, and macOS's two lookups disagree
   about one field.** `getpwuid(0)` and `getpwnam("root")` hand back a row in a
