@@ -10,6 +10,7 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
+from libc.errno import get_errno
 from libc.constant import (
     AF_INET,
     AF_UNIX,
@@ -846,10 +847,12 @@ def test_a_descriptor_traveling_as_ancillary_data() raises:
     out.unsafe_offset(0)[].set_msg_control(ancillary.unsafe_bitcast[UInt8]())
     out.unsafe_offset(0)[].set_msg_controllen(24)
     give_a_receive_timeout(left)
-    assert_equal(
-        Int(sendmsg(left, out, 0)),
-        1,
-        "the byte goes out, and the descriptor with it",
+    var went = sendmsg(left, out, 0)
+    assert_true(
+        went == 1,
+        "the byte goes out, and the descriptor with it (errno "
+        + String(Int(get_errno()))
+        + ")",
     )
 
     var taken = unsafe_alloc[UInt8](1)
