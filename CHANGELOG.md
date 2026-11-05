@@ -73,6 +73,14 @@ All notable changes to this project are documented here. The format follows
   `CMSGHDR_SPACE_ONE` and friends now name the shape, `check-layouts` compares
   them with `sizeof` and `CMSG_SPACE` on each platform, and the descriptor test
   builds the message in the shape its platform says.
+- **The speed table was run again, and the numbers it gave back are the
+  first pair of runs this document has been able to compare.** Same
+  machine, same day: every row within two percent of the run before —
+  `nothing` moved by 3 and 7 ps, `strlen` by 11, the syscall rows by half
+  a percent and a quarter of their three hundred thousand, which is the
+  least movement where the number is the largest and the row that carries
+  the claim. The cheap rows stay unreadable, as they always said they
+  were; what repeats is the shape, and the shape repeated.
 - **The mutation sweep of the symbol axis is closed, and the closing was
   one run that found nothing to fix.** The modules the story had not
   worked through — `unistd`, `wchar`, `ctype`, `signal`, `netdb`, `fenv`,

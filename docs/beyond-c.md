@@ -789,20 +789,24 @@ Being fair about the other direction:
 
   ```
   call        through C    through the binding
-  nothing         282 ps              454 ps
-  strlen         2504 ps             1499 ps
-  strcmp         2087 ps             1904 ps
-  getpid       327878 ps           329006 ps
+  nothing         279 ps              447 ps
+  strlen         2515 ps             1510 ps
+  strcmp         2126 ps             1932 ps
+  getpid       329419 ps           329761 ps
   ```
 
   The row that settles anything is `getpid`. A syscall costs what a syscall
-  costs through either side — 0.4% apart — which is the whole claim: an
+  costs through either side — 0.1% apart — which is the whole claim: an
   external call adds nothing measurable to a call. The two cheap rows are
   another matter, and the honest reading is that they cannot be read at
-  all: run the script again and `strlen` through C moves by 500 ps, which
-  is the size of the gap that was supposed to be measured between the two
-  languages. An earlier version of this paragraph quoted **1.6 ns** against
-  **2.2 ns** for `strlen`, taken the same way and without the `nothing` row
-  to hold them down; a repeat will not give either number back. What
-  repeats is the shape — the binding is not slower — and the syscall row,
-  which does not move at all.
+  all — a gap that an earlier run measured at 500 ps of noise, and an
+  earlier version of this paragraph quoted **1.6 ns** against **2.2 ns**
+  for `strlen`, taken without the `nothing` row to hold them down and
+  never given back by any repeat since. What repeats is the shape — the
+  binding is not slower, and the syscall row does not move: the run above
+  and the one before it, on the same machine the same day, agree to within
+  two percent in every row — `nothing` moved by 3 ps on one side and 7 on
+  the other, `strlen` by 11, `strcmp` by 39 and 28, and the syscall rows by
+  half a percent and a quarter of their three hundred thousand — the least
+  movement where the number is the largest, which is the row that carries
+  the claim.
