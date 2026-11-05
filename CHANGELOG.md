@@ -73,6 +73,19 @@ All notable changes to this project are documented here. The format follows
   `CMSGHDR_SPACE_ONE` and friends now name the shape, `check-layouts` compares
   them with `sizeof` and `CMSG_SPACE` on each platform, and the descriptor test
   builds the message in the shape its platform says.
+- **The mutation sweep of the symbol axis is closed, and the closing was
+  one run that found nothing to fix.** The modules the story had not
+  worked through — `unistd`, `wchar`, `ctype`, `signal`, `netdb`, `fenv`,
+  `file`, `network` and the eight small files, `spawn` re-asked with
+  them — are two hundred and forty-eight mutants in one run, and not one
+  passed: two hundred and fourteen caught, three that took the process
+  down, ten that are the same call under two names or arithmetic that
+  does not remember its direction, nineteen that write state nothing
+  reads back, and two that did not build. The axis ends there — every
+  mutant caught, answered by a failure, or written down — and
+  `--check-tables` reads the reasons back against the pairs that can
+  still be made, so a written answer cannot outlive its pair. The
+  paragraph is in the doc, at the end of the mutation story.
 - **The last of the untested accessors are tested, and one of the
   answers was printed rather than claimed.** `sysinfo`'s `sharedram`,
   `bufferram` and `freehigh` are asked beside what is already asked:
