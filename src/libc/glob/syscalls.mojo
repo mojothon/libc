@@ -137,6 +137,13 @@ struct glob_t:
         """
         return Int(self._u64(GLOB_OFFS_OFFSET))
 
+    def set_gl_offs(mut self, value: Int) -> None:
+        """Asks for that many entries to be left empty at the head of
+        `gl_pathv`, which is what `GLOB_DOOFFS` makes `glob` read out
+        of the block before it fills it.
+        """
+        self._bytes[GLOB_OFFS_OFFSET // 8] = UInt64(value)
+
     def gl_flags(self) -> Int32:
         """Which flags the pattern was expanded with, as `glob` kept
         them, including `GLOB_MAGCHAR` when the pattern had metacharacters

@@ -44,7 +44,7 @@ from libc.stdlib import exit
 from libc.sys.sigqueue import SI_QUEUE, sigqueue, sigtimedwait, sigwaitinfo
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, waitpid
 from libc.time import timespec
-from libc.unistd import fork, getpid
+from libc.unistd import fork, getpid, getuid
 from libc.utils import null_ptr
 
 comptime SET_BYTES = 128
@@ -64,10 +64,11 @@ def queued_and_taken_back() raises -> Int32:
     rather than a wait, and `sigwaitinfo` is only called once the
     second signal has been queued.
 
-    What is asked of the answer is the number, and then the two
-    things beside it: that it says the signal was queued rather than
-    sent by the kernel, and that it names this process as the one
-    that sent it.
+    What is asked of the answer is the number, and then the things
+    beside it: that it says the signal was queued rather than sent by
+    the kernel, that it names this process as the one that sent it,
+    and — the three no other test called — which signal it was, whose
+    real user sent it, and that queuing was no error.
     """
     var set = unsafe_alloc[UInt8](SET_BYTES)
     var was = unsafe_alloc[UInt8](SET_BYTES)
@@ -108,6 +109,21 @@ def queued_and_taken_back() raises -> Int32:
         Int(info.unsafe_offset(0)[].si_value()),
         FIRST,
         "and the number it was given is the number that comes back",
+    )
+    assert_equal(
+        Int(info.unsafe_offset(0)[].si_signo()),
+        Int(SIGUSR1),
+        "and it says itself which signal arrived, not only that one did",
+    )
+    assert_equal(
+        Int(info.unsafe_offset(0)[].si_uid()),
+        Int(getuid()),
+        "and the real user of whoever queued it, which is our own",
+    )
+    assert_equal(
+        Int(info.unsafe_offset(0)[].si_errno()),
+        0,
+        "and nothing to say about an error, queuing being no error",
     )
 
     assert_equal(

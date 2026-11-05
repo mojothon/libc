@@ -1,8 +1,10 @@
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import O_RDONLY, c_ptr, c_void
+from libc.constant import O_CREAT, O_RDONLY, O_TRUNC, O_WRONLY, c_ptr, c_void
 from libc.dirent import (
+    DT_DIR,
+    DT_REG,
     DIRENT_NAME_OFFSET,
     alphasort,
     closedir,
@@ -20,7 +22,8 @@ from libc.dirent import (
 from libc.fcntl import open
 from libc.stdlib import free
 from libc.string import strcmp
-from libc.unistd import close
+from libc.sys.stat import mkdir
+from libc.unistd import close, rmdir, unlink
 from libc.utils import is_null, null_ptr, string_to_char_ptr
 
 
@@ -258,6 +261,71 @@ def test_readdir_r_reads_what_readdir_reads() raises:
     result.unsafe_free()
 
 
+def test_the_type_of_each_entry_and_the_room_its_record_takes() raises:
+    """Two more members of the record, and one of them is answered by
+    a room this test builds: a directory made in `/tmp` with an
+    ordinary file in it, walked with the accessors rather than with
+    raw offsets.
+
+    The type byte of the `.` and the `..` every directory carries is
+    `DT_DIR`, and the file the test puts there answers `DT_REG` —
+    which is what says the type reader is over the type byte and not
+    over the name. The room the record takes is asked of every entry:
+    it has to hold the header in front of the name and the name
+    itself, and it cannot hold much more than that, which is the
+    bound that keeps `reclen` reading its own two bytes and not some
+    other member's.
+    """
+    comptime ROOM = "/tmp/libc_dirent_room"
+    var room = string_to_char_ptr(ROOM)
+    _ = mkdir(room, 0o755)
+    var inside = string_to_char_ptr(ROOM + "/inside")
+    var made = open(inside, O_WRONLY | O_CREAT | O_TRUNC, 0o644)
+    assert_true(made >= 0, "the ordinary file is put in the room")
+    assert_equal(close(made), 0, "and is closed")
+
+    var dirp = opendir(room)
+    assert_true(not is_null(dirp), "the room opens")
+
+    var seen_the_file = False
+    var count = 0
+    while True:
+        var entry = readdir(dirp)
+        if is_null(entry):
+            break
+        count += 1
+
+        var named = entry[].name()
+        var held = named.byte_length()
+        var takes = Int(entry[].reclen())
+        assert_true(
+            takes >= DIRENT_NAME_OFFSET + held,
+            "the record holds the header and the name",
+        )
+        assert_true(takes <= held + 28, "and not much more than that")
+
+        if named == "." or named == "..":
+            assert_equal(
+                Int(entry[].type()),
+                Int(DT_DIR),
+                "the two every directory has are directories",
+            )
+        if named == "inside":
+            assert_equal(
+                Int(entry[].type()),
+                Int(DT_REG),
+                "and the file the test put there is an ordinary file",
+            )
+            seen_the_file = True
+
+    assert_true(seen_the_file, "the file is among the entries")
+    assert_true(count >= 3, "and there were the dots and the file to walk")
+
+    assert_equal(closedir(dirp), 0, "the room is closed again")
+    assert_equal(unlink(inside), 0, "the file is taken out")
+    assert_equal(rmdir(room), 0, "and the room with it")
+
+
 def main() raises:
     test_opendir_readdir()
     test_dirfd()
@@ -267,4 +335,5 @@ def main() raises:
     test_scandir_on_something_that_is_not_a_directory()
     test_alphasort_puts_two_names_where_strcmp_puts_them()
     test_readdir_r_reads_what_readdir_reads()
+    test_the_type_of_each_entry_and_the_room_its_record_takes()
     print("test_dirent: ok")

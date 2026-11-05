@@ -26,6 +26,16 @@ from libc.constant import *
 # than C writes means a copy made of one runs off the end. Darwin's
 # `d_name` is 1024 long where glibc's is 256, which is the whole of the
 # difference.
+# The `d_type` byte is one of the `DT_*` of `<dirent.h>`, and the three
+# this package names are the three a test can count on: a directory of
+# any kind answers `DT_DIR`, an ordinary file `DT_REG`, and a filesystem
+# that does not know answers `DT_UNKNOWN`, which is 0 and every test's
+# reminder that a type byte is not always there.
+comptime DT_UNKNOWN: Int32 = 0
+comptime DT_DIR: Int32 = 4
+comptime DT_REG: Int32 = 8
+
+
 comptime DIRENT_BYTES = 1048 if CompilationTarget.is_macos() else 280
 comptime DIRENT_SLOTS = DIRENT_BYTES // 8
 # `d_ino` is first in both: glibc's opens with it, and so does Darwin's.

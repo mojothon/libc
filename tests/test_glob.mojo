@@ -11,6 +11,7 @@ from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
 from libc.glob import (
+    GLOB_DOOFFS,
     GLOB_MAGCHAR,
     GLOB_NOCHECK,
     GLOB_NOMATCH,
@@ -172,9 +173,62 @@ def test_the_flags_are_the_ones_asked_for_and_the_magic_bit_beside_them() raises
     plain.unsafe_free()
 
 
+def test_the_head_of_the_vector_is_left_empty_when_asked() raises:
+    """`GLOB_DOOFFS` is the one flag that changes what C reads rather
+    than what it looks for: it makes `glob` read `gl_offs` out of the
+    block before it fills it, and leave that many entries empty at the
+    head of `gl_pathv`.
+
+    The setter puts a two in the block, the call comes back with the
+    two still there, and the proof that C actually read it is what it
+    did with the vector: the two at the head are null, and the pattern
+    itself — kept by `GLOB_NOCHECK` — sits behind them, at the third
+    place. Every other test here reads a vector that starts at its
+    first path; this one is the exception the flag exists for.
+    """
+    var nothing = string_to_char_ptr("/no/such/name/*")
+    var found = unsafe_alloc[glob_t](1)
+    found.unsafe_offset(0)[] = glob_t()
+    found.unsafe_offset(0)[].set_gl_offs(2)
+
+    assert_equal(
+        glob(nothing, GLOB_NOCHECK | GLOB_DOOFFS, null_ptr[UInt8](), found),
+        0,
+        "the pattern itself is kept, with room left before it",
+    )
+    assert_equal(
+        found.unsafe_offset(0)[].gl_offs(),
+        2,
+        "and the two is still there",
+    )
+    assert_equal(
+        found.unsafe_offset(0)[].gl_pathc(),
+        1,
+        "with one path behind the room",
+    )
+    var paths = found.unsafe_offset(0)[].gl_pathv()
+    assert_true(
+        Int(paths.unsafe_offset(0)[]) == 0,
+        "the first place is empty, as the two asked",
+    )
+    assert_true(
+        Int(paths.unsafe_offset(1)[]) == 0,
+        "and so is the second",
+    )
+    assert_equal(
+        char_ptr_to_string(paths.unsafe_offset(2)[]),
+        "/no/such/name/*",
+        "and the path itself is the third thing in the vector",
+    )
+
+    globfree(found)
+    found.unsafe_free()
+
+
 def main() raises:
     test_a_pattern_with_no_magic_in_it_finds_the_one_name_it_names()
     test_nothing_matching_is_a_number_or_the_pattern_itself()
     test_a_star_finds_the_names_it_covers()
     test_the_flags_are_the_ones_asked_for_and_the_magic_bit_beside_them()
+    test_the_head_of_the_vector_is_left_empty_when_asked()
     print("test_glob: ok")

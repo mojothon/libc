@@ -73,6 +73,21 @@ All notable changes to this project are documented here. The format follows
   `CMSGHDR_SPACE_ONE` and friends now name the shape, `check-layouts` compares
   them with `sizeof` and `CMSG_SPACE` on each platform, and the descriptor test
   builds the message in the shape its platform says.
+- **Six more accessors no test called now have one, and two of them are
+  answered by a room the tests build.** `dirent`'s `type` and `reclen` are
+  asked of a directory made in `/tmp` with an ordinary file in it: the
+  dots every directory carries answer `DT_DIR`, the file answers `DT_REG`,
+  and every record is big enough to hold its header and its name and not
+  much more, which is the bound that keeps `reclen` reading its own two
+  bytes. Naming the type byte meant naming three constants — `DT_UNKNOWN`,
+  `DT_DIR` and `DT_REG` — that had been raw numbers in no header of this
+  package. `siginfo_t`'s `si_signo`, `si_uid` and `si_errno` are asked of
+  the answer `sigtimedwait` already gives: which signal arrived, whose
+  real user queued it, and that queuing was no error. And `glob_t` gets
+  the setter it was missing — `set_gl_offs`, for the one member `glob`
+  reads before it fills the block — which the `GLOB_DOOFFS` test then
+  makes C act on: two nulls at the head of the vector and the pattern
+  itself at the third place.
 - **The three `ifaddrs` accessors no test called now have one, and the
   members agree with each other.** Every IPv4 entry's `ifa_netmask` is in
   the family of its address and only ever goes down — 255s and then 0s —
