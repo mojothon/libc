@@ -116,6 +116,19 @@ All notable changes to this project are documented here. The format follows
   `--check-tables` reads the reasons back against the pairs that can
   still be made, so a written answer cannot outlive its pair. The
   paragraph is in the doc, at the end of the mutation story.
+- **`<netinet/tcp.h>`: the four options a connection keeps.** `TCP_NODELAY`,
+  `TCP_MAXSEG`, `TCP_KEEPINTVL` and `TCP_KEEPCNT`, as the numbers
+  `setsockopt` takes with `IPPROTO_TCP` in the level. Two are the same on
+  both libcs and two are not: Darwin's start again above the socket-layer
+  range, so the keepalive pair is 0x101 and 0x102 where glibc has 5 and
+  6. `TCP_KEEPIDLE` is left out because Darwin spells it `TCP_KEEPALIVE`,
+  and one name that is not in both headers cannot be bound as one. The
+  numbers are checked by behaviour rather than by agreement with
+  themselves: nodelay is read off a fresh socket and turned on, the
+  keepalive pair answers back two different numbers, and the segment size
+  has to be one a segment could be -- a wrong option number is refused by
+  the kernel, and one that exists under that number answers something
+  else.
 - **The order axis was swept again with the `pty` pair in it: 193 swaps,
   none unaccounted for.** 156 caught, 10 that took the process down -- the
   same ten as before, each a swap that hands a string where a pointer to

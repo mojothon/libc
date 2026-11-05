@@ -47,6 +47,7 @@ from test_fnmatch import main as run_fnmatch
 from test_glob import main as run_glob
 from test_getopt import main as run_getopt
 from test_grp import main as run_grp
+from test_tcp import main as run_tcp
 from test_termios import main as run_termios
 from test_iconv import main as run_iconv
 from test_ifaddrs import main as run_ifaddrs
@@ -125,6 +126,7 @@ def main() raises:
     run_glob()
     run_getopt()
     run_grp()
+    run_tcp()
     run_termios()
     run_iconv()
     run_ifaddrs()

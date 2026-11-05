@@ -372,6 +372,22 @@ def bring_in_libc_getopt():
     )
 
 
+def bring_in_libc_tcp():
+    from libc.tcp import (
+        TCP_KEEPCNT,
+        TCP_KEEPINTVL,
+        TCP_MAXSEG,
+        TCP_NODELAY,
+    )
+
+    _ = (
+        TCP_KEEPCNT,
+        TCP_KEEPINTVL,
+        TCP_MAXSEG,
+        TCP_NODELAY,
+    )
+
+
 def bring_in_libc_termios():
     from libc.termios import (
         B0,
@@ -1951,6 +1967,7 @@ def main() raises:
     bring_in_libc_sys_statvfs()
     bring_in_libc_sys_utsname()
     bring_in_libc_sys_wait()
+    bring_in_libc_tcp()
     bring_in_libc_time()
     bring_in_libc_unistd()
     bring_in_libc_wchar()

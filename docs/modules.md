@@ -74,6 +74,7 @@ the bottom.
 | `libc.errno` | `<errno.h>` | 6 |
 | `libc.pwd` | `<pwd.h>` | 18 |
 | `libc.termios` | `<termios.h>` how a terminal line is set | 57 |
+| `libc.tcp` | `<netinet/tcp.h>` the options a connection keeps | 4 |
 | `libc.sys.ipc` | `<sys/ipc.h>` keys for System V objects | 9 |
 | `libc.sys.msg` | `<sys/msg.h>` message queues | 6 |
 | `libc.utmpx` | `<utmpx.h>` who is logged in, and where | 29 |
