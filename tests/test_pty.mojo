@@ -34,6 +34,32 @@ comptime PING = "ping\n"
 comptime PONG = "pong\n"
 
 
+def collect(fd: Int32, block: c_ptr[c_char], want: Int) -> Int:
+    """Reads until `want` bytes have arrived, or nothing more does.
+
+    A pseudo-terminal is a pipe with a line discipline in it, and a read
+    is free to come back with part of what was written: this file's
+    forkpty test came back with twenty-five of twenty-six bytes once, on
+    a machine busy compiling. So what arrives is gathered rather than
+    expected in a single call, and the caller compares what was gathered.
+
+    Args:
+        fd: The descriptor to read at.
+        block: Where to put the bytes.
+        want: How many to wait for.
+
+    Returns:
+        How many arrived before a read answered none.
+    """
+    var got = 0
+    while got < want:
+        var more = read(fd, block.unsafe_offset(got), UInt32(want - got))
+        if Int(more) <= 0:
+            break
+        got += Int(more)
+    return got
+
+
 def same(block: c_ptr[c_char], text: String) raises:
     """Asserts that the first bytes of `block` are the bytes of `text`.
 
@@ -109,7 +135,9 @@ def test_openpty_hands_back_a_working_pair() raises:
     )
 
     var came = unsafe_alloc[c_char](8)
-    assert_equal(read(s, came, sent), Int(sent), "and come out at the slave")
+    assert_equal(
+        collect(s, came, Int(sent)), Int(sent), "and come out at the slave"
+    )
     same(came, PING)
 
     var answer = string_to_char_ptr(PONG)
@@ -121,7 +149,9 @@ def test_openpty_hands_back_a_working_pair() raises:
     )
     var echoes = unsafe_alloc[c_char](8)
     assert_equal(
-        read(m, echoes, answered), Int(answered), "and come back at the master"
+        collect(m, echoes, Int(answered)),
+        Int(answered),
+        "and come back at the master",
     )
     same(echoes, PONG)
 
@@ -166,7 +196,7 @@ def test_forkpty_gives_the_child_all_three_descriptors() raises:
     assert_true(m >= 0, "and the master is a descriptor")
 
     var heard = unsafe_alloc[c_char](64)
-    var got = read(m, heard, UInt32(CHILD_ARRIVES.byte_length()))
+    var got = collect(m, heard, CHILD_ARRIVES.byte_length())
     assert_equal(
         got,
         CHILD_ARRIVES.byte_length(),
@@ -235,7 +265,7 @@ def test_login_tty_makes_the_descriptor_the_terminal() raises:
     _ = close(s)
 
     var heard = unsafe_alloc[c_char](8)
-    assert_equal(read(m, heard, 2), 2, "and what it wrote crosses the pair")
+    assert_equal(collect(m, heard, 2), 2, "and what it wrote crosses the pair")
     same(heard, "ok")
 
     var status = unsafe_alloc[Int32](1)
