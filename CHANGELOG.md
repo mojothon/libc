@@ -73,6 +73,19 @@ All notable changes to this project are documented here. The format follows
   `CMSGHDR_SPACE_ONE` and friends now name the shape, `check-layouts` compares
   them with `sizeof` and `CMSG_SPACE` on each platform, and the descriptor test
   builds the message in the shape its platform says.
+- **The three mutants the symbol sweep left as crashes are caught by
+  assertions now.** `fegetenv` pointed at `fesetenv` crashed because a
+  zeroed environment was installed with nothing to catch it; the test
+  saves the environment while the mode is upward and asserts the mode is
+  still upward after the saving, which reading is and writing is not.
+  `duplocale` pointed at `uselocale` crashed in the freeing, which is the
+  only thing that tells a real copy from a handle another call answered
+  with; the freeing is asked from a child, whose ending is a status the
+  suite reads. `posix_spawn_file_actions_init` pointed at `destroy` took
+  a mess of bytes for a list it had made; the pair is asked from a child
+  the same way. Crashed was always noticed, but nothing written had
+  caught it — now all three have an assertion that only the right call
+  passes.
 - **The check-of-checks now asks the three checks it had never broken.**
   `check-symbols` is asked with a binding pointed at `strcatx`, which no
   library exports; `check-comparisons` with the one sign assertion

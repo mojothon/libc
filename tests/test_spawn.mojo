@@ -33,7 +33,9 @@ from libc.spawn import (
     posix_spawnattr_t,
     posix_spawnp,
 )
-from libc.signal import sigemptyset, sigfillset
+from libc.signal import SIGSEGV, sigemptyset, sigfillset, signal
+from libc.stdlib import exit
+from libc.unistd import fork
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, waitpid
 from libc.unistd import pipe, unlink
 from libc.utils import char_ptr_to_string, null_ptr, string_to_char_ptr
@@ -513,7 +515,51 @@ def test_the_attributes_are_a_block_the_call_cleans() raises:
     pid.unsafe_free()
 
 
+def test_the_file_actions_take_a_mess_and_answer_for_it() raises:
+    """A handle full of bytes nobody made is where the pair starts:
+    `posix_spawn_file_actions_init` takes the mess and leaves an empty
+    list, and `posix_spawn_file_actions_destroy` takes the empty list
+    back, each answering 0.
+
+    Whether either of those happened is not observable from here --
+    there is nothing in the list to read -- but a call pointed at its
+    other half takes the mess for a list it had made, and that ends the
+    process asking. So the pair is asked from a child, whose ending is a
+    status this suite reads rather than a crash this suite dies of.
+    """
+    var child = fork()
+    if child == 0:
+        _ = signal(SIGSEGV, null_ptr[UInt8]())
+        var actions = unsafe_alloc[posix_spawn_file_actions_t](1)
+        var filler = actions.unsafe_bitcast[UInt8]()
+        for i in range(size_of[posix_spawn_file_actions_t]()):
+            filler.unsafe_store(i, UInt8(0x7F))
+        var made = posix_spawn_file_actions_init(actions)
+        if made != 0:
+            _ = exit(Int32(made))
+        var gone = posix_spawn_file_actions_destroy(actions)
+        if gone != 0:
+            _ = exit(Int32(gone))
+        _ = exit(Int32(0))
+    assert_true(child > 0, "there is a child to try the pair in")
+    var status = unsafe_alloc[Int32](1)
+    status.unsafe_store(0, 0)
+    assert_equal(waitpid(child, status, 0), child, "and it is waited for")
+    assert_true(
+        WIFEXITED(status.unsafe_load()),
+        "init took the mess and destroy took the empty list, and "
+        + "neither ended the child",
+    )
+    assert_equal(
+        WEXITSTATUS(status.unsafe_load()),
+        0,
+        "and both calls answered 0 on the way out",
+    )
+    status.unsafe_free()
+
+
 def main() raises:
+    test_the_file_actions_take_a_mess_and_answer_for_it()
     test_posix_spawnp_runs_the_program_its_arguments_name()
     test_posix_spawn_answers_for_a_path_that_is_not_there()
     test_posix_spawn_refuses_a_name_with_no_path_in_it()

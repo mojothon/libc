@@ -641,12 +641,18 @@ reason.
 The modules the sweep's story had not yet worked through were asked together
 after all that, in one run: the two hundred and forty-eight mutants of
 `unistd`, `wchar`, `ctype`, `signal`, `netdb`, `fenv`, `file`, `network` and the eight small files — `spawn` went too, named above once and asked again
-with the rest. Not one passed. Two hundred and fourteen caught, three
-that took the process down, ten that are the same call under two names or
-arithmetic that does not remember which direction it was asked in, nineteen
-that write state nothing reads back — `setutxent` and `endutxent` both put
-the database where the next read starts, and nothing between them can see
-which was called — and two that did not build. The axis is closed then:
+with the rest. Not one passed. Two hundred and fourteen caught, ten that are the same call
+under two names or arithmetic that does not remember which direction it was
+asked in, nineteen that write state nothing reads back — `setutxent` and
+`endutxent` both put the database where the next read starts, and nothing
+between them can see which was called — and two that did not build. The
+three that the run left as crashes, caught by the ending of the process and
+not by anything written for the purpose, have since been caught by
+assertions: `fegetenv` by asking the mode before and after the saving,
+`duplocale` by freeing the copy in a child whose ending is a status, and
+`posix_spawn_file_actions_init` by giving the pair a mess of bytes to take
+and a child whose ending says whether they took it. The axis is closed
+then:
 every mutant of it is caught, or answered by a test's own failure, or
 written down in one of the tables, and `--check-tables` reads the seventeen
 reasons of this axis back against the pairs that can still be made, which is

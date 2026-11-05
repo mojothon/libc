@@ -2,6 +2,10 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
+from libc.signal import SIGSEGV, signal
+from libc.sys.wait import WEXITSTATUS, WIFEXITED, waitpid
+from libc.stdlib import exit
+from libc.unistd import fork
 from libc.locale import (
     LC_ALL,
     LC_ALL_MASK,
@@ -61,7 +65,29 @@ def test_locale_objects() raises:
 
     var copy = duplocale(loc)
     assert_true(Int(copy) != 0, "and it was copied")
-    freelocale(copy)
+    # Whether the copy holds a life of its own is asked from a child: the
+    # only thing that tells a real copy from a handle some other call
+    # answered with is that it can be freed on its own, and a copy that is
+    # not a copy ends the child rather than the suite.
+    var child = fork()
+    if child == 0:
+        _ = signal(SIGSEGV, null_ptr[UInt8]())
+        freelocale(copy)
+        _ = exit(0)
+    assert_true(child > 0, "there is a child to free the copy in")
+    var status = unsafe_alloc[Int32](1)
+    status.unsafe_store(0, 0)
+    assert_equal(waitpid(child, status, 0), child, "and it is waited for")
+    assert_true(
+        WIFEXITED(status.unsafe_load()),
+        "the copy was freed in its own right, which is what a copy is",
+    )
+    assert_equal(
+        WEXITSTATUS(status.unsafe_load()),
+        0,
+        "and it went out quietly, the freeing having succeeded",
+    )
+    status.unsafe_free()
 
     var previous = uselocale(loc)
     _ = uselocale(previous)
