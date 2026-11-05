@@ -29,7 +29,9 @@ from std.sys import CompilationTarget
 # Off makes small writes wait until a full segment has gathered, or until
 # the waiting is over. On sends each write as soon as it arrives, which is
 # what a request-and-reply protocol wants and what a bulk transfer does
-# not. The number is 1 on both platforms.
+# not. The number is 1 on both platforms, but what a read of it answers is
+# not: glibc answers the 1 back, and Darwin answers the flag the kernel
+# set, its `TF_NODELAY`, which is 4. Both mean on.
 comptime TCP_NODELAY: Int32 = 1
 
 # The largest segment this connection may send, which a connected socket

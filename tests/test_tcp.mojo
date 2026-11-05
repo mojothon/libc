@@ -4,6 +4,7 @@
 # github: github.com/llango
 # ----------------------------------
 from std.memory.alloc import unsafe_alloc
+from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.constant import AF_INET, IPPROTO_TCP, SOCK_STREAM
@@ -79,7 +80,16 @@ def test_nodelay_starts_off_and_the_number_turns_it_on() raises:
     var sock = opened()
     assert_equal(reading(sock, TCP_NODELAY), 0, "nodelay starts off")
     assert_equal(setting(sock, TCP_NODELAY, 1), 0, "and the call sets it")
-    assert_equal(reading(sock, TCP_NODELAY), 1, "to what was written")
+    # What comes back is not 1 on both platforms. glibc answers the option
+    # as the caller wrote it; Darwin answers the flag the kernel set, and
+    # its `TF_NODELAY` is 0x4, which is what the macOS runner read back.
+    # Both mean on, and neither is a value this package chooses -- so both
+    # are written down as the measured answer rather than compared for
+    # being nonzero, which would pass on a wrong option number too.
+    comptime ON: Int32 = 4 if CompilationTarget.is_macos() else 1
+    assert_equal(
+        reading(sock, TCP_NODELAY), ON, "to what that platform answers"
+    )
     assert_equal(setting(sock, TCP_NODELAY, 0), 0, "and it can be put back")
     assert_equal(reading(sock, TCP_NODELAY), 0, "which reads back as off")
     _ = close(sock)
