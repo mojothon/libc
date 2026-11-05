@@ -21,6 +21,7 @@ from libc.errno import set_errno
 from libc.network import htons, ntohs
 from libc.unistd import close, dup, dup2, pipe, read
 from libc.netdb import (
+    AI_CANONNAME,
     AI_NUMERICHOST,
     AI_NUMERICSERV,
     EAI_NONAME,
@@ -787,8 +788,88 @@ def test_the_netgroup_lookup_and_walk() raises:
     domain.unsafe_free()
 
 
+def test_the_canonical_name_is_asked_for_and_the_list_has_an_end() raises:
+    """`AI_CANONNAME` is the one flag that makes `getaddrinfo` answer
+    a question about the name rather than the address, and `ai_next`
+    is how the answers are threaded together.
+
+    `localhost` is a name every runner answers out of its own
+    `/etc/hosts`, so nothing outside the machine is asked. With the
+    flag, the first answer carries the canonical name in
+    `ai_canonname`, and it is the name that was given — which is what
+    the host file calls it. Without the flag the same question leaves
+    `ai_canonname` null, which is the empty side of the one flag that
+    fills it. And however many answers there are, `ai_next` threads
+    them into a list that ends in a null, which is what makes the
+    walking safe.
+    """
+    var hints = unsafe_alloc[addrinfo](1)
+    hints.unsafe_offset(0)[] = addrinfo()
+    hints.unsafe_offset(0)[].ai_flags = AI_CANONNAME | AI_NUMERICSERV
+
+    var res = unsafe_alloc[c_ptr[addrinfo]](1)
+    var node = string_to_char_ptr("localhost")
+    var service = string_to_char_ptr("80")
+
+    assert_equal(
+        getaddrinfo(node, service, hints, res),
+        0,
+        "a name every machine answers for itself",
+    )
+    var first = res[]
+    assert_true(Int(first) != 0, "and it wrote a list to walk")
+    assert_true(
+        Int(first.unsafe_offset(0)[].ai_canonname()) != 0,
+        "the flag was asked, so there is a canonical name",
+    )
+    assert_equal(
+        char_ptr_to_string(first.unsafe_offset(0)[].ai_canonname()),
+        "localhost",
+        "and it is the name that was given",
+    )
+
+    var steps = 0
+    var place = first
+    while Int(place) != 0 and steps < 16:
+        place = place.unsafe_offset(0)[].ai_next()
+        steps += 1
+    assert_true(steps >= 1, "the list has at least one answer in it")
+    assert_equal(Int(place), 0, "and `ai_next` ends it in a null")
+
+    freeaddrinfo(first)
+
+    # The same question without the flag: the canonical name is the
+    # one member that answers nothing.
+    var plain = unsafe_alloc[addrinfo](1)
+    plain.unsafe_offset(0)[] = addrinfo()
+    plain.unsafe_offset(0)[].ai_flags = AI_NUMERICSERV
+
+    var again = unsafe_alloc[c_ptr[addrinfo]](1)
+    assert_equal(
+        getaddrinfo(node, service, plain, again),
+        0,
+        "the address is answered the same without the flag",
+    )
+    var second = again.unsafe_offset(0)[]
+    assert_equal(
+        Int(second.unsafe_offset(0)[].ai_canonname()),
+        0,
+        "and the canonical name was not asked for, so there is none",
+    )
+
+    freeaddrinfo(again.unsafe_offset(0)[])
+
+    hints.unsafe_free()
+    res.unsafe_free()
+    node.unsafe_free()
+    service.unsafe_free()
+    plain.unsafe_free()
+    again.unsafe_free()
+
+
 def main() raises:
     test_a_numeric_address_needs_no_name_service()
+    test_the_canonical_name_is_asked_for_and_the_list_has_an_end()
     test_a_name_that_is_not_a_number_is_refused()
     test_the_address_answers_with_the_host_it_came_from()
     test_the_protocol_database_by_name_and_by_number()

@@ -147,7 +147,63 @@ def test_the_two_that_are_left() raises:
         _ = close(old)
 
 
+def test_the_tag_comes_back_the_size_it_was_put_in() raises:
+    """The tag is a union, and the file descriptor is only its low
+    half: put in a value with something in each half, and what comes
+    back has to have both.
+
+    The kernel keeps all eight bytes of `data` and hands them back
+    untouched, so the whole value coming back is C's own answer for
+    `data_u64` — the one tag reader a wrong half could not satisfy.
+    The low four answering the file descriptor's read is what says
+    the two are the same eight bytes read different ways.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var ep = epoll_create1(0)
+        assert_true(ep >= 0, "epoll_create1 makes an instance")
+
+        var ends = unsafe_alloc[Int32](2)
+        assert_equal(pipe(ends), 0, "a pipe to watch")
+        var reader = ends.unsafe_load(0)
+        var writer = ends.unsafe_load(1)
+
+        comptime TAG: UInt64 = 0x1122334455667788
+        var wanted = unsafe_alloc[epoll_event](1)
+        wanted.unsafe_offset(0)[] = epoll_event(UInt32(EPOLLIN), TAG)
+        assert_equal(
+            epoll_ctl(ep, EPOLL_CTL_ADD, reader, wanted),
+            0,
+            "the pipe is watched under the whole tag",
+        )
+
+        var letter = unsafe_alloc[UInt8](1)
+        letter.unsafe_offset(0)[] = 0x66
+        assert_equal(write(writer, letter, 1), 1, "a byte into the pipe")
+
+        var found = unsafe_alloc[epoll_event](4)
+        assert_equal(epoll_wait(ep, found, 4, 0), 1, "the pipe is ready now")
+        assert_equal(
+            found.unsafe_offset(0)[].data_u64(),
+            TAG,
+            "and the tag comes back all eight bytes of what was put in",
+        )
+        assert_equal(
+            Int(found.unsafe_offset(0)[].data_fd()),
+            Int(UInt32(TAG & 0xFFFFFFFF)),
+            "whose low four are what the file descriptor's read answers",
+        )
+
+        letter.unsafe_free()
+        found.unsafe_free()
+        wanted.unsafe_free()
+        ends.unsafe_free()
+        _ = close(reader)
+        _ = close(writer)
+        _ = close(ep)
+
+
 def main() raises:
     test_watching_a_pipe()
+    test_the_tag_comes_back_the_size_it_was_put_in()
     test_the_two_that_are_left()
     print("test_epoll: ok")

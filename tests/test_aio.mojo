@@ -284,9 +284,46 @@ def test_cancel_and_sync_are_answered_about() raises:
     assert_equal(Int(fclose(f)), 0, "the file closes")
 
 
+def test_the_priority_keeps_its_own_place_in_the_block() raises:
+    """`aio_reqprio` is the one member of the block nothing in C
+    reads back — no call answers with the priority a request was
+    given, so the setter and the getter are asked as a pair, on a
+    block never handed to a line.
+
+    A pair alone would pass an accessor reading some other member's
+    slot, so the two beside it are written too, each with its own
+    number: the block is left holding three different values, and
+    each getter has to answer with the one that was put in its own
+    place and not either of its neighbors'.
+    """
+    var cb = unsafe_alloc[Aiocb](1)
+    cb[] = Aiocb()
+
+    assert_equal(Int(cb[].reqprio()), 0, "a fresh block asks for no priority")
+
+    cb[].set_reqprio(0x1234)
+    cb[].set_nbytes(0x5678)
+    cb[].set_lio_opcode(0x4321)
+
+    assert_equal(
+        Int(cb[].reqprio()), 0x1234, "the priority is where it was put"
+    )
+    assert_equal(
+        Int(cb[].nbytes()), 0x5678, "and the count is where it was put"
+    )
+    assert_equal(
+        Int(cb[].lio_opcode()),
+        0x4321,
+        "and the operation is where it was put",
+    )
+
+    cb.unsafe_free()
+
+
 def main() raises:
     test_a_read_that_finishes_and_says_so()
     test_a_write_the_file_itself_answers_for()
     test_lio_listio_takes_a_list_at_a_time()
     test_cancel_and_sync_are_answered_about()
+    test_the_priority_keeps_its_own_place_in_the_block()
     print("test_aio: ok")

@@ -73,6 +73,23 @@ All notable changes to this project are documented here. The format follows
   `CMSGHDR_SPACE_ONE` and friends now name the shape, `check-layouts` compares
   them with `sizeof` and `CMSG_SPACE` on each platform, and the descriptor test
   builds the message in the shape its platform says.
+- **Four more accessors no test called now have one, and one of them is
+  asked two ways at once.** `netdb`'s `ai_canonname` and `ai_next` are
+  asked of `localhost`, which every runner answers out of its own
+  `/etc/hosts`: with `AI_CANONNAME` the first answer carries the name
+  that was given and without it carries nothing, and `ai_next` threads
+  whatever list there is into a null. `epoll_event`'s `data_u64` is
+  asked with a tag that has something in each half — the kernel hands
+  back all eight bytes untouched, which is C's own answer, and the low
+  four answering `data_fd` says the two are the same eight bytes read
+  different ways. `aio`'s `reqprio` has no C reader at all and is asked
+  as a pair — but with the two members beside it written too, each with
+  its own number, so a getter reading a neighbor's slot cannot pass.
+  And `statvfs`'s `f_fsid` is asked of the path and of a descriptor
+  opened on it, two bindings that have to agree about the identity of
+  one file system; `f_favail` is asked beside `f_ffree`, which both
+  platforms answer with the same number, there being no separate
+  reserve of inodes for root.
 - **Six more accessors no test called now have one, and two of them are
   answered by a room the tests build.** `dirent`'s `type` and `reclen` are
   asked of a directory made in `/tmp` with an ordinary file in it: the
