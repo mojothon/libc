@@ -643,6 +643,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#a-socket-with-a-name-instead-of-a-port" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A socket with a name instead of a port
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -851,6 +862,17 @@
     <span class="md-ellipsis">
       
         Two sockets on the loopback
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-socket-with-a-name-instead-of-a-port" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A socket with a name instead of a port
       
     </span>
   </a>
@@ -1267,6 +1289,77 @@ And <code>accept</code> hands back a socket of its own, because the listener's j
 is to keep listening; the address it fills in alongside is the caller's,
 not the listener's, which is the one place a connection's two ends are
 told apart by something other than which descriptor is which.</p>
+<h2 id="a-socket-with-a-name-instead-of-a-port">A socket with a name instead of a port<a class="headerlink" href="#a-socket-with-a-name-instead-of-a-port" title="Permanent link">&para;</a></h2>
+<p>An <code>AF_UNIX</code> socket does not leave the machine, and its address is a path
+rather than a machine and a port. That makes it the easiest way for two
+programs on one machine to talk, and it makes its address longer than a
+<code>socketaddr</code> has room for: C gives it a struct of its own, 110 bytes here
+and 106 on Darwin, where a one-byte length comes first and the path has
+104 bytes rather than 108.</p>
+<p><code>sockaddr_un</code> is a view of a block rather than a struct holding one,
+because the calls that read the address are handed a pointer into the
+block and would not see a copy. So the block is allocated first, and every
+address in the conversation is built over one.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">std.memory.alloc</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">unsafe_alloc</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.constant</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">AF_UNIX</span><span class="p">,</span><span class="w"> </span><span class="n">SOCK_STREAM</span><span class="p">,</span><span class="w"> </span><span class="n">c_char</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.sys.socket</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">accept</span><span class="p">,</span><span class="w"> </span><span class="n">bind</span><span class="p">,</span><span class="w"> </span><span class="n">connect</span><span class="p">,</span><span class="w"> </span><span class="n">listen</span><span class="p">,</span><span class="w"> </span><span class="n">recv</span><span class="p">,</span><span class="w"> </span><span class="n">send</span><span class="p">,</span><span class="w"> </span><span class="n">socket</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.sys.un</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">SOCKADDR_UN_BYTES</span><span class="p">,</span><span class="w"> </span><span class="n">sockaddr_un</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.unistd</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">close</span><span class="p">,</span><span class="w"> </span><span class="n">getpid</span><span class="p">,</span><span class="w"> </span><span class="n">unlink</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.utils</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">string_to_char_ptr</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="n">raises</span><span class="p">:</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"/tmp/libc-recipe-"</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nb">String</span><span class="p">(</span><span class="nb">Int</span><span class="p">(</span><span class="n">getpid</span><span class="p">()))</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s2">".sock"</span>
+<span class="w">    </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">unlink</span><span class="p">(</span><span class="n">string_to_char_ptr</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+
+<span class="w">    </span><span class="c1"># The address is a view of this block, which has to outlive every call</span>
+<span class="w">    </span><span class="c1"># that is given the pointer.</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">here_block</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">unsafe_alloc</span><span class="p">[</span><span class="nb">UInt8</span><span class="p">](</span><span class="n">SOCKADDR_UN_BYTES</span><span class="p">)</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">here</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sockaddr_un</span><span class="p">(</span><span class="n">here_block</span><span class="p">)</span>
+<span class="w">    </span><span class="n">here</span><span class="o">.</span><span class="n">set_path</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">listener</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">socket</span><span class="p">(</span><span class="n">AF_UNIX</span><span class="p">,</span><span class="w"> </span><span class="n">SOCK_STREAM</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">    </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bind</span><span class="p">(</span><span class="n">listener</span><span class="p">,</span><span class="w"> </span><span class="n">here</span><span class="o">.</span><span class="n">as_socketaddr</span><span class="p">(),</span><span class="w"> </span><span class="n">here</span><span class="o">.</span><span class="n">length</span><span class="p">())</span>
+<span class="w">    </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">listen</span><span class="p">(</span><span class="n">listener</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span>
+<span class="w">    </span><span class="nb">print</span><span class="p">(</span><span class="s2">"listening on"</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="p">)</span>
+
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">caller</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">socket</span><span class="p">(</span><span class="n">AF_UNIX</span><span class="p">,</span><span class="w"> </span><span class="n">SOCK_STREAM</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">    </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">connect</span><span class="p">(</span><span class="n">caller</span><span class="p">,</span><span class="w"> </span><span class="n">here</span><span class="o">.</span><span class="n">as_socketaddr</span><span class="p">(),</span><span class="w"> </span><span class="n">here</span><span class="o">.</span><span class="n">length</span><span class="p">())</span>
+
+<span class="w">    </span><span class="c1"># `accept` writes the caller's address into a block of its own.</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">there_block</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">unsafe_alloc</span><span class="p">[</span><span class="nb">UInt8</span><span class="p">](</span><span class="n">SOCKADDR_UN_BYTES</span><span class="p">)</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">there</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sockaddr_un</span><span class="p">(</span><span class="n">there_block</span><span class="p">)</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">unsafe_alloc</span><span class="p">[</span><span class="nb">UInt32</span><span class="p">](</span><span class="mi">1</span><span class="p">)</span>
+<span class="w">    </span><span class="n">size</span><span class="o">.</span><span class="n">unsafe_offset</span><span class="p">(</span><span class="mi">0</span><span class="p">)[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">there</span><span class="o">.</span><span class="n">length</span><span class="p">()</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">taken</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">accept</span><span class="p">(</span><span class="n">listener</span><span class="p">,</span><span class="w"> </span><span class="n">there</span><span class="o">.</span><span class="n">as_socketaddr</span><span class="p">(),</span><span class="w"> </span><span class="n">size</span><span class="p">)</span>
+<span class="w">    </span><span class="nb">print</span><span class="p">(</span><span class="s2">"the caller's name is"</span><span class="p">,</span><span class="w"> </span><span class="n">there</span><span class="o">.</span><span class="n">path</span><span class="p">()</span><span class="o">.</span><span class="n">byte_length</span><span class="p">(),</span><span class="w"> </span><span class="s2">"bytes long"</span><span class="p">)</span>
+
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">said</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">string_to_char_ptr</span><span class="p">(</span><span class="s2">"hello</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+<span class="w">    </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">send</span><span class="p">(</span><span class="n">caller</span><span class="p">,</span><span class="w"> </span><span class="n">said</span><span class="p">,</span><span class="w"> </span><span class="mi">6</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">heard</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">unsafe_alloc</span><span class="p">[</span><span class="n">c_char</span><span class="p">](</span><span class="mi">64</span><span class="p">)</span>
+<span class="w">    </span><span class="k">var</span><span class="w"> </span><span class="nv">got</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">recv</span><span class="p">(</span><span class="n">taken</span><span class="p">,</span><span class="w"> </span><span class="n">heard</span><span class="p">,</span><span class="w"> </span><span class="mi">64</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">    </span><span class="nb">print</span><span class="p">(</span><span class="s2">"the other end read"</span><span class="p">,</span><span class="w"> </span><span class="n">got</span><span class="p">,</span><span class="w"> </span><span class="s2">"bytes"</span><span class="p">)</span>
+
+<span class="w">    </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">close</span><span class="p">(</span><span class="n">caller</span><span class="p">)</span>
+<span class="w">    </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">close</span><span class="p">(</span><span class="n">taken</span><span class="p">)</span>
+<span class="w">    </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">close</span><span class="p">(</span><span class="n">listener</span><span class="p">)</span>
+<span class="w">    </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">unlink</span><span class="p">(</span><span class="n">string_to_char_ptr</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+<span class="w">    </span><span class="n">heard</span><span class="o">.</span><span class="n">unsafe_free</span><span class="p">()</span>
+<span class="w">    </span><span class="n">size</span><span class="o">.</span><span class="n">unsafe_free</span><span class="p">()</span>
+<span class="w">    </span><span class="n">there_block</span><span class="o">.</span><span class="n">unsafe_free</span><span class="p">()</span>
+<span class="w">    </span><span class="n">here_block</span><span class="o">.</span><span class="n">unsafe_free</span><span class="p">()</span>
+</code></pre></div>
+<p>Three things differ from a port and are worth having in mind. <code>bind</code>
+creates a file, and the file outlives the socket: closing everything does
+not take the name away, and the next <code>bind</code> to it is refused with
+<code>EADDRINUSE</code> until it is <code>unlink</code>ed -- which is why the name carries the
+process id here and why the last line is <code>unlink</code>. The address that
+<code>accept</code> fills in is the caller's, and a caller that never bound a name of
+its own has none, which is what the zero above is: the kernel is not
+refusing to answer, there being nothing to say. And the length handed to
+<code>bind</code> and <code>connect</code> is the whole struct, <code>length()</code>, the same number C
+passes as <code>sizeof(struct sockaddr_un)</code>.</p>
 
 
 
