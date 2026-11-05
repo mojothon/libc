@@ -959,6 +959,21 @@ def diagnose_ancillary_variants() raises:
                     ancillary.unsafe_bitcast[UInt8]()
                 )
                 out.unsafe_offset(0)[].set_msg_controllen(UInt64(room))
+                if room == 20 and length == 20:
+                    for i in range(7):
+                        print(
+                            "diagnose:   slot",
+                            i,
+                            "=",
+                            out.unsafe_offset(0)[]._at(i * 8),
+                        )
+                    for i in range(4):
+                        print(
+                            "diagnose:   cmsg",
+                            i,
+                            "=",
+                            ancillary.unsafe_offset(i)[],
+                        )
                 var went = sendmsg(left, out, 0)
                 var said = Int(get_errno())
                 if went == 1:
