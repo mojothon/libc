@@ -836,7 +836,7 @@
 <h1 id="what-is-here-that-c-does-not-have">What is here that C does not have<a class="headerlink" href="#what-is-here-that-c-does-not-have" title="Permanent link">&para;</a></h1>
 <p>This is a binding, so what it can call is a subset of what C can call and
 will stay that way. What can be counted exactly is how much is here: this
-binds 1026 C symbols, every one checked against the header it comes from. C
+binds 1029 C symbols, every one checked against the header it comes from. C
 offers more, and calling more of it is not what this is for.</p>
 <p>How much of what C offers that is, is not a number that holds still. <code>nm -D
 --defined-only</code> over <code>libc</code>, <code>libm</code>, <code>libdl</code> and <code>librt</code> lists more functions
@@ -1030,7 +1030,7 @@ member on every <code>_set_string</code>, into whatever the struct holds next.</
 </tr>
 <tr>
 <td>declares them in order and leaves the layout to Mojo</td>
-<td>187</td>
+<td>191</td>
 </tr>
 <tr>
 <td>reads none of them, and claims only a size</td>
@@ -1457,7 +1457,7 @@ tests have since told apart, so that table entry is gone.</p>
 <h2 id="next-to-rusts-libc">Next to Rust's <code>libc</code><a class="headerlink" href="#next-to-rusts-libc" title="Permanent link">&para;</a></h2>
 <p>The nearest thing to this that is not this: <a href="https://github.com/rust-lang/libc">rust-lang/libc</a>. It binds the same C and implements
 none of it, which is what this does too. Four of its Linux files declare
-681 C functions; this binds 567; 293 are in both.</p>
+681 C functions; this binds 570; 293 are in both.</p>
 <p>The difference is not the count. Rust answers "what is <code>EAGAIN</code>" with a
 file per platform and a <code>cfg</code> that picks one, so the answer for the
 platform you are not on is somewhere else in the tree. This writes both

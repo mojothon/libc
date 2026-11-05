@@ -962,6 +962,11 @@ the bottom.</p>
 <td>6</td>
 </tr>
 <tr>
+<td><code>libc.pty</code></td>
+<td><code>&lt;pty.h&gt;</code> a terminal a program can hold</td>
+<td>4</td>
+</tr>
+<tr>
 <td><code>libc.fcntl</code></td>
 <td><code>&lt;fcntl.h&gt;</code></td>
 <td>49</td>
@@ -1069,7 +1074,7 @@ the bottom.</p>
 <tr>
 <td><code>libc.termios</code></td>
 <td><code>&lt;termios.h&gt;</code> how a terminal line is set</td>
-<td>54</td>
+<td>57</td>
 </tr>
 <tr>
 <td><code>libc.sys.ipc</code></td>
@@ -1150,7 +1155,7 @@ is about the call rather than about the suite:</p>
   suite uses cannot resolve; a built binary links and answers fine.</li>
 </ul>
 <p>None of them is known to be broken; they are simply not asked.</p>
-<p>1025 bindings are asked something, and the 3 that are not have a reason
+<p>1028 bindings are asked something, and the 3 that are not have a reason
 each. Both numbers are read back out of this page by
 <code>scripts/check-tests.py</code>, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.</p>
