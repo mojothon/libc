@@ -10,7 +10,7 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
-from libc.errno import get_errno
+from libc.errno import get_errno, set_errno
 from libc.constant import (
     AF_INET,
     AF_UNIX,
@@ -916,7 +916,102 @@ def test_a_descriptor_traveling_as_ancillary_data() raises:
     _ = close(right)
 
 
+def diagnose_ancillary_variants() raises:
+    """One-off: tries the descriptor send over both kinds of pair and at
+    both CMSG_SPACE answers, and prints what each refused with, so the
+    platform's own words decide instead of a guess.
+    """
+    for kind, named in [
+        (Int32(SOCK_STREAM), "stream"),
+        (Int32(SOCK_DGRAM), "datagram"),
+    ]:
+        var ends = unsafe_alloc[Int32](2)
+        assert_equal(socketpair(AF_UNIX, kind, 0, ends), 0, "a pair")
+        var left = ends.unsafe_load(0)
+        var right = ends.unsafe_load(1)
+        give_a_receive_timeout(right)
+        var legs = unsafe_alloc[Int32](2)
+        assert_equal(socketpair(AF_UNIX, SOCK_DGRAM, 0, legs), 0, "legs")
+        var leg_a = legs.unsafe_load(0)
+
+        var ancillary = unsafe_alloc[UInt64](4)
+        ancillary.unsafe_offset(0)[] = 20
+        ancillary.unsafe_offset(1)[] = UInt64(UInt32(SOL_SOCKET)) | (1 << 32)
+        ancillary.unsafe_offset(2)[] = UInt64(Int(leg_a) & 0xFFFFFFFF)
+        ancillary.unsafe_offset(3)[] = 0
+
+        var letter = unsafe_alloc[UInt8](1)
+        letter.unsafe_offset(0)[] = 0x66
+        var pieces = unsafe_alloc[iovec](1)
+        pieces.unsafe_offset(0)[] = iovec(letter, 1)
+        var out = unsafe_alloc[msghdr](1)
+        out.unsafe_offset(0)[] = msghdr()
+        out.unsafe_offset(0)[].set_msg_iov(pieces)
+        out.unsafe_offset(0)[].set_msg_iovlen(1)
+        out.unsafe_offset(0)[].set_msg_control(
+            ancillary.unsafe_bitcast[UInt8]()
+        )
+
+        for room in [20, 24, 32]:
+            out.unsafe_offset(0)[].set_msg_controllen(UInt64(room))
+            var went = sendmsg(left, out, 0)
+            set_errno(0)
+            print(
+                "diagnose: ",
+                named,
+                " room=",
+                room,
+                " cmsg_len=20 -> ",
+                Int(went),
+                " errno=",
+                Int(get_errno()),
+            )
+            if went == 1:
+                var taken = unsafe_alloc[UInt8](1)
+                var one = unsafe_alloc[iovec](1)
+                one.unsafe_offset(0)[] = iovec(taken, 1)
+                var arrived = unsafe_alloc[UInt64](16)
+                var in_msg = unsafe_alloc[msghdr](1)
+                in_msg.unsafe_offset(0)[] = msghdr()
+                in_msg.unsafe_offset(0)[].set_msg_iov(one)
+                in_msg.unsafe_offset(0)[].set_msg_iovlen(1)
+                in_msg.unsafe_offset(0)[].set_msg_control(
+                    arrived.unsafe_bitcast[UInt8]()
+                )
+                in_msg.unsafe_offset(0)[].set_msg_controllen(128)
+                var came = recvmsg(right, in_msg, 0)
+                set_errno(0)
+                print(
+                    "diagnose:   recvmsg=",
+                    Int(came),
+                    " errno=",
+                    Int(get_errno()),
+                    " controllen=",
+                    Int(in_msg.unsafe_offset(0)[].msg_controllen()),
+                    " level=",
+                    UInt32(arrived.unsafe_offset(1)[] & 0xFFFFFFFF),
+                    " kind=",
+                    UInt32(arrived.unsafe_offset(1)[] >> 32),
+                    " fd=",
+                    Int32(arrived.unsafe_offset(2)[] & 0xFFFFFFFF),
+                )
+                arrived.unsafe_free()
+                in_msg.unsafe_free()
+                one.unsafe_free()
+                taken.unsafe_free()
+
+        ancillary.unsafe_free()
+        pieces.unsafe_free()
+        letter.unsafe_free()
+        legs.unsafe_free()
+        ends.unsafe_free()
+        _ = close(left)
+        _ = close(right)
+        _ = close(leg_a)
+
+
 def main() raises:
+    diagnose_ancillary_variants()
     test_a_connection_over_the_loopback()
     test_accept4()
     test_socketpair()
