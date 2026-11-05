@@ -51,6 +51,7 @@ the bottom.
 | `libc.fnmatch` | `<fnmatch.h>` matching a single name | 7 |
 | `libc.libgen` | `<libgen.h>` cutting a path in two | 2 |
 | `libc.logging` | `<syslog.h>` | 6 |
+| `libc.pty` | `<pty.h>` a terminal a program can hold | 4 |
 | `libc.fcntl` | `<fcntl.h>` | 49 |
 | `libc.getopt` | `<getopt.h>` taking a command line apart | 12 |
 | `libc.dlfcn` | `<dlfcn.h>` | 9 |
@@ -72,7 +73,7 @@ the bottom.
 | `libc.sys.auxv` | `<sys/auxv.h>` | 3 |
 | `libc.errno` | `<errno.h>` | 6 |
 | `libc.pwd` | `<pwd.h>` | 18 |
-| `libc.termios` | `<termios.h>` how a terminal line is set | 54 |
+| `libc.termios` | `<termios.h>` how a terminal line is set | 57 |
 | `libc.sys.ipc` | `<sys/ipc.h>` keys for System V objects | 9 |
 | `libc.sys.msg` | `<sys/msg.h>` message queues | 6 |
 | `libc.utmpx` | `<utmpx.h>` who is logged in, and where | 29 |
@@ -139,7 +140,7 @@ is about the call rather than about the suite:
 
 None of them is known to be broken; they are simply not asked.
 
-1025 bindings are asked something, and the 3 that are not have a reason
+1028 bindings are asked something, and the 3 that are not have a reason
 each. Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.

@@ -116,6 +116,18 @@ All notable changes to this project are documented here. The format follows
   `--check-tables` reads the reasons back against the pairs that can
   still be made, so a written answer cannot outlive its pair. The
   paragraph is in the doc, at the end of the mutation story.
+- **`<pty.h>`: a pseudo-terminal pair, and the three calls that take
+  one.** `openpty` hands back the two descriptors, `login_tty` puts one
+  on 0, 1 and 2 as the controlling terminal of a new session, and
+  `forkpty` is both of them around a `fork`. `struct winsize` comes with
+  them, since a caller that wants a size to be there has to hand one in.
+  Three constants came with the tests rather than the bindings: `ECHO`,
+  `ICANON` and `ONLCR`, which are what a program reading a terminal's
+  output turns off. Two things the tests measured rather than assumed:
+  the master end answers `isatty` with yes as well (the line discipline
+  is on both ends on Linux), and a default terminal sends a newline as a
+  carriage return and a newline, so what arrives at the master is one
+  byte longer than what the child wrote.
 - **The whole of the mutation sweep was asked again, and the three
   crashes it found are assertions now.** The sweep had been made before
   the last few bindings arrived, so all five hundred and ninety-two

@@ -62,6 +62,7 @@ from test_netdb import main as run_netdb
 from test_netif import main as run_netif
 from test_network import main as run_network
 from test_poll import main as run_poll
+from test_pty import main as run_pty
 from test_pwd import main as run_pwd
 from test_regex import main as run_regex
 from test_resource import main as run_resource
@@ -140,6 +141,7 @@ def main() raises:
     run_netif()
     run_network()
     run_poll()
+    run_pty()
     run_pwd()
     run_regex()
     run_resource()

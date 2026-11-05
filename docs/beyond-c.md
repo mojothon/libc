@@ -2,7 +2,7 @@
 
 This is a binding, so what it can call is a subset of what C can call and
 will stay that way. What can be counted exactly is how much is here: this
-binds 1026 C symbols, every one checked against the header it comes from. C
+binds 1029 C symbols, every one checked against the header it comes from. C
 offers more, and calling more of it is not what this is for.
 
 How much of what C offers that is, is not a number that holds still. `nm -D
@@ -217,7 +217,7 @@ member on every `_set_string`, into whatever the struct holds next.
 | what a struct does with its members | how many |
 | --- | --- |
 | places one by hand, at an offset listed in `OFFSETS` | 120 |
-| declares them in order and leaves the layout to Mojo | 187 |
+| declares them in order and leaves the layout to Mojo | 191 |
 | reads none of them, and claims only a size | 17 |
 | has a struct only Linux has | 13 |
 | gives itself a fixed room to read or write a member | 4 |
@@ -683,7 +683,7 @@ glibc, for its part, does not come with anything that checks glibc.
 The nearest thing to this that is not this: [rust-lang/libc](
 https://github.com/rust-lang/libc). It binds the same C and implements
 none of it, which is what this does too. Four of its Linux files declare
-681 C functions; this binds 567; 293 are in both.
+681 C functions; this binds 570; 293 are in both.
 
 The difference is not the count. Rust answers "what is `EAGAIN`" with a
 file per platform and a `cfg` that picks one, so the answer for the

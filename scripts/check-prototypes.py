@@ -56,6 +56,7 @@ HEADERS = [
     "libgen.h",
     "locale.h", "math.h", "monetary.h", "mqueue.h", "netdb.h",
     "net/if.h", "netinet/in.h", "nl_types.h", "poll.h", "pthread.h", "pwd.h",
+    "pty.h",
     "regex.h", "sched.h", "search.h", "semaphore.h", "setjmp.h", "signal.h",
     "spawn.h", "stdarg.h", "stdbool.h", "stddef.h", "stdint.h", "stdio.h",
     "stdlib.h", "string.h", "strings.h", "sys/epoll.h", "sys/eventfd.h",
@@ -66,7 +67,7 @@ HEADERS = [
     "sys/stat.h", "sys/statvfs.h", "sys/time.h", "sys/times.h",
     "sys/auxv.h", "sys/random.h", "sys/sysinfo.h", "sys/types.h",
     "sys/uio.h", "sys/un.h", "sys/utsname.h", "sys/wait.h",
-    "syslog.h", "termios.h", "time.h", "uchar.h",     "unistd.h", "utime.h", "utmp.h",
+    "syslog.h", "termios.h", "time.h", "uchar.h",     "unistd.h", "util.h", "utime.h", "utmp.h",
     "utmpx.h", "wchar.h", "wctype.h", "wordexp.h",
 ]
 
