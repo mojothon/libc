@@ -826,8 +826,11 @@ def test_a_descriptor_traveling_as_ancillary_data() raises:
     give_a_receive_timeout(right)
 
     # A `cmsghdr` is the length, the level, the type, and then the data,
-    # which is one descriptor here: twenty bytes of message in
-    # twenty-four of room, which is what C's `CMSG_SPACE` makes of it.
+    # which is one descriptor here. The room it travels in has to be
+    # `CMSG_SPACE` of one descriptor exactly: twenty-four bytes on glibc,
+    # whose `cmsghdr` is aligned to eight, and twenty on Darwin, whose is
+    # aligned to four — the four bytes glibc's rounding adds are trailing
+    # bytes to Darwin, and a sendmsg that carries them answers EINVAL.
     var ancillary = unsafe_alloc[UInt64](4)
     ancillary.unsafe_offset(0)[] = 20
     ancillary.unsafe_offset(1)[] = UInt64(UInt32(SOL_SOCKET)) | (1 << 32)
@@ -845,7 +848,8 @@ def test_a_descriptor_traveling_as_ancillary_data() raises:
     out.unsafe_offset(0)[].set_msg_name(null_ptr[UInt8]())
     out.unsafe_offset(0)[].set_msg_namelen(0)
     out.unsafe_offset(0)[].set_msg_control(ancillary.unsafe_bitcast[UInt8]())
-    out.unsafe_offset(0)[].set_msg_controllen(24)
+    comptime CONTROL_ROOM = 20 if CompilationTarget.is_macos() else 24
+    out.unsafe_offset(0)[].set_msg_controllen(UInt64(CONTROL_ROOM))
     give_a_receive_timeout(left)
     var went = sendmsg(left, out, 0)
     assert_true(
