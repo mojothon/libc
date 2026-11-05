@@ -181,3 +181,73 @@ same address under the public name and under an underscored one, and the
 loader reports whichever its linker settled on — `getpid` on one build
 and `__getpid` on another. The address is what identifies the symbol; the
 name is one of the things it is called.
+
+## The addresses of this machine's interfaces
+
+`getifaddrs` answers a linked list of one record per address the machine
+has, walked through `ifa_next` until it runs out. The flags on each record
+say what the interface is, and the loopback is the one to skip when what
+is wanted is the addresses that reach other machines:
+
+```mojo
+from std.memory.alloc import unsafe_alloc
+
+from libc.constant import c_ptr
+from libc.ifaddrs import IFF_LOOPBACK, freeifaddrs, getifaddrs, ifaddrs
+from libc.utils import is_null, null_ptr
+
+
+def main() raises:
+    var list = unsafe_alloc[c_ptr[ifaddrs]](1)
+    list.unsafe_offset(0)[] = null_ptr[ifaddrs]()
+
+    if getifaddrs(list) != 0:
+        print("getifaddrs failed")
+        return
+
+    var node = list[]
+    while not is_null(node):
+        if (Int(node[].ifa_flags()) & IFF_LOOPBACK) == 0:
+            print(node[].ifa_name())
+        node = node[].ifa_next()
+
+    freeifaddrs(list[])
+    list.unsafe_free()
+```
+
+The list is one allocation from the kernel, and `freeifaddrs` gives the
+whole of it back — there is nothing to free per record. One platform
+difference worth knowing before reading `ifa_dstaddr`: on a point-to-point
+link that member is the address at the far end, and glibc fills the
+loopback's with the loopback's own address, so a destination that equals
+the address does not mean the record is wrong.
+
+## Looking up an account
+
+`getpwnam` takes a name and answers a row of the account database; the
+row lives in a buffer the next call to the same functions will reuse, so
+read it before asking again:
+
+```mojo
+from libc.pwd import getpwnam
+from libc.utils import is_null, string_to_char_ptr
+
+
+def main() raises:
+    var name = string_to_char_ptr("root")
+    var row = getpwnam(name)
+    if is_null(row):
+        print("no such account")
+        return
+
+    print(row[].pw_name(), "is uid", Int(row[].pw_uid()), "with home", row[].pw_dir())
+    name.unsafe_free()
+```
+
+The password member is a placeholder, not a password: the password left
+this row long ago — to `shadow` on Linux, which keeps `x` there, and out
+of the file on Darwin, which keeps `*`. Three more members — the time the
+password was last changed, the time the account expires, and the login
+class — exist on Darwin's struct and not on Linux's; the accessors answer
+0 and nothing on Linux rather than reading a slot that holds another
+member.
