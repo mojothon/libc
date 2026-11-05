@@ -126,7 +126,10 @@ def test_what_sysinfo_says_about_the_moment() raises:
     unused. Nothing of it can be written down ahead of time, so what
     is asked is that each is a number a machine could honestly give —
     an uptime that is not negative, a process count that is not zero,
-    and a swap that is not more full than it is large.
+    and a swap that is not more full than it is large. Shared memory
+    and buffers are both parts of the memory there is, so neither of
+    their counts can pass the whole of it, and a machine with no high
+    memory has none free either.
     """
     comptime if not CompilationTarget.is_macos():
         var info = unsafe_alloc[Sysinfo](1)
@@ -155,6 +158,19 @@ def test_what_sysinfo_says_about_the_moment() raises:
         # High memory is what a 64-bit machine has none of, and the two
         # that count it say so rather than failing.
         assert_equal(got[].totalhigh(), 0, "there is no high memory here")
+        assert_equal(
+            got[].freehigh(),
+            0,
+            "and none of it free, the second count having nothing to count",
+        )
+        assert_true(
+            got[].sharedram() <= got[].totalram(),
+            "shared memory is memory: no more of it than there is",
+        )
+        assert_true(
+            got[].bufferram() <= got[].totalram(),
+            "and buffers are memory too",
+        )
 
 
 def main() raises:

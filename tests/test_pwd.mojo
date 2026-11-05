@@ -1,4 +1,5 @@
 from std.memory.alloc import unsafe_alloc
+from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_false, assert_true
 
 from libc.pwd import (
@@ -167,10 +168,78 @@ def test_the_reentrant_pair_puts_the_user_in_the_caller_s_room() raises:
     row.unsafe_free()
 
 
+def test_the_fields_the_two_structs_do_not_share() raises:
+    """Five members the row has that the tests have never asked for:
+    the password placeholder, the real name, and the three Darwin
+    carries that Linux's struct does not.
+
+    The password itself left this row decades ago — to `shadow` on
+    Linux and out of `/etc/passwd` on Darwin — so what is in the field
+    is a placeholder, and the placeholder each platform keeps is a
+    fact about the platform. The real name is whoever the account
+    belongs to, and for root it is not empty on either. The three
+    Darwin-only members answer 0 and nothing on Linux, which is what
+    the accessors promise rather than something read out of a slot
+    that holds another member, and on Darwin they are the account's
+    own numbers, printed while the account is held so the run itself
+    says what they were.
+    """
+    var name = string_to_char_ptr("root")
+    var by_name = getpwnam(name)
+    assert_true(not is_null(by_name), "root is found as before")
+
+    comptime if CompilationTarget.is_macos():
+        print("dbg passwd:", by_name[].pw_passwd())
+        print("dbg gecos:", by_name[].pw_gecos())
+        print("dbg change:", by_name[].pw_change())
+        print("dbg expire:", by_name[].pw_expire())
+        print("dbg class: '", by_name[].pw_class(), "'")
+        assert_true(
+            by_name[].pw_passwd().byte_length() > 0,
+            "the password field holds its placeholder",
+        )
+        assert_true(
+            by_name[].pw_change() >= 0,
+            "the password was changed at no time before time began",
+        )
+        assert_true(
+            by_name[].pw_expire() >= 0,
+            "and the account does not expire before time began either",
+        )
+    else:
+        assert_equal(
+            by_name[].pw_passwd(),
+            "x",
+            "the password went to shadow: the field holds the "
+            + "placeholder Linux keeps",
+        )
+        assert_true(
+            by_name[].pw_gecos().byte_length() > 0,
+            "the real name of the account is not empty",
+        )
+        assert_equal(
+            Int(by_name[].pw_change()),
+            0,
+            "Linux's struct has no such member: nothing, not some "
+            + "other member's slot",
+        )
+        assert_equal(
+            Int(by_name[].pw_expire()),
+            0,
+            "and no expiry, for the same reason",
+        )
+        assert_equal(
+            by_name[].pw_class(),
+            "",
+            "and no class, there being none",
+        )
+
+
 def main() raises:
     test_root_is_user_zero_whichever_way_it_is_asked()
     test_asking_for_a_user_that_is_not_there_answers_null()
     test_the_whole_database_can_be_walked()
     test_whoever_is_running_is_in_the_database()
     test_the_reentrant_pair_puts_the_user_in_the_caller_s_room()
+    test_the_fields_the_two_structs_do_not_share()
     print("pwd ok")

@@ -73,6 +73,22 @@ All notable changes to this project are documented here. The format follows
   `CMSGHDR_SPACE_ONE` and friends now name the shape, `check-layouts` compares
   them with `sizeof` and `CMSG_SPACE` on each platform, and the descriptor test
   builds the message in the shape its platform says.
+- **The last of the untested accessors are tested, and one of the
+  answers was printed rather than claimed.** `sysinfo`'s `sharedram`,
+  `bufferram` and `freehigh` are asked beside what is already asked:
+  shared memory and buffers are parts of the memory there is, so
+  neither count can pass the whole of it, and a machine with no high
+  memory — which is what a 64-bit one is — has none free either.
+  `pwd`'s `pw_passwd` and `pw_gecos` are asked of root: the password
+  field holds the placeholder each platform keeps, `x` on Linux and
+  whatever Darwin keeps for an account whose password left the file,
+  and the real name is not empty on either. The three Darwin-only
+  members are asked too, and they are the place the platforms answer
+  differently on purpose: Linux's struct has no such members and the
+  accessors promise 0 and nothing there rather than bytes read out of
+  a slot that holds another member, which is exactly what the Linux
+  side asserts. On Darwin the run prints what the account says while
+  it holds it, so the values come from the machine itself.
 - **Four more accessors no test called now have one, and one of them is
   asked two ways at once.** `netdb`'s `ai_canonname` and `ai_next` are
   asked of `localhost`, which every runner answers out of its own
