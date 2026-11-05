@@ -64,6 +64,19 @@ All notable changes to this project are documented here. The format follows
   apart from `mtime` by setting the two times to different values and asking
   each for its own — `ctime` is the one that has to be now. `blocks` is
   asserted as a range the file's own size fixes.
+- **The nine `msghdr` accessors no test called now have one, and C answers
+  for six of them.** `sendmsg` reads the name `set_msg_name` wrote, and
+  `recvmsg` answers with the sender's address written through `msg_name` —
+  whose family and port are then read back through the getter itself, since
+  reading the pointer the test kept would ask the getter nothing. A
+  descriptor sent as `SCM_RIGHTS` ancillary data comes back with
+  `msg_controllen` holding C's own count and a descriptor of its own at
+  `msg_control`, which is used to send a byte that arrives on the end that
+  stayed home. `msg_flags` is asked through `MSG_TRUNC` on a datagram
+  received into half the room it needed. Two constants are named now to ask
+  these questions — `MSG_TRUNC` and `SCM_RIGHTS` — having been written out
+  in a comment before. `msg_iov` and `msg_iovlen` have no C reader on
+  either platform and are asked as pairs, which the test says.
 - **The twelve `termios` accessors are asked of a real pty.** `cfmakeraw` and
   `cfsetspeed` are C's writers of the words the accessors read, and what the
   accessors write is handed to `tcsetattr` and read back into a fresh block.

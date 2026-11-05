@@ -51,6 +51,7 @@ comptime SOCK_PACKET = 10
 comptime MSG_DONTWAIT: Int32 = 128 if CompilationTarget.is_macos() else 64
 # 2 on both; `MSG_TRUNC` is not — it is 16 on Darwin and 32 on Linux.
 comptime MSG_PEEK = 2
+comptime MSG_TRUNC: Int32 = 16 if CompilationTarget.is_macos() else 32
 # 1 on both.
 comptime MSG_OOB = 1
 comptime IPPROTO_IP = 0
@@ -74,6 +75,8 @@ comptime SHUT_RD = 0
 comptime SHUT_WR = 1
 comptime SHUT_RDWR = 2
 comptime SOL_SOCKET: Int32 = 65535 if CompilationTarget.is_macos() else 1
+# 1 on both, and the ancillary data that carries a descriptor.
+comptime SCM_RIGHTS: Int32 = 1
 comptime SO_DEBUG = 1
 comptime SO_REUSEADDR: Int32 = 4 if CompilationTarget.is_macos() else 2
 comptime SO_TYPE: Int32 = 4104 if CompilationTarget.is_macos() else 3

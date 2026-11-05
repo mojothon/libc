@@ -15,6 +15,8 @@ from libc.constant import (
     AF_UNIX,
     MSG_OOB,
     MSG_PEEK,
+    MSG_TRUNC,
+    SCM_RIGHTS,
     SHUT_RDWR,
     SOCK_DGRAM,
     SOCK_STREAM,
@@ -619,6 +621,287 @@ def test_the_mark_that_out_of_band_data_leaves() raises:
     unspecified.unsafe_free()
 
 
+def test_a_message_sent_to_a_name_and_answered_with_one() raises:
+    """`sendmsg` reads the name `set_msg_name` put in, and `recvmsg` writes
+    the one it came from where `msg_name` points.
+
+    Two datagram sockets on the loopback, each bound and each given a
+    port by the kernel. What goes out travels over two pieces and is
+    addressed by the name, so the arrival on the other socket is the
+    proof that C read the name the setter wrote; what comes back is
+    answered with the sender's address, written by C into the sixteen
+    bytes the setter pointed at — the family and the port of it are the
+    part a getter reading some other member could not produce. C also
+    writes how long the address is, that there was no ancillary data,
+    and that the message arrived whole.
+
+    The same message is then sent again and received into a room half
+    its size, which is the one way C has of saying something through
+    `msg_flags`: the flags say the message did not fit. `msg_flags` on a
+    message being sent is C's to write and nothing of this package's, so
+    the setter is asked as a pair, on a block never handed to the line.
+    `msg_iov` and `msg_iovlen` are asked the same way, since no call
+    writes either of them back.
+    """
+    var here = socket(AF_INET, SOCK_DGRAM, 0)
+    var there = socket(AF_INET, SOCK_DGRAM, 0)
+    assert_true(here >= 0 and there >= 0, "two datagram sockets")
+
+    var here_addr = unsafe_alloc[socketaddr](1)
+    loopback(here_addr.unsafe_offset(0)[], 0)
+    assert_equal(bind(here, here_addr, ADDRESS_SIZE), 0, "the first is bound")
+    var there_addr = unsafe_alloc[socketaddr](1)
+    loopback(there_addr.unsafe_offset(0)[], 0)
+    assert_equal(
+        bind(there, there_addr, ADDRESS_SIZE), 0, "and so is the second"
+    )
+    var here_port = ask_the_port(here)
+    var there_port = ask_the_port(there)
+    assert_true(here_port != there_port, "and they are not the same port")
+
+    # What was bound was port 0, so the address still says 0 and is
+    # filled in again now that the port is known.
+    loopback(there_addr.unsafe_offset(0)[], there_port)
+    give_a_receive_timeout(there)
+
+    # Out: two pieces, and a name to send them to.
+    var going = unsafe_alloc[UInt8](4)
+    going.unsafe_offset(0)[] = 0x70
+    going.unsafe_offset(1)[] = 0x69
+    going.unsafe_offset(2)[] = 0x6E
+    going.unsafe_offset(3)[] = 0x67
+    var pieces = unsafe_alloc[iovec](2)
+    pieces.unsafe_offset(0)[] = iovec(going, 2)
+    pieces.unsafe_offset(1)[] = iovec(going.unsafe_offset(2), 2)
+    var out = unsafe_alloc[msghdr](1)
+    out.unsafe_offset(0)[] = msghdr()
+    out.unsafe_offset(0)[].set_msg_name(there_addr.unsafe_bitcast[UInt8]())
+    out.unsafe_offset(0)[].set_msg_namelen(ADDRESS_SIZE)
+    out.unsafe_offset(0)[].set_msg_iov(pieces)
+    out.unsafe_offset(0)[].set_msg_iovlen(2)
+    out.unsafe_offset(0)[].set_msg_control(null_ptr[UInt8]())
+    out.unsafe_offset(0)[].set_msg_controllen(0)
+    assert_equal(
+        Int(out.unsafe_offset(0)[].msg_iovlen()),
+        2,
+        "the piece count is read where it was written",
+    )
+    assert_equal(
+        Int(out.unsafe_offset(0)[].msg_iov()),
+        Int(pieces),
+        "and the array is",
+    )
+    assert_equal(
+        Int(sendmsg(here, out, 0)),
+        4,
+        "four bytes out over two pieces, to the name",
+    )
+
+    # In: one piece, and sixteen bytes of room for an answer about who
+    # it was from.
+    var coming = unsafe_alloc[UInt8](4)
+    var one = unsafe_alloc[iovec](1)
+    one.unsafe_offset(0)[] = iovec(coming, 4)
+    var whence = unsafe_alloc[socketaddr](1)
+    var in_msg = unsafe_alloc[msghdr](1)
+    in_msg.unsafe_offset(0)[] = msghdr()
+    in_msg.unsafe_offset(0)[].set_msg_iov(one)
+    in_msg.unsafe_offset(0)[].set_msg_iovlen(1)
+    in_msg.unsafe_offset(0)[].set_msg_name(whence.unsafe_bitcast[UInt8]())
+    in_msg.unsafe_offset(0)[].set_msg_namelen(ADDRESS_SIZE)
+    in_msg.unsafe_offset(0)[].set_msg_control(null_ptr[UInt8]())
+    in_msg.unsafe_offset(0)[].set_msg_controllen(0)
+    assert_equal(
+        Int(recvmsg(there, in_msg, 0)), 4, "four bytes in, in one piece"
+    )
+    assert_equal(
+        Int(coming.unsafe_offset(3)[]), 0x67, "and they are the bytes sent"
+    )
+    assert_equal(
+        Int(in_msg.unsafe_offset(0)[].msg_namelen()),
+        16,
+        "C answers how long the address it wrote is",
+    )
+    # The answer is read through the getter itself. C wrote the address
+    # into the bytes the setter pointed at, so what `msg_name` gives back
+    # has to be those bytes; reading the pointer this test kept would ask
+    # nothing of the getter at all.
+    var answered = (
+        in_msg.unsafe_offset(0)[].msg_name().unsafe_bitcast[socketaddr]()
+    )
+    assert_equal(
+        Int(answered.unsafe_offset(0)[].family()),
+        Int(AF_INET),
+        "the address is the sender's family",
+    )
+    assert_equal(
+        port_of(answered.unsafe_offset(0)[]),
+        here_port,
+        "and the sender's port, written where the name was pointed",
+    )
+    assert_equal(
+        Int(in_msg.unsafe_offset(0)[].msg_controllen()),
+        0,
+        "there was no ancillary data, and C says so",
+    )
+    assert_equal(
+        Int(in_msg.unsafe_offset(0)[].msg_flags()),
+        0,
+        "and nothing to say about the message",
+    )
+
+    # The same message again, into half the room: this time the flags are
+    # C's own answer, and they are the one that says the message did not
+    # fit.
+    assert_equal(Int(sendmsg(here, out, 0)), 4, "the message is sent again")
+    var small = unsafe_alloc[UInt8](2)
+    one.unsafe_offset(0)[] = iovec(small, 2)
+    assert_equal(Int(recvmsg(there, in_msg, 0)), 2, "two of the four are taken")
+    assert_true(
+        (in_msg.unsafe_offset(0)[].msg_flags() & MSG_TRUNC) != 0,
+        "and the flags say the message was bigger than the room",
+    )
+
+    # And the setter of the flags, as a pair, on a block that is never
+    # handed to the line.
+    var scratch = unsafe_alloc[msghdr](1)
+    scratch.unsafe_offset(0)[] = msghdr()
+    scratch.unsafe_offset(0)[].set_msg_flags(0x1234)
+    assert_equal(
+        Int(scratch.unsafe_offset(0)[].msg_flags()),
+        0x1234,
+        "the flags are read where they were written",
+    )
+
+    scratch.unsafe_free()
+    small.unsafe_free()
+    coming.unsafe_free()
+    one.unsafe_free()
+    whence.unsafe_free()
+    in_msg.unsafe_free()
+    going.unsafe_free()
+    pieces.unsafe_free()
+    out.unsafe_free()
+    here_addr.unsafe_free()
+    there_addr.unsafe_free()
+    _ = close(here)
+    _ = close(there)
+
+
+def test_a_descriptor_traveling_as_ancillary_data() raises:
+    """`msg_control` is where the ancillary data is put and
+    `msg_controllen` is how much room it has, and the descriptor that
+    travels in it arrives through a pointer C followed and a length C
+    wrote back.
+
+    A descriptor goes out as one byte of payload beside the `SCM_RIGHTS`
+    message, and comes back as a different number at the other end,
+    still naming the same open line: what is sent through the received
+    descriptor arrives on the end that stayed home. The length is asked
+    of `msg_controllen` after the call, which is C's own answer rather
+    than the number this test put there.
+    """
+    var ends = unsafe_alloc[Int32](2)
+    assert_equal(
+        socketpair(AF_UNIX, SOCK_DGRAM, 0, ends), 0, "a pair to send over"
+    )
+    var left = ends.unsafe_load(0)
+    var right = ends.unsafe_load(1)
+    var legs = unsafe_alloc[Int32](2)
+    assert_equal(
+        socketpair(AF_UNIX, SOCK_DGRAM, 0, legs),
+        0,
+        "and a second, whose end is the one that travels",
+    )
+    var leg_a = legs.unsafe_load(0)
+    var leg_b = legs.unsafe_load(1)
+    give_a_receive_timeout(right)
+
+    # A `cmsghdr` is the length, the level, the type, and then the data,
+    # which is one descriptor here: twenty bytes of message in
+    # twenty-four of room, which is what C's `CMSG_SPACE` makes of it.
+    var ancillary = unsafe_alloc[UInt64](4)
+    ancillary.unsafe_offset(0)[] = 20
+    ancillary.unsafe_offset(1)[] = UInt64(UInt32(SOL_SOCKET)) | (1 << 32)
+    ancillary.unsafe_offset(2)[] = UInt64(Int(leg_a) & 0xFFFFFFFF)
+    ancillary.unsafe_offset(3)[] = 0
+
+    var letter = unsafe_alloc[UInt8](1)
+    letter.unsafe_offset(0)[] = 0x66
+    var pieces = unsafe_alloc[iovec](1)
+    pieces.unsafe_offset(0)[] = iovec(letter, 1)
+    var out = unsafe_alloc[msghdr](1)
+    out.unsafe_offset(0)[] = msghdr()
+    out.unsafe_offset(0)[].set_msg_iov(pieces)
+    out.unsafe_offset(0)[].set_msg_iovlen(1)
+    out.unsafe_offset(0)[].set_msg_name(null_ptr[UInt8]())
+    out.unsafe_offset(0)[].set_msg_namelen(0)
+    out.unsafe_offset(0)[].set_msg_control(ancillary.unsafe_bitcast[UInt8]())
+    out.unsafe_offset(0)[].set_msg_controllen(24)
+    give_a_receive_timeout(left)
+    assert_equal(
+        Int(sendmsg(left, out, 0)),
+        1,
+        "the byte goes out, and the descriptor with it",
+    )
+
+    var taken = unsafe_alloc[UInt8](1)
+    var one = unsafe_alloc[iovec](1)
+    one.unsafe_offset(0)[] = iovec(taken, 1)
+    var arrived = unsafe_alloc[UInt64](16)
+    var in_msg = unsafe_alloc[msghdr](1)
+    in_msg.unsafe_offset(0)[] = msghdr()
+    in_msg.unsafe_offset(0)[].set_msg_iov(one)
+    in_msg.unsafe_offset(0)[].set_msg_iovlen(1)
+    in_msg.unsafe_offset(0)[].set_msg_name(null_ptr[UInt8]())
+    in_msg.unsafe_offset(0)[].set_msg_namelen(0)
+    in_msg.unsafe_offset(0)[].set_msg_control(arrived.unsafe_bitcast[UInt8]())
+    in_msg.unsafe_offset(0)[].set_msg_controllen(128)
+    assert_equal(Int(recvmsg(right, in_msg, 0)), 1, "and the byte comes back")
+    assert_equal(
+        Int(taken.unsafe_load()), 0x66, "and it is the byte that was sent"
+    )
+    assert_true(
+        in_msg.unsafe_offset(0)[].msg_controllen() >= 20,
+        "C answers how much ancillary data it wrote",
+    )
+    var level = UInt32(arrived.unsafe_offset(1)[] & 0xFFFFFFFF)
+    var kind = UInt32(arrived.unsafe_offset(1)[] >> 32)
+    assert_equal(Int(level), Int(SOL_SOCKET), "the message is at this level")
+    assert_equal(Int(kind), Int(SCM_RIGHTS), "and of the descriptor kind")
+    var traveled = Int32(arrived.unsafe_offset(2)[] & 0xFFFFFFFF)
+    assert_true(traveled >= 0, "and it names a descriptor")
+
+    # What is sent through the descriptor that arrived comes out of the
+    # end that stayed here, which is what says it is the same open line
+    # and not a number that happens to name something.
+    var carried = unsafe_alloc[UInt8](1)
+    carried.unsafe_offset(0)[] = 0x7A
+    assert_equal(
+        Int(send(traveled, carried, 1, 0)), 1, "a byte through the arrival"
+    )
+    var home = unsafe_alloc[UInt8](1)
+    assert_equal(Int(recv(leg_b, home, 1, 0)), 1, "and it comes out at home")
+    assert_equal(Int(home.unsafe_load()), 0x7A, "and it is the byte sent")
+
+    arrived.unsafe_free()
+    in_msg.unsafe_free()
+    one.unsafe_free()
+    taken.unsafe_free()
+    home.unsafe_free()
+    carried.unsafe_free()
+    out.unsafe_free()
+    pieces.unsafe_free()
+    letter.unsafe_free()
+    ancillary.unsafe_free()
+    legs.unsafe_free()
+    ends.unsafe_free()
+    _ = close(leg_a)
+    _ = close(leg_b)
+    _ = close(left)
+    _ = close(right)
+
+
 def main() raises:
     test_a_connection_over_the_loopback()
     test_accept4()
@@ -627,4 +910,6 @@ def main() raises:
     test_sendmsg()
     test_recvmsg_gathers_without_taking()
     test_the_mark_that_out_of_band_data_leaves()
+    test_a_message_sent_to_a_name_and_answered_with_one()
+    test_a_descriptor_traveling_as_ancillary_data()
     print("test_socket: ok")
