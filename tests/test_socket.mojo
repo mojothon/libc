@@ -917,9 +917,9 @@ def test_a_descriptor_traveling_as_ancillary_data() raises:
 
 
 def diagnose_ancillary_variants() raises:
-    """One-off: tries the descriptor send over both kinds of pair and at
-    both CMSG_SPACE answers, and prints what each refused with, so the
-    platform's own words decide instead of a guess.
+    """One-off: every shape of the descriptor send, asked in the
+    platform's own words. Each result, and the errno captured before
+    anything else touched it, is printed.
     """
     for kind, named in [
         (Int32(SOCK_STREAM), "stream"),
@@ -934,73 +934,62 @@ def diagnose_ancillary_variants() raises:
         assert_equal(socketpair(AF_UNIX, SOCK_DGRAM, 0, legs), 0, "legs")
         var leg_a = legs.unsafe_load(0)
 
-        var ancillary = unsafe_alloc[UInt64](4)
-        ancillary.unsafe_offset(0)[] = 20
-        ancillary.unsafe_offset(1)[] = UInt64(UInt32(SOL_SOCKET)) | (1 << 32)
-        ancillary.unsafe_offset(2)[] = UInt64(Int(leg_a) & 0xFFFFFFFF)
-        ancillary.unsafe_offset(3)[] = 0
-
         var letter = unsafe_alloc[UInt8](1)
         letter.unsafe_offset(0)[] = 0x66
         var pieces = unsafe_alloc[iovec](1)
         pieces.unsafe_offset(0)[] = iovec(letter, 1)
-        var out = unsafe_alloc[msghdr](1)
-        out.unsafe_offset(0)[] = msghdr()
-        out.unsafe_offset(0)[].set_msg_iov(pieces)
-        out.unsafe_offset(0)[].set_msg_iovlen(1)
-        out.unsafe_offset(0)[].set_msg_control(
-            ancillary.unsafe_bitcast[UInt8]()
-        )
 
-        for room in [20, 24, 32]:
-            out.unsafe_offset(0)[].set_msg_controllen(UInt64(room))
-            var went = sendmsg(left, out, 0)
-            set_errno(0)
-            print(
-                "diagnose: ",
-                named,
-                " room=",
-                room,
-                " cmsg_len=20 -> ",
-                Int(went),
-                " errno=",
-                Int(get_errno()),
-            )
-            if went == 1:
-                var taken = unsafe_alloc[UInt8](1)
-                var one = unsafe_alloc[iovec](1)
-                one.unsafe_offset(0)[] = iovec(taken, 1)
-                var arrived = unsafe_alloc[UInt64](16)
-                var in_msg = unsafe_alloc[msghdr](1)
-                in_msg.unsafe_offset(0)[] = msghdr()
-                in_msg.unsafe_offset(0)[].set_msg_iov(one)
-                in_msg.unsafe_offset(0)[].set_msg_iovlen(1)
-                in_msg.unsafe_offset(0)[].set_msg_control(
-                    arrived.unsafe_bitcast[UInt8]()
+        var ancillary = unsafe_alloc[UInt64](8)
+        var out = unsafe_alloc[msghdr](1)
+
+        for length in [20, 24, 28, 32]:
+            for room in [20, 24, 28, 32]:
+                if room < length:
+                    continue
+                ancillary.unsafe_offset(0)[] = UInt64(length)
+                ancillary.unsafe_offset(1)[] = UInt64(UInt32(SOL_SOCKET)) | (
+                    1 << 32
                 )
-                in_msg.unsafe_offset(0)[].set_msg_controllen(128)
-                var came = recvmsg(right, in_msg, 0)
-                set_errno(0)
-                print(
-                    "diagnose:   recvmsg=",
-                    Int(came),
-                    " errno=",
-                    Int(get_errno()),
-                    " controllen=",
-                    Int(in_msg.unsafe_offset(0)[].msg_controllen()),
-                    " level=",
-                    UInt32(arrived.unsafe_offset(1)[] & 0xFFFFFFFF),
-                    " kind=",
-                    UInt32(arrived.unsafe_offset(1)[] >> 32),
-                    " fd=",
-                    Int32(arrived.unsafe_offset(2)[] & 0xFFFFFFFF),
+                ancillary.unsafe_offset(2)[] = UInt64(Int(leg_a) & 0xFFFFFFFF)
+                ancillary.unsafe_offset(3)[] = 0
+                out.unsafe_offset(0)[] = msghdr()
+                out.unsafe_offset(0)[].set_msg_iov(pieces)
+                out.unsafe_offset(0)[].set_msg_iovlen(1)
+                out.unsafe_offset(0)[].set_msg_control(
+                    ancillary.unsafe_bitcast[UInt8]()
                 )
-                arrived.unsafe_free()
-                in_msg.unsafe_free()
-                one.unsafe_free()
-                taken.unsafe_free()
+                out.unsafe_offset(0)[].set_msg_controllen(UInt64(room))
+                var went = sendmsg(left, out, 0)
+                var said = Int(get_errno())
+                if went == 1:
+                    print(
+                        "diagnose:",
+                        named,
+                        "cmsg_len=",
+                        length,
+                        "room=",
+                        room,
+                        "-> sent",
+                        "(errno",
+                        said,
+                        ")",
+                    )
+                else:
+                    print(
+                        "diagnose:",
+                        named,
+                        "cmsg_len=",
+                        length,
+                        "room=",
+                        room,
+                        "->",
+                        Int(went),
+                        "errno",
+                        said,
+                    )
 
         ancillary.unsafe_free()
+        out.unsafe_free()
         pieces.unsafe_free()
         letter.unsafe_free()
         legs.unsafe_free()
