@@ -169,11 +169,15 @@ def test_a_socket_bound_to_a_name_is_reached_through_it() raises:
     length.unsafe_offset(0)[] = who.length()
     var taken = accept(server, who.as_socketaddr(), length)
     assert_true(taken >= 0, "and the connection is taken")
-    assert_equal(
-        length.unsafe_offset(0)[],
-        UInt32(SOCKADDR_UN_PATH_OFFSET),
-        "with no name in it",
+    # How much of the struct a caller with no name comes back as is the
+    # platform's answer and not this package's: glibc answers the family
+    # alone, two bytes, and Darwin answers sixteen, the size of a bare
+    # `struct sockaddr`. Both were read off a runner rather than guessed,
+    # and neither leaves a byte of the path behind.
+    comptime EMPTY_CALLER: UInt32 = (
+        16 if CompilationTarget.is_macos() else UInt32(SOCKADDR_UN_PATH_OFFSET)
     )
+    assert_equal(length.unsafe_offset(0)[], EMPTY_CALLER, "with no name in it")
     assert_equal(who.path(), "", "so the path is empty")
 
     var said = string_to_char_ptr("hello")
