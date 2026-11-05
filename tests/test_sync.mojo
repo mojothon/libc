@@ -69,9 +69,10 @@ from libc.pthread import (
 )
 from libc.stdlib import exit
 from libc.sys.mman import mmap, munmap
-from libc.sys.wait import WEXITSTATUS, WIFEXITED, waitpid
+from libc.signal import SIGKILL, kill
+from libc.sys.wait import WIFEXITED, WEXITSTATUS, WNOHANG, waitpid
 from libc.time import CLOCK_REALTIME, clock_gettime, timespec
-from libc.unistd import alarm, fork
+from libc.unistd import fork, usleep
 from libc.utils import null_ptr
 
 
@@ -220,7 +221,7 @@ def test_the_condition_attributes_go_both_ways() raises:
     attr.unsafe_free()
 
 
-def test_a_condition_wait_is_woken_by_the_process_that_holds_the_lock() raises:
+def _the_condition_wait_exercise() raises:
     """`pthread_cond_wait` waits until the condition is signalled. The
     only thread here is this one, so the signaller is a child — and for
     the two to be waiting on the same condition they have to be looking
@@ -243,10 +244,15 @@ def test_a_condition_wait_is_woken_by_the_process_that_holds_the_lock() raises:
     having said the same about its own three calls, so a child that
     never signalled is a red run and not a passing one.
 
-    Ten seconds of `alarm` is there for the case this test is written
-    against: a wait with no wake-up is a run that hangs, and a run that
-    hangs is one that holds a job open until it times out. It is
-    cancelled as soon as the wait comes back.
+    The waiting is done by the child, and this process reads the
+    ending rather than trusting it. A binding pointed at a call that
+    takes the condition apart instead of waking it -- `destroy` takes
+    the same argument and answers 0 -- leaves a waiter waiting for
+    himself, and a wait with no wake-up used to be covered by ten
+    seconds of `alarm`; a signal a handler elsewhere keeps to itself
+    leaves the run stopped answering rather than ended. So the child
+    is watched: the one that stops answering is killed and said so,
+    and the one that was woken says so by leaving of its own accord.
     """
     comptime PAGE = 4096
     comptime RW: Int32 = PROT_READ | PROT_WRITE
@@ -295,13 +301,11 @@ def test_a_condition_wait_is_woken_by_the_process_that_holds_the_lock() raises:
         _ = exit(0)
 
     assert_true(child > 0, "there is a child to be woken by")
-    _ = alarm(10)
     assert_equal(
         pthread_cond_wait(cond, mutex),
         0,
         "the wait comes back when it is signalled",
     )
-    _ = alarm(0)
     assert_equal(pthread_mutex_unlock(mutex), 0, "holding the lock again")
 
     var status = unsafe_alloc[Int32](1)
@@ -320,8 +324,8 @@ def test_a_condition_wait_is_woken_by_the_process_that_holds_the_lock() raises:
     # The same question asked with `pthread_cond_broadcast`, which with one
     # waiter wakes exactly the one `_signal` wakes and is a different call
     # besides: same signature, same answer of 0. A child that destroyed the
-    # condition instead of broadcasting leaves this process waiting, and the
-    # ten seconds of `alarm` is what turns that into a red run.
+    # condition instead of broadcasting leaves this process waiting, and
+    # the deadline below is what turns that into a red run.
     assert_equal(pthread_mutex_lock(mutex), 0, "the lock is taken again")
     var second = fork()
     if second == 0:
@@ -378,7 +382,63 @@ def test_a_condition_wait_is_woken_by_the_process_that_holds_the_lock() raises:
     mutex_attr.unsafe_free()
 
 
-def test_a_read_write_lock_takes_for_reading_and_writing() raises:
+def test_a_condition_wait_is_woken_by_the_process_that_holds_the_lock() raises:
+    """The condition exercise, run where a stop answering can be
+    harvested.
+
+    The waiting, the lock and the fork that wakes it are as the
+    exercise above describes. The whole round runs in a child of this
+    one, because a binding pointed at a call that takes the condition
+    apart instead of waking it -- `destroy` takes the same argument and
+    answers 0 -- leaves the waiter waiting for himself, and a wait with
+    no wake-up used to be covered by ten seconds of `alarm`; a signal a
+    handler elsewhere keeps to itself leaves the run stopped answering
+    rather than ended. Here the stop is survivable: the child that
+    stops answering is killed and said so, and the one that was woken
+    says so by leaving of its own accord.
+    """
+    var child = fork()
+    if child == 0:
+        _the_condition_wait_exercise()
+        _ = exit(0)
+
+    assert_true(child > 0, "there is a child to run the round in")
+    watch_the_child(child, "the condition exercise")
+
+
+def watch_the_child(pid: Int32, what: String) raises:
+    """Waits four seconds for a forked child and reads its ending.
+
+    The exercises this runs in the child are ones where a call that
+    goes wrong does not answer wrongly but stops answering -- a lock
+    that was destroyed being waited on does exactly that. In the child
+    that is survivable; the parent kills it and says so, which turns a
+    stop answering into something the suite can catch.
+
+    Args:
+        pid: The child to wait for.
+        what: What to call it in the failure message.
+    """
+    var status = unsafe_alloc[Int32](1)
+    var done = False
+    for i in range(400):
+        if waitpid(pid, status, WNOHANG) == pid:
+            done = True
+            break
+        _ = usleep(10000)
+    if not done:
+        _ = kill(pid, SIGKILL)
+        _ = waitpid(pid, status, 0)
+        status.unsafe_free()
+        assert_true(False, what + " stopped answering and had to be killed")
+    assert_true(WIFEXITED(status.unsafe_offset(0)[]), what + " ended by itself")
+    assert_equal(
+        WEXITSTATUS(status.unsafe_offset(0)[]), 0, "and ended saying it passed"
+    )
+    status.unsafe_free()
+
+
+def _the_read_write_lock_exercise() raises:
     """A `pthread_rwlock_t` taken to read and to write, one at a
     time.
 
@@ -425,6 +485,25 @@ def test_a_read_write_lock_takes_for_reading_and_writing() raises:
 
     assert_equal(pthread_rwlock_destroy(rwlock), 0, "and it goes away")
     rwlock.unsafe_free()
+
+
+def test_a_read_write_lock_takes_for_reading_and_writing() raises:
+    """The lock exercise, run where a stop answering can be harvested.
+
+    `rdlock` and `unlock` are calls a binding pointed at a sibling can
+    turn into a call that takes the lock apart instead of taking it --
+    and a thread that then waits on what is left waits for itself, so
+    the exercise asks its questions in a child: the child that stops
+    answering is killed and said so, and the one that passes says so by
+    leaving of its own accord.
+    """
+    var child = fork()
+    if child == 0:
+        _the_read_write_lock_exercise()
+        _ = exit(0)
+
+    assert_true(child > 0, "there is a child to take the lock in")
+    watch_the_child(child, "the read-write lock exercise")
 
 
 def test_a_read_write_lock_can_be_made_from_attributes() raises:

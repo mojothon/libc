@@ -16,7 +16,7 @@ from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
 from libc.constant import EINVAL, c_ptr, c_void
-from libc.utils import null_ptr
+from libc.utils import null_ptr, string_to_char_ptr
 from libc.stdlib import exit
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, WIFSIGNALED, WTERMSIG, waitpid
 from libc.unistd import close, fork, pipe, read, usleep, write
@@ -679,21 +679,57 @@ def test_detaching_the_thread_that_is_asking() raises:
     would catch a binding that never made the change.
 
     The initial thread is not joined by anything in this process, so
-    detaching it costs the suite nothing.
+    detaching it costs the suite nothing. The asking happens in a child
+    all the same, and the child does not just leave its exit code as
+    the witness: a binding pointed at a call that takes the asking
+    thread's own thread down -- `pthread_cancel` is a sibling that
+    takes the same argument -- ends a glibc process with exit status 0,
+    which no wait can tell from a passing run. So the child says so
+    down a pipe: a byte written after the second answer was read, which
+    a detached thread sends and a cancelled one never reaches.
     """
-    var first = pthread_detach(pthread_self())
-    assert_true(
-        first == 0 or first == EINVAL,
-        "the initial thread is detached, or was not joinable to begin with"
-        + " (it answered "
-        + String(first)
-        + ")",
-    )
+    var fds = unsafe_alloc[Int32](2)
+    assert_equal(pipe(fds), 0, "a pipe for the child to say it passed")
+
+    var child = fork()
+    if child == 0:
+        _ = close(fds.unsafe_offset(0)[])
+        var first = pthread_detach(pthread_self())
+        assert_true(
+            first == 0 or first == EINVAL,
+            "the initial thread is detached, or was not joinable to begin"
+            + " with (it answered "
+            + String(first)
+            + ")",
+        )
+        assert_equal(
+            pthread_detach(pthread_self()),
+            EINVAL,
+            "and a second detach cannot find a joinable thread to detach",
+        )
+        _ = write(fds.unsafe_offset(1)[], string_to_char_ptr("."), 1)
+        _ = exit(0)
+
+    assert_true(child > 0, "there is a child to do the detaching in")
+    _ = close(fds.unsafe_offset(1)[])
+    var said = unsafe_alloc[UInt8](1)
+    said.unsafe_store(0, UInt8(0))
     assert_equal(
-        pthread_detach(pthread_self()),
-        EINVAL,
-        "and a second detach cannot find a joinable thread to detach",
+        read(fds.unsafe_offset(0)[], said, 1),
+        1,
+        "the child got past both answers before it left",
     )
+    said.unsafe_free()
+
+    var status = unsafe_alloc[Int32](1)
+    status.unsafe_offset(0)[] = 0
+    assert_equal(waitpid(child, status, 0), child, "the child is waited for")
+    assert_true(WIFEXITED(status.unsafe_load()), "and it ended by itself")
+    assert_equal(
+        Int(WEXITSTATUS(status.unsafe_load())), 0, "having said it passed"
+    )
+    status.unsafe_free()
+    fds.unsafe_free()
 
 
 def _ask_to_be_cancelled_from_a_child(disabled: Bool, fds: c_ptr[Int32]) raises:

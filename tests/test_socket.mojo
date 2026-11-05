@@ -11,6 +11,7 @@ from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.errno import get_errno
+from libc.fcntl import F_GETFL, F_SETFL, O_NONBLOCK, fcntl
 from libc.constant import (
     AF_INET,
     AF_UNIX,
@@ -109,10 +110,22 @@ def ask_the_port(of: Int32) raises -> Int:
     Returns:
         The port.
     """
+    # The flags go on for the duration of the ask. A binding pointed at a
+    # call that reads where it was asked to write -- `accept` waits for a
+    # connection, and nothing here has offered one -- would otherwise hold
+    # the suite until the harness gave up on it; with `O_NONBLOCK` set,
+    # any such wait ends at once with an error the assert above refuses.
+    # `getsockname` reads an address and does not look at the flag, so the
+    # ordinary path is untouched, and the flags are put back before this
+    # returns.
+    var was = fcntl(of, F_GETFL, 0)
+    assert_true(was >= 0, "the descriptor's flags are readable")
+    assert_equal(fcntl(of, F_SETFL, was | O_NONBLOCK), 0, "made nonblocking")
     var addr = unsafe_alloc[socketaddr](1)
     var length = unsafe_alloc[UInt32](1)
     length.unsafe_offset(0)[] = ADDRESS_SIZE
     assert_equal(getsockname(of, addr, length), 0, "getsockname answers")
+    assert_equal(fcntl(of, F_SETFL, was), 0, "and the flags are put back")
     var port = port_of(addr.unsafe_offset(0)[])
     addr.unsafe_free()
     length.unsafe_free()
