@@ -6,8 +6,15 @@
 # C library <stdlib.h>.
 #
 # Memory allocation, environment access, number conversion and process
-# control. `qsort`/`bsearch` are left out because they take a C
-# comparison callback, which has no safe equivalent in Mojo yet.
+# control, and the two calls here that call back into the caller: `qsort`
+# and `bsearch` take a comparison function and call it, which is the one
+# thing in C's repertoire that this package could not do for a long time.
+# It can: a `def` that captures nothing converts to a `thin` function
+# value, and a thin function value is a code address -- the same eight
+# bytes C keeps in its function pointer. `sigaction_t` still keeps its
+# handler as a number, because two of the three things that union holds
+# are not addresses at all; but a call whose argument *is* a callback can
+# be handed one.
 # ----------------------------------
 from std.ffi import external_call
 from std.memory import unsafe_stack_allocation
@@ -2273,3 +2280,110 @@ def ptsname(fildes: Int32) -> c_ptr[c_char]:
         usable until `grantpt` and `unlockpt` have both been called.
     """
     return external_call["ptsname", c_ptr[c_char], Int32](fildes)
+
+
+# -------------------------------------------------------
+# The two that call back.
+
+
+def qsort(
+    base: c_ptr[c_void],
+    count: c_size_t,
+    size: c_size_t,
+    compare: def(c_ptr[c_void], c_ptr[c_void]) thin -> Int32,
+) -> c_void:
+    """C library <stdlib.h> function `qsort`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/qsort.3.html
+
+    Prototype:
+        void qsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
+
+    Description:
+        Sorts `count` elements of `size` bytes each, in place, in the
+        order `compare` puts them in.
+
+        The order is whatever the comparator says and nothing else: C asks
+        it which of two elements comes first and moves them accordingly,
+        so a comparator that returns the other sign sorts the other way,
+        and one that always says "equal" leaves the array as it was.
+
+        `compare` has to be a `def` that captures nothing -- a `thin`
+        function value -- because that is the only kind this side can
+        turn into an address C may call. A capturing closure has state
+        with it, and there is nowhere in a C function pointer to keep
+        that state.
+
+    Args:
+        base: The first element of the array.
+        count: How many elements there are.
+        size: How many bytes each one is.
+        compare: Called with two elements, and answers negative when the
+            first comes before the second, positive when it comes after,
+            and zero when either order will do.
+    """
+
+    return external_call[
+        "qsort",
+        c_void,
+        c_ptr[c_void],
+        c_size_t,
+        c_size_t,
+        def(c_ptr[c_void], c_ptr[c_void]) thin -> Int32,
+    ](base, count, size, compare)
+
+
+def bsearch(
+    key: c_ptr[c_void],
+    base: c_ptr[c_void],
+    count: c_size_t,
+    size: c_size_t,
+    compare: def(c_ptr[c_void], c_ptr[c_void]) thin -> Int32,
+) -> c_ptr[c_void]:
+    """C library <stdlib.h> function `bsearch`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/bsearch.3.html
+
+    Prototype:
+        void *bsearch(const void *key, const void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
+
+    Description:
+        Finds `key` in an array that is already in the order `compare`
+        puts things in, and answers a pointer to the element found.
+
+        The array has to be sorted by the same comparator: a binary search
+        halves the range by asking which side the key is on, so an array
+        in some other order sends it past the element it was looking for.
+        Sorting with one comparator and searching with another is the
+        mistake that returns "not there" for something that is.
+
+        `key` need not be an element of the array -- `compare` is handed
+        it as its first argument, so it may be a bare value laid out the
+        way the comparator reads it.
+
+    Args:
+        key: What to look for.
+        base: The first element of the array.
+        count: How many elements there are.
+        size: How many bytes each one is.
+        compare: Called with the key and an element, and answers negative
+            when the key comes before the element, positive when it comes
+            after, and zero when they are the same.
+
+    Returns:
+        A pointer to the element, or null when the array holds no such
+        thing. Reading through a null answer is the caller's to avoid;
+        `is_null` says whether this is one.
+    """
+
+    return external_call[
+        "bsearch",
+        c_ptr[c_void],
+        c_ptr[c_void],
+        c_ptr[c_void],
+        c_size_t,
+        c_size_t,
+        def(c_ptr[c_void], c_ptr[c_void]) thin -> Int32,
+    ](key, base, count, size, compare)

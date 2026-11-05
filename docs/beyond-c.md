@@ -2,7 +2,7 @@
 
 This is a binding, so what it can call is a subset of what C can call and
 will stay that way. What can be counted exactly is how much is here: this
-binds 1029 C symbols, every one checked against the header it comes from. C
+binds 1034 C symbols, every one checked against the header it comes from. C
 offers more, and calling more of it is not what this is for.
 
 How much of what C offers that is, is not a number that holds still. `nm -D
@@ -765,13 +765,33 @@ Being fair about the other direction:
 - **Variadic functions.** `printf`, `scanf`, `fcntl`, `ioctl`. An external
   call has to name every type it passes, and C's own variadic convention
   on arm64 Darwin passes on the stack, where the call cannot reach.
-- **Callbacks.** Nothing here can hand C a function pointer, so `qsort`,
-  `bsearch` and a signal handler of one's own are out. A struct that carries
-  one is not always out with it, though: `struct sigaction` is here as
-  `sigaction_t`, with the handler kept as the number C stores there, because
-  two of the three things that can go in that union are not addresses at all —
-  `SIG_DFL` is 0 and `SIG_IGN` is 1. So a signal can be told to be ignored,
-  asked what it is doing, and put back; it cannot be given a function to run.
+- **Callbacks, until recently.** For most of this package's life nothing
+  here could hand C a function pointer, and `qsort`, `bsearch`,
+  `pthread_create` and a signal handler of one's own were out with it. They
+  are not: a `def` that captures nothing converts to a `thin` function
+  value, and a thin function value is a code address — the eight bytes a C
+  function pointer holds — so `qsort` and `bsearch` call back into Mojo and
+  `pthread_create` runs one on a second thread. What does not cross is
+  state: a thin function value carries no environment, so everything the
+  callback is to work on goes through C's `void *` argument, which is what
+  that argument is for.
+
+  A struct that carries a handler is a different matter again. `struct
+  sigaction` is here as `sigaction_t`, with the handler kept as the number
+  C stores there, because two of the three things that can go in that union
+  are not addresses at all — `SIG_DFL` is 0 and `SIG_IGN` is 1 — and a
+  function value has no spelling as a number. So a signal can be told to be
+  ignored, asked what it is doing, and put back; it cannot be given a
+  function of one's own. That is a gap in the struct and not in the call,
+  and `signal` — which takes its handler as one address and no union — is
+  the way in the day it is filled.
+
+- **`atexit`.** Not a callback problem: glibc has no `atexit` symbol. It
+  exports `__cxa_atexit` and `on_exit` and leaves `atexit` to the static
+  archive, so a binding has nothing to link against here, while Darwin's
+  libSystem does export it. A call that links on one platform and not the
+  other, for the header saying it is there on both, is worth knowing about
+  before writing it twice.
 - **Bodies that live in another library.** `<arpa/inet.h>` declares
   `inet_net_pton`, `inet_net_ntop`, `inet_neta` and the two `inet_nsap_*`
   on both platforms, and on Linux they are not in libc: they are in

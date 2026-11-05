@@ -1,16 +1,22 @@
-"""Tests for the `libc.pthread` bindings, none of which had been called.
+"""Tests for the `libc.pthread` bindings.
 
-The attribute object, the thread that is asking, and the scheduling
-settings it carries. No second thread is ever started: `pthread_create`
-takes a function pointer, which Mojo cannot make one of. So the one call
-that is about a thread ending — `pthread_detach` — is asked about the
-initial thread instead, which is the only thread there is. The mutexes
-are in `test_mutex.mojo`.
+The attribute object, the thread that is asking, the scheduling settings
+it carries, and — at the end — a thread that is not this one. For a long
+time there was none: `pthread_create` takes a function pointer, and this
+package could not hand C one. It can, now that a `def` that captures
+nothing converts to a `thin` function value, which is a code address and
+nothing else. So the last two tests start a thread and wait for it, and
+the assertions are about what only a second thread could have done:
+`pthread_equal` saying it is not this one, a byte it set being there, and
+a pointer it left being what the join read back.
+
+The mutexes are in `test_mutex.mojo`.
 """
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import EINVAL, c_ptr
+from libc.constant import EINVAL, c_ptr, c_void
+from libc.utils import null_ptr
 from libc.stdlib import exit
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, WIFSIGNALED, WTERMSIG, waitpid
 from libc.unistd import close, fork, pipe, read, usleep, write
@@ -44,6 +50,9 @@ from libc.pthread import (
     pthread_attr_setstacksize,
     pthread_attr_t,
     pthread_cancel,
+    pthread_create,
+    pthread_exit,
+    pthread_join,
     pthread_condattr_destroy,
     pthread_condattr_t,
     pthread_detach,
@@ -791,6 +800,145 @@ def test_cancelling_this_thread_ends_it_unless_it_is_disabled() raises:
         fds.unsafe_free()
 
 
+# What the started thread writes down, in the block it is pointed at: its
+# own ID first, then a byte saying it got that far. A byte is enough --
+# the claim is not what it wrote but that anything wrote at all, and one
+# byte at a known offset needs no struct to read back.
+comptime MARK_OFFSET: Int = 8
+comptime MARK: UInt8 = 0x5A
+
+
+def the_second_thread(arg: c_ptr[c_void]) -> c_ptr[c_void]:
+    """What the thread started by the test runs.
+
+    It writes its own ID into the block it was pointed at, then a byte
+    past it, and answers the argument unchanged -- so what the join reads
+    and what the block holds are two separate claims about the same call.
+
+    Args:
+        arg: The block, as a `void *`.
+
+    Returns:
+        The same pointer, which is what `pthread_join` hands back.
+    """
+    var block = arg.unsafe_bitcast[UInt8]()
+    block.unsafe_bitcast[pthread_t]().unsafe_offset(0)[] = pthread_self()
+    block.unsafe_offset(MARK_OFFSET)[] = MARK
+    return arg
+
+
+def the_thread_that_leaves_early(arg: c_ptr[c_void]) -> c_ptr[c_void]:
+    """What the second test's thread runs: it ends through `pthread_exit`
+    rather than by returning, so that what the join reads can only have
+    come from that call.
+
+    Args:
+        arg: The pointer `pthread_exit` is given.
+
+    Returns:
+        Never anything: the call above does not come back.
+    """
+    _ = pthread_exit(arg)
+    return arg
+
+
+def test_a_thread_of_its_own() raises:
+    """A thread is started, waited for, and asked who it was.
+
+    Four claims, none of which the initial thread could have satisfied on
+    its own: a byte it was told to write is there, the ID written beside
+    it belongs to some other thread, the join read back the pointer the
+    start routine answered, and the create and the join both said 0.
+
+    The block is only read after the join, which is what makes reading it
+    without a lock honest: the thread that wrote it has ended, and joining
+    is what says so.
+    """
+    var block = unsafe_alloc[UInt8](16)
+    for i in range(16):
+        block.unsafe_offset(i)[] = 0
+    var id = unsafe_alloc[pthread_t](1)
+    var start: def(c_ptr[c_void]) thin -> c_ptr[c_void] = the_second_thread
+    assert_equal(
+        pthread_create(
+            id,
+            null_ptr[pthread_attr_t](),
+            start,
+            block.unsafe_bitcast[c_void](),
+        ),
+        0,
+        "a thread is started",
+    )
+    var answer = unsafe_alloc[c_ptr[c_void]](1)
+    assert_equal(
+        pthread_join(id.unsafe_offset(0)[], answer), 0, "and waited for"
+    )
+    assert_equal(
+        Int(block.unsafe_offset(MARK_OFFSET)[]),
+        Int(MARK),
+        "the byte it was told to write is there",
+    )
+    assert_equal(
+        Int(answer.unsafe_offset(0)[]),
+        Int(block.unsafe_bitcast[c_void]()),
+        "it answered the argument it was handed",
+    )
+    assert_equal(
+        Int(
+            pthread_equal(
+                pthread_self(),
+                block.unsafe_bitcast[pthread_t]().unsafe_offset(0)[],
+            )
+        ),
+        0,
+        "and the ID it wrote is not this thread's",
+    )
+    answer.unsafe_free()
+    id.unsafe_free()
+    block.unsafe_free()
+
+
+def test_a_thread_that_ends_through_pthread_exit() raises:
+    """A thread that leaves by way of `pthread_exit` is joinable like one
+    that returns, and the pointer the join reads is the one that call was
+    given rather than what the function returned.
+
+    The start routine is written to return the same pointer either way, so
+    the value arriving says nothing about which path it took; what says so
+    is that nothing was on the stack for it to return through.
+    """
+    var id = unsafe_alloc[pthread_t](1)
+    var marker = unsafe_alloc[UInt8](1)
+    marker.unsafe_offset(0)[] = 0x21
+    var start: def(c_ptr[c_void]) thin -> c_ptr[
+        c_void
+    ] = the_thread_that_leaves_early
+    assert_equal(
+        pthread_create(
+            id,
+            null_ptr[pthread_attr_t](),
+            start,
+            marker.unsafe_bitcast[c_void](),
+        ),
+        0,
+        "a thread that will leave early is started",
+    )
+    var answer = unsafe_alloc[c_ptr[c_void]](1)
+    assert_equal(
+        pthread_join(id.unsafe_offset(0)[], answer),
+        0,
+        "and it joins like any other",
+    )
+    assert_equal(
+        Int(answer.unsafe_offset(0)[]),
+        Int(marker.unsafe_bitcast[c_void]()),
+        "with what pthread_exit was given",
+    )
+    answer.unsafe_free()
+    marker.unsafe_free()
+    id.unsafe_free()
+
+
 def main() raises:
     test_the_attribute_object()
     test_the_scheduling_settings()
@@ -801,4 +949,6 @@ def main() raises:
     test_a_thread_can_be_asked_for_and_keeps_its_own_mask()
     test_detaching_the_thread_that_is_asking()
     test_cancelling_this_thread_ends_it_unless_it_is_disabled()
+    test_a_thread_of_its_own()
+    test_a_thread_that_ends_through_pthread_exit()
     print("test_pthread: ok")

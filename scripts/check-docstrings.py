@@ -143,10 +143,35 @@ def nth_definition(text: str, name: str, place: int) -> tuple[str, str] | None:
     return params, doc.group(1) if doc else ""
 
 
+def split_top_level(text: str) -> list[str]:
+    """`text` split at the commas that are not inside brackets.
+
+    A C prototype says `void *(*start_routine)(void *)` and a Mojo
+    signature says `def(c_ptr[c_void], c_ptr[c_void]) thin -> Int32`.
+    Each carries a comma that belongs to one parameter, and splitting on
+    every comma reads four arguments into a three-argument function and
+    finds a parameter named `c_ptr[c_void]) thin -> Int32`. Neither is a
+    fact about the binding, so the brackets are counted.
+    """
+    pieces: list[str] = []
+    depth = 0
+    start = 0
+    for index, ch in enumerate(text):
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth = max(0, depth - 1)
+        elif ch == "," and depth == 0:
+            pieces.append(text[start:index])
+            start = index + 1
+    pieces.append(text[start:])
+    return [piece for piece in (p.strip() for p in pieces) if piece]
+
+
 def parameter_names(params: str) -> list[str]:
     """The names in `x: Float64, y: Float64`, and `self` is not one."""
     names = []
-    for param in params.split(","):
+    for param in split_top_level(params):
         param = param.strip()
         if not param:
             continue
@@ -170,14 +195,29 @@ def base_indent(lines: list[tuple[int, str]]) -> int | None:
 
 
 def prototype_call(line: str) -> tuple[str, int] | None:
-    """(name, argument count) from `double atan2(double y, double x)`."""
-    m = re.search(r"\b([a-zA-Z_]\w*)\s*\(([^)]*)\)", line)
+    """(name, argument count) from `double atan2(double y, double x)`.
+
+    The closing parenthesis is found by counting, not by taking the first
+    one: a prototype that says `void *(*start_routine)(void *)` has a
+    parenthesis pair inside its argument list, and stopping at the first
+    close leaves a parameter cut in half and a count one short.
+    """
+    m = re.search(r"\b([a-zA-Z_]\w*)\s*\(", line)
     if not m:
         return None
-    params = m.group(2).strip()
-    if not params or params == "void":
-        return m.group(1), 0
-    return m.group(1), len([p for p in params.split(",") if p.strip()])
+    depth = 0
+    opened = m.end() - 1
+    for index in range(opened, len(line)):
+        if line[index] == "(":
+            depth += 1
+        elif line[index] == ")":
+            depth -= 1
+            if depth == 0:
+                params = line[opened + 1 : index].strip()
+                if not params or params == "void":
+                    return m.group(1), 0
+                return m.group(1), len(split_top_level(params))
+    return None
 
 
 def documented_prototype(

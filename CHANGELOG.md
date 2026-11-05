@@ -7,6 +7,21 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **A function of one's own, handed to C.** `qsort`, `bsearch`,
+  `pthread_create`, `pthread_join` and `pthread_exit` are bound. All of
+  them were waiting on the same reading -- that Mojo cannot hand C a
+  function pointer -- and the reading was wrong: a `def` that captures
+  nothing converts to a `thin` function value, which is a code address and
+  nothing else, and `external_call` passes it where C wants its
+  `void (*)(void *)`. What cannot cross is state, so a callback reaches
+  nothing that was in scope where it was written; everything it works on
+  goes through the `void *` argument, which is what that argument is for.
+  The thread tests now start a second thread, assert through `pthread_equal`
+  that it is not the one asking, and read back what it left behind.
+  `atexit` is still out, for a reason that has nothing to do with
+  callbacks: glibc has no `atexit` symbol -- it exports `__cxa_atexit` and
+  `on_exit` and leaves `atexit` to the static archive -- so there is
+  nothing on Linux for a binding to link against.
 - **`<sys/un.h>`: an address that is a path.** An `AF_UNIX` address was
   the one thing this package could not build at all -- `socketaddr` is
   sixteen bytes, which is a family, a port and four bytes of address, and

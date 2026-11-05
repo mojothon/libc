@@ -26,6 +26,7 @@ from libc.stdlib import (
     atoi,
     atol,
     atoll,
+    bsearch,
     calloc,
     div,
     drand48,
@@ -58,6 +59,7 @@ from libc.stdlib import (
     mrand48,
     nrand48,
     posix_memalign,
+    qsort,
     posix_openpt,
     ptsname,
     putenv,
@@ -1198,6 +1200,130 @@ def test_the_underscored_exit_ends_the_child_where_it_stands() raises:
     path.unsafe_free()
 
 
+# The two comparators `qsort` and `bsearch` are given. Both read the
+# elements as four-byte numbers, which is the size the tests pass: a sort
+# told the wrong width compares the two halves of one element against
+# each other and leaves the array where it was, and says nothing.
+def smaller_first(left: c_ptr[c_void], right: c_ptr[c_void]) -> Int32:
+    """Order the elements from the smallest to the largest.
+
+    Args:
+        left: One element.
+        right: The other.
+
+    Returns:
+        Negative, zero or positive, as `qsort` and `bsearch` want.
+    """
+    var a = Int(left.unsafe_bitcast[UInt32]().unsafe_offset(0)[])
+    var b = Int(right.unsafe_bitcast[UInt32]().unsafe_offset(0)[])
+    if a < b:
+        return -1
+    if a > b:
+        return 1
+    return 0
+
+
+def larger_first(left: c_ptr[c_void], right: c_ptr[c_void]) -> Int32:
+    """Order the elements from the largest to the smallest, which is the
+    other answer a sort can be asked for.
+
+    Args:
+        left: One element.
+        right: The other.
+
+    Returns:
+        Negative, zero or positive, as `qsort` and `bsearch` want.
+    """
+    var a = Int(left.unsafe_bitcast[UInt32]().unsafe_offset(0)[])
+    var b = Int(right.unsafe_bitcast[UInt32]().unsafe_offset(0)[])
+    if a > b:
+        return -1
+    if a < b:
+        return 1
+    return 0
+
+
+def test_the_order_the_comparator_asks_for() raises:
+    """`qsort` puts the elements in the order the comparator asks for, and
+    the same array asked for the opposite order comes out the opposite
+    way.
+
+    Two orders and not one, because a sort that ignored the comparator
+    and happened to sort ascending would pass the first claim alone. The
+    elements are four bytes wide and the size says four: a sort that
+    compared one byte at a time would see the halves of each number
+    rather than the numbers, and leave the array unsorted.
+    """
+    var values = unsafe_alloc[UInt32](6)
+    values.unsafe_offset(0)[] = 40
+    values.unsafe_offset(1)[] = 70
+    values.unsafe_offset(2)[] = 10
+    values.unsafe_offset(3)[] = 60
+    values.unsafe_offset(4)[] = 30
+    values.unsafe_offset(5)[] = 20
+    var up: def(c_ptr[c_void], c_ptr[c_void]) thin -> Int32 = smaller_first
+    _ = qsort(values.unsafe_bitcast[c_void](), 6, 4, up)
+    var ordered = True
+    for i in range(1, 6):
+        if values.unsafe_offset(i - 1)[] > values.unsafe_offset(i)[]:
+            ordered = False
+    assert_true(ordered, "the six are in the order the comparator gave")
+    assert_equal(values.unsafe_offset(0)[], 10, "smallest first")
+    assert_equal(values.unsafe_offset(5)[], 70, "and largest last")
+
+    var down: def(c_ptr[c_void], c_ptr[c_void]) thin -> Int32 = larger_first
+    _ = qsort(values.unsafe_bitcast[c_void](), 6, 4, down)
+    assert_equal(
+        values.unsafe_offset(0)[], 70, "and the other way round on top"
+    )
+    assert_equal(values.unsafe_offset(5)[], 10, "with the smallest last")
+    values.unsafe_free()
+
+
+def test_looking_for_one_in_the_array() raises:
+    """`bsearch` answers the element itself rather than a copy of it, so
+    the answer can be held against the slot it is supposed to be: the
+    address of the fourth element and nothing else.
+
+    An address is the one answer a search cannot get right by accident --
+    a value read back would be right for a copy, and a search that
+    answered the first element would be wrong only in an order that has
+    duplicates in it. This array has none.
+    """
+    var values = unsafe_alloc[UInt32](6)
+    for i in range(6):
+        values.unsafe_offset(i)[] = UInt32((i + 1) * 10)
+    var up: def(c_ptr[c_void], c_ptr[c_void]) thin -> Int32 = smaller_first
+    var key = unsafe_alloc[UInt32](1)
+
+    key.unsafe_offset(0)[] = 50
+    var found = bsearch(
+        key.unsafe_bitcast[c_void](),
+        values.unsafe_bitcast[c_void](),
+        6,
+        4,
+        up,
+    )
+    assert_true(not is_null(found), "the fourth element is found")
+    assert_equal(
+        Int(found),
+        Int(values.unsafe_bitcast[c_void]()) + 4 * 4,
+        "and it is that element's address, not a copy of what is in it",
+    )
+
+    key.unsafe_offset(0)[] = 55
+    var missing = bsearch(
+        key.unsafe_bitcast[c_void](),
+        values.unsafe_bitcast[c_void](),
+        6,
+        4,
+        up,
+    )
+    assert_true(is_null(missing), "one that is not there is answered with null")
+    key.unsafe_free()
+    values.unsafe_free()
+
+
 def main() raises:
     test_malloc()
     test_the_untried_calls()
@@ -1226,4 +1352,6 @@ def main() raises:
     test_the_number_the_rand48s_have_next()
     test_system_hands_back_the_commands_own_ending()
     test_the_underscored_exit_ends_the_child_where_it_stands()
+    test_the_order_the_comparator_asks_for()
+    test_looking_for_one_in_the_array()
     print("test_stdlib: ok")

@@ -7,7 +7,7 @@ the bottom.
 | Module | C header | Symbols |
 | --- | --- | --- |
 | `libc.math` | `<math.h>` | 124 |
-| `libc.stdlib` | `<stdlib.h>` | 82 |
+| `libc.stdlib` | `<stdlib.h>` | 84 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.limits` | `<limits.h>` the widths of the integer types, and what a process may have | 24 |
 | `libc.unistd` | `<unistd.h>` | 208 |
@@ -25,7 +25,7 @@ the bottom.
 | `libc.aio` | `<aio.h>` I/O handed over rather than waited for | 24 |
 | `libc.sys.sysinfo` | `<sys/sysinfo.h>` | 18 |
 | `libc.sys.timer` | `<time.h>` the timers Darwin does not have | 12 |
-| `libc.pthread` | `<pthread.h>` | 100 |
+| `libc.pthread` | `<pthread.h>` | 103 |
 | `libc.string` | `<string.h>` | 48 |
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 43 |
 | `libc.complex` | `<complex.h>` | 46 |
@@ -90,16 +90,27 @@ has `<threads.h>` — but a header that one platform does not have has never
 disqualified a module here: `libc.sys.epoll`, `libc.uchar` and others are
 Linux-only on purpose, and say so.
 
-The blocker is `thrd_create`, which takes a function pointer, and nothing
-in this package can hand C one. The same wall stands behind `qsort`,
-`atexit` and `pthread_create`. Here it takes the whole module with it: of
-the twenty-five functions `<threads.h>` declares, twenty-two could be
-bound, and every one of them is about meeting another thread. A mutex with
-one thread never blocks, a condition variable with one thread can only
-time out, and `thrd_join` wants a `thrd_t` that nothing here can bring
-into being. `libc.pthread` has the same hole and a hundred other entry
-points that are worth having on their own; `threads.h` is a wrapper over
-those same calls with nothing else in it.
+What did block it was `thrd_create`, which takes a function pointer, and
+this package could not hand C one. That is no longer so: a `def` that
+captures nothing converts to a `thin` function value, which is a code
+address, and `qsort`, `bsearch`, `pthread_create`, `pthread_join` and
+`pthread_exit` are bound on it. `tests/test_pthread.mojo` starts a real
+second thread, asserts that it is not this one, and reads back what it
+left.
+
+So `libc.threads` is now work rather than a wall: twenty-five functions,
+twenty-two of which are about meeting another thread. A mutex with one
+thread never blocks and a condition variable with one thread can only
+time out, which is why the module was not worth writing before the one
+call that makes a second thread possible. `libc.pthread` covers those
+same calls already and a hundred other entry points worth having on their
+own; `threads.h` is a wrapper over them with nothing else in it, and it
+is the wrapper that is missing rather than the calls.
+
+One of the three calls this page used to name alongside it was never
+behind that wall: `atexit` has no symbol in glibc, which exports
+`__cxa_atexit` and `on_exit` in its place, so on this platform there is
+nothing for a binding to link against whatever the callback situation is.
 
 `libc.math` has no `long double` variants — no `fabsl`, no `nexttoward` —
 because Mojo has no type to pass: on x86-64 the C type is the 80-bit x87
@@ -142,7 +153,7 @@ is about the call rather than about the suite:
 
 None of them is known to be broken; they are simply not asked.
 
-1028 bindings are asked something, and the 3 that are not have a reason
+1033 bindings are asked something, and the 3 that are not have a reason
 each. Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.

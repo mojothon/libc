@@ -6,7 +6,7 @@
 from std.memory import Pointer
 from std.ffi import external_call
 from std.sys import CompilationTarget
-from libc.constant import c_ptr
+from libc.constant import c_ptr, c_void
 from libc.sched import sched_param
 from libc.time import timespec
 
@@ -1955,6 +1955,119 @@ def pthread_equal(t1: pthread_t, t2: pthread_t) -> Int32:
         being the call that does it. On Darwin the ID is a pointer.
     """
     return external_call["pthread_equal", Int32, pthread_t, pthread_t](t1, t2)
+
+
+def pthread_create(
+    thread: c_ptr[pthread_t],
+    attr: c_ptr[pthread_attr_t],
+    start_routine: def(c_ptr[c_void]) thin -> c_ptr[c_void],
+    arg: c_ptr[c_void],
+) -> Int32:
+    """C library <pthread.h> function `pthread_create`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_create.3.html
+
+    Prototype:
+        int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine)(void *), void *arg)
+
+    Description:
+        Starts a second thread of control, which calls `start_routine`
+        with `arg` and whose ID is written to `thread`.
+
+        This is the call the rest of the module was waiting on. It was
+        left unbound for a long time on the reading that Mojo has no way
+        to hand C a function: it has. A `def` that captures nothing
+        converts to a `thin` function value, and a thin function value
+        is a code address -- the eight bytes C's `void *(*)(void *)`
+        holds -- so the argument goes as it is, and the thread it starts
+        calls back into Mojo.
+
+        What cannot cross is state. A `thin` function value has no
+        environment with it, so `start_routine` reaches nothing that was
+        in scope where it was written; everything it is to work on goes
+        through `arg`, which is what C's signature is shaped around.
+        Point it at a struct, or at a block from `unsafe_alloc`, and mind
+        that the thread and the caller are now reading the same bytes at
+        the same time.
+
+    Args:
+        thread: Where to write the new thread's ID.
+        attr: The attributes to start it with, or a null pointer for the
+            defaults -- joinable, with the usual stack.
+        start_routine: What the thread is to run.
+        arg: Handed to `start_routine` unchanged.
+
+    Returns:
+        0 on success. `EAGAIN` when the system cannot make another
+        thread, `EINVAL` when the attributes make no sense, `EPERM` when
+        the caller may not set the scheduling policy asked for.
+    """
+    return external_call[
+        "pthread_create",
+        Int32,
+        c_ptr[pthread_t],
+        c_ptr[pthread_attr_t],
+        def(c_ptr[c_void]) thin -> c_ptr[c_void],
+        c_ptr[c_void],
+    ](thread, attr, start_routine, arg)
+
+
+def pthread_join(thread: pthread_t, retval: c_ptr[c_ptr[c_void]]) -> Int32:
+    """C library <pthread.h> function `pthread_join`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_join.3.html
+
+    Prototype:
+        int pthread_join(pthread_t thread, void **retval)
+
+    Description:
+        Waits for a thread to finish and, unless `retval` is null, writes
+        there what that thread returned: the pointer its start routine
+        answered, or the one `pthread_exit` was given.
+
+        A thread that is joinable has to be joined, or its resources stay
+        held after it ends. A thread that has been detached cannot be,
+        and this answers `EINVAL` for it.
+
+    Args:
+        thread: The thread to wait for.
+        retval: Where to write what it returned, or a null pointer to
+            throw that away.
+
+    Returns:
+        0 on success, `ESRCH` where no such thread was found, `EINVAL`
+        where the thread is not joinable, or `EDEADLK` where the thread
+        is the one asking.
+    """
+    return external_call[
+        "pthread_join", Int32, pthread_t, c_ptr[c_ptr[c_void]]
+    ](thread, retval)
+
+
+def pthread_exit(retval: c_ptr[c_void]) -> c_void:
+    """C library <pthread.h> function `pthread_exit`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_exit.3.html
+
+    Prototype:
+        void pthread_exit(void *retval)
+
+    Description:
+        Ends the thread that calls it, which is what returning from the
+        start routine does, and leaves `retval` for `pthread_join` to
+        find.
+
+        Called from the first thread it ends the process, the same as
+        `exit`, but without the return value a caller could read: the
+        last thread to end sets what the process answers with.
+
+    Args:
+        retval: What the thread is to be said to have returned.
+    """
+    return external_call["pthread_exit", c_void, c_ptr[c_void]](retval)
 
 
 def pthread_detach(thread: pthread_t) -> Int32:
