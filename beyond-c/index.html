@@ -1544,6 +1544,26 @@ words now that the one they quoted is gone.</p>
 two minutes, which is the ceiling of a run that owns the machine. The
 environment that makes the machine busy says how long an answer may take,
 and it says five minutes.</p>
+<p>There was one gap the sample could never have named, because the tooling
+that counts what the suite asks counts calls in the text, and both
+platforms read the same text: <code>putwchar</code>'s test was a body inside a
+<code>comptime if</code> that named Linux and let Darwin through with nothing, so a
+call bound on both platforms was asked on one. The asking is one piece of
+code now, and what differs by platform is not two copies of the question
+but three names, each asked of the platform instead of written for one.
+The C library is opened by the name its linker answers -- <code>libc.so.6</code>
+here, <code>libSystem.B.dylib</code> on Darwin, where the first is a name nothing has
+ever heard of. The standard output variable is found by the name the
+library exports it under -- <code>stdout</code> where C says so, <code>__stdoutp</code> on
+Darwin, whose <code>stdio.h</code> spells the three streams with a leading pair of
+underscores and a trailing p, <code>stdout</code> there being a macro for the
+variable rather than the variable itself. And the pipe is reopened the way
+the platform spells descriptor 1: <code>/proc/self/fd</code> resolves the name to the
+file itself and answers ENXIO when that file is a pipe, and <code>/dev/fd</code>,
+Darwin's descriptor directory, answers nothing for a pipe either -- so
+Darwin writes the pipe through the descriptor it already has, which is
+enough, the first reopen having left the stream unoriented and empty and
+the stream's own descriptor number being 1, which is where the pipe is.</p>
 <p>glibc, for its part, does not come with anything that checks glibc.</p>
 <h2 id="next-to-rusts-libc">Next to Rust's <code>libc</code><a class="headerlink" href="#next-to-rusts-libc" title="Permanent link">&para;</a></h2>
 <p>The nearest thing to this that is not this: <a href="https://github.com/rust-lang/libc">rust-lang/libc</a>. It binds the same C and implements
