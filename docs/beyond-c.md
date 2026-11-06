@@ -797,6 +797,29 @@ Darwin writes the pipe through the descriptor it already has, which is
 enough, the first reopen having left the stream unoriented and empty and
 the stream's own descriptor number being 1, which is where the pipe is.
 
+The full sweep that followed the rewrites caught the tables out, in the
+mirror direction. One mutant was reported caught that a written reason
+says nobody can see -- `endusershell` pointed at `setusershell`, the
+shutting of the shell walk turned into a rewind, with no reading after
+it -- and asking it again put it back where it belongs. The report was
+not the mutant's: a run is a file of many tests, and a failure in any
+one of them lands on every mutant that file is asked about. What the
+tables say a mutant answers is a prediction, and a run against the
+prediction is asked a second time now, the survivor's question aimed at
+the other three answers.
+
+The ten crashes got their turn to be asked what they are, one by one,
+and all ten died where they stood. Every one is an exchange of arguments
+that hands the C function a buffer it will write through or read past --
+`strtok` given the delimiter to walk, `strstr` sent searching in the
+needle's home -- and the death is the memory's answer, not the test's,
+which is a way of noticing the suite has no assertion of its own to
+claim. It is also a death with no page to land on but the one the
+allocator happens to give, and the same mutant can die on one boundary
+and answer on the next. So a crash is asked a second time too, and once
+each way -- whatever the two answers were -- is `flaky`, which is what
+every answer that changed its mind is called now.
+
 glibc, for its part, does not come with anything that checks glibc.
 
 ## Next to Rust's `libc`
