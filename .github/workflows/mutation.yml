@@ -46,6 +46,14 @@ jobs:
         with:
           cache: true
       - name: Ask the symbol axis
+        # Four compilations share the runner's four cores, and the slowest
+        # test file needs minutes of a contended machine where it needs
+        # seconds of an idle one -- the probe's two-minute default is the
+        # ceiling for a run that owns the machine, and this one does not.
+        env:
+          MUTATION_TIMEOUT: "300"
         run: python3 scripts/mutation-probe.py --kind symbol --limit 48 --jobs 4 --strict
       - name: Ask the order axis
+        env:
+          MUTATION_TIMEOUT: "300"
         run: python3 scripts/mutation-probe.py --kind order --limit 48 --jobs 4 --strict

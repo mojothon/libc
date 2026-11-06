@@ -92,8 +92,12 @@ TESTS = sorted((ROOT / "tests").glob("*.mojo"))
 # A test file that has not answered in two minutes has stopped answering: the
 # suite is seconds per file, and the slowest of them wait on threads and
 # sleeps that are bounded. The number is here to end a hang, not to hurry a
-# slow machine.
-TIMEOUT = 120
+# slow machine -- but a worker asking `jobs` runs at once is asking for a
+# fraction of the machine each, and on a four-core runner four compilations
+# share it whole, where a run that answers in half a minute alone can need
+# five. The environment that makes the machine busy is the one that says how
+# long an answer may take to arrive.
+TIMEOUT = int(os.environ.get("MUTATION_TIMEOUT", "120"))
 
 
 # Pairs that survive because the two symbols answer the same thing, not because
