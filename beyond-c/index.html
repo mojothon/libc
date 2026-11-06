@@ -1589,7 +1589,10 @@ every answer that changed its mind is called now.</p>
 <h2 id="next-to-rusts-libc">Next to Rust's <code>libc</code><a class="headerlink" href="#next-to-rusts-libc" title="Permanent link">&para;</a></h2>
 <p>The nearest thing to this that is not this: <a href="https://github.com/rust-lang/libc">rust-lang/libc</a>. It binds the same C and implements
 none of it, which is what this does too. Four of its Linux files declare
-681 C functions; this binds 570; 293 are in both.</p>
+681 C functions (<code>unix/mod.rs</code>, <code>unix/linux_like/mod.rs</code>,
+<code>unix/linux_like/linux/mod.rs</code> and <code>unix/linux_like/linux/gnu/mod.rs</code>,
+counted as the <code>pub fn</code> declarations in them, read both on the day this
+was counted and today); this binds 570; 293 are in both.</p>
 <p>The difference is not the count. Rust answers "what is <code>EAGAIN</code>" with a
 file per platform and a <code>cfg</code> that picks one, so the answer for the
 platform you are not on is somewhere else in the tree. This writes both
