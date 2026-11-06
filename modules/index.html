@@ -593,6 +593,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#what-only-one-platform-asks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What only one platform asks
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -697,6 +708,17 @@
     <span class="md-ellipsis">
       
         What the suite does not ask
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-only-one-platform-asks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What only one platform asks
       
     </span>
   </a>
@@ -1188,6 +1210,33 @@ the call wrote. The reasons on this page are claims, and claims get tested.</p>
 each. Both numbers are read back out of this page by
 <code>scripts/check-tests.py</code>, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.</p>
+<h2 id="what-only-one-platform-asks">What only one platform asks<a class="headerlink" href="#what-only-one-platform-asks" title="Permanent link">&para;</a></h2>
+<p>A test whose calls sit inside a <code>comptime if</code> naming one platform asks its
+question there and nowhere else, and the count of asked bindings reads the
+same text on both platforms -- which is how <code>putwchar</code> and <code>timespec_get</code>
+were bound on both and asked on one without a tripwire to pull. The count
+knows which guards the calls sit under now, and a binding whose every call
+sits inside one platform's guard is listed with the reason the other
+platform is not asked. All ten have the same shape of an answer: the
+other platform's C library has no such call.</p>
+<ul>
+<li><code>epoll_create</code>, <code>gettid</code>, <code>prlimit</code> and <code>sched_getaffinity</code> are Linux's
+  own -- epoll has no half on Darwin, which answers the same need with
+  kqueue, and the thread id, the pid form of the resource limits and the
+  scheduler's CPU mask are the Linux kernel's ideas.</li>
+<li><code>getauxval</code> reads the auxiliary vector, which is ELF's, and Darwin's
+  loader keeps no such table.</li>
+<li><code>get_nprocs</code> and <code>secure_getenv</code> are glibc names; Darwin answers the
+  processor question through <code>sysconf</code> under different names, and the same
+  <code>getenv</code> there with no setuid distinction to ask about.</li>
+<li><code>thrd_detach</code>, <code>thrd_equal</code> and <code>tss_create</code> are C11 threads, which
+  Darwin's libSystem does not provide.</li>
+</ul>
+<p>Linux asks 10 bindings that Darwin passes over, and Darwin 0 that Linux
+passes over. Both numbers are read back out of this page too, and so is
+every call named here: the page fails the run when a binding goes
+one-platform without a reason, and when one of these starts being asked
+without a guard, which is the list being paid.</p>
 
 
 
