@@ -737,6 +737,45 @@ more on the tree as it stands: five hundred and ninety-four mutants on the
 symbol side, a hundred and ninety-six on the order side, and not one
 survived, hung, flaked, or failed to build.
 
+The sample then left the hands that had been running it. A weekly one lives
+in the continuous integration now: a fraction of each axis, drawn from one
+seed so that the same question is asked every week, and strict -- a survivor
+is red, and so is a written reason whose mistake has since been caught,
+because an excuse that the suite no longer needs is a lie the table tells.
+
+Its first honest run found two things, and neither was a missing test. The
+first was a hang, on `scanf` pointed at `printf`, and the hang was not the
+mutant's doing alone. The test asked its question in a child, the way
+`getchar` is asked, and what the child did with the stream died with it;
+asked in the suite's own process instead, the two calls left `stdin`
+carrying what they had read -- the end of the input as a mark, and the word
+as an orientation, byte rather than wide. Both belong to the stream and not
+to the descriptor, so both follow it into the tests after that one: a
+`getwchar` inherited a stream that answered "not wide" without reading, and
+a `getchar` one that answered EOF the same way. `clearerr` takes the mark
+off and leaves the orientation where it was, which is half of the borrowing
+given back. The whole of it goes back with a `freopen` that names no file:
+same descriptor, and buffer, marks and orientation all reset -- which is
+what the stream was owed, and what the tests after it had been quietly
+paying for. And the asking split by platform, the split `putwchar`'s test
+already makes: `libc.so.6` is not a name Darwin answers, so Darwin asks in
+a child, whose stream state goes with it when it goes, and Linux asks in
+the suite's own process, which is where the probe is looking.
+
+The second was the strict check keeping its word about the other half. The
+`chown` swap had a written reason from the days when every `chown` the
+suite could ask was refused before the two ids were read -- and the third
+sample had since given that test an assertion of its own, a link whose
+target is not there, which `chown` follows to nothing and `lchown` does
+not. A reason that excuses a mistake the suite notices is not an excuse,
+so the entry went, and `lchown` and `fchownat` are excused in their own
+words now that the one they quoted is gone.
+
+The run ceiling the sample tripped along the way was a run's own timeout at
+two minutes, which is the ceiling of a run that owns the machine. The
+environment that makes the machine busy says how long an answer may take,
+and it says five minutes.
+
 glibc, for its part, does not come with anything that checks glibc.
 
 ## Next to Rust's `libc`
