@@ -1458,6 +1458,19 @@ def c_library_name() -> String:
         return "libc.so.6"
 
 
+def stdout_variable_name() -> String:
+    """The name the C library exports its standard output variable by,
+    which is `stdout` where C says so and `__stdoutp` on Darwin, whose
+    `stdio.h` spells the three streams with a leading pair of
+    underscores and a trailing p -- `stdout` there is a macro, and the
+    variable the macro names is what the library exports.
+    """
+    comptime if CompilationTarget.is_macos():
+        return "__stdoutp"
+    else:
+        return "stdout"
+
+
 def descriptor_one_path() -> String:
     """The path that reopens whatever descriptor 1 holds, which each
     platform spells its own way: `/proc/self/fd` resolves the name to
@@ -1481,7 +1494,8 @@ def test_putwchar_writes_to_a_stdout_made_wide() raises:
     child inherits the stream as it is.
 
     What does help is that the stream is reachable and can be reopened.
-    The C library exports `stdout` as a variable, `dlsym` finds it, and
+    The C library exports `stdout` as a variable, `dlsym` finds it by
+    the name the platform exports it under, and
     `freopen` of that stream starts it over -- unoriented, and pointed
     at whatever descriptor 1 holds when the reopen happens. The child
     child reopens the stream at nowhere first, which takes whatever the
@@ -1509,7 +1523,7 @@ def test_putwchar_writes_to_a_stdout_made_wide() raises:
     if child == 0:
         var handle = dlopen(string_to_char_ptr(c_library_name()), RTLD_NOW)
         assert_true(not is_null(handle), "the C library is opened")
-        var slot = dlsym(handle, string_to_char_ptr("stdout"))
+        var slot = dlsym(handle, string_to_char_ptr(stdout_variable_name()))
         assert_true(not is_null(slot), "the stdout variable is found in it")
         var pp = slot.unsafe_bitcast[c_ptr[FILE]]()
         var out = pp.unsafe_offset(0)[]
