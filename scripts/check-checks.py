@@ -15,10 +15,10 @@ away, and the tree being checked is the one in the working directory, so
 a case that no longer applies -- because the line it edits was rewritten
 -- is a failure too, rather than a case that quietly stops running.
 
-Two of the twenty-seven are slow -- the one that builds every example and the one
+Two of the thirty are slow -- the one that builds every example and the one
 that asks gcc about every constant, eighteen seconds each -- which is why
 this runs as its own job rather than as one more step of the lint job.
-The assurance is the same for all twenty-seven: a page of examples that compiles
+The assurance is the same for all thirty: a page of examples that compiles
 nothing prints `all 0 examples compile`, which is the sentence this is
 here to make impossible to earn honestly.
 """
@@ -266,6 +266,40 @@ BREAKS = [
         "src/libc/termios/syscalls.mojo",
         "comptime TERMIOS_FLAG_BYTES: Int = 8 if CompilationTarget.is_macos() else 4",
         "comptime TERMIOS_FLAG_BYTES: Int = 8",
+    ),
+    Break(
+        "check-tests",
+        "a call moved inside a platform guard, the way putwchar's test used to be",
+        "tests/test_time.mojo",
+        "    ts[] = timespec()\n"
+        "    assert_equal(Int(timespec_get(ts, TIME_UTC)), Int(TIME_UTC))\n"
+        '    assert_true(ts[].tv_sec > 1_700_000_000, "C11 time is now")',
+        "    comptime if not CompilationTarget.is_macos():\n"
+        "        ts[] = timespec()\n"
+        "        assert_equal(Int(timespec_get(ts, TIME_UTC)), Int(TIME_UTC))\n"
+        '        assert_true(ts[].tv_sec > 1_700_000_000, "C11 time is now")',
+    ),
+    Break(
+        "check-tests",
+        "the one-platform page saying a number the count does not",
+        "docs/modules.md",
+        "Linux asks 10 bindings that Darwin passes over",
+        "Linux asks 11 bindings that Darwin passes over",
+    ),
+    Break(
+        "check-tests",
+        "a one-platform binding starting to be asked without a guard",
+        "tests/test_unistd.mojo",
+        "    comptime if not CompilationTarget.is_macos():\n"
+        "        # The main thread of a process has that process's own number, and\n"
+        "        # `fork` -- the call one line away with the same answer of a positive\n"
+        "        # number -- would have made a process instead of answering.\n"
+        "        assert_equal(\n"
+        '            Int(gettid()), Int(getpid()), "and it is this process\'s own"\n'
+        "        )",
+        "    assert_equal(\n"
+        '        Int(gettid()), Int(getpid()), "and it is this process\'s own"\n'
+        "    )",
     ),
 ]
 
