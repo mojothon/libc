@@ -19,7 +19,10 @@ the other's symbol and the tests that call it are run. Five answers:
   caught    a test failed, and its assertion is the reason. The suite has
             teeth here.
   crashed   the mutant took the process down without an assertion firing.
-            Noticed, but not by anything written for the purpose.
+            Noticed, but not by anything written for the purpose. A run that
+            ends in silence is one of these too: the crash reporter writes a
+            dump instead of a message when its own bookkeeping is stuck, and
+            a buffer lost with the process takes the assertion with it.
   hung      a test neither passed nor failed: it stopped answering and the run
             was killed at its timeout. A lock taken and never given back does
             this, and it is worse than a survivor -- nothing after it in that
@@ -27,8 +30,15 @@ the other's symbol and the tests that call it are run. Five answers:
             the job's own timeout instead of reporting.
   survived  every test passed with the binding calling the wrong function.
             Either the call's answer is never compared with anything, or the
-            two functions agree on every input the test uses.
-  error     the mutant did not build. Not evidence either way.
+            two functions agree on every input the test uses. A survivor is
+            asked a second time before it is reported, because a mistake
+            that forks a waiter can pass or fail by interleaving.
+  flaky     survived on the first asking and caught on the second: a race
+            between a forked child's wrong answer and the assertion that
+            reads it. The suite does notice here; it just does not notice
+            every time, which is worth knowing about the test.
+  error     the mutant did not build -- the compiler named a line, or the JIT
+            could not find the symbol. Not evidence either way.
 
 `--kind order` asks a different question with the same method: instead of
 pointing a binding at a sibling symbol, it hands two arguments of the same type
@@ -60,6 +70,8 @@ entry that has been answered, and the run says so.
 
 import argparse
 import concurrent.futures
+import ctypes
+import functools
 import importlib.util
 import os
 import random
@@ -657,12 +669,6 @@ NO_OBSERVATION = {
         "mess first is caught, and this one only answers 0 about a block "
         "that was going to be taken apart anyway"
     ),
-    "__error->__errno_location": (
-        "the two symbols are the two platforms' spellings of the same thing, "
-        "and each is named in the branch for its own platform: the mutant "
-        "rewrites the branch this machine does not run, and does not even "
-        "build here"
-    ),
     "endnetgrent->endprotoent": (
         "both take nothing and answer nothing, and what each shuts is a "
         "stream the other test does not have its hand in: this machine has "
@@ -755,15 +761,70 @@ def unobservable_for(mutant: Mutant) -> str:
     return NO_OBSERVATION.get(key) or NO_OBSERVATION.get(reverse_key(key), "")
 
 
+@functools.lru_cache(maxsize=None)
+def exported(symbol: str) -> bool:
+    """Whether this machine's C library exports `symbol` at all.
+
+    The library binds both C libraries, so a fair share of the names in it
+    are one platform's and not the other's. Pointing a binding at a name the
+    linker here has never heard of asks for a symbol that cannot be
+    materialized, which is not a mistake any test could catch.
+    """
+    return hasattr(ctypes.CDLL(None), symbol)
+
+
+def reachable(name: str, symbol: str) -> bool:
+    """Whether a call through `symbol` can be made here at all.
+
+    `exported` answers it, with one written-down exception: a call the suite
+    already documents as one the JIT cannot look up is still a call the
+    linker makes, and its binding is a mutant worth asking about.
+    """
+    return exported(symbol) or name in load("check-tests").CANNOT_ASK
+
+
+# What the compiler says when it is the compiler that said no. A file that
+# does not build names the line it stopped at; a symbol the platform does not
+# export fails later, when the JIT looks for it. Everything else that ends a
+# run without an assertion is a crash, whether or not the crash reporter was
+# able to say so out loud -- it writes a dump instead when its own bookkeeping
+# is stuck, and the run then ends with nothing in its output at all.
+BUILD_FAILURE = re.compile(
+    r"\.mojo:\d+:\d+: error:|Failed to materialize symbols|Symbols not found"
+)
+
+
 def classify(returncode: int, text: str) -> str:
     if returncode == 0:
         return "survived"
-    both = text
-    if "AssertionError" in both or "Unhandled exception" in both:
+    if "AssertionError" in text or "Unhandled exception" in text:
         return "caught"
-    if "execution crashed" in both or returncode < 0:
-        return "crashed"
-    return "error"
+    if BUILD_FAILURE.search(text):
+        return "error"
+    return "crashed"
+
+
+def sweep(copy: Path) -> None:
+    """Kill whatever the run started and the run did not outlive.
+
+    A test that forks a waiter has a child blocked on a lock or a
+    condition; when the mutant under it is the mistake that never gives
+    the lock back, the test fails and exits, and the waiter is still
+    there -- blocked forever, orphaned to init, holding memory for the
+    rest of the sweep. It is found by the copy it was started from,
+    which belongs to this worker alone, so nothing else can be hit.
+    """
+    if not Path("/proc").is_dir():
+        return # Not Linux: nothing to read the command lines from.
+    needle = str(copy).encode()
+    for entry in Path("/proc").iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            if needle in (entry / "cmdline").read_bytes():
+                os.kill(int(entry.name), signal.SIGKILL)
+        except OSError:
+            continue
 
 
 def build(kind: str) -> list[Mutant]:
@@ -787,7 +848,22 @@ def build(kind: str) -> list[Mutant]:
             if len(members) < 2:
                 continue
             for name, symbol in members:
-                other = next((s for n, s in members if s != symbol), None)
+                # Another *binding*, not another spelling of this one. A
+                # binding written for two platforms names two symbols and is
+                # one call either way -- `errno` reads through
+                # `__errno_location` here and `__error` on Darwin -- so the
+                # branch that is not this platform's is not a call at all
+                # here, and neither is a symbol the linker has never heard of.
+                if not reachable(name, symbol):
+                    continue
+                other = next(
+                    (
+                        s
+                        for n, s in members
+                        if n != name and s != symbol and reachable(n, s)
+                    ),
+                    None,
+                )
                 if other is None or not callers(name):
                     continue
                 mutants.append(
@@ -936,6 +1012,7 @@ def main() -> int:
             "same": 0,
             "unobservable": 0,
             "survived": 0,
+            "flaky": 0,
             "error": 0,
         }
         answered: list[str] = []
@@ -943,6 +1020,49 @@ def main() -> int:
         # answers came back rather than the order they were asked in -- which is
         # the order a reader of a sweep wants anyway.
         say = threading.Lock()
+
+        def run_one(copy: Path, test: Path) -> str:
+            """Ask one test file one question, and read the answer back."""
+            # The answer is written to a file, not a pipe, and the run
+            # is a session of its own. Both halves of one lesson: a run
+            # that the verdict `hung` ends in is killed as a whole --
+            # every process its forks left behind -- and a run that a
+            # forked child outlives would hold a pipe open until
+            # somebody reading it died with it, which turns an answer
+            # the run gave into one the probe waits for forever.
+            with tempfile.NamedTemporaryFile(
+                mode="w+b", suffix=".out", delete=True
+            ) as answer:
+                proc = subprocess.Popen(
+                    [
+                        "pixi",
+                        "run",
+                        "mojo",
+                        "run",
+                        "-I",
+                        str(copy),
+                        "-I",
+                        "tests",
+                        str(test.relative_to(ROOT)),
+                    ],
+                    cwd=ROOT,
+                    stdout=answer,
+                    stderr=answer,
+                    stdin=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+                try:
+                    returncode = proc.wait(timeout=TIMEOUT)
+                except subprocess.TimeoutExpired:
+                    # A mutated lock or wait can leave the file waiting
+                    # rather than failing, and that is a verdict of its
+                    # own: the run does not stop at it, and the mutant
+                    # after it still gets asked.
+                    os.killpg(proc.pid, signal.SIGKILL)
+                    proc.wait()
+                    return "hung"
+                answer.seek(0)
+                return classify(returncode, answer.read().decode(errors="replace"))
 
         def ask(mutant: Mutant):
             copy = copies.get()
@@ -953,52 +1073,20 @@ def main() -> int:
                     with say:
                         print(f"  ?? {mutant.name}: could not be mutated")
                     return
-                outs = []
-                for test in callers(mutant.name):
-                    # The answer is written to a file, not a pipe, and the run
-                    # is a session of its own. Both halves of one lesson: a run
-                    # that the verdict `hung` ends in is killed as a whole --
-                    # every process its forks left behind -- and a run that a
-                    # forked child outlives would hold a pipe open until
-                    # somebody reading it died with it, which turns an answer
-                    # the run gave into one the probe waits for forever.
-                    with tempfile.NamedTemporaryFile(
-                        mode="w+b", suffix=".out", delete=True
-                    ) as answer:
-                        proc = subprocess.Popen(
-                            [
-                                "pixi",
-                                "run",
-                                "mojo",
-                                "run",
-                                "-I",
-                                str(copy),
-                                "-I",
-                                "tests",
-                                str(test.relative_to(ROOT)),
-                            ],
-                            cwd=ROOT,
-                            stdout=answer,
-                            stderr=answer,
-                            stdin=subprocess.DEVNULL,
-                            start_new_session=True,
-                        )
-                        try:
-                            returncode = proc.wait(timeout=TIMEOUT)
-                        except subprocess.TimeoutExpired:
-                            # A mutated lock or wait can leave the file waiting
-                            # rather than failing, and that is a verdict of its
-                            # own: the run does not stop at it, and the mutant
-                            # after it still gets asked.
-                            os.killpg(proc.pid, signal.SIGKILL)
-                            proc.wait()
-                            outs.append("hung")
-                            continue
-                        answer.seek(0)
-                        said_text = answer.read().decode(errors="replace")
-                        outs.append(classify(returncode, said_text))
-                target.write_text(pristine)
+                said_text = ""
+                outs = [run_one(copy, test) for test in callers(mutant.name)]
                 verdict = "caught" if "caught" in outs else outs[0]
+                if verdict == "survived":
+                    # A survivor is the one answer that says a test is
+                    # missing, and it is also the one answer a mistake that
+                    # forks a waiter can give by interleaving: the child's
+                    # wrong answer and the parent's assertion race, and one
+                    # run is one sample. Ask again before believing it --
+                    # survived twice is a gap, once each way is a race, and
+                    # the two are not the same report.
+                    if "caught" in [run_one(copy, t) for t in callers(mutant.name)]:
+                        verdict = "flaky"
+                target.write_text(pristine)
                 where = f"{Path(mutant.path).relative_to(SRC / 'libc')}:{mutant.name}"
                 if mutant.kind == "order":
                     where += f" ({mutant.what})"
@@ -1024,6 +1112,7 @@ def main() -> int:
                         for line in tail[-3:]:
                             print(f"            {line.strip()[:110]}")
             finally:
+                sweep(copy)
                 copies.put(copy)
 
         if args.jobs > 1:
@@ -1038,8 +1127,18 @@ def main() -> int:
             f"  caught {tally['caught']}, crashed {tally['crashed']},"
             f" hung {tally['hung']}, same answer {tally['same']},"
             f" unobservable {tally['unobservable']},"
-            f" survived {tally['survived']}, did not build {tally['error']}"
+            f" survived {tally['survived']}, flaky {tally['flaky']},"
+            f" did not build {tally['error']}"
         )
+        if tally["flaky"]:
+            print(
+                "  a flaky one was survived once and caught on the asking"
+                " again, which is"
+            )
+            print(
+                "  a race between a forked child and the assertion, not a"
+                " missing test"
+            )
         if answered:
             print()
             print(
