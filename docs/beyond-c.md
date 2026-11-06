@@ -827,7 +827,10 @@ glibc, for its part, does not come with anything that checks glibc.
 The nearest thing to this that is not this: [rust-lang/libc](
 https://github.com/rust-lang/libc). It binds the same C and implements
 none of it, which is what this does too. Four of its Linux files declare
-681 C functions; this binds 570; 293 are in both.
+681 C functions (`unix/mod.rs`, `unix/linux_like/mod.rs`,
+`unix/linux_like/linux/mod.rs` and `unix/linux_like/linux/gnu/mod.rs`,
+counted as the `pub fn` declarations in them, read both on the day this
+was counted and today); this binds 570; 293 are in both.
 
 The difference is not the count. Rust answers "what is `EAGAIN`" with a
 file per platform and a `cfg` that picks one, so the answer for the
