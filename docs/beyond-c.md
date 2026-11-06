@@ -820,6 +820,16 @@ and answer on the next. So a crash is asked a second time too, and once
 each way -- whatever the two answers were -- is `flaky`, which is what
 every answer that changed its mind is called now.
 
+The count itself has caught up since. It reads the tests as text, and
+both platforms read the same text -- which is why it never saw the gap
+above -- but it knows which guards the calls sit under now, and a
+binding whose every call sits inside one platform's guard is one the
+other platform passes over unasked. Ten of those turned up, and all ten
+had the same shape of an answer: epoll and the scheduler's CPU mask, the
+auxiliary vector, the thread id, C11 threads -- calls Darwin's library
+has no name for, each saying so now in the place that would have gone
+red if the answer had been silence.
+
 glibc, for its part, does not come with anything that checks glibc.
 
 ## Next to Rust's `libc`
