@@ -1,5 +1,6 @@
 """Tests for the `libc.file` bindings that nothing had called."""
 from std.memory.alloc import unsafe_alloc
+from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.constant import (
@@ -43,9 +44,10 @@ from libc.file import (
     sprintf,
     sscanf,
 )
-from libc.stdlib import free
+from libc.stdlib import exit, free
 from libc.sys.socket import iovec
-from libc.unistd import close, dup, dup2, pipe, unlink, write
+from libc.sys.wait import WEXITSTATUS, WIFEXITED, waitpid
+from libc.unistd import close, dup, dup2, fork, pipe, unlink, write
 from libc.utils import char_ptr_to_string, is_null, null_ptr, string_to_char_ptr
 
 
@@ -257,8 +259,7 @@ def test_the_scanf_family_asked_for_nothing() raises:
 def test_scanf_reads_the_standard_input_it_is_given() raises:
     """`scanf` reads standard input, which the suite cannot promise has an
     end -- so the test makes one, the way `getchar` is asked: a pipe with a
-    word in it, put where standard input is read from, and the standard
-    input that was there put back when it is over.
+    word in it, put where standard input is read from.
 
     The format is that word and nothing else, which is the whole of
     what this binding can be asked: the pointers a conversion writes
@@ -268,68 +269,128 @@ def test_scanf_reads_the_standard_input_it_is_given() raises:
     assigns nothing, which leaves the two things it does say: 0 when
     the input was there to be matched, and `EOF` when it was not.
 
-    Both are asked in the one process, the second call finding the
+    Both answers are asked in one place, the second call finding the
     stream where the first one left it -- at its end, the write end of
-    the pipe having been closed while no process held it. The old
-    standard input goes back before anything is asserted: a test that
-    fails here is one the run goes on from, and the tests after it are
-    owed the standard input they started with.
+    the pipe having been closed while nothing held it. What differs by
+    platform is who does the asking, and that is because what `scanf`
+    reads through is glibc's `stdin`, and what a call leaves there is
+    the stream's, not the pipe's: the end of the input is a mark, the
+    byte-oriented reading of the word is an orientation, and both
+    follow the stream into the tests after this one -- a `getwchar`
+    would inherit one that answers "not wide" without reading, and a
+    `getchar` one that answers EOF the same way. Darwin's libc keeps
+    that state in a child, which takes it with it when it goes; Linux
+    asks in the suite's own process and starts the stream over before
+    anything is asserted, a `freopen` naming no file being what keeps
+    the descriptor and resets the buffer, the marks and the
+    orientation -- `stdin` being a variable the C library exports and
+    `dlsym` finds, the way `putwchar`'s test finds `stdout`.
     """
-    var saved = dup(0)
-    assert_true(saved > 0, "the old standard input is kept")
-    var fds = unsafe_alloc[Int32](2)
-    assert_equal(pipe(fds), 0, "a pipe to be standard input")
-    var word = unsafe_alloc[UInt8](5)
-    var letters = "hello"
-    for i in range(5):
-        word.unsafe_store(i, UInt8(ord(letters[byte=i])))
-    assert_equal(
-        write(fds.unsafe_offset(1)[], word, 5), 5, "with the word in it"
-    )
-    word.unsafe_free()
-    assert_equal(dup2(fds.unsafe_offset(0)[], 0), 0, "and it is standard input")
-    # Both ends are closed here, the write end so that there is an end of
-    # input for the second call to find, and the read end because the copy
-    # is the stream now.
-    _ = close(fds.unsafe_offset(1)[])
-    _ = close(fds.unsafe_offset(0)[])
+    comptime if CompilationTarget.is_macos():
+        var child = fork()
+        if child == 0:
+            var fds = unsafe_alloc[Int32](2)
+            assert_equal(pipe(fds), 0, "a pipe to be standard input")
+            var word = unsafe_alloc[UInt8](5)
+            var letters = "hello"
+            for i in range(5):
+                word.unsafe_store(i, UInt8(ord(letters[byte=i])))
+            assert_equal(
+                write(fds.unsafe_offset(1)[], word, 5), 5, "with the word in it"
+            )
+            word.unsafe_free()
+            assert_equal(
+                dup2(fds.unsafe_offset(0)[], 0), 0, "and it is standard input"
+            )
+            # The write end is closed here and not left to the exit: an end
+            # of the input is a closed pipe, and this child holding one open
+            # is a `scanf` with nothing to read and no reason to stop.
+            _ = close(fds.unsafe_offset(1)[])
+            _ = close(fds.unsafe_offset(0)[])
 
-    var format = string_to_char_ptr("hello")
-    var first = Int(scanf(format))
-    var second = Int(scanf(format))
-    # What the two calls left behind is the stream's, not the pipe's: the
-    # end of the input is a mark on standard input, and the byte-oriented
-    # reading of the word is its orientation, and both of those follow the
-    # stream wherever its descriptor goes -- a `getwchar` after this test
-    # would inherit a stream that answers "not wide" without reading, and
-    # a `getchar` one that answers EOF the same way. So the stream is
-    # started over, which is what a `freopen` naming no file does: same
-    # descriptor, buffer and marks and orientation all reset. `stdin` is a
-    # variable the C library exports and `dlsym` finds, the same way
-    # `stdout` is found when `putwchar` is asked.
-    var libc_handle = dlopen(string_to_char_ptr("libc.so.6"), RTLD_NOW)
-    assert_true(not is_null(libc_handle), "the C library is opened")
-    var slot = dlsym(libc_handle, string_to_char_ptr("stdin"))
-    assert_true(not is_null(slot), "the stdin variable is found in it")
-    var original = slot.unsafe_bitcast[c_ptr[FILE]]().unsafe_offset(0)[]
-    assert_true(
-        not is_null(
-            freopen(null_ptr[c_char](), string_to_char_ptr("r"), original)
-        ),
-        "the standard input is put back, stream and all",
-    )
-    _ = close(saved)
-    format.unsafe_free()
-    assert_equal(
-        first,
-        0,
-        "the word is matched, and nothing is assigned",
-    )
-    assert_equal(
-        second,
-        -1,
-        "and at the end of the input it says so rather than answering 0",
-    )
+            var format = string_to_char_ptr("hello")
+            assert_equal(
+                Int(scanf(format)),
+                0,
+                "the word is matched, and nothing is assigned",
+            )
+            assert_equal(
+                Int(scanf(format)),
+                -1,
+                (
+                    "and at the end of the input it says so rather than"
+                    " answering 0"
+                ),
+            )
+            format.unsafe_free()
+            _ = exit(0)
+
+        assert_true(child > 0, "there is a child to read it")
+        var status = unsafe_alloc[Int32](1)
+        status.unsafe_offset(0)[] = 0
+        assert_equal(
+            waitpid(child, status, 0), child, "the child is waited for"
+        )
+        assert_true(
+            WIFEXITED(status.unsafe_load()), "and it left of its own accord"
+        )
+        assert_equal(
+            Int(WEXITSTATUS(status.unsafe_load())),
+            0,
+            "having found both answers where they were expected",
+        )
+        status.unsafe_free()
+    else:
+        var saved = dup(0)
+        assert_true(saved > 0, "the old standard input is kept")
+        var fds = unsafe_alloc[Int32](2)
+        assert_equal(pipe(fds), 0, "a pipe to be standard input")
+        var word = unsafe_alloc[UInt8](5)
+        var letters = "hello"
+        for i in range(5):
+            word.unsafe_store(i, UInt8(ord(letters[byte=i])))
+        assert_equal(
+            write(fds.unsafe_offset(1)[], word, 5), 5, "with the word in it"
+        )
+        word.unsafe_free()
+        assert_equal(
+            dup2(fds.unsafe_offset(0)[], 0), 0, "and it is standard input"
+        )
+        # Both ends are closed here, the write end so that there is an end
+        # of input for the second call to find, and the read end because
+        # the copy is the stream now.
+        _ = close(fds.unsafe_offset(1)[])
+        _ = close(fds.unsafe_offset(0)[])
+
+        var format = string_to_char_ptr("hello")
+        var first = Int(scanf(format))
+        var second = Int(scanf(format))
+        # The stream is started over before anything is asserted: a test
+        # that fails here is one the run goes on from, and the tests after
+        # it are owed the standard input they started with.
+        var libc_handle = dlopen(string_to_char_ptr("libc.so.6"), RTLD_NOW)
+        assert_true(not is_null(libc_handle), "the C library is opened")
+        var slot = dlsym(libc_handle, string_to_char_ptr("stdin"))
+        assert_true(not is_null(slot), "the stdin variable is found in it")
+        var original = slot.unsafe_bitcast[c_ptr[FILE]]().unsafe_offset(0)[]
+        assert_true(
+            not is_null(
+                freopen(null_ptr[c_char](), string_to_char_ptr("r"), original)
+            ),
+            "the standard input is put back, stream and all",
+        )
+        _ = close(saved)
+        format.unsafe_free()
+        assert_equal(
+            first,
+            0,
+            "the word is matched, and nothing is assigned",
+        )
+        assert_equal(
+            second,
+            -1,
+            "and at the end of the input it says so rather than answering 0",
+        )
 
 
 def test_pieces_at_an_offset() raises:
