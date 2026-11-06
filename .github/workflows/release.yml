@@ -20,7 +20,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-14]
+        # `macos-14` retired as a runner image on 2026-11-02 and answers
+        # nothing; `macos-15` is the same Apple Silicon, one Darwin up.
+        os: [ubuntu-latest, macos-15]
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
