@@ -1472,6 +1472,43 @@ count as an alignment cannot even answer, and glibc says so with nothing.</p>
 <p>One written answer went out of date the same day: <code>cfsetispeed</code> and
 <code>cfsetospeed</code> were written down as writing the same storage, which the
 tests have since told apart, so that table entry is gone.</p>
+<p>Two days of the tally after that were lying, and how they lied is worth more
+than the numbers. A run that ended without an assertion and without the
+compiler's word was counted as <code>did not build</code>, and often it was not: the
+crash reporter writes its report to a file rather than to the terminal when
+its own bookkeeping is stuck -- one stale lock in its database kept every
+later crash silent for two days -- and a buffer lost with the dying process
+takes whatever it was about to say with it. A crash is the suite noticing,
+not evidence of nothing, so <code>error</code> now means the compiler or the JIT said
+no -- a line named, or a symbol it could not find -- and everything else
+that fails without an assertion is a crash, whether or not anybody was told.</p>
+<p>Four more of the mutants the axis had been counting were not mistakes at
+all, and they came from one line: <code>errno</code> is written for two platforms, and
+<code>get_errno</code> and <code>set_errno</code> each name the accessor in both branches --
+<code>__errno_location</code> here, <code>__error</code> on Darwin. Two of the four pointed a
+branch this machine runs at a name the linker has never heard of, and were
+counted as not building; two rewrote a branch this machine does not run,
+changed nothing, and were excused by a written reason. Both halves were the
+same misreading: signatures read off the <code>external_call</code> make one call's two
+spellings look like two interchangeable calls. A mutant is made only between
+names the linker here answers now -- with the one written-down exception
+standing, <code>pthread_atfork</code>, whose name glibc exports with no default
+version and the just-in-time run cannot look up -- and the reason that
+excused the impossible pair is gone with the pair, there being no mistake
+left for it to excuse. What a run forked outlived it too: a waiter blocked
+on a lock the mutant never gave back was found by the copy it was started
+from, which belongs to one worker alone, and killed.</p>
+<p>The sixth verdict came out of the two answers that changed their minds.
+<code>geteuid</code> pointed at <code>fork</code> survived a whole axis once and was caught by the
+rerun; <code>msgctl</code> with its two ids exchanged did the same. Both mistakes fork
+a waiter, and a waiter's wrong answer and the assertion that reads it race,
+so one run is one sample. A survivor is asked a second time now, and once
+each way is reported as its own verdict -- <code>flaky</code>, which is the suite
+noticing there too, just not every time, and that is worth knowing about
+the test rather than about the call. With that, both axes were asked once
+more on the tree as it stands: five hundred and ninety-four mutants on the
+symbol side, a hundred and ninety-six on the order side, and not one
+survived, hung, flaked, or failed to build.</p>
 <p>glibc, for its part, does not come with anything that checks glibc.</p>
 <h2 id="next-to-rusts-libc">Next to Rust's <code>libc</code><a class="headerlink" href="#next-to-rusts-libc" title="Permanent link">&para;</a></h2>
 <p>The nearest thing to this that is not this: <a href="https://github.com/rust-lang/libc">rust-lang/libc</a>. It binds the same C and implements
