@@ -51,6 +51,14 @@ tests:
       # here. The suite itself is run, against the sources, by the two
       # test jobs above.
       - mojo run -I ${PREFIX}/lib/mojo -I tests tests/test_smoke.mojo
+      # `pthread_atfork` is the one call the suite's own answer says it
+      # cannot ask: glibc exports the name with no default version, and
+      # the just-in-time run looks the bare name up and finds nothing.
+      # A binary links it -- a claim that answer was making on trust
+      # until it was asked like this, built first and then run, which
+      # is the one form the question can be asked in.
+      - mojo build -I ${PREFIX}/lib/mojo -I tests tests/test_atfork.mojo -o atfork-check
+      - ./atfork-check
       # And every public name, not just the ones the smoke test calls:
       # this one imports them all and calls none, so the `write` above is
       # not reached. What it asks of the installed package is whether it

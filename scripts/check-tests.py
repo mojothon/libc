@@ -54,7 +54,6 @@ def load(name: str):
 # calls this suite can make — so the point is that the reason is written
 # down rather than that the call is gone.
 CANNOT_ASK = {
-    "pthread_atfork": "glibc exports it only as pthread_atfork@GLIBC_2.2.5 with no default version, and the just-in-time run the suite uses looks the bare name up and finds nothing — a built binary links and answers fine",
     "ioctl": "variadic, and its third argument is the address every request writes through: `external_call` emits a fixed-argument call, which arm64 hands to a variadic callee differently, so the request reads a slot nobody wrote instead",
 }
 
@@ -100,7 +99,7 @@ NOT_YET = {}
 # states have to be the two counted above. The section is found by heading,
 # so a page that stops having one fails rather than silently unhooks.
 STATED_ASKED = re.compile(
-    r"(\d+) bindings are asked something, and the (\d+) that are not"
+    r"(\d+) bindings are asked something, and the (\d+) that (?:are|is) not"
 )
 STATED_ONE_PLATFORM = re.compile(
     r"Linux asks (\d+) bindings that Darwin passes over, and Darwin (\d+)"
@@ -239,11 +238,14 @@ def called_by_tests() -> dict[str, set[str]]:
     return asked
 
 
-# The two files in `tests/` that the suite does not start. `test_main.mojo`
-# is the suite, and `test_smoke.mojo` is the check `recipe/recipe.yaml` runs
-# against a built package, where it cannot print anything (its docstring says
-# why). Both are entries rather than tests, so the count below is not for them.
-NOT_SUITE = {"test_main.mojo", "test_smoke.mojo"}
+# The files in `tests/` that the suite does not start. `test_main.mojo` is
+# the suite, and `test_smoke.mojo` and `test_atfork.mojo` are the checks
+# `recipe/recipe.yaml` runs against a built package -- where the smoke one
+# cannot print anything (its docstring says why), and the atfork one asks
+# the call the just-in-time run cannot look up, which is why it runs
+# compiled first. All are entries rather than tests, so the count below is
+# not for them.
+NOT_SUITE = {"test_main.mojo", "test_smoke.mojo", "test_atfork.mojo"}
 
 
 def unrun_tests() -> tuple[list[str], list[str]]:
