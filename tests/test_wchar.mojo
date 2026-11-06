@@ -1,5 +1,6 @@
 from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
+
 from std.testing import assert_equal, assert_true
 
 from libc.dlfcn import RTLD_NOW, dlopen, dlsym
@@ -1446,6 +1447,31 @@ def test_getwchar_reads_what_stdin_is_made_of() raises:
     status.unsafe_free()
 
 
+def c_library_name() -> String:
+    """The name the platform's C library is opened by, which is the one
+    its linker answers: `libc.so.6` on Linux, `libSystem.B.dylib` on
+    Darwin, where `libc.so.6` is a name nothing has ever heard of.
+    """
+    comptime if CompilationTarget.is_macos():
+        return "libSystem.B.dylib"
+    else:
+        return "libc.so.6"
+
+
+def descriptor_one_path() -> String:
+    """The path that reopens whatever descriptor 1 holds, which each
+    platform spells its own way: `/proc/self/fd` resolves the name to
+    the file itself, and `/dev/fd` hands the open back as a copy of the
+    descriptor, which is the difference that matters when descriptor 1
+    is a pipe -- procfs answers ENXIO for one, the descriptor directory
+    on Darwin passes it through.
+    """
+    comptime if CompilationTarget.is_macos():
+        return "/dev/fd/1"
+    else:
+        return "/proc/self/fd/1"
+
+
 def test_putwchar_writes_to_a_stdout_made_wide() raises:
     """`putwchar` writes to standard output itself, and what stands in
     the way of asking it is orientation: the suite has already written
@@ -1469,91 +1495,93 @@ def test_putwchar_writes_to_a_stdout_made_wide() raises:
     ends through `fclose` rather than a plain exit, because closing is
     the flush this package has: an `fflush` of its own is off the
     table, the Mojo standard library declaring that name already.
-    """
-    comptime if not CompilationTarget.is_macos():
-        var fds = unsafe_alloc[Int32](2)
-        assert_equal(pipe(fds), 0, "a pipe for the child's standard output")
-        var child = fork()
-        if child == 0:
-            var handle = dlopen(string_to_char_ptr("libc.so.6"), RTLD_NOW)
-            assert_true(not is_null(handle), "the C library is opened")
-            var slot = dlsym(handle, string_to_char_ptr("stdout"))
-            assert_true(not is_null(slot), "the stdout variable is found in it")
-            var pp = slot.unsafe_bitcast[c_ptr[FILE]]()
-            var out = pp.unsafe_offset(0)[]
-            assert_true(
-                fwide(out, 0) <= 0,
-                "the stream the suite hands over is not already wide",
-            )
-            assert_true(
-                Int(
-                    UInt(
-                        freopen(
-                            string_to_char_ptr("/dev/null"),
-                            string_to_char_ptr("w"),
-                            out,
-                        )
-                    )
-                )
-                == Int(UInt(out)),
-                "the stream is reopened at nowhere, buffer and all",
-            )
-            assert_equal(
-                dup2(fds.unsafe_offset(1)[], 1),
-                1,
-                "the pipe is standard output",
-            )
-            assert_true(
-                Int(
-                    UInt(
-                        freopen(
-                            string_to_char_ptr("/proc/self/fd/1"),
-                            string_to_char_ptr("w"),
-                            out,
-                        )
-                    )
-                )
-                == Int(UInt(out)),
-                "standard output is reopened on the pipe",
-            )
-            assert_equal(fwide(out, 1), 1, "and the fresh stream turns wide")
-            assert_equal(
-                Int(putwchar(c_wchar(65))),
-                65,
-                "putwchar writes the wide A and answers it",
-            )
-            assert_equal(
-                fclose(out), 0, "closing is the flush that lands the byte"
-            )
-            _ = exit(0)
 
-        _ = close(fds.unsafe_offset(1)[])
-        var status = unsafe_alloc[Int32](1)
-        status.unsafe_offset(0)[] = 0
-        assert_equal(
-            waitpid(child, status, 0), child, "the writer is waited for"
+    Two names in this are the platforms' own: the C library is opened
+    by the name its platform answers, and the pipe is reached the way
+    the platform spells descriptor 1 -- through `/proc/self/fd` on
+    Linux, which resolves the name to the pipe itself, and through
+    `/dev/fd` on Darwin, whose descriptor directory hands the open
+    straight back as a copy of the descriptor instead.
+    """
+    var fds = unsafe_alloc[Int32](2)
+    assert_equal(pipe(fds), 0, "a pipe for the child's standard output")
+    var child = fork()
+    if child == 0:
+        var handle = dlopen(string_to_char_ptr(c_library_name()), RTLD_NOW)
+        assert_true(not is_null(handle), "the C library is opened")
+        var slot = dlsym(handle, string_to_char_ptr("stdout"))
+        assert_true(not is_null(slot), "the stdout variable is found in it")
+        var pp = slot.unsafe_bitcast[c_ptr[FILE]]()
+        var out = pp.unsafe_offset(0)[]
+        assert_true(
+            fwide(out, 0) <= 0,
+            "the stream the suite hands over is not already wide",
         )
         assert_true(
-            WIFEXITED(status.unsafe_load()), "and it left of its own accord"
+            Int(
+                UInt(
+                    freopen(
+                        string_to_char_ptr("/dev/null"),
+                        string_to_char_ptr("w"),
+                        out,
+                    )
+                )
+            )
+            == Int(UInt(out)),
+            "the stream is reopened at nowhere, buffer and all",
         )
         assert_equal(
-            Int(WEXITSTATUS(status.unsafe_load())), 0, "saying that it wrote"
-        )
-        var got = unsafe_alloc[UInt8](2)
-        assert_equal(
-            Int(read(fds.unsafe_offset(0)[], got, 2)),
+            dup2(fds.unsafe_offset(1)[], 1),
             1,
-            "one character came out of the pipe",
+            "the pipe is standard output",
         )
+        assert_true(
+            Int(
+                UInt(
+                    freopen(
+                        string_to_char_ptr(descriptor_one_path()),
+                        string_to_char_ptr("w"),
+                        out,
+                    )
+                )
+            )
+            == Int(UInt(out)),
+            "standard output is reopened on the pipe",
+        )
+        assert_equal(fwide(out, 1), 1, "and the fresh stream turns wide")
         assert_equal(
-            Int(got.unsafe_offset(0)[]),
+            Int(putwchar(c_wchar(65))),
             65,
-            "and it is the A, one byte in the C locale",
+            "putwchar writes the wide A and answers it",
         )
-        _ = close(fds.unsafe_offset(0)[])
-        status.unsafe_free()
-        got.unsafe_free()
-        fds.unsafe_free()
+        assert_equal(fclose(out), 0, "closing is the flush that lands the byte")
+        _ = exit(0)
+
+    _ = close(fds.unsafe_offset(1)[])
+    var status = unsafe_alloc[Int32](1)
+    status.unsafe_offset(0)[] = 0
+    assert_equal(waitpid(child, status, 0), child, "the writer is waited for")
+    assert_true(
+        WIFEXITED(status.unsafe_load()), "and it left of its own accord"
+    )
+    assert_equal(
+        Int(WEXITSTATUS(status.unsafe_load())), 0, "saying that it wrote"
+    )
+    var got = unsafe_alloc[UInt8](2)
+    assert_equal(
+        Int(read(fds.unsafe_offset(0)[], got, 2)),
+        1,
+        "one character came out of the pipe",
+    )
+    assert_equal(
+        Int(got.unsafe_offset(0)[]),
+        65,
+        "and it is the A, one byte in the C locale",
+    )
+    _ = close(fds.unsafe_offset(0)[])
+    status.unsafe_free()
+    got.unsafe_free()
+    fds.unsafe_free()
 
 
 def main() raises:
