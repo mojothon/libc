@@ -241,7 +241,9 @@ SAME_ORDER = {
     ),
     "lchown:owner <-> group": (
         "every `lchown` a suite without a privilege can ask about is refused "
-        "before the two ids are read, for the reason `chown`'s is"
+        "before the two ids are read: the paths do not exist, and changing a "
+        "file's owner is not for this user -- either way round the answer is "
+        "the same -1 with the same errno"
     ),
     "sched_setscheduler:pid <-> policy": (
         "the only policy this suite may ask for is the one it is already on, "
@@ -335,12 +337,6 @@ SAME_ORDER = {
         "the call this suite can make is refused before the two ids are read: "
         "a path that is not there with `AT_FDCWD`, which answers ENOENT "
         "either way round"
-    ),
-    "chown:owner <-> group": (
-        "every `chown` this suite can ask about is one that fails: the paths do "
-        "not exist, and giving a file to somebody else is refused before the "
-        "two ids are looked at -- so the ids can be the other way round and "
-        "the answer is the same -1 with the same errno"
     ),
 }
 
