@@ -776,6 +776,27 @@ two minutes, which is the ceiling of a run that owns the machine. The
 environment that makes the machine busy says how long an answer may take,
 and it says five minutes.
 
+There was one gap the sample could never have named, because the tooling
+that counts what the suite asks counts calls in the text, and both
+platforms read the same text: `putwchar`'s test was a body inside a
+`comptime if` that named Linux and let Darwin through with nothing, so a
+call bound on both platforms was asked on one. The asking is one piece of
+code now, and what differs by platform is not two copies of the question
+but three names, each asked of the platform instead of written for one.
+The C library is opened by the name its linker answers -- `libc.so.6`
+here, `libSystem.B.dylib` on Darwin, where the first is a name nothing has
+ever heard of. The standard output variable is found by the name the
+library exports it under -- `stdout` where C says so, `__stdoutp` on
+Darwin, whose `stdio.h` spells the three streams with a leading pair of
+underscores and a trailing p, `stdout` there being a macro for the
+variable rather than the variable itself. And the pipe is reopened the way
+the platform spells descriptor 1: `/proc/self/fd` resolves the name to the
+file itself and answers ENXIO when that file is a pipe, and `/dev/fd`,
+Darwin's descriptor directory, answers nothing for a pipe either -- so
+Darwin writes the pipe through the descriptor it already has, which is
+enough, the first reopen having left the stream unoriented and empty and
+the stream's own descriptor number being 1, which is where the pipe is.
+
 glibc, for its part, does not come with anything that checks glibc.
 
 ## Next to Rust's `libc`
