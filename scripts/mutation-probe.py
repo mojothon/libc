@@ -33,10 +33,14 @@ the other's symbol and the tests that call it are run. Five answers:
             two functions agree on every input the test uses. A survivor is
             asked a second time before it is reported, because a mistake
             that forks a waiter can pass or fail by interleaving.
-  flaky     survived on the first asking and caught on the second: a race
-            between a forked child's wrong answer and the assertion that
-            reads it. The suite does notice here; it just does not notice
-            every time, which is worth knowing about the test.
+  flaky     answered one way on the first asking and another on the second:
+            survived and caught, or caught against a table that says nobody
+            can see the mistake at all. The second kind is how a failure in
+            some other test of the same file lands on a mutant it has
+            nothing to do with -- a run is a file, and a file is many
+            tests. Either way one run is one sample, and the suite noticing
+            there too, just not every time, is worth knowing about the
+            test.
   error     the mutant did not build -- the compiler named a line, or the JIT
             could not find the symbol. Not evidence either way.
 
@@ -1086,14 +1090,28 @@ def main() -> int:
                     # the two are not the same report.
                     if "caught" in [run_one(copy, t) for t in callers(mutant.name)]:
                         verdict = "flaky"
+                # A verdict that contradicts the tables is one sample too,
+                # and it is the mirror of the survivor's problem: the run is
+                # a file of many tests, and a failure in any one of them
+                # lands on every mutant that file is asked about -- which is
+                # how a mutant with a written reason saying nobody can see
+                # it was once reported caught. What the tables say this
+                # mutant answers is a prediction, and a run against the
+                # prediction is asked a second time; once each way is the
+                # same report as any other that changed its mind.
+                known = reason_for(mutant)
+                unseen = unobservable_for(mutant)
+                if verdict == "caught" and (known or unseen):
+                    if "caught" not in [
+                        run_one(copy, t) for t in callers(mutant.name)
+                    ]:
+                        verdict = "flaky"
                 target.write_text(pristine)
                 where = f"{Path(mutant.path).relative_to(SRC / 'libc')}:{mutant.name}"
                 if mutant.kind == "order":
                     where += f" ({mutant.what})"
-                known = reason_for(mutant)
                 if verdict == "survived" and known:
                     verdict = "same"
-                unseen = unobservable_for(mutant)
                 if verdict == "survived" and unseen:
                     verdict = "unobservable"
                     known = unseen
