@@ -697,6 +697,46 @@ One written answer went out of date the same day: `cfsetispeed` and
 `cfsetospeed` were written down as writing the same storage, which the
 tests have since told apart, so that table entry is gone.
 
+Two days of the tally after that were lying, and how they lied is worth more
+than the numbers. A run that ended without an assertion and without the
+compiler's word was counted as `did not build`, and often it was not: the
+crash reporter writes its report to a file rather than to the terminal when
+its own bookkeeping is stuck -- one stale lock in its database kept every
+later crash silent for two days -- and a buffer lost with the dying process
+takes whatever it was about to say with it. A crash is the suite noticing,
+not evidence of nothing, so `error` now means the compiler or the JIT said
+no -- a line named, or a symbol it could not find -- and everything else
+that fails without an assertion is a crash, whether or not anybody was told.
+
+Four more of the mutants the axis had been counting were not mistakes at
+all, and they came from one line: `errno` is written for two platforms, and
+`get_errno` and `set_errno` each name the accessor in both branches --
+`__errno_location` here, `__error` on Darwin. Two of the four pointed a
+branch this machine runs at a name the linker has never heard of, and were
+counted as not building; two rewrote a branch this machine does not run,
+changed nothing, and were excused by a written reason. Both halves were the
+same misreading: signatures read off the `external_call` make one call's two
+spellings look like two interchangeable calls. A mutant is made only between
+names the linker here answers now -- with the one written-down exception
+standing, `pthread_atfork`, whose name glibc exports with no default
+version and the just-in-time run cannot look up -- and the reason that
+excused the impossible pair is gone with the pair, there being no mistake
+left for it to excuse. What a run forked outlived it too: a waiter blocked
+on a lock the mutant never gave back was found by the copy it was started
+from, which belongs to one worker alone, and killed.
+
+The sixth verdict came out of the two answers that changed their minds.
+`geteuid` pointed at `fork` survived a whole axis once and was caught by the
+rerun; `msgctl` with its two ids exchanged did the same. Both mistakes fork
+a waiter, and a waiter's wrong answer and the assertion that reads it race,
+so one run is one sample. A survivor is asked a second time now, and once
+each way is reported as its own verdict -- `flaky`, which is the suite
+noticing there too, just not every time, and that is worth knowing about
+the test rather than about the call. With that, both axes were asked once
+more on the tree as it stands: five hundred and ninety-four mutants on the
+symbol side, a hundred and ninety-six on the order side, and not one
+survived, hung, flaked, or failed to build.
+
 glibc, for its part, does not come with anything that checks glibc.
 
 ## Next to Rust's `libc`
