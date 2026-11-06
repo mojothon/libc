@@ -1549,19 +1549,27 @@ def test_putwchar_writes_to_a_stdout_made_wide() raises:
             1,
             "the pipe is standard output",
         )
-        assert_true(
-            Int(
-                UInt(
-                    freopen(
-                        string_to_char_ptr(descriptor_one_path()),
-                        string_to_char_ptr("w"),
-                        out,
+        # The second reopen is Linux's to do: it clears an orientation
+        # the first reopen already cleared, and its work is the fd
+        # number, which the reopen insists on re-earning and procfs
+        # answers for. Darwin's descriptor directory does not answer
+        # for a pipe at all, and does not need to -- the first reopen
+        # left this stream unoriented and empty, and the stream's own
+        # descriptor number is 1, which the pipe now is.
+        comptime if not CompilationTarget.is_macos():
+            assert_true(
+                Int(
+                    UInt(
+                        freopen(
+                            string_to_char_ptr(descriptor_one_path()),
+                            string_to_char_ptr("w"),
+                            out,
+                        )
                     )
                 )
+                == Int(UInt(out)),
+                "standard output is reopened on the pipe",
             )
-            == Int(UInt(out)),
-            "standard output is reopened on the pipe",
-        )
         assert_equal(fwide(out, 1), 1, "and the fresh stream turns wide")
         assert_equal(
             Int(putwchar(c_wchar(65))),
