@@ -1,5 +1,4 @@
 from std.memory.alloc import unsafe_alloc
-from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.constant import c_long, c_ptr
@@ -294,11 +293,14 @@ def test_clocks() raises:
     assert_equal(Int(ts[].tv_sec), 0, "a resolution has no seconds in it")
     assert_true(Int(ts[].tv_nsec) > 0, "and is counted in nanoseconds")
 
-    # timespec_get is C11, which Darwin's libSystem only picked up recently.
-    comptime if not CompilationTarget.is_macos():
-        ts[] = timespec()
-        assert_equal(Int(timespec_get(ts, TIME_UTC)), Int(TIME_UTC))
-        assert_true(ts[].tv_sec > 1_700_000_000, "C11 time is now")
+    # `timespec_get` is C11, and Darwin's libSystem has had it since
+    # macOS 11 -- a note from before the runners moved says "recently",
+    # which is a claim about a version nobody runs any more. The question
+    # is asked of both platforms now: the same TIME_UTC, answered with
+    # the same now.
+    ts[] = timespec()
+    assert_equal(Int(timespec_get(ts, TIME_UTC)), Int(TIME_UTC))
+    assert_true(ts[].tv_sec > 1_700_000_000, "C11 time is now")
 
 
 def test_nanosleep() raises:
