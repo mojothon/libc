@@ -19,10 +19,15 @@ the other's symbol and the tests that call it are run. Five answers:
   caught    a test failed, and its assertion is the reason. The suite has
             teeth here.
   crashed   the mutant took the process down without an assertion firing.
-            Noticed, but not by anything written for the purpose. A run that
-            ends in silence is one of these too: the crash reporter writes a
-            dump instead of a message when its own bookkeeping is stuck, and
-            a buffer lost with the process takes the assertion with it.
+            Noticed, but not by anything written for the purpose -- most of
+            these are an exchange of arguments handing a function a buffer
+            it will write through or read past, and the death is the
+            memory's answer, not the test's. A run that ends in silence is
+            one of these too: the crash reporter writes a dump instead of a
+            message when its own bookkeeping is stuck, and a buffer lost
+            with the process takes the assertion with it. A crash is asked
+            a second time, because the same mutant can die on one page
+            boundary and answer on the next.
   hung      a test neither passed nor failed: it stopped answering and the run
             was killed at its timeout. A lock taken and never given back does
             this, and it is worse than a survivor -- nothing after it in that
@@ -1105,6 +1110,19 @@ def main() -> int:
                     if "caught" not in [
                         run_one(copy, t) for t in callers(mutant.name)
                     ]:
+                        verdict = "flaky"
+                if verdict == "crashed":
+                    # A crash is the mutant's own doing most of the time --
+                    # an exchange of arguments that hands a function a read
+                    # -only buffer to write through, or a small one to read
+                    # past -- and that is a death with no page to land on
+                    # but the one the allocator happens to give. Ask again
+                    # before believing it: the same mutant can die on one
+                    # boundary and answer on the next, and the two are not
+                    # the same report.
+                    again = [run_one(copy, t) for t in callers(mutant.name)]
+                    again_verdict = "caught" if "caught" in again else again[0]
+                    if again_verdict != "crashed":
                         verdict = "flaky"
                 target.write_text(pristine)
                 where = f"{Path(mutant.path).relative_to(SRC / 'libc')}:{mutant.name}"
