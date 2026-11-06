@@ -19,6 +19,16 @@ rest is `NOT_YET`: bindings that could be asked something and have not been.
 That list is a debt rather than a failure, and it fails the run only if it
 grows — a new binding with no test is the thing this is for, and a debt that
 counts down is one somebody is paying.
+
+The third way a binding goes unasked is newer, and it is one the plain
+count cannot see: a call inside a `comptime if` that names one platform is
+a question the other platform never asks, and the count reads the same
+text on both platforms. `putwchar` and `timespec_get` were bound on both
+and asked on one, and neither tripwire had anything to pull. The count
+now tracks which guards each call sits under, and a binding whose every
+call sits inside one platform's guard is listed here — with a reason when
+the other platform's C library has no such call, and red when it has
+none.
 """
 
 import importlib.util
@@ -46,6 +56,29 @@ def load(name: str):
 CANNOT_ASK = {
     "pthread_atfork": "glibc exports it only as pthread_atfork@GLIBC_2.2.5 with no default version, and the just-in-time run the suite uses looks the bare name up and finds nothing — a built binary links and answers fine",
     "ioctl": "variadic, and its third argument is the address every request writes through: `external_call` emits a fixed-argument call, which arm64 hands to a variadic callee differently, so the request reads a slot nobody wrote instead",
+}
+
+# Bindings whose every test call sits inside a platform guard, with the
+# reason the other platform is not asked. These are calls the other
+# platform's C library does not have -- a question one platform answers
+# and the other has no name for. This is the check that would have named
+# `putwchar` and `timespec_get` before their macOS runs did: a binding
+# asked only where Darwin is skipped is one Darwin passes over unasked,
+# and the count of asked bindings reads the same text on both platforms
+# and cannot see it. The run fails when one appears here without a
+# reason, and when one of these starts being asked without a guard, so
+# that the list is paid down the way `NOT_YET` was.
+ASKED_ON_ONE_PLATFORM = {
+    "epoll_create": "Linux's epoll has no Darwin half -- the platform answers the same need with kqueue, which is a different call with different answers, so the suite asks this one where it exists",
+    "get_nprocs": "a glibc name for the processors online; Darwin has no such call, and `sysconf` there answers the question under different names",
+    "getauxval": "the auxiliary vector is ELF's, and Darwin's loader keeps no such table for a call to read",
+    "gettid": "Linux's thread id; Darwin names its threads through pthread_threadid_np, which is a different call asking the same question, and this binding is the Linux one",
+    "prlimit": "Linux's resource limits by process id; Darwin has setrlimit and no form of it that takes a pid",
+    "sched_getaffinity": "the CPU mask is Linux's scheduler's idea; Darwin has no affinity mask to ask for",
+    "secure_getenv": "a glibc extension; on Darwin the same getenv answers, and there is no setuid distinction to ask about",
+    "thrd_detach": "C11 threads, which Darwin's libSystem does not provide -- the suite asks these where the library has them",
+    "thrd_equal": "C11 threads, which Darwin's libSystem does not provide -- the suite asks these where the library has them",
+    "tss_create": "C11 threads, which Darwin's libSystem does not provide -- the suite asks these where the library has them",
 }
 
 # Bindings that could be asked something and have not been. This is the list
@@ -108,11 +141,26 @@ def stale_page(names: set[str], asked: list[str], unasked: list[str]) -> list[st
     return wrong
 
 
-def called_by_tests() -> set[str]:
-    """Every name a test calls, with the imports taken out."""
-    text = []
+def called_by_tests() -> dict[str, set[str]]:
+    """Every name a test calls, with the imports taken out, and where.
+
+    The value is the guards the calls sit under, because the count that
+    just says "asked" has been wrong once already: `putwchar` was bound
+    on both platforms and its test was a body inside a
+    `comptime if not ... is_macos():`, so Darwin was handed a call it
+    never made and the count above read the same text on both platforms
+    and saw one question. A call inside a platform guard is a question
+    the other platform does not ask, and a binding whose every call sits
+    inside one is asked on one platform and passed over on the other.
+
+    The kinds are `free` for a call under no guard, `linux` for one
+    under a `comptime if not ... is_macos():`, and `mac` for one under
+    the plain guard.
+    """
+    asked: dict[str, set[str]] = {}
     for path in TESTS:
         lines = path.read_text().splitlines()
+        stack: list[tuple[int, str]] = []
         index = 0
         while index < len(lines):
             line = lines[index]
@@ -123,10 +171,25 @@ def called_by_tests() -> set[str]:
                     depth += lines[index].count("(") - lines[index].count(")")
                 index += 1
                 continue
-            text.append(line)
+            indent = len(line) - len(line.lstrip())
+            while stack and indent <= stack[-1][0]:
+                stack.pop()
+            guard = re.match(r"\s*comptime if (.+):", line)
+            if guard:
+                condition = guard.group(1)
+                if re.search(r"not\s+CompilationTarget\.is_macos", condition):
+                    stack.append((indent, "linux"))
+                elif re.search(r"CompilationTarget\.is_macos", condition):
+                    stack.append((indent, "mac"))
+                else:
+                    stack.append((indent, "free"))
+                index += 1
+                continue
+            kind = stack[-1][1] if stack else "free"
+            for name in re.findall(r"\b(\w+)\s*\(", line):
+                asked.setdefault(name, set()).add(kind)
             index += 1
-    body = "\n".join(text)
-    return set(re.findall(r"\b(\w+)\s*\(", body))
+    return asked
 
 
 # The two files in `tests/` that the suite does not start. `test_main.mojo`
@@ -175,9 +238,28 @@ def main() -> int:
 
     asked = sorted(name for name in names if name in called)
     unasked = sorted(name for name in names if name not in called)
+    linux_only = sorted(
+        name
+        for name in asked
+        if called[name] == {"linux"}
+        and name not in CANNOT_ASK
+        and name not in ASKED_ON_ONE_PLATFORM
+    )
+    mac_only = sorted(
+        name
+        for name in asked
+        if called[name] == {"mac"}
+        and name not in CANNOT_ASK
+        and name not in ASKED_ON_ONE_PLATFORM
+    )
     unexplained = [name for name in unasked if name not in CANNOT_ASK and name not in NOT_YET]
     paid = sorted(
         name for name in (*CANNOT_ASK, *NOT_YET) if name in asked or name not in names
+    )
+    guarded_paid = sorted(
+        name
+        for name in ASKED_ON_ONE_PLATFORM
+        if name not in asked or "free" in called.get(name, set())
     )
     still = [name for name in unasked if name in NOT_YET]
 
@@ -194,6 +276,29 @@ def main() -> int:
     )
     if not still:
         print("  nothing a test could ask is left unasked")
+
+    if linux_only or mac_only:
+        plural = "" if len(linux_only) + len(mac_only) == 1 else "s"
+        print(
+            f"\n  {len(linux_only) + len(mac_only)} binding{plural}"
+            f" asked under a platform guard and nowhere else:"
+        )
+        for name in linux_only:
+            print(f"    {name:34} asked only where Darwin is skipped")
+        for name in mac_only:
+            print(f"    {name:34} asked only under the Darwin guard")
+        print(
+            "  a call inside a platform guard is a question the other"
+            " platform does not ask -- ask both, or say here why one of"
+            " them cannot"
+        )
+        return 1
+    if guarded_paid:
+        print("  *** bindings listed as one-platform-only that both now ask ***")
+        for name in guarded_paid:
+            print(f"    {name}")
+        print("  take them out of the list, so that the count stays honest")
+        return 1
 
     orphans, unstarted = unrun_tests()
     if orphans:
