@@ -102,7 +102,54 @@ NOT_YET = {}
 STATED_ASKED = re.compile(
     r"(\d+) bindings are asked something, and the (\d+) that are not"
 )
+STATED_ONE_PLATFORM = re.compile(
+    r"Linux asks (\d+) bindings that Darwin passes over, and Darwin (\d+)"
+)
 BACKTICKED = re.compile(r"`([\w.]+)`")
+
+
+def stale_one_platform_page(
+    names: set[str],
+    linux_guarded: list[str],
+    mac_guarded: list[str],
+) -> list[str]:
+    """Where `docs/modules.md` and this file disagree about the one-platform list.
+
+    The reasons for the ten live in the script, but the page is where a
+    reader looks, and prose about calls is prose about state: the counts
+    it states have to be the ones counted here, and every call it names
+    as one-platform has to still be one.
+    """
+    text = (ROOT / "docs" / "modules.md").read_text()
+    start = text.find("## What only one platform asks")
+    if start < 0:
+        return ["no longer has a section saying what only one platform asks"]
+    end = text.find("\n## ", start + 1)
+    section = text[start:] if end < 0 else text[start:end]
+
+    wrong = []
+    stated = {name: "linux" for name in linux_guarded}
+    stated.update({name: "mac" for name in mac_guarded})
+    named = set()
+    for token in BACKTICKED.findall(section):
+        call = token.rsplit(".", 1)[-1]
+        if call in stated:
+            named.add(call)
+    for call in sorted(set(stated) - named):
+        wrong.append(f"the page stops naming {call}, which is one-platform still")
+    said = STATED_ONE_PLATFORM.search(section)
+    if said is None:
+        wrong.append("no longer says how many bindings one platform asks alone")
+    else:
+        if int(said.group(1)) != len(linux_guarded):
+            wrong.append(
+                f"says Linux asks {said.group(1)} alone, and {len(linux_guarded)} are"
+            )
+        if int(said.group(2)) != len(mac_guarded):
+            wrong.append(
+                f"says Darwin asks {said.group(2)} alone, and {len(mac_guarded)} are"
+            )
+    return wrong
 
 
 def stale_page(names: set[str], asked: list[str], unasked: list[str]) -> list[str]:
@@ -252,6 +299,10 @@ def main() -> int:
         and name not in CANNOT_ASK
         and name not in ASKED_ON_ONE_PLATFORM
     )
+    linux_guarded = sorted(
+        name for name in asked if called[name] == {"linux"}
+    )
+    mac_guarded = sorted(name for name in asked if called[name] == {"mac"})
     unexplained = [name for name in unasked if name not in CANNOT_ASK and name not in NOT_YET]
     paid = sorted(
         name for name in (*CANNOT_ASK, *NOT_YET) if name in asked or name not in names
@@ -314,6 +365,7 @@ def main() -> int:
 
     print()
     page = stale_page(names, asked, unasked)
+    page += stale_one_platform_page(names, linux_guarded, mac_guarded)
     if page:
         print("  *** docs/modules.md and this file disagree ***")
         for line in page:

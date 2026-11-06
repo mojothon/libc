@@ -164,3 +164,32 @@ the call wrote. The reasons on this page are claims, and claims get tested.
 each. Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
+
+## What only one platform asks
+
+A test whose calls sit inside a `comptime if` naming one platform asks its
+question there and nowhere else, and the count of asked bindings reads the
+same text on both platforms -- which is how `putwchar` and `timespec_get`
+were bound on both and asked on one without a tripwire to pull. The count
+knows which guards the calls sit under now, and a binding whose every call
+sits inside one platform's guard is listed with the reason the other
+platform is not asked. All ten have the same shape of an answer: the
+other platform's C library has no such call.
+
+- `epoll_create`, `gettid`, `prlimit` and `sched_getaffinity` are Linux's
+  own -- epoll has no half on Darwin, which answers the same need with
+  kqueue, and the thread id, the pid form of the resource limits and the
+  scheduler's CPU mask are the Linux kernel's ideas.
+- `getauxval` reads the auxiliary vector, which is ELF's, and Darwin's
+  loader keeps no such table.
+- `get_nprocs` and `secure_getenv` are glibc names; Darwin answers the
+  processor question through `sysconf` under different names, and the same
+  `getenv` there with no setuid distinction to ask about.
+- `thrd_detach`, `thrd_equal` and `tss_create` are C11 threads, which
+  Darwin's libSystem does not provide.
+
+Linux asks 10 bindings that Darwin passes over, and Darwin 0 that Linux
+passes over. Both numbers are read back out of this page too, and so is
+every call named here: the page fails the run when a binding goes
+one-platform without a reason, and when one of these starts being asked
+without a guard, which is the list being paid.
