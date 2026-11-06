@@ -1,0 +1,51 @@
+name: Mutation sample
+
+# `scripts/check-tests.py` asks that every binding be called by a test. It
+# cannot ask whether the answer was looked at, and a binding calling the
+# wrong symbol passes everything on this list just as quietly -- that took
+# `gamma` three releases to notice. `scripts/mutation-probe.py` is the
+# witness for it: point a binding at a sibling's symbol (or hand two
+# arguments to C the other way round), and see whether any test fails.
+#
+# The whole sweep is an evening's work and not CI's to pay for, so this runs
+# a sample: the same mutants every run -- one seed, spread over the modules
+# rather than taken from the front -- so two runs of this job answer the
+# same question and can be compared. `--strict` makes a survivor, a hang,
+# or a table reason whose mutant is now caught fail the job; `flaky` does
+# not, the suite having caught it on the asking again, but the note is in
+# the log for whoever wants it. A mutant that reaches the sample and
+# survives here is a test with no teeth where a binding is wrong -- the
+# exact shape of the `gamma` bug.
+#
+# Weekly and manual, not per push: the answer changes only when the tests
+# or the bindings do, and a push job this heavy would be paid on every
+# commit for a difference the lint job's `check-tables` already watches.
+
+on:
+  schedule:
+    # Mondays, 04:23 UTC -- an odd minute, so the cron crush at the top of
+    # the hour is somebody else's queue.
+    - cron: "23 4 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: mutation-sample
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sample:
+    name: Mutation sample (seed 1)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.11.0
+        with:
+          cache: true
+      - name: Ask the symbol axis
+        run: python3 scripts/mutation-probe.py --kind symbol --limit 16 --jobs 4 --strict
+      - name: Ask the order axis
+        run: python3 scripts/mutation-probe.py --kind order --limit 16 --jobs 4 --strict
