@@ -39,13 +39,13 @@ jobs:
   sample:
     name: Mutation sample (seed 1)
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: prefix-dev/setup-pixi@v0.11.0
         with:
           cache: true
       - name: Ask the symbol axis
-        run: python3 scripts/mutation-probe.py --kind symbol --limit 16 --jobs 4 --strict
+        run: python3 scripts/mutation-probe.py --kind symbol --limit 48 --jobs 4 --strict
       - name: Ask the order axis
-        run: python3 scripts/mutation-probe.py --kind order --limit 16 --jobs 4 --strict
+        run: python3 scripts/mutation-probe.py --kind order --limit 48 --jobs 4 --strict
