@@ -22,6 +22,7 @@ usable, not to be a particular value, because a value in a test is a value
 that has to be kept in step with the one in the module.
 """
 from std.memory.alloc import unsafe_alloc
+from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.constant import c_size_t, c_uint
@@ -81,10 +82,17 @@ def test_every_signed_min_is_one_below_the_negated_max() raises:
 
 
 def test_the_choices_that_could_have_gone_either_way() raises:
-    """Where C leaves something to the implementation, both took the same side.
+    """Where C leaves something to the implementation, each machine said
+    which side it took — and they did not all say the same thing: `char`
+    is signed where x86-64 compiles it and unsigned on the ARM ABI, which
+    is why `CHAR_MIN` is 0 there and `SCHAR_MIN` here.
     """
-    assert_equal(Int64(CHAR_MIN), Int64(SCHAR_MIN), "char is signed")
-    assert_equal(Int64(CHAR_MAX), Int64(SCHAR_MAX))
+    comptime if CompilationTarget.is_arm():
+        assert_equal(Int64(CHAR_MIN), 0, "char is unsigned on the ARM ABI")
+        assert_equal(Int64(CHAR_MAX), 255)
+    else:
+        assert_equal(Int64(CHAR_MIN), Int64(SCHAR_MIN), "char is signed")
+        assert_equal(Int64(CHAR_MAX), Int64(SCHAR_MAX))
     assert_equal(
         Int64(LONG_MAX), Int64(LLONG_MAX), "long is as wide as long long"
     )
