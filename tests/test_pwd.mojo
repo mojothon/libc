@@ -113,6 +113,16 @@ def test_whoever_is_running_is_in_the_database() raises:
     assert_false(is_null(row), "the user running this is a user")
     var name = row[].pw_name()
     assert_true(name.byte_length() > 0, "and has a name")
+    # The uid in the row is the one that was asked for, and that is a
+    # number nothing here chose: a row read at an offset one field away
+    # answers with a different number, and one user it happens to agree
+    # with -- uid 0 keeps the same answer as the group that owns it -- is
+    # the reason this is asked of the user running this and not of root.
+    assert_equal(
+        Int(row[].pw_uid()),
+        Int(getuid()),
+        "and the row carries the number it was asked for",
+    )
 
     var again = getpwuid(UInt32(getuid()))
     assert_equal(again[].pw_name(), name, "asking twice says the same")

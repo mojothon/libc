@@ -60,6 +60,15 @@ tell them apart -- and a test that passes `getuid()` for both has not.
 suite run. The sample is spread over the modules rather than taken from the
 front, and it is the same sample every run so two runs can be compared.
 
+`--kind constant` asks it of the numbers the layouts are spelled with: a
+`comptime DIRENT_INO_OFFSET = 0` made 1, a `DIRENT_BYTES` made one byte
+longer. This is the mistake shape `gl_flags` wore for three releases -- the
+right size and the wrong value, read from the wrong place and believed --
+and the question is whether anything in `tests/` notices before a caller
+does. The constants are the ones `check-layouts` maps to C members, and the
+test files asked are the ones importing that module, plus `test_layout`,
+which is where the offsets are asserted.
+
 `--jobs` asks several mutants at once, each against its own copy of the tree.
 The suite is what takes the time and it is mostly one process compiling, so
 this is the only way a sweep of the whole axis is an evening's work rather than
@@ -397,6 +406,7 @@ class Mutant:
     into: str = ""
     first: int = -1
     second: int = -1
+    package: str = ""
 
 
 # The words a parameter can be prefixed with. They say what a caller may do
@@ -501,6 +511,21 @@ def reverse_arguments(
 def apply(target: Path, mutant: Mutant) -> bool:
     """Make the mistake in `target`, and say whether it landed."""
     text = target.read_text()
+    if mutant.kind == "constant":
+        # The constant is a line of the file rather than a call inside a
+        # def, so it is found by its `comptime` line and its nth literal --
+        # which branch's literal is the mutant's to say.
+        found = re.search(rf"(?m)^comptime {re.escape(mutant.name)}\b.*$", text)
+        if found is None:
+            return False
+        line = found.group(0)
+        numbers = list(re.finditer(r"0x[0-9a-fA-F]+|\d+", line))
+        if mutant.first >= len(numbers):
+            return False
+        literal = numbers[mutant.first]
+        changed = line[: literal.start()] + mutant.into + line[literal.end() :]
+        target.write_text(text[: found.start()] + changed + text[found.end() :])
+        return True
     span = def_block(text, mutant.name)
     if span is None:
         return False
@@ -762,6 +787,35 @@ def reason_for(mutant: Mutant) -> str:
     return table.get(key) or table.get(reverse_key(key), "")
 
 
+# Test files that are entries rather than tests: the runner, the two
+# built-package checks, and the file that is nothing but imports. A
+# constant is asked of the files importing its module, and none of these
+# imports anything for its own sake.
+NOT_UNITS = {"test_main.mojo", "test_smoke.mojo", "test_atfork.mojo", "test_import_all.mojo"}
+
+
+def targets(mutant: Mutant) -> list[Path]:
+    """Which test files get asked about this mutant.
+
+    A binding mutant is asked of the files whose bodies call it. A layout
+    constant has no callers to find: what it is for shows in the module's
+    own tests, so those are the files that import the module, plus
+    `test_layout`, which is where the offsets are asserted against C.
+    """
+    if mutant.kind != "constant":
+        return callers(mutant.name)
+    wanted = f"from {mutant.package} import"
+    hits = [
+        path
+        for path in TESTS
+        if path.name not in NOT_UNITS and wanted in path.read_text()
+    ]
+    layout = ROOT / "tests" / "test_layout.mojo"
+    if layout not in hits:
+        hits.append(layout)
+    return hits
+
+
 def unobservable_for(mutant: Mutant) -> str:
     """The reason no defined observation separates this one, from either end."""
     if mutant.kind != "symbol":
@@ -847,7 +901,65 @@ def build(kind: str) -> list[Mutant]:
         return given if given.is_absolute() else ROOT / given
 
     mutants: list[Mutant] = []
-    if kind == "symbol":
+    if kind == "constant":
+        layouts = load("check-layouts")
+        for (package, const), _member in sorted(layouts.OFFSETS.items()):
+            where = ROOT / "src" / package.replace(".", "/")
+            source, line = None, None
+            for path in sorted(where.glob("*.mojo")):
+                told = next(
+                    (
+                        line
+                        for line in path.read_text().splitlines()
+                        if re.match(rf"comptime {re.escape(const)}\b", line)
+                    ),
+                    None,
+                )
+                if told is not None:
+                    source, line = path, told
+                    break
+            if line is None:
+                continue
+            # How far the mistake moves the read depends on how the constant
+            # is read. A reader that goes through `_member(NAME)` takes whole
+            # words -- `self._bytes[offset // 8]` -- so one byte of mistake
+            # lands inside the word it already read, and the value is the
+            # same; the mistake that means something there is a whole field
+            # away. `_text_at(NAME)` reaches the same `_member` through its
+            # own parameter, which is why the search is for the constant
+            # either place. A reader at a byte offset moves with one.
+            body = source.read_text() if source else ""
+            word_read = re.search(rf"_member\(\s*{const}\b|_text_at\(\s*{const}\b", body)
+            step = 8 if word_read else 1
+            for index, literal in enumerate(
+                re.finditer(r"0x[0-9a-fA-F]+|\d+", line)
+            ):
+                old = int(literal.group(0), 0)
+                moved = old + step
+                into = hex(moved) if literal.group(0).startswith("0x") else str(moved)
+                # A value written `A if is_macos() else B` is two mistakes
+                # in one line, and the report says which half answered.
+                # Only the half this machine reads is made: the other is a
+                # number no run here ever adds up, and asking it of Darwin
+                # is what the macOS job is for.
+                branch = ""
+                if re.search(r"if .*is_macos", line):
+                    if (index == 0) != (sys.platform == "darwin"):
+                        continue
+                    branch = " (macOS)" if index == 0 else " (elsewhere)"
+                mutants.append(
+                    Mutant(
+                        str(source),
+                        const,
+                        "constant",
+                        f"{literal.group(0)} -> {into}{branch}",
+                        symbol=literal.group(0),
+                        into=into,
+                        first=index,
+                        package=package,
+                    )
+                )
+    elif kind == "symbol":
         groups: dict[tuple[str, str, tuple[str, ...]], list[tuple[str, str]]] = {}
         for path, name, symbol, _nargs, ret, argtypes in every:
             groups.setdefault((str(here(path)), ret, tuple(argtypes)), []).append(
@@ -956,7 +1068,7 @@ def main() -> int:
     parser.add_argument(
         "--kind",
         default="symbol",
-        choices=("symbol", "order"),
+        choices=("symbol", "order", "constant"),
         help="wrong function, or two arguments the other way round",
     )
     parser.add_argument(
@@ -1083,7 +1195,7 @@ def main() -> int:
                         print(f"  ?? {mutant.name}: could not be mutated")
                     return
                 said_text = ""
-                outs = [run_one(copy, test) for test in callers(mutant.name)]
+                outs = [run_one(copy, test) for test in targets(mutant)]
                 verdict = "caught" if "caught" in outs else outs[0]
                 if verdict == "survived":
                     # A survivor is the one answer that says a test is
@@ -1093,7 +1205,7 @@ def main() -> int:
                     # run is one sample. Ask again before believing it --
                     # survived twice is a gap, once each way is a race, and
                     # the two are not the same report.
-                    if "caught" in [run_one(copy, t) for t in callers(mutant.name)]:
+                    if "caught" in [run_one(copy, t) for t in targets(mutant)]:
                         verdict = "flaky"
                 # A verdict that contradicts the tables is one sample too,
                 # and it is the mirror of the survivor's problem: the run is
@@ -1108,7 +1220,7 @@ def main() -> int:
                 unseen = unobservable_for(mutant)
                 if verdict == "caught" and (known or unseen):
                     if "caught" not in [
-                        run_one(copy, t) for t in callers(mutant.name)
+                        run_one(copy, t) for t in targets(mutant)
                     ]:
                         verdict = "flaky"
                 if verdict == "crashed":
@@ -1120,13 +1232,13 @@ def main() -> int:
                     # before believing it: the same mutant can die on one
                     # boundary and answer on the next, and the two are not
                     # the same report.
-                    again = [run_one(copy, t) for t in callers(mutant.name)]
+                    again = [run_one(copy, t) for t in targets(mutant)]
                     again_verdict = "caught" if "caught" in again else again[0]
                     if again_verdict != "crashed":
                         verdict = "flaky"
                 target.write_text(pristine)
                 where = f"{Path(mutant.path).relative_to(SRC / 'libc')}:{mutant.name}"
-                if mutant.kind == "order":
+                if mutant.kind != "symbol":
                     where += f" ({mutant.what})"
                 if verdict == "survived" and known:
                     verdict = "same"

@@ -24,7 +24,7 @@ from libc.dirent import (
 from libc.fcntl import open
 from libc.stdlib import free
 from libc.string import strcmp
-from libc.sys.stat import mkdir
+from libc.sys.stat import Stat, mkdir, stat
 from libc.unistd import close, rmdir, unlink
 from libc.utils import is_null, null_ptr, string_to_char_ptr
 
@@ -47,6 +47,15 @@ def test_opendir_readdir() raises:
     var seen_dot = False
     var seen_dotdot = False
     var count = 0
+    # The inode in the `.` entry is the directory's own, which `stat`
+    # answers independently: two readers of one fact, so a layout constant
+    # that names the wrong byte gives a number that disagrees with the one
+    # the kernel wrote. Comparing two `readdir` reads against each other
+    # would not: they read through the same constant, and would agree on
+    # being wrong.
+    var about = unsafe_alloc[Stat](1)
+    assert_equal(stat(path, about), 0, "and /tmp can be asked about, so")
+    var seen_ino = False
     while True:
         var entry = readdir(dirp)
         if is_null(entry):
@@ -57,8 +66,15 @@ def test_opendir_readdir() raises:
         )
         if Int(strcmp(name, dot)) == 0:
             seen_dot = True
+            assert_equal(
+                Int(entry.unsafe_offset(0)[].ino()),
+                Int(about[].ino()),
+                "the inode it carries is the one stat gives",
+            )
+            seen_ino = True
         if Int(strcmp(name, dotdot)) == 0:
             seen_dotdot = True
+    assert_true(seen_ino, "and the entry it was read from was there")
 
     assert_true(count > 0, "and it has entries in it, and")
     assert_true(seen_dot, "the one every directory has, and")
