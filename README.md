@@ -8,7 +8,7 @@ Every C header is exposed as a Mojo sub-package — `libc.math`, `libc.string`,
 one place and your code reads like the C it replaces.
 
 - **Mojo:** `>=1.1.0,<2`
-- **Platforms:** `linux-64`, `osx-arm64`
+- **Platforms:** `linux-64`, `linux-aarch64`, `osx-arm64`
 - **License:** MIT
 
 ## Install

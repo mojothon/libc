@@ -4,7 +4,7 @@
 | --- | --- |
 | `libc.__version__` | `0.14.0` |
 | Mojo | `>=1.1.0,<2` |
-| Platforms | `linux-64`, `osx-arm64` |
+| Platforms | `linux-64`, `linux-aarch64`, `osx-arm64` |
 
 ```mojo
 from libc import __version__

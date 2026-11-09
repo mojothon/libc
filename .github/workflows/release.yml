@@ -22,7 +22,12 @@ jobs:
       matrix:
         # `macos-14` retired as a runner image on 2026-11-02 and answers
         # nothing; `macos-15` is the same Apple Silicon, one Darwin up.
-        os: [ubuntu-latest, macos-15]
+        # The ARM runner is the third machine the constants were asked
+        # of, and its subdir -- `linux-aarch64` -- is one the workspace
+        # has declared since they were: a release without it ships the
+        # numbering the ARM ABI took the other side of as if there were
+        # one answer.
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-15]
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
