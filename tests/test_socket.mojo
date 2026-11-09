@@ -387,6 +387,18 @@ def test_sendto_and_recvfrom() raises:
         here_port,
         "and it says which port it came from",
     )
+    # The port alone does not catch a read one byte along the address: a
+    # write one byte along puts 0x7F in the top byte the kernel reads,
+    # which is 127.0.0.0 -- still inside the range the kernel treats as
+    # this host's loopback, so every call agrees with the mistake. What
+    # the kernel writes back is the address as it took it, at the true
+    # place; reading that through the shifted constant is what separates
+    # the two, and 127.0.0.1 is the only answer it may give.
+    assert_equal(
+        Int(whence.unsafe_offset(0)[].inet_address().s_addr),
+        Int(loopback_address().s_addr),
+        "and it says which address it came from",
+    )
 
     going.unsafe_free()
     coming.unsafe_free()

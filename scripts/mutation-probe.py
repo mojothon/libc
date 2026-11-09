@@ -615,17 +615,17 @@ SAME_CONSTANT = {
     "SYSINFO_LOADS": "load averages, the machine's own running count; no second source names them at the moment of the call",
     "SYSINFO_TOTALSWAP": "total swap, which grows and shrinks as swap is configured; the free count beside it is bounded by it, but a bound is not an identity and the misaligned reader can satisfy it too",
     "SYSINFO_PROCS": "processes running at the moment of the call, a number that moves while it is being read; the misaligned reader answers another counter that is also plausible",
-    "STATVFS_BSIZE": "the filesystem's preferred block size, reported by the filesystem itself; the neighbour is `f_frsize`, which is usually the same number, so even the comparison agrees with the mistake",
-    "STATVFS_FRSIZE": "the fundamental block size the filesystem reports; no call answers it twice",
-    "STATVFS_BLOCKS": "total blocks the filesystem reports now, a number that moves as the machine works; the misaligned reader lands on another occupancy counter",
-    "STATVFS_BFREE": "free blocks now; the total is asked beside it but free is the filesystem's own count",
-    "STATVFS_BAVAIL": "blocks free to unprivileged users now, a counter that moves; the misaligned reader answers `f_bfree`, which bounds it",
-    "STATVFS_FILES": "total file slots the filesystem reports; no second source",
-    "STATVFS_FFREE": "free file slots now, moving as the machine works",
-    "STATVFS_FAVAIL": "file slots free to unprivileged users, moving; bounds are not identities",
-    "STATVFS_FLAG": "mount flags, a bitmap the mount chose; the misaligned reader answers another word of the same struct and nothing here can name the true one",
-    "STATVFS_FSID": "the filesystem id, opaque by definition; two reads of the same field agree with a mistake, since both go through the one constant",
-    "STATVFS_NAMEMAX": "maximum filename length, reported by the filesystem; the neighbour answers another limit of the same kind",
+    "STATVFS_BSIZE_OFFSET": "the filesystem's preferred block size, reported by the filesystem itself; the neighbour is `f_frsize`, which is usually the same number, so even the comparison agrees with the mistake",
+    "STATVFS_FRSIZE_OFFSET": "the fundamental block size the filesystem reports; no call answers it twice",
+    "STATVFS_BLOCKS_OFFSET": "total blocks the filesystem reports now, a number that moves as the machine works; the misaligned reader lands on another occupancy counter",
+    "STATVFS_BFREE_OFFSET": "free blocks now; the total is asked beside it but free is the filesystem's own count",
+    "STATVFS_BAVAIL_OFFSET": "blocks free to unprivileged users now, a counter that moves; the misaligned reader answers `f_bfree`, which bounds it",
+    "STATVFS_FILES_OFFSET": "total file slots the filesystem reports; no second source",
+    "STATVFS_FFREE_OFFSET": "free file slots now, moving as the machine works",
+    "STATVFS_FAVAIL_OFFSET": "file slots free to unprivileged users, moving; bounds are not identities",
+    "STATVFS_FLAG_OFFSET": "mount flags, a bitmap the mount chose; the misaligned reader answers another word of the same struct and nothing here can name the true one",
+    "STATVFS_FSID_OFFSET": "the filesystem id, opaque by definition; two reads of the same field agree with a mistake, since both go through the one constant",
+    "STATVFS_NAMEMAX_OFFSET": "maximum filename length, reported by the filesystem; the neighbour answers another limit of the same kind",
     "AIOCB_OFFSET": "the offset field is the caller's own bookkeeping: what was written is only checked by the kernel doing the read, and a test asserting the struct agrees with itself proves nothing",
     "AIOCB_REQPRIO": "the priority hint the caller wrote; the kernel is free to ignore it, so no behaviour separates a right read from a wrong one",
     "SIGINFO_ERRNO_OFFSET": "`si_errno` is zero unless the signal's generator wrote an error there, and nothing this suite does writes one; zero is also what a misaligned read of the padding beside it answers",
@@ -997,7 +997,37 @@ def build(kind: str) -> list[Mutant]:
                 rf"_member\(\s*{const}\b|_text_at\(\s*{const}\b|_u64\(\s*{const}\b",
                 body,
             )
-            step = 8 if word_read else 1
+            if not word_read and re.search(rf"_at\(\s*{const}\b", body):
+                # `_at` is a name two files use for different mechanics: the
+                # socket one reads a whole slot (`self._slots[off // 8]`,
+                # same as `_member` and `_u64` elsewhere), the utsname one
+                # walks bytes looking for the NUL. What settles it is the
+                # definition in the file the constant lives in.
+                at_def = re.search(
+                    r"(?s)def _at\(.*?(?=\n    def |\n\ndef |\nstruct |\Z)",
+                    body,
+                )
+                word_read = bool(at_def and "// 8" in at_def.group(0))
+            u32_read = re.search(rf"_u32\(\s*{const}\b", body)
+            step = 1
+            if word_read:
+                step = 8
+            elif u32_read:
+                # `_u32` moves with the slot width of the struct it belongs
+                # to. Stat's slots are 64 bits, so the unaligned remainder
+                # really shifts and a byte of mistake is a byte of
+                # different bytes. Socketaddr's slots are 16 bits, and its
+                # `_u32` is `self._slots[off // 2]` beside the next half --
+                # a mistake of one lands inside the half it already read,
+                # and only a whole address moves the read. The nearest
+                # slot declaration above the reader is the struct it
+                # belongs to.
+                grain = None
+                for declared in re.finditer(
+                    r"_slots: Array\[(\w+)", body[: u32_read.start()]
+                ):
+                    grain = declared.group(1)
+                step = 4 if grain == "UInt16" else 1
             for index, literal in enumerate(
                 re.finditer(r"0x[0-9a-fA-F]+|\d+", line)
             ):
@@ -1090,7 +1120,7 @@ def build(kind: str) -> list[Mutant]:
 
 
 def check_tables() -> int:
-    """Every reason in the two tables still has a mutant to be a reason about."""
+    """Every reason in the tables still has a mutant to be a reason about."""
     stale = []
     for kind, table in (
         ("symbol", SAME_ANSWER),
@@ -1106,12 +1136,23 @@ def check_tables() -> int:
             for key in table
             if key not in keys and reverse_key(key) not in keys
         ]
+    # The constants' table is keyed by the constant's own name, and the
+    # name is the whole of it: twice now a family was written without the
+    # `_OFFSET` ending it really carries, and the reason sat there being
+    # right about a mutant the sweep had already named differently. The
+    # build is the spelling to agree with.
+    stale += [
+        ("constant", name)
+        for name in SAME_CONSTANT
+        if name not in {mutant.name for mutant in build("constant")}
+    ]
 
     if not stale:
         print(
             f"all {len(SAME_ANSWER)} symbol, {len(SAME_ORDER)} order and"
             f" {len(NO_OBSERVATION)} unobservable reasons are about pairs that"
-            " can still be made, each read both ways round"
+            " can still be made, each read both ways round; the constants'"
+            f" table names {len(SAME_CONSTANT)} that can still be made too"
         )
         return 0
 

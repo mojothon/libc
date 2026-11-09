@@ -33,6 +33,7 @@ from libc.unistd import (
     close,
     getegid,
     geteuid,
+    getuid,
     getgroups,
     rmdir,
     symlink,
@@ -92,6 +93,16 @@ def test_chmod_and_fchmodat() raises:
         st.unsafe_offset(0)[].mode() & 0o777,
         0o600,
         "the mode is the one that was asked for",
+    )
+    # This file was made by whoever is running the test, and that is a
+    # number nothing here chose -- unlike `/etc/hosts`, whose owner being
+    # root means a read that lands on the high bytes of the uid answers
+    # zero either way. The user id is the one field where the runner is
+    # the independent fact.
+    assert_equal(
+        Int(st.unsafe_offset(0)[].uid()),
+        Int(getuid()),
+        "the owner is the one running this",
     )
 
     assert_equal(
