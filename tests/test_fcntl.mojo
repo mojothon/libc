@@ -148,6 +148,7 @@ def test_open_with_the_flags() raises:
         get_errno() == ENOENT,
         "and the refusal is the one that names what was asked",
     )
+    _ = unlink(nowhere)
 
     # O_EXCL on a file that is already there is answered with EEXIST, and
     # errno is the number this platform uses.

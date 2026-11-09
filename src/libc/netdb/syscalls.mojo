@@ -6,17 +6,7 @@
 from std.ffi import external_call
 from std.sys import CompilationTarget
 
-from libc.constant import (
-    AI_ADDRCONFIG,
-    AI_ALL,
-    AI_CANONNAME,
-    AI_NUMERICHOST,
-    AI_PASSIVE,
-    AI_V4MAPPED,
-    c_ptr,
-    c_size_t,
-    c_ushort,
-)
+from libc.constant import c_ptr, c_size_t, c_ushort
 from libc.network import htons, ntohs
 from libc.utils import char_ptr_to_string, is_null, null_ptr
 
@@ -25,7 +15,13 @@ from libc.utils import char_ptr_to_string, is_null, null_ptr
 # both platforms and the other four are not: glibc numbers them from 1 in
 # bit order, XNU in an order of its own, so `AI_NUMERICSERV` is 1024 here
 # and 4096 there.
+comptime AI_PASSIVE: Int32 = 1
+comptime AI_CANONNAME: Int32 = 2
+comptime AI_NUMERICHOST: Int32 = 4
 comptime AI_NUMERICSERV: Int32 = 4096 if CompilationTarget.is_macos() else 1024
+comptime AI_ALL: Int32 = 256 if CompilationTarget.is_macos() else 16
+comptime AI_ADDRCONFIG: Int32 = 1024 if CompilationTarget.is_macos() else 32
+comptime AI_V4MAPPED: Int32 = 2048 if CompilationTarget.is_macos() else 8
 
 
 # What went wrong when `getaddrinfo` answered something other than 0. The
