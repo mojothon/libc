@@ -167,7 +167,12 @@ def test_a_trap_is_turned_on_and_then_off() raises:
     on would end the program the next time a division by zero or an
     overflow happens anywhere in it, tests included.
     """
-    comptime if not CompilationTarget.is_macos():
+    # x86-64 only, the same way the mode round-trip above is: aarch64's
+    # glibc answers to `feenableexcept` without making anything trap —
+    # `fegetexcept` keeps answering 0 there — and Darwin has no
+    # `feenableexcept` at all. The binding stays; the assertion waits for
+    # a machine whose answer agrees.
+    comptime if CompilationTarget.is_x86():
         var was = fegetexcept()
 
         _ = feenableexcept(FE_INVALID)
