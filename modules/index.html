@@ -594,6 +594,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#what-the-built-form-asks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the built form asks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-only-one-platform-asks" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -708,6 +719,17 @@
     <span class="md-ellipsis">
       
         What the suite does not ask
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-built-form-asks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the built form asks
       
     </span>
   </a>
@@ -1184,8 +1206,8 @@ already own; see the note at the top of <code>src/libc/stdio/syscalls.mojo</code
 structs the ABI actually passes; <code>long double complex</code> is left out because
 Mojo has no 80-bit type.</p>
 <h2 id="what-the-suite-does-not-ask">What the suite does not ask<a class="headerlink" href="#what-the-suite-does-not-ask" title="Permanent link">&para;</a></h2>
-<p>Two bindings are not asked anything, and every one of them has a reason that
-is about the call rather than about the suite:</p>
+<p>One binding is not asked anything, and the reason is about the call rather
+than about the suite:</p>
 <ul>
 <li><code>ioctl</code> is variadic, and its third argument is the address that nearly every
   request writes its answer through. <code>external_call</code> emits a call whose
@@ -1194,10 +1216,8 @@ is about the call rather than about the suite:</p>
   nobody wrote. <code>FIONREAD</code> through this binding answers 0 on Apple silicon and
   leaves the integer it was asked about untouched. It is the same wall that
   makes the call that opens a file here be openat rather than open.</li>
-<li><code>pthread_atfork</code> registers a fork handler that the just-in-time run this
-  suite uses cannot resolve; a built binary links and answers fine.</li>
 </ul>
-<p>None of them is known to be broken; they are simply not asked.</p>
+<p>It is not known to be broken; it is simply not asked.</p>
 <p>The wide putwchar call used to be on this list, on the reading that a fork only hands a
 child the stream the suite has already oriented. That was wrong twice over:
 the C library exports its standard output as a variable that the dynamic
@@ -1206,10 +1226,20 @@ pointed at whatever descriptor 1 holds. A child that points descriptor 1 at
 a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.</p>
-<p>1059 bindings are asked something, and the 2 that are not have a reason
-each. Both numbers are read back out of this page by
+<p>1060 bindings are asked something, and the 1 that is not has a reason.
+Both numbers are read back out of this page by
 <code>scripts/check-tests.py</code>, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.</p>
+<h2 id="what-the-built-form-asks">What the built form asks<a class="headerlink" href="#what-the-built-form-asks" title="Permanent link">&para;</a></h2>
+<p><code>pthread_atfork</code> registers the three fork handlers and answers 0, and no
+test of this suite can ask it: the just-in-time run every test goes
+through looks the bare name up and finds nothing, glibc exporting it with
+no default version -- <code>Symbols not found: [ pthread_atfork ]</code>, the run
+dead on the lookup. A binary built out of this source links it, which the
+answer beside the suite had been claiming on trust. The claim is a test
+now: <code>tests/test_atfork.mojo</code> registers three no-op handlers and takes
+the 0, and the recipe builds it first and runs the binary -- the one form
+the question can be asked in, and the one claim the asking retired.</p>
 <h2 id="what-only-one-platform-asks">What only one platform asks<a class="headerlink" href="#what-only-one-platform-asks" title="Permanent link">&para;</a></h2>
 <p>A test whose calls sit inside a <code>comptime if</code> naming one platform asks its
 question there and nowhere else, and the count of asked bindings reads the
