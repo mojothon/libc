@@ -849,6 +849,21 @@ numbers on one line and runs CI on both. Rust supports more platforms than
 two, and this supports two and proves both — which is the trade, stated
 as the trade rather than as a win.
 
+LLVM's libc is the other project building a libc as source, and it is
+building rather than binding: nothing of the platform's C is under it,
+every entry point is an implementation its tree compiles, and the
+freestanding start it grew from still shows. What a platform gets is a
+list — `libc/config/linux/x86_64/entrypoints.txt`, the last component of
+each `libc.src.` line, read here on the 8th of November 2026 and counting
+1595; the Darwin arm64 list counts 729 by the same rule. The gap between
+the two numbers is the honest report of a libc written from scratch:
+Darwin's list is short because the work is not done there, not because
+Darwin lacks the calls. This binds what the platform already has, and
+the two meet in 777 names on Linux and 229 on Darwin. The list per
+platform is the same shape of answer as Rust's `cfg`: what exists here
+is written down one platform at a time, and the other platform's answer
+is a different file.
+
 ## One thing that is awkward, and said out loud
 
 Mojo's pointers are non-null by design: `Bool(ptr)` is refused, and the
