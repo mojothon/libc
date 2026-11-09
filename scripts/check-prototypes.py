@@ -42,6 +42,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src" / "libc"
 
+# `comptime` aliases a `write` is asked by, spelled beside the binding: the
+# machine that compiles one branch gets one symbol, and the prototype every
+# branch means is `write`'s — the alias exists because aarch64's glibc keeps
+# a second spelling of the same address, not because the prototype differs.
+STRING_ALIASES = {
+    "WRITE_AS": "write",
+}
+
 # Every header this package binds a piece of. `-aux-info` only reports what
 # is actually parsed, so a header left out here means its functions come
 # back as "not declared" and get reported below. Not all of them exist on
@@ -400,9 +408,20 @@ def bindings() -> list[tuple[str, str, str, int, str, tuple[str, ...]]]:
                             break
                     j += 1
                 types = split_args(body[call.end() : j])
-                if not types or not types[0].startswith('"'):
+                if not types:
                     continue
-                symbol = types[0].strip().strip('"')
+                symbol = types[0].strip()
+                if not symbol.startswith('"'):
+                    # A name the call picks at compile time is spelled in a
+                    # `comptime` alias beside the binding, and the alias is
+                    # a name of its own: the machine that compiles one
+                    # branch gets one symbol, and the prototype to check is
+                    # the one every branch spells.
+                    if symbol in STRING_ALIASES:
+                        symbol = STRING_ALIASES[symbol]
+                    else:
+                        continue
+                symbol = symbol.strip('"')
                 # What the binding tells `external_call` the result is, which
                 # is what decides the value handed back, whatever the `def`
                 # says. `get_errno` says `Int32` here and dereferences what

@@ -1044,6 +1044,14 @@ def truncate(path: c_ptr[UInt8], length: Int64) -> Int32:
     return external_call["truncate", Int32, c_ptr[UInt8], Int64](path, length)
 
 
+# The name `write` is asked by, per machine: plain on x86-64 and Darwin,
+# glibc's alias on aarch64, where the two spellings refuse to share a
+# module and the alias is the same address.
+comptime WRITE_AS = "__write" if (
+    CompilationTarget.is_linux() and CompilationTarget.is_arm()
+) else "write"
+
+
 def write(fd: Int32, buf: c_ptr[UInt8], count: UInt32) -> Int:
     """Libc POSIX `write` function.
 
@@ -1072,7 +1080,7 @@ def write(fd: Int32, buf: c_ptr[UInt8], count: UInt32) -> Int:
     # and on aarch64 the two spellings of it refuse to share a module --
     # the third machine's compiler is what refused them. The alias is the
     # same address.
-    return external_call["__write", Int, Int, c_ptr[UInt8], Int](
+    return external_call[WRITE_AS, Int, Int, c_ptr[UInt8], Int](
         Int(fd), buf, Int(count)
     )
 
