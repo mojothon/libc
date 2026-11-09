@@ -87,7 +87,7 @@ def test_the_choices_that_could_have_gone_either_way() raises:
     is signed where x86-64 compiles it and unsigned on the ARM ABI, which
     is why `CHAR_MIN` is 0 there and `SCHAR_MIN` here.
     """
-    comptime if CompilationTarget.is_arm():
+    comptime if CompilationTarget.is_linux() and CompilationTarget.is_arm():
         assert_equal(Int64(CHAR_MIN), 0, "char is unsigned on the ARM ABI")
         assert_equal(Int64(CHAR_MAX), 255)
     else:
