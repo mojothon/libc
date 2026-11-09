@@ -31,6 +31,7 @@ from std.ffi import external_call
 
 from libc.constant import c_ptr, c_void
 from libc.time import timespec
+from std.sys import CompilationTarget
 
 # How glibc answers, in the enum the header calls anonymous. A call that
 # fails says which way with one of these, and `thrd_nomem` -- there
@@ -80,21 +81,29 @@ it -- every one of which is a call here.
 """
 
 
+comptime MTX_SLOTS: Int = 6 if (
+    CompilationTarget.is_linux() and CompilationTarget.is_arm()
+) else 5
+
+
 struct mtx_t:
     """An opaque `mtx_t` from `<threads.h>`.
 
-    glibc's is 40 bytes, the same room `pthread_mutex_t` takes, held
-    here as raw room because every call takes it by pointer and only
-    libc says what is inside.
+    glibc's is 40 bytes on x86-64 and 48 on aarch64 -- the ARM ABI
+    gives `pthread_mutex_t` its own extra word -- held here as raw
+    room because every call takes it by pointer and only libc says
+    what is inside. The room is sized per architecture, which the
+    constant can carry; the third machine is what found the
+    difference.
 
     Zeroing one is not initialising it. `mtx_init` is what does that.
     """
 
-    var _opaque: Array[UInt64, 5]
+    var _opaque: Array[UInt64, MTX_SLOTS]
 
     def __init__(out self):
         """Zeroes the object. `mtx_init` is what makes it usable."""
-        self._opaque = Array[UInt64, 5](fill=0)
+        self._opaque = Array[UInt64, MTX_SLOTS](fill=0)
 
 
 struct cnd_t:

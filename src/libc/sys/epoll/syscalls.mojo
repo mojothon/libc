@@ -6,9 +6,11 @@
 # Linux only: Darwin has kqueue instead, so importing this package there will
 # not link.
 from std.ffi import external_call
+from std.memory.alloc import unsafe_alloc
 from std.memory import Pointer
 from libc.constant import c_ptr
 from libc.time import timespec
+from std.sys import CompilationTarget
 
 
 def epoll_create(size: Int32) -> Int32:
@@ -56,20 +58,36 @@ def epoll_create1(flags: Int32) -> Int32:
     return external_call["epoll_create1", Int32, Int32](flags)
 
 
+# Where `data` sits, and how far apart the kernel lays successive events.
+# glibc declares the struct packed on x86-64 -- `data` at 4, 12 bytes to the
+# event -- and does not on aarch64, where the pointer inside wants an
+# eight-byte boundary of its own and the event is 16 bytes at 8. One
+# definition holds both by keeping the record as two aligned words and
+# reading and writing `data` where the platform keeps it; `epoll_wait` pays
+# the one place the strides differ, handing the kernel a buffer laid out as
+# the kernel lays it and copying each event home.
+comptime EPOLL_DATA_AT: Int = 8 if (
+    CompilationTarget.is_linux() and CompilationTarget.is_arm()
+) else 4
+comptime EPOLL_EVENT_STRIDE: Int = EPOLL_DATA_AT + 8
+
+
 struct epoll_event:
     """A C `struct epoll_event`: the events to watch and the tag to report.
 
-    glibc declares the struct packed, so `data` sits 4 bytes in rather than 8,
-    which is why it is kept as raw bytes instead of a `UInt64`: Mojo aligns an
-    8-byte member to 8 and would hand C a 16-byte struct.
+    The record is held as two aligned words, 16 bytes at 8 on every machine
+    this runs on, and the accessors read and write where the platform's own
+    struct keeps each member: `data` at 4 on the packed x86-64 one, at 8
+    where aarch64 aligns it. What C calls 12 bytes there is the same first
+    12 bytes this holds, so `epoll_ctl` hands the kernel a buffer that is
+    right from the byte the kernel reads first.
 
     The tag is a union — a pointer, a file descriptor, or two integers — so it
     is read back with `data_u64` or `data_fd`, whichever you put in. The bytes
     are assembled little-endian, which is what x86-64 and arm64 both are.
     """
 
-    var events: UInt32
-    var data: Array[UInt8, 8]
+    var _slots: Array[UInt64, 2]
 
     def __init__(out self, events: UInt32, data: UInt64):
         """Builds an event tagged with the given 64-bit value.
@@ -83,12 +101,16 @@ struct epoll_event:
             so on its first line. The BSDs use kqueue,
             and there is no equivalent on the other side.
         """
-        self.events = events
-        self.data = Array[UInt8, 8](fill=0)
-        var value = data
+        self._slots = Array[UInt64, 2](fill=0)
+        self._slots[0] = UInt64(events)
         for i in range(8):
-            self.data[i] = UInt8(value & 0xFF)
-            value >>= 8
+            var at = EPOLL_DATA_AT + i
+            var byte = UInt8((data >> UInt64(8 * i)) & 0xFF)
+            var word = at // 8
+            var shift = UInt64((at % 8) * 8)
+            self._slots[word] = (
+                self._slots[word] & ~(UInt64(0xFF) << shift)
+            ) | (UInt64(byte) << shift)
 
     def __init__(out self, events: UInt32, fd: Int32):
         """Builds an event tagged with a file descriptor.
@@ -99,11 +121,20 @@ struct epoll_event:
         """
         self = Self(events, UInt64(Int(fd) & 0xFFFFFFFF))
 
+    def events(self) -> UInt32:
+        """The `EPOLLIN`, `EPOLLOUT`, ... bits the kernel reported."""
+        return UInt32(self._slots[0] & 0xFFFFFFFF)
+
     def data_u64(self) -> UInt64:
         """The tag, read as a 64-bit value."""
         var value: UInt64 = 0
+        var shift = 0
         for i in range(8):
-            value |= UInt64(self.data[i]) << UInt64(8 * i)
+            var at = EPOLL_DATA_AT + i
+            var word = at // 8
+            var low = UInt64((self._slots[word] >> UInt64((at % 8) * 8)) & 0xFF)
+            value |= low << UInt64(shift)
+            shift += 8
         return value
 
     def data_fd(self) -> Int32:
@@ -161,15 +192,32 @@ def epoll_pwait(
     Returns:
         The number of events that were signaled, or -1 on error.
     """
-    return external_call[
+    comptime if EPOLL_EVENT_STRIDE == 16:
+        # The stride this struct takes is the stride the kernel writes.
+        var room = events.unsafe_bitcast[UInt8]()
+        return external_call[
+            "epoll_pwait",
+            Int32,
+            Int32,
+            c_ptr[UInt8],
+            Int32,
+            Int32,
+            c_ptr[NoneType],
+        ](epfd, room, maxevents, timeout, sigmask)
+    var room = unsafe_alloc[UInt8](EPOLL_EVENT_STRIDE * Int(maxevents))
+    var counted = external_call[
         "epoll_pwait",
         Int32,
         Int32,
-        c_ptr[epoll_event],
+        c_ptr[UInt8],
         Int32,
         Int32,
         c_ptr[NoneType],
-    ](epfd, events, maxevents, timeout, sigmask)
+    ](epfd, room, maxevents, timeout, sigmask)
+    if counted > 0:
+        _gather_home(room, events, Int(counted))
+    room.unsafe_free()
+    return counted
 
 
 def epoll_pwait2(
@@ -198,15 +246,54 @@ def epoll_pwait2(
     Returns:
         The number of events that were signaled, or -1 on error.
     """
-    return external_call[
+    comptime if EPOLL_EVENT_STRIDE == 16:
+        # The stride this struct takes is the stride the kernel writes.
+        var room = events.unsafe_bitcast[UInt8]()
+        return external_call[
+            "epoll_pwait2",
+            Int32,
+            Int32,
+            c_ptr[UInt8],
+            Int32,
+            c_ptr[timespec],
+            c_ptr[NoneType],
+        ](epfd, room, maxevents, timeout, sigmask)
+    var room = unsafe_alloc[UInt8](EPOLL_EVENT_STRIDE * Int(maxevents))
+    var counted = external_call[
         "epoll_pwait2",
         Int32,
         Int32,
-        c_ptr[epoll_event],
+        c_ptr[UInt8],
         Int32,
         c_ptr[timespec],
         c_ptr[NoneType],
-    ](epfd, events, maxevents, timeout, sigmask)
+    ](epfd, room, maxevents, timeout, sigmask)
+    if counted > 0:
+        _gather_home(room, events, Int(counted))
+    room.unsafe_free()
+    return counted
+
+
+@inline(.nodebug)
+def _gather_home(
+    room: c_ptr[UInt8], events: c_ptr[epoll_event], count: Int
+) -> None:
+    """Walks the kernel's packed events home, one stride to the other.
+
+    The room is laid out as the kernel lays its own `epoll_event` out --
+    12 bytes to an event on x86-64, where glibc packs the struct -- and
+    this reads each one back into the 16-byte stride this struct takes.
+    """
+
+    for i in range(count):
+        var base = room.unsafe_offset(i * EPOLL_EVENT_STRIDE)
+        var ev: UInt32 = 0
+        var tag: UInt64 = 0
+        for j in range(4):
+            ev |= UInt32(base.unsafe_offset(j)[]) << UInt32(8 * j)
+        for j in range(8):
+            tag |= UInt64(base.unsafe_offset(4 + j)[]) << UInt64(8 * j)
+        events.unsafe_offset(i)[] = epoll_event(ev, tag)
 
 
 def epoll_wait(
@@ -229,6 +316,17 @@ def epoll_wait(
     Returns:
         The number of events that were signaled, or -1 on error.
     """
-    return external_call[
-        "epoll_wait", Int32, Int32, c_ptr[epoll_event], Int32, Int32
-    ](epfd, events, maxevents, timeout)
+    comptime if EPOLL_EVENT_STRIDE == 16:
+        # The stride this struct takes is the stride the kernel writes.
+        var room = events.unsafe_bitcast[UInt8]()
+        return external_call[
+            "epoll_wait", Int32, Int32, c_ptr[UInt8], Int32, Int32
+        ](epfd, room, maxevents, timeout)
+    var room = unsafe_alloc[UInt8](EPOLL_EVENT_STRIDE * Int(maxevents))
+    var counted = external_call[
+        "epoll_wait", Int32, Int32, c_ptr[UInt8], Int32, Int32
+    ](epfd, room, maxevents, timeout)
+    if counted > 0:
+        _gather_home(room, events, Int(counted))
+    room.unsafe_free()
+    return counted

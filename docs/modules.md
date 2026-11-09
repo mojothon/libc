@@ -26,7 +26,7 @@ the bottom.
 | `libc.sys.sysinfo` | `<sys/sysinfo.h>` | 18 |
 | `libc.sys.timer` | `<time.h>` the timers Darwin does not have | 12 |
 | `libc.pthread` | `<pthread.h>` | 103 |
-| `libc.threads` | `<threads.h>` Linux only, the C11 threads | 39 |
+| `libc.threads` | `<threads.h>` Linux only, the C11 threads | 40 |
 | `libc.string` | `<string.h>` | 48 |
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 43 |
 | `libc.complex` | `<complex.h>` | 46 |
@@ -34,7 +34,7 @@ the bottom.
 | `libc.signal` | `<signal.h>` an action, and a handler as its number | 67 |
 | `libc.spawn` | `<spawn.h>` start a process without fork | 25 |
 | `libc.locale` | `<locale.h>` | 23 |
-| `libc.sys.epoll` | `<sys/epoll.h>` | 7 |
+| `libc.sys.epoll` | `<sys/epoll.h>` | 9 |
 | `libc.search` | `<search.h>` | 9 |
 | `libc.dirent` | `<dirent.h>` | 22 |
 | `libc.sys.wait` | `<sys/wait.h>` | 25 |

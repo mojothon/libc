@@ -85,6 +85,13 @@ SPELLED_DIFFERENTLY = CHECK_PROTOTYPES.SPELLED_DIFFERENTLY
 # of a struct with some other name. Each is reported rather than skipped
 # silently, because "not checked" is a fact about these too.
 NOT_A_C_STRUCT = {
+    "epoll_event": (
+        "one body the two ABI cannot share: x86-64 packs the struct to 12 "
+        "bytes and aarch64 lays it 16 at 8, so the record is held as two "
+        "words and the members are read where each platform keeps them -- "
+        "the stride the kernel writes is EPOLL_EVENT_STRIDE, and `data`'s "
+        "place is checked as EPOLL_DATA_AT"
+    ),
     "DIR": "an opaque handle; C never says what is inside it",
     "FILE": "an opaque handle; C never says what is inside it",
     "Locale": "this package's own handle, not a C struct",
@@ -112,6 +119,9 @@ OFFSETS: dict[tuple[str, str], tuple[str, str]] = {
     ("libc.aio", "AIOCB_BUF"): ("aiocb", "aio_buf"),
     ("libc.aio", "AIOCB_NBYTES"): ("aiocb", "aio_nbytes"),
     ("libc.aio", "AIOCB_OFFSET"): ("aiocb", "aio_offset"),
+    # `data` moves between the two ABI: the packed x86-64 struct keeps it at
+    # 4, aarch64 aligns the pointer and keeps it at 8.
+    ("libc.sys.epoll", "EPOLL_DATA_AT"): ("epoll_event", "data"),
     ("libc.dirent", "DIRENT_INO_OFFSET"): ("dirent", "d_ino"),
     ("libc.dirent", "DIRENT_RECLEN_OFFSET"): ("dirent", "d_reclen"),
     ("libc.dirent", "DIRENT_TYPE_OFFSET"): ("dirent", "d_type"),

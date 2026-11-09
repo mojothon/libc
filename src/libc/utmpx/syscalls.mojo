@@ -40,7 +40,14 @@ from std.sys import CompilationTarget
 from libc.constant import c_char, c_int, c_ptr
 
 
-comptime UTMPX_BYTES: Int = 640 if CompilationTarget.is_macos() else 384
+# The ARM ABI pads `ut_tv` to an eight-byte boundary where x86-64 packs the
+# long members without one, so the record is 16 bytes longer there -- found
+# by `check-layouts` reading the struct on the third machine.
+comptime UTMPX_BYTES: Int = 640 if CompilationTarget.is_macos() else (
+    400 if (
+        CompilationTarget.is_linux() and CompilationTarget.is_arm()
+    ) else 384
+)
 comptime UTMPX_SLOTS: Int = UTMPX_BYTES // 8
 
 # Where each member sits, in bytes from the start of the record.
