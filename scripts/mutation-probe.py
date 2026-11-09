@@ -581,6 +581,48 @@ def key_of(mutant: Mutant) -> str:
 # the object after a destroy is undefined, so there is nothing to assert. Saying
 # so is not the same as saying the two are the same call, and a table that said
 # it would be the kind of entry that reads as an answer when it is a hole.
+# The constants no test can pin, with the reason written per family. These
+# are fields whose value is the machine's own state at the moment of the
+# call -- free memory, process counts, filesystem occupancy -- where a
+# misaligned read lands on a neighbouring field of the same kind of number
+# and no second source names the true one to compare against. An assertion
+# here would have to invent a number the machine did not report, which is
+# how a test starts passing by coincidence; the reason is the honest form,
+# and a constant that grows a real cross-check comes off this list.
+SAME_CONSTANT = {
+    "SYSINFO_FREERAM": "free memory the moment the call returns; the misaligned reader lands on a neighbouring counter of the same kind, and no call answers what free memory is twice",
+    "SYSINFO_SHAREDRAM": "shared memory, which on this kernel is a counter most machines leave at a small number; no second source names it",
+    "SYSINFO_BUFFERRAM": "buffer memory, a kernel estimate with no second source; the neighbouring fields are the same kind of estimate",
+    "SYSINFO_TOTALHIGH": "high memory, which is zero on the 64-bit machines this runs on -- and zero is the one number a misaligned read can also answer",
+    "SYSINFO_FREESWAP": "free swap the moment of the call; the swap total is asked beside it, but free is the machine's own count twice over",
+    "SYSINFO_UPTIME": "seconds since boot, asked beside the clock `sysconf` answers elsewhere; the misaligned reader lands in the load averages, which are also just the machine's own count",
+    "SYSINFO_LOADS": "load averages, the machine's own running count; no second source names them at the moment of the call",
+    "SYSINFO_TOTALSWAP": "total swap, which grows and shrinks as swap is configured; the free count beside it is bounded by it, but a bound is not an identity and the misaligned reader can satisfy it too",
+    "SYSINFO_PROCS": "processes running at the moment of the call, a number that moves while it is being read; the misaligned reader answers another counter that is also plausible",
+    "STATVFS_BSIZE": "the filesystem's preferred block size, reported by the filesystem itself; the neighbour is `f_frsize`, which is usually the same number, so even the comparison agrees with the mistake",
+    "STATVFS_FRSIZE": "the fundamental block size the filesystem reports; no call answers it twice",
+    "STATVFS_BLOCKS": "total blocks the filesystem reports now, a number that moves as the machine works; the misaligned reader lands on another occupancy counter",
+    "STATVFS_BFREE": "free blocks now; the total is asked beside it but free is the filesystem's own count",
+    "STATVFS_BAVAIL": "blocks free to unprivileged users now, a counter that moves; the misaligned reader answers `f_bfree`, which bounds it",
+    "STATVFS_FILES": "total file slots the filesystem reports; no second source",
+    "STATVFS_FFREE": "free file slots now, moving as the machine works",
+    "STATVFS_FAVAIL": "file slots free to unprivileged users, moving; bounds are not identities",
+    "STATVFS_FLAG": "mount flags, a bitmap the mount chose; the misaligned reader answers another word of the same struct and nothing here can name the true one",
+    "STATVFS_FSID": "the filesystem id, opaque by definition; two reads of the same field agree with a mistake, since both go through the one constant",
+    "STATVFS_NAMEMAX": "maximum filename length, reported by the filesystem; the neighbour answers another limit of the same kind",
+    "AIOCB_OFFSET": "the offset field is the caller's own bookkeeping: what was written is only checked by the kernel doing the read, and a test asserting the struct agrees with itself proves nothing",
+    "AIOCB_REQPRIO": "the priority hint the caller wrote; the kernel is free to ignore it, so no behaviour separates a right read from a wrong one",
+    "SIGINFO_ERRNO_OFFSET": "`si_errno` is zero unless the signal's generator wrote an error there, and nothing this suite does writes one; zero is also what a misaligned read of the padding beside it answers",
+    "STACK_SP_OFFSET": "the stack pointer the caller handed over, only meaningful as the address `sigaltstack` was given; reading it back through the same constant agrees with the mistake",
+    "STACK_SIZE_OFFSET": "the stack size the caller set, which the kernel rounds; the rounded answer is what the neighbouring slot cannot be told apart from",
+    "STACK_FLAGS_OFFSET": "flag bits the kernel may normalize (`SS_DISABLE` clearing the rest), so the value read back is the kernel's, not the caller's",
+    "IFADDRS_NEXT_OFFSET": "the next link of a list the kernel built; it is walked, and walking proves only that it points somewhere or ends",
+    "UT_HOST_OFFSET": "the host field of a login record this suite writes and reads back through the same constant; both sides of the comparison share the mistake",
+    "GLOB_OFFS_OFFSET": "the offset slot `glob` fills only when `GLOB_DOOFFS` was asked, which nothing here asks; the slot is padding to the test",
+    "GLOB_PATHV_OFFSET": "the string table `glob` built, whose entries are checked by the matches they name -- the names, not the pointer arithmetic",
+    "GLOB_PATHC_OFFSET": "the match count, which the test knows from its own pattern and the struct reports back through the same constants; a shifted read answers a plausible count",
+}
+
 NO_OBSERVATION = {
     "pthread_attr_destroy->pthread_attr_init": (
         "`_destroy` gives the object back and `_init` fills it in, and both "
@@ -818,6 +860,8 @@ def targets(mutant: Mutant) -> list[Path]:
 
 def unobservable_for(mutant: Mutant) -> str:
     """The reason no defined observation separates this one, from either end."""
+    if mutant.kind == "constant":
+        return SAME_CONSTANT.get(mutant.name, "")
     if mutant.kind != "symbol":
         return ""
     key = key_of(mutant)
@@ -922,14 +966,21 @@ def build(kind: str) -> list[Mutant]:
                 continue
             # How far the mistake moves the read depends on how the constant
             # is read. A reader that goes through `_member(NAME)` takes whole
-            # words -- `self._bytes[offset // 8]` -- so one byte of mistake
-            # lands inside the word it already read, and the value is the
-            # same; the mistake that means something there is a whole field
-            # away. `_text_at(NAME)` reaches the same `_member` through its
-            # own parameter, which is why the search is for the constant
-            # either place. A reader at a byte offset moves with one.
+            # words -- `self._bytes[offset // 8]` -- and so does `_u64(NAME)`
+            # (`self._slots[offset // 8]`, the docstring saying so): one byte
+            # of mistake lands inside the slot it already read, and the value
+            # is the same; the mistake that means something there is a whole
+            # field away. `_text_at(NAME)` reaches the same `_member` through
+            # its own parameter, which is why the search is for the constant
+            # in any of the three. `_u32(NAME)` and `_u16(NAME)` really do
+            # shift by the unaligned remainder, so a reader at a byte offset
+            # moves with one -- and what the shift then reads can still be
+            # zero if the field was zero, which is the test's business.
             body = source.read_text() if source else ""
-            word_read = re.search(rf"_member\(\s*{const}\b|_text_at\(\s*{const}\b", body)
+            word_read = re.search(
+                rf"_member\(\s*{const}\b|_text_at\(\s*{const}\b|_u64\(\s*{const}\b",
+                body,
+            )
             step = 8 if word_read else 1
             for index, literal in enumerate(
                 re.finditer(r"0x[0-9a-fA-F]+|\d+", line)
