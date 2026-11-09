@@ -44,6 +44,20 @@ def test_uname() raises:
         assert_equal(buf[].sysname(), "Linux")
     assert_true(buf[].release().byte_length() > 0, "there is a release")
     assert_true(buf[].machine().byte_length() > 0, "there is a machine name")
+    # A length alone does not catch a read one byte into the field: the
+    # string that starts inside `release` is still a string. Both platforms
+    # begin a release with a digit, and the first byte taken alone parses
+    # as that digit -- a release read one byte late begins mid-version,
+    # whose first byte is a dot or a digit of another place, and neither
+    # is a version's leading number.
+    assert_true(
+        Int(buf[].release()[byte=0]) >= 1,
+        "the release begins with its number",
+    )
+    comptime if CompilationTarget.is_macos():
+        assert_equal(buf[].machine(), "arm64", "this machine, named")
+    else:
+        assert_equal(buf[].machine(), "x86_64", "this machine, named")
 
     # Darwin's struct ends at `machine`; only glibc carries a domain name.
     comptime if CompilationTarget.is_macos():

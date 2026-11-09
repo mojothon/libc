@@ -45,6 +45,14 @@ def test_root_is_user_zero_whichever_way_it_is_asked() raises:
     var id_shell = by_id[].pw_shell()
     assert_equal(id_name, "root", "uid 0 is named root")
     assert_equal(Int(by_id[].pw_uid()), 0, "and its uid is 0")
+    # Root's group and its home are numbers and paths nothing here chose:
+    # a row read one field away answers with the neighbour, and `root` is
+    # the one user whose neighbour can agree -- its uid and gid are both 0,
+    # which is why the uid is asked of the running user further down too.
+    assert_equal(Int(by_id[].pw_gid()), 0, "and its gid is 0")
+    comptime if not CompilationTarget.is_macos():
+        assert_equal(id_dir, "/root", "root lives at /root here")
+        assert_equal(by_id[].pw_gecos(), "root", "and is called root there")
     assert_true(id_dir.byte_length() > 0, "and it has a home directory")
     assert_true(id_shell.startswith("/"), "and it has a shell by path")
 
