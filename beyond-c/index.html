@@ -895,7 +895,10 @@ choice. This writes the choice out:</p>
 
 <span class="n">comptime</span><span class="w"> </span><span class="n">EAGAIN</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">35</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">CompilationTarget</span><span class="o">.</span><span class="n">is_macos</span><span class="p">()</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="mi">11</span>
 </code></pre></div>
-<p>and then proves it on both, because CI runs on both. <code>EAGAIN</code> is the one
+<p>and then proves it on all three, because CI runs on all three -- the
+answer <code>EAGAIN</code>'s line picks is one of three now, and the third machine's
+<code>fcntl</code> flags are the example the constants section tells: a numbering
+x86-64 never wrote. <code>EAGAIN</code> is the one
 worth watching: a value that is not the platform's own fails a test here
 rather than in somebody's error handling.</p>
 <h2 id="a-check-that-runs-against-c-itself">A check that runs against C itself<a class="headerlink" href="#a-check-that-runs-against-c-itself" title="Permanent link">&para;</a></h2>
@@ -1595,6 +1598,40 @@ auxiliary vector, the thread id, C11 threads -- calls Darwin's library
 has no name for, each saying so now in the place that would have gone
 red if the answer had been silence.</p>
 <p>glibc, for its part, does not come with anything that checks glibc.</p>
+<p>The third machine arrived with the same operating system as the first and
+different silicon underneath, which is a question the first two could never
+ask each other: when two machines disagree and they differ in both the libc
+and the chip, nothing says which side the difference came from. Linux on
+aarch64 answers several of the questions x86-64 had answered, and answered
+them the other way. The <code>fcntl</code> flags ride on a numbering the thirty-two-bit
+ARM ABI chose years ago, so <code>O_DIRECTORY</code> is <code>040000</code> there where x86-64
+says <code>0200000</code>. <code>long double</code> is not the eighty-bit extension but the
+hundred-and-twenty-eight-bit quad, which moves three answers in <code>float.h</code>.
+<code>char</code> is unsigned, so <code>CHAR_MIN</code> is zero, and the C locale says "nothing
+to report" in <code>lconv</code> with that zero-two-fifty-five where x86-64 writes a
+hundred and twenty-seven -- a test that had written down the number as a
+literal had written down one machine's answer of it. The <code>stat</code> layout puts
+the mode where x86-64 puts the link count and moves everything between, and
+the syscall table is the asm-generic numbering, where <code>getpid</code> is a
+hundred and seventy-two and not thirty-nine. None of these is a bug in
+either libc; they are answers C leaves open, and a binding that had pinned
+one of them had pinned a machine.</p>
+<p>Two of the answers were not numbers at all but layouts wearing numbers, and
+one of those split the package itself. <code>epoll_event</code> is packed to twelve
+bytes with the data at offset four on x86-64 and sixteen bytes with the
+data at offset eight on aarch64, and the kernel's stride follows -- so the
+struct carries both arrangements behind one accessor, and <code>epoll_wait</code>
+passes the kernel whichever stride the machine's side of the family wants.
+A Mojo mechanism was learned the hard way twice: <code>is_arm()</code> asks about the
+silicon, and Apple's silicon is ARM -- the machine that shares Darwin with
+the second machine answers that question the way the third one does, and
+every branch that names the third machine now names the operating system
+too. Another: a name asked for by a <code>comptime</code> alias folds to the branch
+the machine compiling it will run -- a number or a string does, where a
+type does not, which is why <code>epoll_event</code> keeps one shape and an accessor
+and why <code>write</code> goes by a string alias, <code>__write</code> on aarch64, where the
+plain name is one the standard library also answers and the two spellings
+refuse to share a module.</p>
 <h2 id="next-to-rusts-libc">Next to Rust's <code>libc</code><a class="headerlink" href="#next-to-rusts-libc" title="Permanent link">&para;</a></h2>
 <p>The nearest thing to this that is not this: <a href="https://github.com/rust-lang/libc">rust-lang/libc</a>. It binds the same C and implements
 none of it, which is what this does too. Four of its Linux files declare
@@ -1604,9 +1641,9 @@ counted as the <code>pub fn</code> declarations in them, read both on the day th
 was counted and today); this binds 570; 293 are in both.</p>
 <p>The difference is not the count. Rust answers "what is <code>EAGAIN</code>" with a
 file per platform and a <code>cfg</code> that picks one, so the answer for the
-platform you are not on is somewhere else in the tree. This writes both
-numbers on one line and runs CI on both. Rust supports more platforms than
-two, and this supports two and proves both — which is the trade, stated
+platform you are not on is somewhere else in the tree. This writes the
+numbers on one line and runs CI on each. Rust supports more platforms than
+three, and this supports three and proves each — which is the trade, stated
 as the trade rather than as a win.</p>
 <p>LLVM's libc is the other project building a libc as source, and it is
 building rather than binding: nothing of the platform's C is under it,
