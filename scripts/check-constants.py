@@ -90,6 +90,10 @@ SOURCES = sorted((ROOT / "src" / "libc").rglob("*.mojo"))
 CONSTANT = re.compile(r"^comptime (\w+)(?::[^=]+)? = (.+)$", re.MULTILINE)
 MACOS_ONLY = "CompilationTarget.is_macos()"
 X86_ONLY = "CompilationTarget.is_x86()"
+# The arm constants are written as the compound that names both halves of
+# the question -- the silicon alone is not enough, since Apple's silicon is
+# ARM too and its Darwin answers nothing like glibc's.
+ARM_ONLY = "(CompilationTarget.is_linux() and CompilationTarget.is_arm())"
 
 # `cc` rather than `gcc`, because on macOS it is clang and clang is what
 # has the right to say what Darwin's headers mean.
@@ -246,6 +250,7 @@ MOJO_WIDTH: dict[str, tuple[int, bool | None]] = {
 # here is deliberate.
 SIGNEDNESS_ON_PURPOSE = {
     "c_char": "a byte is read as a byte; C's own `char` is unsigned on aarch64 Linux",
+    "c_wchar": "wide characters travel as UTF-32 code points and are read as numbers; glibc's own `wchar_t` is unsigned on aarch64 Linux, and the pointer ABI is the same either way",
     "size_t": "a length is `Int` here, so that arithmetic on it does not wrap",
     "c_wint": "`WEOF` is written as -1, the way a caller tests for it; the bits are C's",
 }
@@ -436,6 +441,21 @@ def is_x86() -> bool:
     return platform.machine().lower() in {"x86_64", "amd64", "i386", "i686"}
 
 
+def is_arm() -> bool:
+    """Whether this machine compiles as ARM, in the same sense.
+
+    `aarch64` is what Linux prints and `arm64` what Darwin does; the
+    32-bit spellings are here for the reader who runs this on one.
+    """
+    return platform.machine().lower() in {
+        "aarch64",
+        "arm64",
+        "armv7l",
+        "armv8l",
+        "arm",
+    }
+
+
 def at_top_level(text: str, word: str, last: bool = False) -> int:
     """Where `word` sits outside every bracket, or -1.
 
@@ -475,7 +495,11 @@ def answer(condition: str) -> bool | None:
     inverted = condition.startswith("not ")
     if inverted:
         condition = condition[len("not ") :].strip()
-    here = {MACOS_ONLY: sys.platform == "darwin", X86_ONLY: is_x86()}.get(condition)
+    here = {
+        MACOS_ONLY: sys.platform == "darwin",
+        X86_ONLY: is_x86(),
+        ARM_ONLY: is_arm(),
+    }.get(condition)
     if here is None:
         return None
     return here != inverted

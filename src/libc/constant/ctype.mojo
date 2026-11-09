@@ -34,6 +34,14 @@ comptime intmax_t = Int64
 comptime uintmax_t = UInt64
 
 # `wchar_t` is a 4 byte int on both Linux and Darwin, and `wint_t` follows it.
+# The ARM ABI is the one that differs in what the int means: glibc makes
+# `wchar_t` unsigned there, where x86-64 keeps it signed -- found by
+# `check-constants` reading the type on the third machine, the same way the
+# twelve numbers around it were found. Both are four bytes, so a pointer to
+# one calls the same functions either way, and this package keeps the signed
+# side for the same reason it keeps `c_char` signed: the values that travel
+# through these pointers are UTF-32 code points, and the binding reads them
+# as numbers. `check-constants` carries the reason.
 comptime c_wchar = Int32
 comptime c_wint = Int32
 
