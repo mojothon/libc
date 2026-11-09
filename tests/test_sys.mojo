@@ -57,7 +57,13 @@ def test_uname() raises:
     comptime if CompilationTarget.is_macos():
         assert_equal(buf[].machine(), "arm64", "this machine, named")
     else:
-        assert_equal(buf[].machine(), "x86_64", "this machine, named")
+        # glibc answers the hardware name, which is the architecture and
+        # not the operating system: `aarch64` on the third machine these
+        # answers are checked on, `x86_64` on the first.
+        comptime if CompilationTarget.is_arm():
+            assert_equal(buf[].machine(), "aarch64", "this machine, named")
+        else:
+            assert_equal(buf[].machine(), "x86_64", "this machine, named")
 
     # Darwin's struct ends at `machine`; only glibc carries a domain name.
     comptime if CompilationTarget.is_macos():
