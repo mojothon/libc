@@ -6,15 +6,6 @@
 from std.ffi import external_call
 from std.sys import CompilationTarget
 
-from libc.constant import c_ptr, c_size_t, c_ushort
-from libc.network import htons, ntohs
-from libc.utils import char_ptr_to_string, is_null, null_ptr
-
-# The flags and the command numbers are the ones net.mojo
-# spells -- the machine's answers live there, one of each -- and
-# this file asks for them by name rather than spelling them a
-# second time, where a sweep's mistake in one copy would be
-# answered by the other and nothing would know.
 from libc.constant import (
     AI_ADDRCONFIG,
     AI_ALL,
@@ -22,7 +13,12 @@ from libc.constant import (
     AI_NUMERICHOST,
     AI_PASSIVE,
     AI_V4MAPPED,
+    c_ptr,
+    c_size_t,
+    c_ushort,
 )
+from libc.network import htons, ntohs
+from libc.utils import char_ptr_to_string, is_null, null_ptr
 
 
 # What `getaddrinfo` is asked to prefer. The first three are the same on

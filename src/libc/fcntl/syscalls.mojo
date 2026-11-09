@@ -6,14 +6,8 @@
 from std.memory import Pointer
 from std.ffi import external_call
 from std.sys import CompilationTarget
-from libc.constant import AT_FDCWD, c_ptr
-
-# The flags and the command numbers are the ones file.mojo
-# spells -- the machine's answers live there, one of each -- and
-# this file asks for them by name rather than spelling them a
-# second time, where a sweep's mistake in one copy would be
-# answered by the other and nothing would know.
 from libc.constant import (
+    AT_FDCWD,
     FD_CLOEXEC,
     F_DUPFD,
     F_GETFD,
@@ -43,6 +37,7 @@ from libc.constant import (
     O_SYNC,
     O_TRUNC,
     O_WRONLY,
+    c_ptr,
 )
 
 comptime O_DIRECT: Int32 = Int32(65536) if (
