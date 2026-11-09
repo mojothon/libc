@@ -152,11 +152,26 @@ def mknodat(fd: Int32, path: c_ptr[UInt8], mode: Int32, dev: UInt64) -> Int32:
 comptime STAT_SLOTS: Int = 19
 comptime STAT_DEV_OFFSET: Int = 0
 comptime STAT_INO_OFFSET: Int = 8
-comptime STAT_MODE_OFFSET: Int = 4 if CompilationTarget.is_macos() else 24
-comptime STAT_NLINK_OFFSET: Int = 6 if CompilationTarget.is_macos() else 16
-comptime STAT_UID_OFFSET: Int = 16 if CompilationTarget.is_macos() else 28
-comptime STAT_GID_OFFSET: Int = 20 if CompilationTarget.is_macos() else 32
-comptime STAT_RDEV_OFFSET: Int = 24 if CompilationTarget.is_macos() else 40
+# Five members sit differently on aarch64 than on x86-64: glibc's ARM ABI
+# puts `st_mode` at 16 with `st_nlink`, `st_uid` and `st_gid` stacked beside
+# it and `st_rdev` at 32, where x86-64 keeps the word-wide `st_nlink` first.
+# From `st_size` on the two agree. The third machine is what read the
+# headers, and `check-layouts` asks C for every one of these by name.
+comptime STAT_MODE_OFFSET: Int = 4 if CompilationTarget.is_macos() else (
+    16 if (CompilationTarget.is_linux() and CompilationTarget.is_arm()) else 24
+)
+comptime STAT_NLINK_OFFSET: Int = 6 if CompilationTarget.is_macos() else (
+    20 if (CompilationTarget.is_linux() and CompilationTarget.is_arm()) else 16
+)
+comptime STAT_UID_OFFSET: Int = 16 if CompilationTarget.is_macos() else (
+    24 if (CompilationTarget.is_linux() and CompilationTarget.is_arm()) else 28
+)
+comptime STAT_GID_OFFSET: Int = 20 if CompilationTarget.is_macos() else (
+    28 if (CompilationTarget.is_linux() and CompilationTarget.is_arm()) else 32
+)
+comptime STAT_RDEV_OFFSET: Int = 24 if CompilationTarget.is_macos() else (
+    32 if (CompilationTarget.is_linux() and CompilationTarget.is_arm()) else 40
+)
 comptime STAT_ATIME_OFFSET: Int = 32 if CompilationTarget.is_macos() else 72
 comptime STAT_MTIME_OFFSET: Int = 48 if CompilationTarget.is_macos() else 88
 comptime STAT_CTIME_OFFSET: Int = 64 if CompilationTarget.is_macos() else 104
@@ -232,11 +247,13 @@ struct Stat:
     def nlink(self) -> Int64:
         """How many hard links point at the file."""
         # Sixteen bits on Darwin, in the same word as `st_dev` and
-        # `st_mode`; `nlink_t` is a full word on glibc.
+        # `st_mode`; a full word on x86-64, four bytes on aarch64, where
+        # `st_mode` sits beside it in the one `st_nlink` would have taken.
         comptime if CompilationTarget.is_macos():
             return Int64(self._u16(STAT_NLINK_OFFSET))
-        else:
-            return self._u64(STAT_NLINK_OFFSET)
+        comptime if CompilationTarget.is_arm() and not CompilationTarget.is_macos():
+            return Int64(self._u32(STAT_NLINK_OFFSET))
+        return self._u64(STAT_NLINK_OFFSET)
 
     def mode(self) -> Int:
         """The file type and permission bits."""
@@ -272,11 +289,13 @@ struct Stat:
     def blksize(self) -> Int64:
         """The preferred block size for I/O on this file."""
         # Four bytes on Darwin, where `st_flags` sits above it in the same
-        # word; eight on glibc.
+        # word; eight on x86-64, four on aarch64, whose `st_blksize` is an
+        # int with the word's other half beside it.
         comptime if CompilationTarget.is_macos():
             return self._u32(STAT_BLKSIZE_OFFSET)
-        else:
-            return self._u64(STAT_BLKSIZE_OFFSET)
+        comptime if CompilationTarget.is_arm() and not CompilationTarget.is_macos():
+            return Int64(self._u32(STAT_BLKSIZE_OFFSET))
+        return self._u64(STAT_BLKSIZE_OFFSET)
 
     def blocks(self) -> Int64:
         """How many 512-byte blocks the file occupies."""
