@@ -78,7 +78,10 @@ from std.sys import CompilationTarget
 comptime EAGAIN = 35 if CompilationTarget.is_macos() else 11
 ```
 
-and then proves it on both, because CI runs on both. `EAGAIN` is the one
+and then proves it on all three, because CI runs on all three -- the
+answer `EAGAIN`'s line picks is one of three now, and the third machine's
+`fcntl` flags are the example the constants section tells: a numbering
+x86-64 never wrote. `EAGAIN` is the one
 worth watching: a value that is not the platform's own fails a test here
 rather than in somebody's error handling.
 
@@ -832,6 +835,42 @@ red if the answer had been silence.
 
 glibc, for its part, does not come with anything that checks glibc.
 
+The third machine arrived with the same operating system as the first and
+different silicon underneath, which is a question the first two could never
+ask each other: when two machines disagree and they differ in both the libc
+and the chip, nothing says which side the difference came from. Linux on
+aarch64 answers several of the questions x86-64 had answered, and answered
+them the other way. The `fcntl` flags ride on a numbering the thirty-two-bit
+ARM ABI chose years ago, so `O_DIRECTORY` is `040000` there where x86-64
+says `0200000`. `long double` is not the eighty-bit extension but the
+hundred-and-twenty-eight-bit quad, which moves three answers in `float.h`.
+`char` is unsigned, so `CHAR_MIN` is zero, and the C locale says "nothing
+to report" in `lconv` with that zero-two-fifty-five where x86-64 writes a
+hundred and twenty-seven -- a test that had written down the number as a
+literal had written down one machine's answer of it. The `stat` layout puts
+the mode where x86-64 puts the link count and moves everything between, and
+the syscall table is the asm-generic numbering, where `getpid` is a
+hundred and seventy-two and not thirty-nine. None of these is a bug in
+either libc; they are answers C leaves open, and a binding that had pinned
+one of them had pinned a machine.
+
+Two of the answers were not numbers at all but layouts wearing numbers, and
+one of those split the package itself. `epoll_event` is packed to twelve
+bytes with the data at offset four on x86-64 and sixteen bytes with the
+data at offset eight on aarch64, and the kernel's stride follows -- so the
+struct carries both arrangements behind one accessor, and `epoll_wait`
+passes the kernel whichever stride the machine's side of the family wants.
+A Mojo mechanism was learned the hard way twice: `is_arm()` asks about the
+silicon, and Apple's silicon is ARM -- the machine that shares Darwin with
+the second machine answers that question the way the third one does, and
+every branch that names the third machine now names the operating system
+too. Another: a name asked for by a `comptime` alias folds to the branch
+the machine compiling it will run -- a number or a string does, where a
+type does not, which is why `epoll_event` keeps one shape and an accessor
+and why `write` goes by a string alias, `__write` on aarch64, where the
+plain name is one the standard library also answers and the two spellings
+refuse to share a module.
+
 ## Next to Rust's `libc`
 
 The nearest thing to this that is not this: [rust-lang/libc](
@@ -844,9 +883,9 @@ was counted and today); this binds 570; 293 are in both.
 
 The difference is not the count. Rust answers "what is `EAGAIN`" with a
 file per platform and a `cfg` that picks one, so the answer for the
-platform you are not on is somewhere else in the tree. This writes both
-numbers on one line and runs CI on both. Rust supports more platforms than
-two, and this supports two and proves both — which is the trade, stated
+platform you are not on is somewhere else in the tree. This writes the
+numbers on one line and runs CI on each. Rust supports more platforms than
+three, and this supports three and proves each — which is the trade, stated
 as the trade rather than as a win.
 
 LLVM's libc is the other project building a libc as source, and it is
