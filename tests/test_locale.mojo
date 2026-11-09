@@ -2,6 +2,7 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
+from libc.limits import CHAR_MAX
 from libc.signal import SIGSEGV, signal
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, waitpid
 from libc.stdlib import exit
@@ -48,11 +49,19 @@ def test_localeconv() raises:
         0,
         "the C locale has no thousands separator",
     )
-    # CHAR_MAX, which is how the C locale says it has nothing to report.
+    # CHAR_MAX, which is how the C locale says it has nothing to report --
+    # 127 where `char` is signed, 255 on the ARM ABI where it is not, and
+    # the field reads as the byte the C locale put there.
     assert_equal(
-        Int(conv[].int_frac_digits), 127, "no fraction digits to report"
+        Int(conv[].int_frac_digits),
+        Int(CHAR_MAX),
+        "no fraction digits to report",
     )
-    assert_equal(Int(conv[].frac_digits), 127, "no fraction digits to report")
+    assert_equal(
+        Int(conv[].frac_digits),
+        Int(CHAR_MAX),
+        "no fraction digits to report",
+    )
 
     dot.unsafe_free()
     empty.unsafe_free()
