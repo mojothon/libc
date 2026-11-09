@@ -15,10 +15,13 @@ from std.testing import assert_equal, assert_true
 from libc.langinfo import (
     ABDAY_1,
     ABDAY_2,
+    ABDAY_6,
     ABMON_1,
     AM_STR,
     CODESET,
+    CRNCYSTR,
     DAY_1,
+    DAY_4,
     D_FMT,
     MON_1,
     PM_STR,
@@ -49,6 +52,17 @@ def test_the_names_of_days_and_months_are_the_locales_own() raises:
     )
     assert_equal(
         char_ptr_to_string(nl_langinfo(DAY_1)), "Sunday", "and in full"
+    )
+    # Two from the middle of the week as well: a number asked by a
+    # machine that reads the item one past the right one is answered by
+    # the wrong day, and every day's name is a fact the C locale fixes.
+    assert_equal(
+        char_ptr_to_string(nl_langinfo(ABDAY_6)), "Fri", "Friday abbreviated"
+    )
+    assert_equal(
+        char_ptr_to_string(nl_langinfo(DAY_4)),
+        "Wednesday",
+        "and midweek in full",
     )
     assert_equal(
         char_ptr_to_string(nl_langinfo(MON_1)), "January", "the first month"
@@ -90,6 +104,16 @@ def test_how_the_locale_writes_a_number() raises:
         char_ptr_to_string(nl_langinfo(THOUSEP)),
         "",
         "and no separator between thousands",
+    )
+    # The currency the C locale does not have: what comes back is the
+    # sign of its absence, which is a dash -- an item the machines
+    # number differently is answered with an empty string, as the item
+    # numbered nothing above is, and a number that is not the item's is
+    # not the item.
+    assert_equal(
+        char_ptr_to_string(nl_langinfo(CRNCYSTR)),
+        "-",
+        "no currency is spelled as the sign of its absence",
     )
 
 

@@ -92,6 +92,7 @@ import ctypes
 import functools
 import importlib.util
 import os
+import platform
 import random
 import signal
 import re
@@ -508,23 +509,148 @@ def reverse_arguments(
     return body[: open_at + 1] + ", ".join(given) + body[end:]
 
 
+# A number a mistake can be made in. The lookbehind keeps the digits of
+# a type's own name -- `Int32` -- out of the sweep: they are spelling,
+# not value.
+NUMBER = re.compile(r"(?<![A-Za-z_])0x[0-9a-fA-F]+|(?<![A-Za-z0-9_])\d+")
+
+
+def block_of(text: str, name: str) -> str | None:
+    """The whole `comptime name` definition, however many lines it runs.
+
+    A value the machines took different sides of is written as a chain
+    of `if`s that the formatter keeps on separate lines, and the mutant
+    has to reach the branch the compiling machine reads -- the numbers
+    are indexed through whatever this returns, so the build and the
+    applying of a mistake must both come through here and see the same
+    block.
+    """
+    found = re.search(
+        rf"(?ms)^comptime {re.escape(name)}\b.*?(?=^comptime |^def |^struct |^# |^\"\"\"|\Z)",
+        text,
+    )
+    return found.group(0) if found else None
+
+
+def branch_taken(condition: str) -> bool:
+    """Whether the machine running this takes the branch asked about.
+
+    The conditions are this package's own spellings of what the machine
+    is, and the mapping is the same answer the compiler gives: the
+    silicon question by the architecture this interpreter runs on, the
+    operating system by `sys.platform`. A condition nothing here
+    recognises answers nothing -- the constant is left alone rather
+    than mutated blind.
+    """
+    machine = platform.machine().lower()
+    predicates = {
+        "CompilationTarget.is_macos()": sys.platform == "darwin",
+        "CompilationTarget.is_linux()": sys.platform.startswith("linux"),
+        "CompilationTarget.is_arm()": machine.startswith(("arm", "aarch")),
+        "CompilationTarget.is_x86_64()": machine == "x86_64",
+        "CompilationTarget.is_x86()": machine.startswith("x86"),
+        "CompilationTarget.is_64bit()": machine in ("x86_64", "aarch64", "arm64"),
+    }
+    expr = condition.replace("\n", " ").strip()
+    for spelling, answer in predicates.items():
+        expr = expr.replace(spelling, repr(answer))
+    if "CompilationTarget" in expr or not expr:
+        return False
+    try:
+        return bool(eval(expr))  # noqa: S307 -- the conditions are our own
+    except Exception:
+        return False
+
+
+def conditional_branches(expression: str) -> list[tuple[str, str]]:
+    """A value's branches: the answer each one gives, and what asks for it.
+
+    `A if C else B` is two; `A if C else B if D else E` is three, and
+    the formatter puts each on its own line. The split is by the
+    outermost `if`s, brackets having been counted, because a condition
+    of its own can carry a parenthesised branch inside it.
+    """
+
+    def split(expr: str) -> list[tuple[str, str]]:
+        expr = expr.strip()
+        # The formatter wraps a branch in its own parentheses when the
+        # branch carries a condition of its own; the wrap is not part of
+        # the answer.
+        while expr.startswith("("):
+            depth, close = 0, None
+            for i, ch in enumerate(expr):
+                if ch == "(":
+                    depth += 1
+                elif ch == ")":
+                    depth -= 1
+                    if depth == 0:
+                        close = i
+                        break
+            if close == len(expr) - 1:
+                expr = expr[1:close].strip()
+            else:
+                break
+        depth = 0
+        # Find the first top-level ` if `.
+        depth = 0
+        top = None
+        for i in range(len(expr) - 3):
+            ch = expr[i]
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+            elif depth == 0 and expr[i : i + 4] == " if ":
+                top = i
+                break
+        if top is None:
+            return [(expr, "")]
+        head = expr[:top]
+        rest = expr[top + 4 :]
+        # The `else` at the same depth closes this condition.
+        depth, mark = 0, None
+        for i in range(len(rest) - 4):
+            ch = rest[i]
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+            elif depth == 0 and rest[i : i + 5] == " else":
+                mark = i
+                break
+        if mark is None:
+            return [(expr, "")]
+        condition, tail = rest[:mark], rest[mark + 5 :]
+        # What follows a `#` on the line is a remark about the answer,
+        # and its numbers -- `Darwin's is 0x400000` -- are nobody's value.
+        head = head.split(" #")[0]
+        tail = tail.split(" #")[0]
+        branches = [(head, condition)]
+        for value, cond in split(tail):
+            branches.append((value, cond))
+        return branches
+
+    return split(expression)
+
+
 def apply(target: Path, mutant: Mutant) -> bool:
     """Make the mistake in `target`, and say whether it landed."""
     text = target.read_text()
     if mutant.kind == "constant":
-        # The constant is a line of the file rather than a call inside a
-        # def, so it is found by its `comptime` line and its nth literal --
-        # which branch's literal is the mutant's to say.
-        found = re.search(rf"(?m)^comptime {re.escape(mutant.name)}\b.*$", text)
-        if found is None:
+        # The constant is a `comptime` definition rather than a call
+        # inside a def, so it is found by its name and its nth literal --
+        # which branch's literal is the mutant's to say. The block is
+        # the whole definition, since a machine's answer may sit three
+        # lines below the name that asks for it.
+        block = block_of(text, mutant.name)
+        if block is None:
             return False
-        line = found.group(0)
-        numbers = list(re.finditer(r"0x[0-9a-fA-F]+|\d+", line))
+        numbers = list(NUMBER.finditer(block))
         if mutant.first >= len(numbers):
             return False
         literal = numbers[mutant.first]
-        changed = line[: literal.start()] + mutant.into + line[literal.end() :]
-        target.write_text(text[: found.start()] + changed + text[found.end() :])
+        changed = block[: literal.start()] + mutant.into + block[literal.end() :]
+        target.write_text(text.replace(block, changed, 1))
         return True
     span = def_block(text, mutant.name)
     if span is None:
@@ -612,6 +738,15 @@ SAME_CONSTANT = {
     "CMSGHDR_TYPE_OFFSET": "mapped against the C header, read by nothing here yet; see its sibling",
     "STAT_DEV_OFFSET": "the device number the kernel encodes for the mount, with no second source; the neighbour is the inode, and `is not zero` -- the shape the tests can afford -- is true of both",
     "SYSINFO_UPTIME": "seconds since boot, asked beside the clock `sysconf` answers elsewhere; the misaligned reader lands in the load averages, which are also just the machine's own count",
+    "MTX_SLOTS": "the extra slot is room the lock never writes: init fills the C size, and every read goes back through the same struct, so a slot of slack changes no answer -- the mistake that means something is a slot too few, which is the other machine's branch and that machine's runner to ask",
+    "B150": "a line speed this suite has no line to run at: the value is written through the termios and read back through it, and the round trip agrees with a mistake, the wire being the only witness that would not",
+    "B2400": "same shape as `B150` -- written and read back through the one termios, with no line attached to be set at the wrong speed",
+    "B4800": "same shape as `B150` -- the speed the tests can only store and read back, no line being theirs to run it at",
+    "TCION": "a flag whose effect is on characters not yet typed: the tests can write it and read it back and nothing else, there being no terminal input in the suite for it to restart",
+    "GLOB_NOESCAPE": "the pattern the tests ask with carries no backslash for the flag to change the reading of, so the answers agree with the mistake; exercising it needs a pattern with an escaped character in it, which is a test not written",
+    "GLOB_NOMATCH": "the tests ask for matches that exist; the flag's work shows only where none do, and no test asks that yet",
+    "GLOB_TILDE": "a flag whose work is in expanding a name the tests never pass, the pattern having no tilde in it to expand",
+    "REG_NEWLINE": "the flag's work is in where an anchor matches, and the patterns the tests ask match the same either way; telling the answers apart needs a pattern with a newline in it, which is a test not written",
     "SYSINFO_LOADS": "load averages, the machine's own running count; no second source names them at the moment of the call",
     "SYSINFO_TOTALSWAP": "total swap, which grows and shrinks as swap is configured; the free count beside it is bounded by it, but a bound is not an identity and the misaligned reader can satisfy it too",
     "SYSINFO_PROCS": "processes running at the moment of the call, a number that moves while it is being read; the misaligned reader answers another counter that is also plausible",
@@ -961,6 +1096,89 @@ def build(kind: str) -> list[Mutant]:
         return given if given.is_absolute() else ROOT / given
 
     mutants: list[Mutant] = []
+
+    def emit(
+        into_list: list[Mutant],
+        path_str: str,
+        const: str,
+        block: str,
+        step: int,
+        package: str,
+    ) -> None:
+        """One mistake, in the branch of the answer this machine reads.
+
+        A value the machines took different sides of is a chain of `if`s,
+        and only the branch the compiling machine answers to is a number
+        any run here adds up -- the others are silent words on a line.
+        What lands is the whole value moved by the reader's step, the
+        indexing going through the same block `apply` will read it back
+        from.
+        """
+        equals = block.index("=")
+        branches = conditional_branches(block[equals + 1 :])
+        chosen = next(
+            (
+                (value_text, condition)
+                for value_text, condition in branches
+                if not condition or branch_taken(condition)
+            ),
+            None,
+        )
+        if chosen is None or not chosen[0].strip():
+            return
+        value_text, _condition = chosen
+        # A whole number is a mistake one away from itself. A floating
+        # answer is not: its digits are a spelling of a fraction, `+ 1`
+        # on the mantissa means nothing, and the regex's pieces of
+        # `1.9e-34` are not numbers to add to. The tests pin the floats
+        # by parsing them; this sweep leaves the spelling alone.
+        if re.search(r"\d\.\d|[eE][+-]\d", value_text):
+            return
+        span_start = block.find(value_text, equals + 1)
+        if span_start < 0:
+            return
+        span_end = span_start + len(value_text)
+        numbers = list(NUMBER.finditer(block))
+        before = sum(1 for m in numbers if m.end() <= span_start)
+        # A negative branch spells its minus outside the digits the
+        # regex sees, so the value moved is the one the sign belongs to.
+        signed = value_text.strip().startswith("-")
+        suffix = (
+            f" (branch {branches.index(chosen) + 1} of {len(branches)},"
+            " the one this machine reads)"
+            if len(branches) > 1
+            else ""
+        )
+        for offset, literal in enumerate(
+            NUMBER.finditer(block[span_start:span_end])
+        ):
+            try:
+                old = int(literal.group(0), 0)
+            except ValueError:
+                try:
+                    old = int(literal.group(0), 8)  # Mojo's C-style octal
+                except ValueError:
+                    continue
+            moved = (-(old) if signed else old) + step
+            # The minus is already in the text the digits sit inside, so
+            # the replacement carries only the magnitude -- writing the
+            # sign again would spell `--127`, which compiles to nothing.
+            into = hex(moved) if (
+                literal.group(0).startswith("0x") and not signed
+            ) else str(abs(moved))
+            into_list.append(
+                Mutant(
+                    path_str,
+                    const,
+                    "constant",
+                    f"{literal.group(0)} -> {into}{suffix}",
+                    symbol=literal.group(0),
+                    into=into,
+                    first=before + offset,
+                    package=package,
+                )
+            )
+
     if kind == "constant":
         layouts = load("check-layouts")
         for (package, const), _member in sorted(layouts.OFFSETS.items()):
@@ -1028,34 +1246,41 @@ def build(kind: str) -> list[Mutant]:
                 ):
                     grain = declared.group(1)
                 step = 4 if grain == "UInt16" else 1
-            for index, literal in enumerate(
-                re.finditer(r"0x[0-9a-fA-F]+|\d+", line)
+            block = block_of(source.read_text(), const)
+            if block is None:
+                continue
+            emit(mutants, str(source), const, block, step, package)
+        # The other kind of answer the machines took sides on: a value,
+        # not an offset, written as a chain of `if`s the formatter keeps
+        # on separate lines -- `SYS_getpid`'s three-way numbering,
+        # `O_DIRECTORY`'s flags the thirty-two-bit ABI chose, the quad
+        # `long double`'s `float.h` answers. These are the constants the
+        # last three mistakes were made in, and no mutant touched one:
+        # the offset sweep reads a single line, and these do not live on
+        # one. The branch the compiling machine reads is the only one a
+        # mistake can be made in -- the others are numbers no run here
+        # ever adds up.
+        seen = {m.name for m in mutants}
+        for path in sorted((ROOT / "src" / "libc").rglob("*.mojo")):
+            text = path.read_text()
+            # The package is what a test imports: the directory the file
+            # sits in, spelled with dots. It is what `targets` matches on,
+            # and a mutant with no package is a question no test file is
+            # ever asked -- a survivor by silence, which is the worst
+            # kind.
+            under = path.relative_to(ROOT / "src" / "libc")
+            package = "libc." + ".".join(under.with_suffix("").parts[:-1]) if len(under.parts) > 1 else "libc"
+            for told in re.finditer(
+                r"(?m)^comptime (\w+)(?:\s*:\s*[\w\.]+)?\s*=\s*\S", text
             ):
-                old = int(literal.group(0), 0)
-                moved = old + step
-                into = hex(moved) if literal.group(0).startswith("0x") else str(moved)
-                # A value written `A if is_macos() else B` is two mistakes
-                # in one line, and the report says which half answered.
-                # Only the half this machine reads is made: the other is a
-                # number no run here ever adds up, and asking it of Darwin
-                # is what the macOS job is for.
-                branch = ""
-                if re.search(r"if .*is_macos", line):
-                    if (index == 0) != (sys.platform == "darwin"):
-                        continue
-                    branch = " (macOS)" if index == 0 else " (elsewhere)"
-                mutants.append(
-                    Mutant(
-                        str(source),
-                        const,
-                        "constant",
-                        f"{literal.group(0)} -> {into}{branch}",
-                        symbol=literal.group(0),
-                        into=into,
-                        first=index,
-                        package=package,
-                    )
-                )
+                name = told.group(1)
+                if name in seen or name.endswith("_OFFSET"):
+                    continue
+                block = block_of(text, name)
+                if block is None or " if " not in block:
+                    continue
+                emit(mutants, str(path), name, block, 1, package)
+                seen.add(name)
     elif kind == "symbol":
         groups: dict[tuple[str, str, tuple[str, ...]], list[tuple[str, str]]] = {}
         for path, name, symbol, _nargs, ret, argtypes in every:

@@ -57,3 +57,31 @@ jobs:
         env:
           MUTATION_TIMEOUT: "300"
         run: python3 scripts/mutation-probe.py --kind order --limit 48 --jobs 4 --strict
+      - name: Ask the constants axis
+        # The axis that caught `gamma`'s neighbours: a constant asked by
+        # a machine that reads it one field away, or answered by a branch
+        # this runner does not compile. What this runner cannot see --
+        # the ARM branch's numbering, the quad `long double` -- is the
+        # arm job's half of the same question.
+        env:
+          MUTATION_TIMEOUT: "300"
+        run: python3 scripts/mutation-probe.py --kind constant --limit 48 --jobs 4 --strict
+
+  sample-arm:
+    name: Mutation sample, the third machine (seed 1)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.11.0
+        with:
+          cache: true
+      # The constants the first machine cannot see: the ARM branch of
+      # every answer the machines took sides on -- the syscall table
+      # numbered from the asm-generic set, the flags the thirty-two-bit
+      # ABI chose, `char` unsigned. A mutant there is a number no run on
+      # x86-64 ever adds up, and this is the runner it adds up on.
+      - name: Ask the constants axis
+        env:
+          MUTATION_TIMEOUT: "300"
+        run: python3 scripts/mutation-probe.py --kind constant --limit 48 --jobs 4 --strict
