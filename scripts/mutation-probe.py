@@ -740,6 +740,28 @@ SAME_CONSTANT = {
     "SYSINFO_UPTIME": "seconds since boot, asked beside the clock `sysconf` answers elsewhere; the misaligned reader lands in the load averages, which are also just the machine's own count",
     "MTX_SLOTS": "the extra slot is room the lock never writes: init fills the C size, and every read goes back through the same struct, so a slot of slack changes no answer -- the mistake that means something is a slot too few, which is the other machine's branch and that machine's runner to ask",
     "UT_ID_OFFSET": "the field is written by this package's setter and read by this package's reader, both through the one constant -- shifted together they still agree, and the kernel's own entry is one the tests have no login to make",
+    "O_NOFOLLOW": "the flag's work is on a name that is a link, and the suite makes no link to open -- catching the number would want a symlink whose target is the file itself, which is a test not written",
+    "O_DIRECT": "a flag the kernel only honours for buffers aligned the way the filesystem aligns them, which the suite does not promise; the tests could send the call off with it and watch the alignment refuse, and that is a test not written",
+    "SC_PRIORITY_SCHEDULING": "the item number is the header's own, and the answer is the machine's count of something the tests cannot arrange -- asking again through the same number agrees with itself",
+    "SC_BC_BASE_MAX": "the item number is the header's own, and the answer is the machine's count of something the tests cannot arrange -- asking again through the same number agrees with itself",
+    "F_GETOWN": "the flag's work is in a call the suite has not set up to show it, so every answer agrees with the word either way -- the test that would tell the numbers apart is a test not written",
+    "SC_SYNCHRONIZED_IO": "the item number is the header's own, and the answer is the machine's count of something the tests cannot arrange -- asking again through the same number agrees with itself",
+    "SC_REALTIME_SIGNALS": "the item number is the header's own, and the answer is the machine's count of something the tests cannot arrange -- asking again through the same number agrees with itself",
+    "SC_2_FORT_RUN": "the item number is the header's own, and the answer is the machine's count of something the tests cannot arrange -- asking again through the same number agrees with itself",
+    "AT_SYMLINK_FOLLOW": "the flag's work is in a call the suite has not set up to show it, so every answer agrees with the word either way -- the test that would tell the numbers apart is a test not written",
+    "ENOTSOCK": "a condition the tests cannot make happen -- a name carried for completeness, a number the kernel answers only where the condition can be arranged",
+    "SC_SYMLOOP_MAX": "the item number is the header's own, and the answer is the machine's count of something the tests cannot arrange -- asking again through the same number agrees with itself",
+    "SO_RCVLOWAT": "the flag's work is in a call the suite has not set up to show it, so every answer agrees with the word either way -- the test that would tell the numbers apart is a test not written",
+    "AI_ADDRCONFIG": "the flag's work is in a call the suite has not set up to show it, so every answer agrees with the word either way -- the test that would tell the numbers apart is a test not written",
+    "EOVERFLOW": "a condition the tests cannot make happen -- a name carried for completeness, a number the kernel answers only where the condition can be arranged",
+    "SO_TIMESTAMP": "the flag's work is in a call the suite has not set up to show it, so every answer agrees with the word either way -- the test that would tell the numbers apart is a test not written",
+    "SC_THREAD_DESTRUCTOR_ITERATIONS": "the item number is the header's own, and the answer is the machine's count of something the tests cannot arrange -- asking again through the same number agrees with itself",
+    "AF_ISDN": "the flag's work is in a call the suite has not set up to show it, so every answer agrees with the word either way -- the test that would tell the numbers apart is a test not written",
+    "CS_XBS5_LPBIG_OFFBIG_CFLAGS": "the item number is the header's own, and the answer is the machine's count of something the tests cannot arrange -- asking again through the same number agrees with itself",
+    "EALREADY": "a condition the tests cannot make happen -- a name carried for completeness, a number the kernel answers only where the condition can be arranged",
+    "SC_MEMLOCK": "the answer is the machine's own count, asked for by a number the header fixes; asking twice through the same number agrees with itself, and what the number means is the kernel's to say",
+    "EUSERS": "an error number is the kernel's word for a condition the tests have not made happen -- too many users is not a thing this suite can arrange -- so the name is carried and the number is never answered",
+    "EMULTIHOP": "same shape as `EUSERS`: a condition the tests cannot arrange, a name carried for completeness, a number the kernel would answer only if the tests could make it happen",
     "B150": "a line speed this suite has no line to run at: the value is written through the termios and read back through it, and the round trip agrees with a mistake, the wire being the only witness that would not",
     "B2400": "same shape as `B150` -- written and read back through the one termios, with no line attached to be set at the wrong speed",
     "B4800": "same shape as `B150` -- the speed the tests can only store and read back, no line being theirs to run it at",
@@ -987,6 +1009,12 @@ def reason_for(mutant: Mutant) -> str:
 # imports anything for its own sake.
 NOT_UNITS = {"test_main.mojo", "test_smoke.mojo", "test_atfork.mojo", "test_import_all.mojo"}
 
+# The files that go red before any mistake is made -- a machine whose
+# limits another run has already spent, a driver already loaded. They
+# are measured once at the start, and after that they are not asked:
+# their answer is the machine's, not the mutant's.
+BASELINE_RED: set[Path] = set()
+
 
 def targets(mutant: Mutant) -> list[Path]:
     """Which test files get asked about this mutant.
@@ -997,7 +1025,7 @@ def targets(mutant: Mutant) -> list[Path]:
     `test_layout`, which is where the offsets are asserted against C.
     """
     if mutant.kind != "constant":
-        return callers(mutant.name)
+        return [path for path in callers(mutant.name) if path not in BASELINE_RED]
     wanted = f"from {mutant.package} import"
     hits = [
         path
@@ -1007,7 +1035,7 @@ def targets(mutant: Mutant) -> list[Path]:
     layout = ROOT / "tests" / "test_layout.mojo"
     if layout not in hits:
         hits.append(layout)
-    return hits
+    return [path for path in hits if path not in BASELINE_RED]
 
 
 def unobservable_for(mutant: Mutant) -> str:
@@ -1427,6 +1455,56 @@ def main() -> int:
     if args.check_tables:
         return check_tables()
 
+    # The suite is asked first as it stands, before any mistake is made.
+    # A file that is red on its own -- the machine's limits already spent
+    # by something else -- would convict every mutant it is asked about,
+    # and an axis read that way reads green while being unread. What is
+    # red before anything is wrong is the machine's answer, and the
+    # sweep does not ask the machine for the mutant's.
+    print("asking the suite, before anything is wrong, which files are red")
+    red_files: list[Path] = []
+
+    def measure(test: Path) -> None:
+        proc = subprocess.Popen(
+            [
+                "pixi",
+                "run",
+                "mojo",
+                "run",
+                "-I",
+                str(SRC),
+                "-I",
+                "tests",
+                str(test.relative_to(ROOT)),
+            ],
+            cwd=ROOT,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        try:
+            proc.wait(timeout=TIMEOUT)
+        except subprocess.TimeoutExpired:
+            os.killpg(proc.pid, signal.SIGKILL)
+            proc.wait()
+        if proc.returncode != 0:
+            red_files.append(test)
+
+    workers = max(1, args.jobs)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        for _ in pool.map(measure, TESTS):
+            pass
+    BASELINE_RED.update(red_files)
+    if BASELINE_RED:
+        print(
+            f"  {len(BASELINE_RED)} file(s) red before anything was wrong,"
+            " which is the machine's answer and not asked again:"
+        )
+        for test in sorted(BASELINE_RED):
+            print(f"    {test.name}")
+        print()
+
     mutants: list[Mutant] = build(args.kind)
 
     if args.only:
@@ -1535,8 +1613,45 @@ def main() -> int:
                         print(f"  ?? {mutant.name}: could not be mutated")
                     return
                 said_text = ""
-                outs = [run_one(copy, test) for test in targets(mutant)]
+                asked = targets(mutant)
+                outs = [run_one(copy, test) for test in asked]
+                # A red run is the mutant's doing only if the same run
+                # comes back green without the mistake. One file in this
+                # suite goes red on a machine whose limits are already
+                # spent -- before any mutant was made -- and without this
+                # second look it convicts every mutant it is asked about,
+                # which is how a whole axis reads green while being
+                # unread. The red runs are asked again on the restored
+                # text: the ones still red then are the machine's, and
+                # they stop being answers.
+                red = [t for t, o in zip(asked, outs) if o == "caught"]
+                if red:
+                    target.write_text(pristine)
+                    still_red = {t for t in red if run_one(copy, t) == "caught"}
+                    if still_red:
+                        keep = [t for t in asked if t not in still_red]
+                        outs = [
+                            o
+                            for t, o in zip(asked, outs)
+                            if t not in still_red
+                        ]
+                        asked = keep
+                    else:
+                        # Every red run was the mistake's own: the mistake
+                        # goes back in, because the answers that follow --
+                        # the second asking, the tables' prediction -- are
+                        # all asked of the mutated tree.
+                        apply(target, mutant)
                 verdict = "caught" if "caught" in outs else outs[0]
+                if not outs:
+                    with say:
+                        print(
+                            f"  ?? {mutant.name}: every run it has is the"
+                            " machine's own red, and none of them is an"
+                            " answer"
+                        )
+                    target.write_text(pristine)
+                    return
                 if verdict == "survived":
                     # A survivor is the one answer that says a test is
                     # missing, and it is also the one answer a mistake that

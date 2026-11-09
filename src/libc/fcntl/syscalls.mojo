@@ -8,45 +8,43 @@ from std.ffi import external_call
 from std.sys import CompilationTarget
 from libc.constant import AT_FDCWD, c_ptr
 
+# The flags and the command numbers are the ones file.mojo
+# spells -- the machine's answers live there, one of each -- and
+# this file asks for them by name rather than spelling them a
+# second time, where a sweep's mistake in one copy would be
+# answered by the other and nothing would know.
+from libc.constant import (
+    FD_CLOEXEC,
+    F_DUPFD,
+    F_GETFD,
+    F_GETFL,
+    F_GETLK,
+    F_GETOWN,
+    F_RDLCK,
+    F_SETFD,
+    F_SETFL,
+    F_SETLK,
+    F_SETLKW,
+    F_SETOWN,
+    F_UNLCK,
+    F_WRLCK,
+    O_ACCMODE,
+    O_APPEND,
+    O_CLOEXEC,
+    O_CREAT,
+    O_DIRECTORY,
+    O_DSYNC,
+    O_EXCL,
+    O_NOCTTY,
+    O_NOFOLLOW,
+    O_NONBLOCK,
+    O_RDONLY,
+    O_RDWR,
+    O_SYNC,
+    O_TRUNC,
+    O_WRONLY,
+)
 
-# What `open` is given. The three access modes are the same everywhere and
-# almost nothing else is: both number the flags from bit 0 and assign them
-# differently, so O_CREAT is 64 here and 512 there, and O_APPEND is 1024 here
-# and 8 there. The Linux values were read out of <fcntl.h> and the Darwin ones
-# out of XNU's bsd/sys/fcntl.h. Three are Linux's own and have no number on
-# Darwin at all.
-#
-# Four of the Linux numbers are the x86-64 ones alone, because the ARM ABI
-# inherited its fcntl.h from 32-bit ARM and numbers those four differently:
-# O_DIRECTORY is 040000 there and 0200000 on x86-64, O_NOFOLLOW is the other
-# way round, O_DIRECT swaps with O_DIRECTORY's x86-64 bit, and O_TMPFILE is
-# O_DIRECTORY added to its own bit, so it moves with it. `check-constants`
-# reads the header on every machine in the matrix, which is where this was
-# found.
-comptime O_RDONLY: Int32 = 0
-comptime O_WRONLY: Int32 = 1
-comptime O_RDWR: Int32 = 2
-comptime O_ACCMODE: Int32 = 3
-comptime O_CREAT: Int32 = 512 if CompilationTarget.is_macos() else 64
-comptime O_EXCL: Int32 = 2048 if CompilationTarget.is_macos() else 128
-comptime O_NOCTTY: Int32 = 131072 if CompilationTarget.is_macos() else 256
-comptime O_TRUNC: Int32 = 1024 if CompilationTarget.is_macos() else 512
-comptime O_APPEND: Int32 = 8 if CompilationTarget.is_macos() else 1024
-comptime O_NONBLOCK: Int32 = 4 if CompilationTarget.is_macos() else 2048
-comptime O_DSYNC: Int32 = 4194304 if CompilationTarget.is_macos() else 4096
-comptime O_DIRECTORY: Int32 = 1048576 if CompilationTarget.is_macos() else (
-    Int32(16384) if (
-        CompilationTarget.is_linux() and CompilationTarget.is_arm()
-    ) else 65536
-)
-comptime O_NOFOLLOW: Int32 = 256 if CompilationTarget.is_macos() else (
-    Int32(32768) if (
-        CompilationTarget.is_linux() and CompilationTarget.is_arm()
-    ) else 131072
-)
-comptime O_CLOEXEC: Int32 = 16777216 if CompilationTarget.is_macos() else 524288
-comptime O_SYNC: Int32 = 128 if CompilationTarget.is_macos() else 1052672
-# Linux's own: Darwin's <fcntl.h> has no number for these.
 comptime O_DIRECT: Int32 = Int32(65536) if (
     CompilationTarget.is_linux() and CompilationTarget.is_arm()
 ) else 16384
@@ -56,23 +54,9 @@ comptime O_PATH: Int32 = 2097152
 # The `fcntl` commands. The first five are the same on both platforms, and the
 # rest are not: Linux numbers the lock commands 5, 6 and 7 and the ownership
 # ones 8 and 9, where Darwin does it the other way round.
-comptime F_DUPFD: Int32 = 0
-comptime F_GETFD: Int32 = 1
-comptime F_SETFD: Int32 = 2
-comptime F_GETFL: Int32 = 3
-comptime F_SETFL: Int32 = 4
-comptime F_GETLK: Int32 = 7 if CompilationTarget.is_macos() else 5
-comptime F_SETLK: Int32 = 8 if CompilationTarget.is_macos() else 6
-comptime F_SETLKW: Int32 = 9 if CompilationTarget.is_macos() else 7
-comptime F_GETOWN: Int32 = 5 if CompilationTarget.is_macos() else 9
-comptime F_SETOWN: Int32 = 6 if CompilationTarget.is_macos() else 8
 
 # What a descriptor's own flags can be, and what a lock is asked to be. Both
 # the same on the two platforms.
-comptime FD_CLOEXEC: Int32 = 1
-comptime F_RDLCK: Int32 = 1 if CompilationTarget.is_macos() else 0
-comptime F_UNLCK: Int32 = 2
-comptime F_WRLCK: Int32 = 3 if CompilationTarget.is_macos() else 1
 
 # What `flock` is given, also the same on both.
 comptime LOCK_SH: Int32 = 1

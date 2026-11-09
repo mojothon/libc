@@ -1,7 +1,7 @@
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import AT_FDCWD, EBADF, EEXIST
+from libc.constant import AT_FDCWD, EBADF, EEXIST, ENOENT
 from libc.errno import errno_message, get_errno, set_errno
 from libc.sys.stat import Stat, fchmod, fstat
 from libc.fcntl import (
@@ -15,6 +15,7 @@ from libc.fcntl import (
     O_APPEND,
     O_CLOEXEC,
     O_CREAT,
+    O_DIRECTORY,
     O_EXCL,
     O_NONBLOCK,
     O_RDONLY,
@@ -103,6 +104,50 @@ def test_open_with_the_flags() raises:
         + ("" if back >= 0 else ": " + errno_message(get_errno())),
     )
     assert_equal(close(back), 0, "and closed that")
+
+    # The file exists and is longer than what comes next, which is the
+    # situation O_TRUNC is for. The path's own name is longer than the
+    # four bytes the first writing left, so it is written whole -- and
+    # then the flag is asked for: opened again for writing, what the
+    # file held is gone, and what is read back is what the second
+    # writing put there.
+    var long_write = open(path, O_WRONLY, 0o644)
+    assert_true(long_write >= 0, "opened to fill the file up")
+    assert_equal(write(long_write, path, 25), 25, "wrote the whole name in")
+    assert_equal(close(long_write), 0, "and closed it")
+    var again = open(path, O_WRONLY | O_TRUNC, 0o644)
+    assert_true(again >= 0, "opened for writing, to be cut back")
+    assert_equal(write(again, path, 4), 4, "wrote four over the twenty-five")
+    assert_equal(close(again), 0, "and closed it")
+    var shortened = open(path, O_RDONLY)
+    assert_true(shortened >= 0, "and opened it to see what it held")
+    assert_equal(
+        fstat(shortened, info),
+        0,
+        "and the size is worth asking the kernel for",
+    )
+    assert_true(
+        Int(info[].size()) == 4,
+        "the writing that came second is all the file holds",
+    )
+    assert_equal(close(shortened), 0, "and closed it again")
+
+    # O_DIRECTORY is the flag that says only a directory will do. It is
+    # asked of a file that is not there, which keeps the other flags in
+    # the word from answering for it -- O_CREAT beside it would make a
+    # missing file, O_EXCL would refuse one that exists, and a number
+    # that is not the flag's is a word where one of those answers:
+    # asking for a directory that cannot be made is refused either way
+    # a wrong flag answers, and by its own errno, not by keeping quiet.
+    set_errno(0)
+    var nowhere = string_to_char_ptr("/tmp/libc-not-a-directory")
+    _ = unlink(nowhere)
+    var refused = open(nowhere, O_RDONLY | O_DIRECTORY)
+    assert_true(refused < 0, "a missing directory is not made for the asking")
+    assert_true(
+        get_errno() == ENOENT,
+        "and the refusal is the one that names what was asked",
+    )
 
     # O_EXCL on a file that is already there is answered with EEXIST, and
     # errno is the number this platform uses.
