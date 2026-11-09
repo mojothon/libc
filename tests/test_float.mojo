@@ -25,12 +25,17 @@ def test_radix_and_precision() raises:
     assert_equal(DBL_MANT_DIG, 53)
     assert_equal(FLT_DIG, 6)
     assert_equal(DBL_DIG, 15)
-    # `long double` is the 80-bit x87 type on SysV and plain `double` on
-    # Darwin, and the header answers differently because of it. Asking
-    # which of the two it is asks the same question as writing 64 down
-    # would, without writing a number twice that a platform can disprove.
-    assert_true(LDBL_MANT_DIG == DBL_MANT_DIG or LDBL_MANT_DIG == 64)
-    assert_true(DECIMAL_DIG == 17 or DECIMAL_DIG == 21)
+    # `long double` is the 80-bit x87 type on x86-64, IEEE quad on the
+    # aarch64 machines, and plain `double` on Darwin, and the header
+    # answers differently because of it. Asking which of the three it is
+    # asks the same question as writing a number down would, without
+    # writing a number twice that a platform can disprove.
+    assert_true(
+        LDBL_MANT_DIG == DBL_MANT_DIG
+        or LDBL_MANT_DIG == 64
+        or LDBL_MANT_DIG == 113
+    )
+    assert_true(DECIMAL_DIG == 17 or DECIMAL_DIG == 21 or DECIMAL_DIG == 36)
     assert_true(DECIMAL_DIG >= DBL_DIG)
 
 

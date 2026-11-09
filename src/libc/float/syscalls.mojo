@@ -29,7 +29,9 @@ comptime FLT_ROUNDS: c_int = 1
 comptime FLT_EVAL_METHOD: c_int = 0
 """0: operations are evaluated in the precision of their own type."""
 
-comptime DECIMAL_DIG: c_int = 17 if CompilationTarget.is_macos() else 21
+comptime DECIMAL_DIG: c_int = 17 if CompilationTarget.is_macos() else (
+    c_int(36) if CompilationTarget.is_arm() else 21
+)
 """Number of decimal digits needed to round-trip the widest
 floating-point type (`long double`) without loss."""
 
@@ -46,7 +48,9 @@ comptime FLT_MANT_DIG: c_int = 24
 comptime DBL_MANT_DIG: c_int = 53
 """Number of base-`FLT_RADIX` digits in a `double` significand."""
 
-comptime LDBL_MANT_DIG: c_int = 53 if CompilationTarget.is_macos() else 64
+comptime LDBL_MANT_DIG: c_int = 53 if CompilationTarget.is_macos() else (
+    c_int(113) if CompilationTarget.is_arm() else 64
+)
 """Number of base-`FLT_RADIX` digits in a `long double` significand."""
 
 comptime FLT_DIG: c_int = 6
@@ -55,7 +59,9 @@ comptime FLT_DIG: c_int = 6
 comptime DBL_DIG: c_int = 15
 """Decimal digits that survive a `double` round-trip."""
 
-comptime LDBL_DIG: c_int = 15 if CompilationTarget.is_macos() else 18
+comptime LDBL_DIG: c_int = 15 if CompilationTarget.is_macos() else (
+    33 if CompilationTarget.is_arm() else 18
+)
 """Decimal digits that survive a `long double` round-trip."""
 
 
@@ -129,14 +135,19 @@ comptime DBL_EPSILON: c_double = 2.2204460492503131e-16
 """Difference between 1.0 and the next representable `double`."""
 
 comptime LDBL_EPSILON: c_double = (
-    2.2204460492503131e-16 if CompilationTarget.is_macos() else 1.0842021724855044e-19
+    2.2204460492503131e-16 if CompilationTarget.is_macos() else (
+        1.92592994438723585331e-34 if CompilationTarget.is_arm() else 1.0842021724855044e-19
+    )
 )
 """Difference between 1.0 and the next representable `long double`.
 
-The x87 80-bit value is 1.08420217248550443401e-19; this is the nearest
-`Float64`, since Mojo has no 80-bit type. Darwin's `long double` is a
-`double`, so there the answer is `DBL_EPSILON` -- which is what the
-header says, and what `check-constants` asks it for by name.
+There are three `long double`s across the machines this runs on, and
+the number is written for each: the x87 80-bit value is
+1.08420217248550443401e-19, the IEEE quad an aarch64 glibc uses is
+1.92592994438723585331e-34, and Darwin's `long double` is a `double`,
+so there the answer is `DBL_EPSILON` -- which is what the header says,
+and what `check-constants` asks it for by name. Each is the nearest
+`Float64`, since Mojo has no 80-bit or 128-bit type.
 """
 
 comptime FLT_TRUE_MIN: c_float = 1.4012984643248171e-45

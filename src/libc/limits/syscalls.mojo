@@ -56,16 +56,20 @@ comptime SCHAR_MAX: c_schar = 127
 comptime UCHAR_MAX: c_uchar = 255
 """The largest unsigned char, `2**8 - 1`."""
 
-comptime CHAR_MIN: c_int = -128
+comptime CHAR_MIN: c_int = 0 if CompilationTarget.is_arm() else -128
 """The lowest plain `char`.
 
-`char` is signed on both platforms this package runs on, so this is
-`SCHAR_MIN` and not 0. C leaves the choice to the implementation, and the
-two that matter here both took the same side.
+C leaves the signedness of `char` to the implementation, and the machines
+this runs on did not all take the same side: x86-64 made it signed, where
+the ARM ABI made it unsigned -- so `CHAR_MIN` is `SCHAR_MIN` there and 0
+here, and `CHAR_MAX` is 255 rather than `SCHAR_MAX`. This was found by
+`check-constants` reading the header on the third machine, not by anyone
+remembering it.
 """
 
-comptime CHAR_MAX: c_int = 127
-"""The highest plain `char`, which is `SCHAR_MAX` for the same reason."""
+comptime CHAR_MAX: c_int = 255 if CompilationTarget.is_arm() else 127
+"""The highest plain `char`, which follows `CHAR_MIN`'s side of the same
+implementation choice."""
 
 
 # -------------------------------------------------------

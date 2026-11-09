@@ -15,6 +15,14 @@ from libc.constant import AT_FDCWD, c_ptr
 # and 8 there. The Linux values were read out of <fcntl.h> and the Darwin ones
 # out of XNU's bsd/sys/fcntl.h. Three are Linux's own and have no number on
 # Darwin at all.
+#
+# Four of the Linux numbers are the x86-64 ones alone, because the ARM ABI
+# inherited its fcntl.h from 32-bit ARM and numbers those four differently:
+# O_DIRECTORY is 040000 there and 0200000 on x86-64, O_NOFOLLOW is the other
+# way round, O_DIRECT swaps with O_DIRECTORY's x86-64 bit, and O_TMPFILE is
+# O_DIRECTORY added to its own bit, so it moves with it. `check-constants`
+# reads the header on every machine in the matrix, which is where this was
+# found.
 comptime O_RDONLY: Int32 = 0
 comptime O_WRONLY: Int32 = 1
 comptime O_RDWR: Int32 = 2
@@ -26,12 +34,16 @@ comptime O_TRUNC: Int32 = 1024 if CompilationTarget.is_macos() else 512
 comptime O_APPEND: Int32 = 8 if CompilationTarget.is_macos() else 1024
 comptime O_NONBLOCK: Int32 = 4 if CompilationTarget.is_macos() else 2048
 comptime O_DSYNC: Int32 = 4194304 if CompilationTarget.is_macos() else 4096
-comptime O_DIRECTORY: Int32 = 1048576 if CompilationTarget.is_macos() else 65536
-comptime O_NOFOLLOW: Int32 = 256 if CompilationTarget.is_macos() else 131072
+comptime O_DIRECTORY: Int32 = 1048576 if CompilationTarget.is_macos() else (
+    16384 if CompilationTarget.is_arm() else 65536
+)
+comptime O_NOFOLLOW: Int32 = 256 if CompilationTarget.is_macos() else (
+    32768 if CompilationTarget.is_arm() else 131072
+)
 comptime O_CLOEXEC: Int32 = 16777216 if CompilationTarget.is_macos() else 524288
 comptime O_SYNC: Int32 = 128 if CompilationTarget.is_macos() else 1052672
 # Linux's own: Darwin's <fcntl.h> has no number for these.
-comptime O_DIRECT: Int32 = 16384
+comptime O_DIRECT: Int32 = 65536 if CompilationTarget.is_arm() else 16384
 comptime O_NOATIME: Int32 = 262144
 comptime O_PATH: Int32 = 2097152
 
@@ -69,8 +81,9 @@ comptime F_TLOCK: Int32 = 2
 comptime F_TEST: Int32 = 3
 
 # Linux's own, and glibc only says so under _GNU_SOURCE: Darwin's <fcntl.h>
-# has no O_TMPFILE.
-comptime O_TMPFILE: Int32 = 4259840
+# has no O_TMPFILE. The number is its own bit added to O_DIRECTORY, so it
+# moves where O_DIRECTORY moves.
+comptime O_TMPFILE: Int32 = 4210688 if CompilationTarget.is_arm() else 4259840
 
 
 def creat(path: c_ptr[UInt8], mode: UInt32) -> Int32:
