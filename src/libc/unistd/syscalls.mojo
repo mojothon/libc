@@ -11,7 +11,14 @@ from libc.constant import c_int, c_long, c_ptr, c_size_t, c_uint, c_void
 
 # The number `syscall` takes for `getpid`. Linux numbers it 39 and
 # Darwin 20.
-comptime SYS_getpid: Int64 = 20 if CompilationTarget.is_macos() else 39
+# The number is the machine's own table's: 39 on x86-64, 172 on aarch64
+# (whose syscall table is the asm-generic numbering), 20 on Darwin. The
+# third machine is what read the header.
+comptime SYS_getpid: Int64 = 20 if CompilationTarget.is_macos() else (
+    Int64(172) if (
+        CompilationTarget.is_linux() and CompilationTarget.is_arm()
+    ) else 39
+)
 
 
 # Which knob `sysconf` is asked about. Every one of the eighty both
