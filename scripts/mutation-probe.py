@@ -739,6 +739,7 @@ SAME_CONSTANT = {
     "STAT_DEV_OFFSET": "the device number the kernel encodes for the mount, with no second source; the neighbour is the inode, and `is not zero` -- the shape the tests can afford -- is true of both",
     "SYSINFO_UPTIME": "seconds since boot, asked beside the clock `sysconf` answers elsewhere; the misaligned reader lands in the load averages, which are also just the machine's own count",
     "MTX_SLOTS": "the extra slot is room the lock never writes: init fills the C size, and every read goes back through the same struct, so a slot of slack changes no answer -- the mistake that means something is a slot too few, which is the other machine's branch and that machine's runner to ask",
+    "UT_ID_OFFSET": "the field is written by this package's setter and read by this package's reader, both through the one constant -- shifted together they still agree, and the kernel's own entry is one the tests have no login to make",
     "B150": "a line speed this suite has no line to run at: the value is written through the termios and read back through it, and the round trip agrees with a mistake, the wire being the only witness that would not",
     "B2400": "same shape as `B150` -- written and read back through the one termios, with no line attached to be set at the wrong speed",
     "B4800": "same shape as `B150` -- the speed the tests can only store and read back, no line being theirs to run it at",
@@ -1159,7 +1160,13 @@ def build(kind: str) -> list[Mutant]:
                     old = int(literal.group(0), 8)  # Mojo's C-style octal
                 except ValueError:
                     continue
-            moved = (-(old) if signed else old) + step
+            # The mistake moves the value down, not up. A flag the tests
+            # hand to the call beside other flags is or-ed in, and one
+            # more sets a bit the or had set already -- the call reads
+            # the same word and agrees with the mistake. One less clears
+            # a bit, and what the call then reads is not the word the
+            # tests meant.
+            moved = (-(old) if signed else old) - step
             # The minus is already in the text the digits sit inside, so
             # the replacement carries only the magnitude -- writing the
             # sign again would spell `--127`, which compiles to nothing.
