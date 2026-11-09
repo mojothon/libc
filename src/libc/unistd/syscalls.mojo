@@ -1067,7 +1067,12 @@ def write(fd: Int32, buf: c_ptr[UInt8], count: UInt32) -> Int:
         send again. Testing this against -1 and not against how much was
         handed over is how the tail gets quietly lost.
     """
-    return external_call["write", Int, Int, c_ptr[UInt8], Int](
+    # `__write` is glibc's own alias for the call, asked for by name
+    # because `write` is a name the standard library's I/O also answers,
+    # and on aarch64 the two spellings of it refuse to share a module --
+    # the third machine's compiler is what refused them. The alias is the
+    # same address.
+    return external_call["__write", Int, Int, c_ptr[UInt8], Int](
         Int(fd), buf, Int(count)
     )
 
