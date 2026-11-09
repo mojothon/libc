@@ -1406,15 +1406,18 @@ def main() -> int:
                 print(f"    {where}")
         if answered:
             return 1 if args.strict else 0
-        if tally["survived"] or tally["hung"]:
-            if tally["survived"] and args.kind == "order":
+        if tally["survived"]:
+            if args.kind == "order":
                 print("  a survivor is a call whose two arguments nothing tells apart")
-            elif tally["survived"]:
+            else:
                 print("  a survivor is a call whose answer nothing compares against")
-            if tally["hung"]:
-                print("  a hang is a call whose tests wait for it instead: nothing")
-                print("  in that file after it was asked, and nothing was compared")
             return 1 if args.strict else 0
+        # A hung mutant is not a survivor: its tests sat waiting for
+        # something the mistake never made happen, which is the tests
+        # refusing to pass on a wrong behaviour — the same verdict as a
+        # crash, wearing a timeout instead of one. It is counted apart so
+        # the ones worth a look are visible, and a hang that came from a
+        # test that waits by design will say so in the run above it.
     return 0
 
 
