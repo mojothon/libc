@@ -56,7 +56,9 @@ comptime SCHAR_MAX: c_schar = 127
 comptime UCHAR_MAX: c_uchar = 255
 """The largest unsigned char, `2**8 - 1`."""
 
-comptime CHAR_MIN: c_int = 0 if CompilationTarget.is_arm() else -128
+comptime CHAR_MIN: c_int = c_int(0) if (
+    CompilationTarget.is_linux() and CompilationTarget.is_arm()
+) else -128
 """The lowest plain `char`.
 
 C leaves the signedness of `char` to the implementation, and the machines
@@ -67,7 +69,9 @@ here, and `CHAR_MAX` is 255 rather than `SCHAR_MAX`. This was found by
 remembering it.
 """
 
-comptime CHAR_MAX: c_int = 255 if CompilationTarget.is_arm() else 127
+comptime CHAR_MAX: c_int = c_int(255) if (
+    CompilationTarget.is_linux() and CompilationTarget.is_arm()
+) else 127
 """The highest plain `char`, which follows `CHAR_MIN`'s side of the same
 implementation choice."""
 

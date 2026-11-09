@@ -109,7 +109,10 @@ def test_the_rest() raises:
     assert_equal(F_TLOCK, 2)
     assert_equal(F_TEST, 3)
     assert_equal(
-        Int(O_TMPFILE), 4210688 if CompilationTarget.is_arm() else 4259840
+        Int(O_TMPFILE),
+        4210688 if (
+            CompilationTarget.is_linux() and CompilationTarget.is_arm()
+        ) else 4259840,
     )
     assert_equal(Int(SC_PAGESIZE), 29 if CompilationTarget.is_macos() else 30)
     assert_equal(

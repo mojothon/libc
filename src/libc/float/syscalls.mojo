@@ -30,7 +30,9 @@ comptime FLT_EVAL_METHOD: c_int = 0
 """0: operations are evaluated in the precision of their own type."""
 
 comptime DECIMAL_DIG: c_int = 17 if CompilationTarget.is_macos() else (
-    c_int(36) if CompilationTarget.is_arm() else 21
+    c_int(36) if (
+        CompilationTarget.is_linux() and CompilationTarget.is_arm()
+    ) else 21
 )
 """Number of decimal digits needed to round-trip the widest
 floating-point type (`long double`) without loss."""
@@ -49,7 +51,9 @@ comptime DBL_MANT_DIG: c_int = 53
 """Number of base-`FLT_RADIX` digits in a `double` significand."""
 
 comptime LDBL_MANT_DIG: c_int = 53 if CompilationTarget.is_macos() else (
-    c_int(113) if CompilationTarget.is_arm() else 64
+    c_int(113) if (
+        CompilationTarget.is_linux() and CompilationTarget.is_arm()
+    ) else 64
 )
 """Number of base-`FLT_RADIX` digits in a `long double` significand."""
 
@@ -60,7 +64,9 @@ comptime DBL_DIG: c_int = 15
 """Decimal digits that survive a `double` round-trip."""
 
 comptime LDBL_DIG: c_int = 15 if CompilationTarget.is_macos() else (
-    33 if CompilationTarget.is_arm() else 18
+    c_int(33) if (
+        CompilationTarget.is_linux() and CompilationTarget.is_arm()
+    ) else 18
 )
 """Decimal digits that survive a `long double` round-trip."""
 
@@ -136,7 +142,9 @@ comptime DBL_EPSILON: c_double = 2.2204460492503131e-16
 
 comptime LDBL_EPSILON: c_double = (
     2.2204460492503131e-16 if CompilationTarget.is_macos() else (
-        1.92592994438723585331e-34 if CompilationTarget.is_arm() else 1.0842021724855044e-19
+        1.92592994438723585331e-34 if (
+            CompilationTarget.is_linux() and CompilationTarget.is_arm()
+        ) else 1.0842021724855044e-19
     )
 )
 """Difference between 1.0 and the next representable `long double`.

@@ -35,15 +35,21 @@ comptime O_APPEND: Int32 = 8 if CompilationTarget.is_macos() else 1024
 comptime O_NONBLOCK: Int32 = 4 if CompilationTarget.is_macos() else 2048
 comptime O_DSYNC: Int32 = 4194304 if CompilationTarget.is_macos() else 4096
 comptime O_DIRECTORY: Int32 = 1048576 if CompilationTarget.is_macos() else (
-    16384 if CompilationTarget.is_arm() else 65536
+    Int32(16384) if (
+        CompilationTarget.is_linux() and CompilationTarget.is_arm()
+    ) else 65536
 )
 comptime O_NOFOLLOW: Int32 = 256 if CompilationTarget.is_macos() else (
-    32768 if CompilationTarget.is_arm() else 131072
+    Int32(32768) if (
+        CompilationTarget.is_linux() and CompilationTarget.is_arm()
+    ) else 131072
 )
 comptime O_CLOEXEC: Int32 = 16777216 if CompilationTarget.is_macos() else 524288
 comptime O_SYNC: Int32 = 128 if CompilationTarget.is_macos() else 1052672
 # Linux's own: Darwin's <fcntl.h> has no number for these.
-comptime O_DIRECT: Int32 = 65536 if CompilationTarget.is_arm() else 16384
+comptime O_DIRECT: Int32 = Int32(65536) if (
+    CompilationTarget.is_linux() and CompilationTarget.is_arm()
+) else 16384
 comptime O_NOATIME: Int32 = 262144
 comptime O_PATH: Int32 = 2097152
 
@@ -83,7 +89,9 @@ comptime F_TEST: Int32 = 3
 # Linux's own, and glibc only says so under _GNU_SOURCE: Darwin's <fcntl.h>
 # has no O_TMPFILE. The number is its own bit added to O_DIRECTORY, so it
 # moves where O_DIRECTORY moves.
-comptime O_TMPFILE: Int32 = 4210688 if CompilationTarget.is_arm() else 4259840
+comptime O_TMPFILE: Int32 = Int32(4210688) if (
+    CompilationTarget.is_linux() and CompilationTarget.is_arm()
+) else 4259840
 
 
 def creat(path: c_ptr[UInt8], mode: UInt32) -> Int32:
