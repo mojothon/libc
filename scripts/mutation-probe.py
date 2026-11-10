@@ -83,7 +83,11 @@ signature so a call is no longer handed its own parameters -- any of those
 leaves an entry standing that excuses a mistake nothing makes any more, and the
 table is then a list of things nobody has checked. The same goes the other way
 round and only a run can see it: an entry whose mutant is now caught is an
-entry that has been answered, and the run says so.
+entry that has been answered, and the run says so. It asks the constants'
+table the same thing, and it asks the walk -- that every constant mutant
+changes the literal the mistake names -- because a mutation that lands in a
+branch the compiling machine never reads makes every verdict about it a
+verdict about a number nothing adds up.
 """
 
 import argparse
