@@ -368,15 +368,22 @@ def load(name: str):
     return module
 
 
-def callers(name: str) -> list[Path]:
-    """Test files whose body mentions `name(` once the imports are gone.
+CALLS: dict[Path, set[str]] = {}
 
-    An import is an `from libc.x import (...)` that can run over several lines,
-    and `test_import_all.mojo` is nothing but imports: counting it would make
-    every binding "asked" by that file and run the wrong test.
+
+def calls_in(path: Path) -> set[str]:
+    """The names a test file calls, its imports gone.
+
+    An import is an `from libc.x import (...)` that can run over several
+    lines, and `test_import_all.mojo` is nothing but imports: counting
+    it would make every binding "asked" by that file and run the wrong
+    test. The answer is read once and kept: every binding asks the same
+    files the same question, the files do not change while the sweep
+    runs, and reading five hundred of them five hundred times over was
+    minutes that nothing got for.
     """
-    hits = []
-    for path in TESTS:
+    known = CALLS.get(path)
+    if known is None:
         lines = path.read_text().splitlines()
         kept, index = [], 0
         while index < len(lines):
@@ -390,9 +397,19 @@ def callers(name: str) -> list[Path]:
                 continue
             kept.append(line)
             index += 1
-        if re.search(rf"\b{re.escape(name)}\s*\(", "\n".join(kept)):
-            hits.append(path)
-    return hits
+        known = set(re.findall(r"\b([A-Za-z_]\w*)\s*\(", "\n".join(kept)))
+        CALLS[path] = known
+    return known
+
+
+def callers(name: str) -> list[Path]:
+    """Test files whose body mentions `name(` once the imports are gone.
+
+    The asking goes through `calls_in`, which strips the imports once
+    per file and keeps what it found; a name is in the set it answers
+    exactly where the body mentions `name(`.
+    """
+    return [path for path in TESTS if name in calls_in(path)]
 
 
 @dataclass(frozen=True)

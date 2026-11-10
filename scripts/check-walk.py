@@ -11,7 +11,8 @@ survivor that was never a survivor, a caught that was never asked.
 This asks the invariant `apply` goes on -- the `first` number in the
 block is the literal the mutant names -- of every constant mutant,
 which is a question of regexes and costs seconds. The full walk of
-tables beside which this sits is `mutation-tables`, which is minutes.
+tables beside which this sits is `mutation-tables`, which asks the
+same of every mutant of every kind and costs seconds more.
 """
 
 import importlib.util
