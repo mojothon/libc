@@ -407,12 +407,22 @@ def test_sysconf_names_the_knobs_it_answers_for() raises:
     )
 
     # Job control is a feature and not a count: POSIX fixes the answer
-    # at 1 when the system has it, which every system this runs on does.
-    # The item beside it in the header answers -1 -- not supported --
-    # so a number read one low is caught rather than believed.
-    assert_equal(
-        Int(sysconf(SC_JOB_CONTROL)), 1, "and job control is a feature it has"
-    )
+    # at 1 when the system has it, which Linux does, and the item beside
+    # it in the header answers -1 -- not supported -- so a number read
+    # one low is caught rather than believed. Darwin numbers its items
+    # its own way, and the same question is asked there only for an
+    # answer at all.
+    comptime if CompilationTarget.is_linux():
+        assert_equal(
+            Int(sysconf(SC_JOB_CONTROL)),
+            1,
+            "and job control is a feature it has",
+        )
+    else:
+        assert_true(
+            Int(sysconf(SC_JOB_CONTROL)) >= 0,
+            "and job control is asked for and answered",
+        )
 
     # A queue's priorities have a ceiling, and an item that answers a
     # negative number says the machine does not know what was asked.
