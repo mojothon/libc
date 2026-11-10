@@ -67,8 +67,11 @@ struct Statfs:
 
     def f_type(self) -> UInt64:
         """The file system's type number, the `linux_MAGIC` constants."""
-        # A word on both platforms, and first in both.
-        return self._u64(STATFS_TYPE_OFFSET)
+        # A word on Linux; Darwin keeps it as four bytes beside the owner.
+        comptime if CompilationTarget.is_macos():
+            return self._u32(STATFS_TYPE_OFFSET)
+        else:
+            return self._u64(STATFS_TYPE_OFFSET)
 
     def f_bsize(self) -> UInt64:
         """The file system's block size, in bytes."""
@@ -122,10 +125,12 @@ struct Statfs:
 
     def f_flags(self) -> UInt64:
         """The mount flags, `ST_RDONLY` and `ST_NOSUID` among them."""
-        comptime if not CompilationTarget.is_macos():
-            return self._u64(STATFS_FLAGS_OFFSET)
+        # Four bytes on Darwin, where the flags follow the id and the
+        # owner; Linux puts them at the end as a whole word.
+        comptime if CompilationTarget.is_macos():
+            return self._u32(STATFS_FLAGS_OFFSET)
         else:
-            return 0
+            return self._u64(STATFS_FLAGS_OFFSET)
 
 
 def statfs(path: c_ptr[UInt8], buf: c_ptr[Statfs]) -> Int32:
