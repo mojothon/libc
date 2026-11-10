@@ -113,11 +113,14 @@ def main() raises:
 
 ## Constants
 
-`libc.constant` carries the C type aliases (`c_int`, `c_size_t`, ...) plus the
-`O_*`, `SEEK_*`, `AT_*` and `errno` values:
+`libc.constant` carries the C type aliases (`c_int`, `c_size_t`, ...), the
+`SEEK_*`, `AT_*` and `errno` values, and the four `fcntl.h` numbers
+`libc.fcntl` does not carry; the `O_*` flags live beside the `open` and
+`fcntl` that read them:
 
 ```mojo
-from libc.constant import O_CREAT, O_RDWR, SEEK_END
+from libc.constant import SEEK_END
+from libc.fcntl import O_CREAT, O_RDWR
 ```
 
 ## Errors
