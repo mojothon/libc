@@ -871,6 +871,94 @@ and why `write` goes by a string alias, `__write` on aarch64, where the
 plain name is one the standard library also answers and the two spellings
 refuse to share a module.
 
+The third kind of mutant is the numbers themselves. Every constant the
+package binds is a `comptime` number a person typed in, and the path a wrong
+number takes is exactly that one: read out of C once, by hand, into a source
+file, where nothing between the typing and the run ever looks at it again --
+`check-constants` asks C what the number is, which catches a typo and not a
+misunderstanding, the way a spelling check catches a mistyped word and not a
+word that means something else. `--kind constant` changes one number at a
+time and asks the module's tests what they noticed, and the weekly sample
+drew it with the same seed as the other two.
+
+Its first honest sample came back with survivors in families, and the
+families said what kind of question each survivor was. The largest was seven
+members of `statvfs`, and together they were the whole difficulty of the
+axis in one struct: a reader landed one word away from a member finds a
+neighbour that is another counter of the same kind -- the blocks free beside
+the blocks there, the slots free beside the slots there -- and `f_favail` is
+glibc's copy of `f_ffree`, so an assertion that only compares numbers to
+numbers agrees with a mistake before it is made. What catches a slide is a
+second source that does not slide the same way, and C has one: `statfs`, the
+kernel's own account of the same file system, a different shape whose
+members sit at different offsets. It is bound now, and the same file system
+asked in both shapes has to answer with the same counts -- which five of the
+seven cannot do with the wrong number in them, and two can, because glibc
+does not carry the kernel's word over unchanged: `f_frsize` is `f_bsize` in
+the POSIX shape and the kernel's own fundamental size in the other, and
+`f_fsid` is packed out of two halves differently by each. Those two are
+written down with the reason, and the reason was written only after C was
+asked what it really answers -- the first version of the test asserted the
+two shapes equal, and the machine said no before any mutant had the chance.
+
+The truth was asked of C rather than believed in several places, and C
+disagreed with what POSIX seems to say. `sysconf`'s items are numbered by
+each header its own way, and Darwin's way is not glibc's: on Darwin the
+number six answers `200112`, the version of POSIX, where Linux answers job
+control's yes. An item whose answer POSIX fixes at one is asked of Linux
+where the number means that, and on Darwin the same question is asked only
+for an answer at all. Darwin has no POSIX message queues, and its priority
+ceiling answers the refusal, minus one -- a true answer, and not a number to
+press. Both branches say what machine they speak for now, and the runner
+that knows its own numbering reads the branch written for it.
+
+The rest of the sample's survivors were the value constants, and each had
+an assertion to write or a reason to be written down. February is spelled
+where January was, because an abbreviated month is the one place the C
+locale answers twelve different words for twelve neighbouring numbers, and
+a reader one past `ABMON_1` cannot also say February. `GLOB_MARK` is asked
+twice, with the flag and without, because its work is visible in the answer
+-- a trailing slash on every directory -- and only the difference between two
+runs says the flag was read at all. A socket's pending error reads as zero,
+which the type beside it in the header cannot also be. `NGROUPS_MAX` is
+asked of the constant and of `sysconf` at once, two sources for one ceiling.
+A shell is held to not being the home directory again, two columns that
+both begin with a slash. And `ENOTSUP` is provoked where the platform spells
+it, an urgent byte refused by a datagram pair that has no out-of-band
+channel. Thirteen more were explained rather than fixed -- the machine's
+own counts, the conditions a suite on a loopback machine cannot arrange,
+the flags whose work is in when a block reaches a disk -- and they went on
+the constants' table with the reason each, which holds ninety-two entries
+now, every one a claim that the mistake it excuses cannot be told apart
+from the truth by anything this suite can ask.
+
+One of the twenty-two was not a survivor at all but the sweep lying about
+a number. A branch's answer was found by the first occurrence of its text,
+and a short answer is often a substring of a longer one earlier in the
+chain: `4` is the first digit of `4103`, which is what Darwin answers for
+`SO_ERROR` where Linux answers `4`. The mutation landed in the branch the
+compiling machine never reads, and every verdict that followed -- the
+survivor, the reason written for it -- was a verdict about a number nothing
+adds up. The branches are walked in order now, each answer found after the
+branch before it, and the walk is itself a claim that something checks:
+`check-walk` asks, of every constant mutant, that the literal the mistake
+changes is the one the mutant names, which is a question of regexes and
+costs seconds; the tables' own check asks it too; and the check that runs
+against a broken tree puts the walk back the way it was wrong and wants the
+answer in red. Eight mutants land somewhere else when the walk takes the
+first hit, and all eight are the same shape: a Darwin number whose digits
+begin where a Linux number ends.
+
+With that, the sample's question of the constants' axis is answered the
+way the other two axes are: forty-eight mutants drawn by the weekly seed
+come back twenty-four caught and twenty-four written down, and not one
+survived. The axis is still sampled rather than swept -- five hundred and
+ninety-six constants, a few more than the calls themselves, each mutant a
+compile and a run -- so a full sweep is half a machine's day, and the
+fraction is what the week can ask. What the fraction has already shown is
+that the numbers needed a second source each, and the sources are bound
+now.
+
 ## Next to Rust's `libc`
 
 The nearest thing to this that is not this: [rust-lang/libc](
