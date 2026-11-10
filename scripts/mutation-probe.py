@@ -1746,8 +1746,12 @@ def main() -> int:
                         # the second asking, the tables' prediction -- are
                         # all asked of the mutated tree.
                         apply(target, mutant)
-                verdict = "caught" if "caught" in outs else outs[0]
                 if not outs:
+                    # Every run the mutant has was asked twice and stayed
+                    # red both times, which is the machine saying no
+                    # rather than the test: there is no answer here, and
+                    # taking an index of an empty list instead would end
+                    # the whole sweep on a machine's mood.
                     with say:
                         print(
                             f"  ?? {mutant.name}: every run it has is the"
@@ -1756,6 +1760,7 @@ def main() -> int:
                         )
                     target.write_text(pristine)
                     return
+                verdict = "caught" if "caught" in outs else outs[0]
                 if verdict == "survived":
                     # A survivor is the one answer that says a test is
                     # missing, and it is also the one answer a mistake that
