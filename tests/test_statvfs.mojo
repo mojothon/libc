@@ -181,6 +181,18 @@ def test_the_kernel_s_own_account_agrees_with_the_posix_one() raises:
                     "the flags of a mounted file system are not nothing",
                 )
 
+        var fd = open_reading(string_to_char_ptr("/tmp"), O_RDONLY)
+        assert_true(fd >= 0, "there is a directory open")
+        var by_descriptor = unsafe_alloc[Statfs](1)
+        assert_equal(fstatfs(fd, by_descriptor), 0, "fstatfs answers too")
+        assert_equal(
+            Int(by_descriptor.unsafe_offset(0)[].f_bsize()),
+            Int(by_kernel.unsafe_offset(0)[].f_bsize()),
+            "and says of the open file what statfs says of its path",
+        )
+        by_descriptor.unsafe_free()
+        _ = close(fd)
+
         by_path.unsafe_free()
         by_kernel.unsafe_free()
 

@@ -22,17 +22,17 @@ from libc.constant import c_ptr
 # them is compared with C's `offsetof` on both platforms by
 # `scripts/check-layouts.py`.
 comptime STATFS_SLOTS: Int = 268 if CompilationTarget.is_macos() else 15
-comptime STATFS_TYPE_OFFSET: Int = 0
+comptime STATFS_TYPE_OFFSET: Int = 60 if CompilationTarget.is_macos() else 0
 comptime STATFS_BSIZE_OFFSET: Int = 0 if CompilationTarget.is_macos() else 8
 comptime STATFS_BLOCKS_OFFSET: Int = 8 if CompilationTarget.is_macos() else 16
 comptime STATFS_BFREE_OFFSET: Int = 16 if CompilationTarget.is_macos() else 24
 comptime STATFS_BAVAIL_OFFSET: Int = 24 if CompilationTarget.is_macos() else 32
 comptime STATFS_FILES_OFFSET: Int = 32 if CompilationTarget.is_macos() else 40
 comptime STATFS_FFREE_OFFSET: Int = 40 if CompilationTarget.is_macos() else 48
-comptime STATFS_FSID_OFFSET: Int = 56
+comptime STATFS_FSID_OFFSET: Int = 48 if CompilationTarget.is_macos() else 56
 comptime STATFS_NAMELEN_OFFSET: Int = 64
 comptime STATFS_FRSIZE_OFFSET: Int = 72
-comptime STATFS_FLAGS_OFFSET: Int = 80
+comptime STATFS_FLAGS_OFFSET: Int = 64 if CompilationTarget.is_macos() else 80
 
 
 struct Statfs:
