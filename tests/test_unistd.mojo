@@ -424,12 +424,17 @@ def test_sysconf_names_the_knobs_it_answers_for() raises:
             "and job control is asked for and answered",
         )
 
-    # A queue's priorities have a ceiling, and an item that answers a
-    # negative number says the machine does not know what was asked.
-    var priorities = sysconf(SC_MQ_PRIO_MAX)
-    assert_true(
-        priorities > 0, "and a message queue has priorities to choose from"
-    )
+    # A queue's priorities have a ceiling, and on Linux, which has the
+    # queues, the item beside it in the header answers the refusal: a
+    # number read one low is caught rather than believed. Darwin has no
+    # POSIX message queues to have a ceiling for -- its item answers
+    # the refusal, which is a true answer and not a number to press.
+    comptime if CompilationTarget.is_linux():
+        var priorities = sysconf(SC_MQ_PRIO_MAX)
+        assert_true(
+            priorities > 0,
+            "and a message queue has priorities to choose from",
+        )
 
 
 def test_confstr_answers_for_the_default_path() raises:
