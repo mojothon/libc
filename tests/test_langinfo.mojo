@@ -10,6 +10,7 @@ What the tests never do is write a number down. Not one of the fifty-five
 `nl_item`s is the same value on the two, so every one of them is asked
 for by name.
 """
+from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.langinfo import (
@@ -106,15 +107,21 @@ def test_how_the_locale_writes_a_number() raises:
         "and no separator between thousands",
     )
     # The currency the C locale does not have: what comes back is the
-    # sign of its absence, which is a dash -- an item the machines
-    # number differently is answered with an empty string, as the item
-    # numbered nothing above is, and a number that is not the item's is
-    # not the item.
-    assert_equal(
-        char_ptr_to_string(nl_langinfo(CRNCYSTR)),
-        "-",
-        "no currency is spelled as the sign of its absence",
-    )
+    # sign of its absence, which is a dash on Linux. Darwin numbers the
+    # item differently, and a number that is not the item's is answered
+    # with an empty string, the way the item numbered nothing above is.
+    comptime if CompilationTarget.is_macos():
+        assert_equal(
+            char_ptr_to_string(nl_langinfo(CRNCYSTR)),
+            "",
+            "no currency to report, and Darwin says so with nothing",
+        )
+    else:
+        assert_equal(
+            char_ptr_to_string(nl_langinfo(CRNCYSTR)),
+            "-",
+            "no currency is spelled as the sign of its absence",
+        )
 
 
 def test_the_codeset_has_a_name_and_an_item_nobody_defines_does_not() raises:
