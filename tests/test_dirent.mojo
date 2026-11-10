@@ -2,7 +2,8 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
-from libc.constant import O_CREAT, O_RDONLY, O_TRUNC, O_WRONLY, c_ptr, c_void
+from libc.constant import c_ptr, c_void
+from libc.fcntl import O_CREAT, O_RDONLY, O_TRUNC, O_WRONLY
 from libc.dirent import (
     DT_DIR,
     DT_REG,

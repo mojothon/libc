@@ -6,9 +6,6 @@ from libc.constant import (
     EAGAIN,
     ENOENT,
     EPERM,
-    O_NONBLOCK,
-    O_RDONLY,
-    O_WRONLY,
 )
 from libc.errno import (
     check,
@@ -18,7 +15,7 @@ from libc.errno import (
     get_errno,
     set_errno,
 )
-from libc.fcntl import openat
+from libc.fcntl import O_NONBLOCK, O_RDONLY, O_WRONLY, openat
 from libc.sys.stat import Stat, mkfifo, stat
 from libc.unistd import close, getcwd, read, unlink
 from libc.utils import string_to_char_ptr

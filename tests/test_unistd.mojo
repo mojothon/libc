@@ -3,7 +3,13 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
-from libc.fcntl import O_CREAT, O_RDONLY, open as open_with_mode
+from libc.fcntl import (
+    O_CREAT,
+    O_NOCTTY,
+    O_RDONLY,
+    O_RDWR,
+    open as open_with_mode,
+)
 from libc.constant import (
     AT_FDCWD,
     ENOMEM,
@@ -11,8 +17,6 @@ from libc.constant import (
     ERANGE,
     c_ptr,
     c_uint,
-    O_NOCTTY,
-    O_RDWR,
     SEEK_END,
     SEEK_SET,
     c_void,
@@ -132,7 +136,7 @@ from libc.unistd import (
     write,
     writev,
 )
-from libc.constant import O_RDWR, c_char, c_ptr
+from libc.constant import c_char, c_ptr
 from libc.errno import get_errno, set_errno
 from libc.file import close, fclose, fopen, open
 from libc.stdio import fwrite, remove

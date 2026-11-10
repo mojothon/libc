@@ -16,12 +16,11 @@ from libc.constant import (
     EBADF,
     ENODEV,
     ENOTTY,
-    O_RDONLY,
     c_int,
     c_ptr,
 )
 from libc.errno import get_errno, set_errno
-from libc.fcntl import O_NOCTTY, O_NONBLOCK, O_RDWR, openat
+from libc.fcntl import O_NOCTTY, O_NONBLOCK, O_RDONLY, O_RDWR, openat
 from libc.termios import (
     B4800,
     B9600,

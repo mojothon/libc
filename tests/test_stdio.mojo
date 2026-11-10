@@ -4,7 +4,6 @@ from std.testing import assert_equal, assert_true
 from libc.constant import (
     AT_FDCWD,
     ENOENT,
-    O_RDONLY,
     SEEK_SET,
     c_char,
     c_ptr,
@@ -12,7 +11,7 @@ from libc.constant import (
     c_void,
 )
 from libc.errno import get_errno, set_errno
-from libc.fcntl import open
+from libc.fcntl import O_RDONLY, open
 from libc.file import (
     FILE,
     close,
