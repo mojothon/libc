@@ -69,6 +69,13 @@ jobs:
       # only that the pair can still be made, and takes seconds.
       - name: Check that every reason in the probe still has a pair
         run: pixi run mutation-tables
+      # The probe finds a branch's answer by walking the branches in
+      # order, each after the one before it -- `4` is the first digit of
+      # `4103`, and a walk that takes the first hit mutates the branch
+      # the machine never reads. This asks, of every constant mutant,
+      # that the literal the mistake changes is the one it names.
+      - name: Check that every constant mutant lands on the literal it names
+        run: pixi run check-walk
 
   checks:
     # Each check above is a claim that something bad would be caught, and

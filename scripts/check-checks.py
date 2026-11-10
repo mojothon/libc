@@ -54,6 +54,7 @@ class Break:
         old: str,
         new: str,
         append: bool = False,
+        args: tuple[str, ...] = (),
     ) -> None:
         self.check = check
         self.broke = broke
@@ -61,6 +62,7 @@ class Break:
         self.old = old
         self.new = new
         self.append = append
+        self.args = args
 
 
 BREAKS = [
@@ -301,6 +303,16 @@ BREAKS = [
         '        Int(gettid()), Int(getpid()), "and it is this process\'s own"\n'
         "    )",
     ),
+    Break(
+        "check-walk",
+        "the probe's branch walk taking a short answer as a substring of a"
+        " longer one -- `4` is the first digit of `4103`, and the mutation"
+        " lands in the branch the machine never reads",
+        "scripts/mutation-probe.py",
+        "            at = block.find(branch_value, cursor)",
+        "            at = block.find(branch_value, equals + 1)",
+    ),
+
 ]
 
 
@@ -310,10 +322,10 @@ def version(tree: Path) -> str:
     return text.split('__version__ = "')[1].split('"')[0]
 
 
-def run(check: str, tree: Path) -> int:
+def run(check: str, tree: Path, args: tuple[str, ...] = ()) -> int:
     """The exit status of `check`, run against `tree`."""
     done = subprocess.run(
-        [sys.executable, str(tree / "scripts" / f"{check}.py")],
+        [sys.executable, str(tree / "scripts" / f"{check}.py"), *args],
         cwd=tree,
         capture_output=True,
         text=True,
@@ -329,8 +341,8 @@ def main() -> int:
         problems = []
         # A red on a broken tree means nothing if the tree was red already,
         # so the copy is asked once for each check before anything is broken.
-        for check in dict.fromkeys(b.check for b in BREAKS):
-            if run(check, tree) != 0:
+        for check in dict.fromkeys((b.check, b.args) for b in BREAKS):
+            if run(check[0], tree, check[1]) != 0:
                 problems.append(f"{check}: fails before anything is broken")
         if problems:
             print("\n  *** a check disagrees with the tree as it is ***")
@@ -356,7 +368,7 @@ def main() -> int:
                 broken = original.replace(old, case.new, 1)
             path.write_text(broken)
 
-            status = run(case.check, tree)
+            status = run(case.check, tree, case.args)
             path.write_text(original)
             if status == 0:
                 problems.append(f"{case.check}: stayed green with {case.broke}")

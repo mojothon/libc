@@ -1408,9 +1408,48 @@ def build(kind: str) -> list[Mutant]:
     return mutants
 
 
+def walk_problems(mutants: list[Mutant]) -> list[str]:
+    """Every constant mutant names the literal the mutation changes.
+
+    A branch's answer is found after the branch before it, because a
+    short answer is a substring of a longer one earlier in the chain --
+    `4` is the first digit of `4103`, and a walk that takes the first
+    hit lands inside the branch the compiling machine never reads. What
+    the mutant then names and what `apply` changes are two literals,
+    and every verdict about the mutant is then a verdict about a number
+    nothing adds up: a survivor that was never a survivor, a caught
+    that was never asked. The invariant is exact, and it is the one
+    `apply` goes on: the `first` number in the block is the literal the
+    mutant names.
+    """
+    wrong = []
+    by_path: dict[str, list[Mutant]] = {}
+    for mutant in mutants:
+        by_path.setdefault(mutant.path, []).append(mutant)
+    for path, mutants_of in sorted(by_path.items()):
+        text = Path(path).read_text()
+        for mutant in mutants_of:
+            block = block_of(text, mutant.name)
+            numbers = list(NUMBER.finditer(block)) if block else []
+            if mutant.first >= len(numbers):
+                wrong.append(
+                    f"{Path(path).relative_to(ROOT)}:{mutant.name}"
+                    f" names {mutant.symbol} but lands past the block"
+                )
+            elif numbers[mutant.first].group(0) != mutant.symbol:
+                wrong.append(
+                    f"{Path(path).relative_to(ROOT)}:{mutant.name}"
+                    f" names {mutant.symbol} but the mutation lands on"
+                    f" {numbers[mutant.first].group(0)} -- a branch's"
+                    " answer was found as a substring of a longer one"
+                )
+    return wrong
+
+
 def check_tables() -> int:
     """Every reason in the tables still has a mutant to be a reason about."""
     stale = []
+    constants = build("constant")
     for kind, table in (
         ("symbol", SAME_ANSWER),
         ("order", SAME_ORDER),
@@ -1433,17 +1472,32 @@ def check_tables() -> int:
     stale += [
         ("constant", name)
         for name in SAME_CONSTANT
-        if name not in {mutant.name for mutant in build("constant")}
+        if name not in {mutant.name for mutant in constants}
     ]
+    walk = walk_problems(constants)
 
-    if not stale:
+    if not stale and not walk:
         print(
             f"all {len(SAME_ANSWER)} symbol, {len(SAME_ORDER)} order and"
             f" {len(NO_OBSERVATION)} unobservable reasons are about pairs that"
             " can still be made, each read both ways round; the constants'"
-            f" table names {len(SAME_CONSTANT)} that can still be made too"
+            f" table names {len(SAME_CONSTANT)} that can still be made too;"
+            f" and all {len(constants)} constant mutants land on the literal"
+            " the mistake names"
         )
         return 0
+
+    if walk:
+        print(f"{len(walk)} mutant(s) whose mistake lands somewhere else:")
+        for problem in walk:
+            print(f"  {problem}")
+        print()
+        print("  A mutant that names one literal and changes another is a verdict")
+        print("  about a number no run reads -- the branch the machine compiles")
+        print("  out was the one mistaken instead.")
+        print()
+    if not stale:
+        return 1
 
     print(f"{len(stale)} reason(s) about a pair that can no longer be made:")
     for kind, key in stale:
