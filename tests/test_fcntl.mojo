@@ -87,7 +87,11 @@ def test_open_with_the_flags() raises:
     info[] = Stat()
     if fstat(fd, info) == 0:
         print("  (the new file's mode came out as", info[].mode() & 0o7777, ")")
-    info.unsafe_free()
+    # Not freed here: the same buffer is what `fstat` below is handed,
+    # and a buffer handed to the kernel after it is given back is the
+    # one mistake this suite cannot make -- the kernel writes the C
+    # struct into whatever owns the memory now, and the heap answers
+    # for it some allocations later, in a test that did nothing.
 
     # Set outright, so what follows is about the flags and not about umask.
     assert_equal(fchmod(fd, 0o644), 0, "and its permissions are set")
@@ -131,6 +135,7 @@ def test_open_with_the_flags() raises:
         "the writing that came second is all the file holds",
     )
     assert_equal(close(shortened), 0, "and closed it again")
+    info.unsafe_free()
 
     # O_DIRECTORY is the flag that says only a directory will do. It is
     # asked of a file that is not there, which keeps the other flags in
