@@ -937,9 +937,12 @@ as a pointer, or guessing one offset for both, yields a garbage address or a
 name taken from the wrong bytes.</p>
 </div>
 <h2 id="constants">Constants<a class="headerlink" href="#constants" title="Permanent link">&para;</a></h2>
-<p><code>libc.constant</code> carries the C type aliases (<code>c_int</code>, <code>c_size_t</code>, ...) plus the
-<code>O_*</code>, <code>SEEK_*</code>, <code>AT_*</code> and <code>errno</code> values:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">libc.constant</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">O_CREAT</span><span class="p">,</span><span class="w"> </span><span class="n">O_RDWR</span><span class="p">,</span><span class="w"> </span><span class="n">SEEK_END</span>
+<p><code>libc.constant</code> carries the C type aliases (<code>c_int</code>, <code>c_size_t</code>, ...), the
+<code>SEEK_*</code>, <code>AT_*</code> and <code>errno</code> values, and the four <code>fcntl.h</code> numbers
+<code>libc.fcntl</code> does not carry; the <code>O_*</code> flags live beside the <code>open</code> and
+<code>fcntl</code> that read them:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">libc.constant</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">SEEK_END</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">libc.fcntl</span><span class="w"> </span><span class="kn">import</span><span class="w"> </span><span class="n">O_CREAT</span><span class="p">,</span><span class="w"> </span><span class="n">O_RDWR</span>
 </code></pre></div>
 <h2 id="errors">Errors<a class="headerlink" href="#errors" title="Permanent link">&para;</a></h2>
 <p>Most wrappers return the raw C value: <code>-1</code> (or <code>NULL</code>) on failure with <code>errno</code>
