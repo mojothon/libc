@@ -836,7 +836,7 @@
 <h1 id="what-is-here-that-c-does-not-have">What is here that C does not have<a class="headerlink" href="#what-is-here-that-c-does-not-have" title="Permanent link">&para;</a></h1>
 <p>This is a binding, so what it can call is a subset of what C can call and
 will stay that way. What can be counted exactly is how much is here: this
-binds 1059 C symbols, every one checked against the header it comes from. C
+binds 1061 C symbols, every one checked against the header it comes from. C
 offers more, and calling more of it is not what this is for.</p>
 <p>How much of what C offers that is, is not a number that holds still. <code>nm -D
 --defined-only</code> over <code>libc</code>, <code>libm</code>, <code>libdl</code> and <code>librt</code> lists more functions
@@ -1040,11 +1040,11 @@ member on every <code>_set_string</code>, into whatever the struct holds next.</
 <tbody>
 <tr>
 <td>places one by hand, at an offset listed in <code>OFFSETS</code></td>
-<td>124</td>
+<td>135</td>
 </tr>
 <tr>
 <td>declares them in order and leaves the layout to Mojo</td>
-<td>195</td>
+<td>196</td>
 </tr>
 <tr>
 <td>reads none of them, and claims only a size</td>
