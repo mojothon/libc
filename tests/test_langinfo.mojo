@@ -18,6 +18,7 @@ from libc.langinfo import (
     ABDAY_2,
     ABDAY_6,
     ABMON_1,
+    ABMON_2,
     AM_STR,
     CODESET,
     CRNCYSTR,
@@ -69,6 +70,10 @@ def test_the_names_of_days_and_months_are_the_locales_own() raises:
         char_ptr_to_string(nl_langinfo(MON_1)), "January", "the first month"
     )
     assert_equal(char_ptr_to_string(nl_langinfo(ABMON_1)), "Jan", "abbreviated")
+    # The second month, because an abbreviated month is the one place the
+    # C locale answers twelve different words for twelve neighbouring
+    # numbers -- a reader one past `ABMON_1` cannot also say February.
+    assert_equal(char_ptr_to_string(nl_langinfo(ABMON_2)), "Feb", "February")
 
 
 def test_how_the_locale_writes_a_time_and_a_date() raises:

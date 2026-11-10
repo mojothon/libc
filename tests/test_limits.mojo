@@ -55,7 +55,8 @@ from libc.limits import (
 from libc.stdlib import PATH_MAX as STDLIB_PATH_MAX
 from libc.stdlib import free, malloc
 from libc.string import memset
-from libc.unistd import close, getcwd, getgroups, pipe, write
+from libc.unistd import SC_NGROUPS_MAX, close, getcwd, getgroups, pipe, sysconf
+from libc.unistd import write
 from libc.utils import null_ptr
 
 
@@ -154,6 +155,16 @@ def test_the_limits_a_terminal_and_a_group_list_have() raises:
     var count = getgroups(0, null_ptr[c_uint]())
     assert_true(count >= 0, "asking costs nothing")
     assert_true(count <= NGROUPS_MAX, "and is never more than NGROUPS_MAX")
+
+    # The bound is the constant, and the constant is what `sysconf`
+    # answers for the same question -- two sources, one number. A bound
+    # alone would agree with a constant one short of the truth; the
+    # equality does not.
+    assert_equal(
+        Int(sysconf(SC_NGROUPS_MAX)),
+        Int(NGROUPS_MAX),
+        "and the machine's own answer names the same ceiling",
+    )
 
 
 def main() raises:

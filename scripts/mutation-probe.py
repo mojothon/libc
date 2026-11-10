@@ -795,6 +795,19 @@ SAME_CONSTANT = {
     "GLOB_OFFS_OFFSET": "the offset slot `glob` fills only when `GLOB_DOOFFS` was asked, which nothing here asks; the slot is padding to the test",
     "GLOB_PATHV_OFFSET": "the string table `glob` built, whose entries are checked by the matches they name -- the names, not the pointer arithmetic",
     "GLOB_PATHC_OFFSET": "the match count, which the test knows from its own pattern and the struct reports back through the same constants; a shifted read answers a plausible count",
+    "MAX_CANON": "the line length a terminal discipline keeps, which no call answers: the number is the kernel's limit with nothing to ask it of, and the test asserts only that a line has some room",
+    "PC_NAME_MAX": "the longest name a directory takes, asked of `pathconf` by an item number; the item beside it is the terminal's input limit, which answers the same 255 for a directory on this machine, so the answers agree with the mistake",
+    "SC_SIGQUEUE_MAX": "the length of the kernel's queued-signal list, a count of the machine at the moment of the call; the item numbered beside it answers another count of the same kind, and no call names this one twice",
+    "SC_PRIORITIZED_IO": "a feature and not a count, answered with the POSIX version the library was built against -- and the item beside it answers the same version number, so the two numbers cannot be told apart",
+    "ERA_D_FMT": "the era format of a locale, which the C locale has no era to spell: the answer is the empty string, and so is the answer of the item numbered before it",
+    "AF_IPX": "a socket family for a protocol stack this machine does not have: the call that would show the number is a socket made in a family nothing answers for, and it refuses the same way for the family beside it in the header",
+    "SO_DONTROUTE": "the flag is written by the tests through this number and read back through it, so the round trip agrees with a mistake; what it does is keep packets on the local wire, which nothing here can watch",
+    "O_RSYNC": "spelled the same as `O_SYNC` on Linux and refused by nothing on Darwin -- the flag's work is in when the blocks reach the disk, and no test here can watch a disk",
+    "EHOSTUNREACH": "a condition the tests cannot make happen -- a host that is known and unreachable is not a thing a machine with a route to the loopback can arrange",
+    "EREMOTE": "a condition the tests cannot arrange: a name that lives on another machine needs a mounted remote file system and a server to mount it from",
+    "STATFS_FLAGS_OFFSET": "the mount flags the kernel reports, which on the file systems this suite may ask are answered as zero -- and a slide onto the block size beside it would read a number the flags are allowed to be on another mount, so zero is the one answer the test cannot insist on",
+    "SIGBUS": "a signal the suite can name and cannot deliver: raising it needs a handler put on the number, and a handler put on the number a mutant names delivers a signal nothing expects -- the number is checked against C by check-constants, and what the kernel answers about a death by it is read back through the same constant",
+    "F_GETLK": "the record-lock enquiry takes its answer through a `struct flock` this package does not bind, and the third argument of `fcntl` is C's variadic one, which does not arrive on arm64 -- the enquiry is a call not written, not a number a test can press",
 }
 
 NO_OBSERVATION = {
@@ -1145,17 +1158,17 @@ def build(kind: str) -> list[Mutant]:
         """
         equals = block.index("=")
         branches = conditional_branches(block[equals + 1 :])
-        chosen = next(
+        chosen_at = next(
             (
-                (value_text, condition)
-                for value_text, condition in branches
+                at
+                for at, (value_text, condition) in enumerate(branches)
                 if not condition or branch_taken(condition)
             ),
             None,
         )
-        if chosen is None or not chosen[0].strip():
+        if chosen_at is None or not branches[chosen_at][0].strip():
             return
-        value_text, _condition = chosen
+        value_text = branches[chosen_at][0]
         # A whole number is a mistake one away from itself. A floating
         # answer is not: its digits are a spelling of a fraction, `+ 1`
         # on the mantissa means nothing, and the regex's pieces of
@@ -1163,8 +1176,24 @@ def build(kind: str) -> list[Mutant]:
         # by parsing them; this sweep leaves the spelling alone.
         if re.search(r"\d\.\d|[eE][+-]\d", value_text):
             return
-        span_start = block.find(value_text, equals + 1)
-        if span_start < 0:
+        # Where each branch's answer sits, walked in order: a value is
+        # found after the branch before it, because a short answer is a
+        # substring of a longer one earlier in the chain -- `4` is the
+        # first digit of `4103`, and a search that takes the first hit
+        # lands inside the branch the compiling machine never reads,
+        # which makes the mutation a mistake in a number nothing adds
+        # up and every verdict about it a lie.
+        cursor = equals + 1
+        spans: list[int] = []
+        for branch_value, _branch_condition in branches:
+            at = block.find(branch_value, cursor)
+            if at < 0:
+                spans.append(-1)
+                break
+            spans.append(at)
+            cursor = at + len(branch_value)
+        span_start = spans[chosen_at]
+        if span_start is None or span_start < 0:
             return
         span_end = span_start + len(value_text)
         numbers = list(NUMBER.finditer(block))
@@ -1173,7 +1202,7 @@ def build(kind: str) -> list[Mutant]:
         # regex sees, so the value moved is the one the sign belongs to.
         signed = value_text.strip().startswith("-")
         suffix = (
-            f" (branch {branches.index(chosen) + 1} of {len(branches)},"
+            f" (branch {chosen_at + 1} of {len(branches)},"
             " the one this machine reads)"
             if len(branches) > 1
             else ""

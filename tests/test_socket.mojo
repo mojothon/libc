@@ -23,6 +23,7 @@ from libc.constant import (
     SOCK_DGRAM,
     SOCK_STREAM,
     SOL_SOCKET,
+    SO_ERROR,
     SO_RCVTIMEO,
     SO_TYPE,
     c_ulong,
@@ -325,6 +326,28 @@ def test_socketpair() raises:
     assert_equal(
         kind[], SOCK_DGRAM, "a datagram, rather than the 1 that was asked for"
     )
+
+    # `SO_ERROR` is the socket's pending error, and on a socket nothing
+    # went wrong on it reads as zero. Asked by the number beside it in
+    # the header -- `SO_TYPE` -- the same buffer holds the kind, which
+    # is not zero, so the zero is what says the option was read.
+    var pending = unsafe_alloc[Int32](1)
+    pending[] = -1
+    assert_equal(
+        Int(
+            getsockopt(
+                datagrams.unsafe_load(0),
+                SOL_SOCKET,
+                SO_ERROR,
+                pending.unsafe_bitcast[NoneType](),
+                width,
+            )
+        ),
+        0,
+        "and the socket can be asked what error is pending on it",
+    )
+    assert_equal(pending[], 0, "which is none: nothing has gone wrong")
+    pending.unsafe_free()
 
     kind.unsafe_free()
     width.unsafe_free()

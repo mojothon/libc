@@ -45,6 +45,8 @@ from libc.unistd import (
     PC_SYNC_IO,
     PC_VDISABLE,
     SC_CLK_TCK,
+    SC_JOB_CONTROL,
+    SC_MQ_PRIO_MAX,
     SC_NPROCESSORS_ONLN,
     SC_OPEN_MAX,
     SC_PAGESIZE,
@@ -402,6 +404,21 @@ def test_sysconf_names_the_knobs_it_answers_for() raises:
     assert_true(
         open_max > 0 and open_max < 1 << 30,
         "and there is a ceiling on open descriptors",
+    )
+
+    # Job control is a feature and not a count: POSIX fixes the answer
+    # at 1 when the system has it, which every system this runs on does.
+    # The item beside it in the header answers -1 -- not supported --
+    # so a number read one low is caught rather than believed.
+    assert_equal(
+        Int(sysconf(SC_JOB_CONTROL)), 1, "and job control is a feature it has"
+    )
+
+    # A queue's priorities have a ceiling, and an item that answers a
+    # negative number says the machine does not know what was asked.
+    var priorities = sysconf(SC_MQ_PRIO_MAX)
+    assert_true(
+        priorities > 0, "and a message queue has priorities to choose from"
     )
 
 

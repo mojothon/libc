@@ -1,13 +1,18 @@
 from std.memory.alloc import unsafe_alloc
+from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.constant import (
+    AF_UNIX,
     AT_FDCWD,
     EAGAIN,
     ENOENT,
     EPERM,
+    MSG_OOB,
+    SOCK_DGRAM,
 )
 from libc.errno import (
+    ENOTSUP,
     check,
     check_ptr,
     errno_message,
@@ -16,6 +21,7 @@ from libc.errno import (
     set_errno,
 )
 from libc.fcntl import O_NONBLOCK, O_RDONLY, O_WRONLY, openat
+from libc.sys.socket import send, socketpair
 from libc.sys.stat import Stat, mkfifo, stat
 from libc.unistd import close, getcwd, read, unlink
 from libc.utils import string_to_char_ptr
@@ -82,6 +88,35 @@ def test_errno() raises:
     assert_equal(close(writing), 0, "the fifo closes, and")
     assert_equal(close(reading), 0, "both ends of it do, and")
     assert_equal(unlink(fifo), 0, "it goes")
+
+    # `ENOTSUP` says the call was understood and the thing asked for is
+    # not something this kind of socket does. Out-of-band data is a
+    # stream's idea: a datagram pair refuses it, and answers with the
+    # platform's "not supported" number -- which on Linux is the same
+    # number as `EOPNOTSUPP` (95) and on Darwin is not (45 against
+    # 102), so the arrangement is asked for where the two agree.
+    comptime if CompilationTarget.is_linux():
+        var ends = unsafe_alloc[Int32](2)
+        assert_equal(
+            socketpair(AF_UNIX, SOCK_DGRAM, 0, ends),
+            0,
+            "a datagram pair, which has no out-of-band channel",
+        )
+        var letter = unsafe_alloc[UInt8](1)
+        letter[] = 0x21
+        set_errno(0)
+        assert_equal(
+            send(ends.unsafe_load(0), letter, 1, MSG_OOB),
+            -1,
+            "an urgent byte on a datagram is refused",
+        )
+        assert_equal(
+            Int(get_errno()), Int(ENOTSUP), "and the refusal is ENOTSUP"
+        )
+        assert_equal(close(ends.unsafe_load(0)), 0, "the pair closes")
+        assert_equal(close(ends.unsafe_load(1)), 0, "both ends of it")
+        ends.unsafe_free()
+        letter.unsafe_free()
 
     one.unsafe_free()
     fifo.unsafe_free()

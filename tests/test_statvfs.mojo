@@ -169,6 +169,14 @@ def test_the_kernel_s_own_account_agrees_with_the_posix_one() raises:
                 Int(by_kernel.unsafe_offset(0)[].f_ffree()),
                 "and the slots free",
             )
+            # The longest name the file system allows is asked in both
+            # shapes: `f_namemax` in one, `f_namelen` in the other, two
+            # different offsets that answer one number.
+            assert_equal(
+                Int(by_path.unsafe_offset(0)[].f_namemax()),
+                Int(by_kernel.unsafe_offset(0)[].f_namelen()),
+                "the longest name is the same limit both ways",
+            )
             # The mount flags are not the same numbers in the two
             # shapes -- glibc re-encodes them for `statvfs` -- so the
             # flag is not asked to agree. But a mount has options:

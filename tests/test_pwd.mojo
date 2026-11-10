@@ -55,6 +55,13 @@ def test_root_is_user_zero_whichever_way_it_is_asked() raises:
         assert_equal(by_id[].pw_gecos(), "root", "and is called root there")
     assert_true(id_dir.byte_length() > 0, "and it has a home directory")
     assert_true(id_shell.startswith("/"), "and it has a shell by path")
+    # The shell and the home are two columns, and a reader that takes
+    # the second as the first answers `/root` for a shell: both begin
+    # with a slash, both are paths, and only the inequality says which
+    # one was read.
+    assert_true(
+        id_shell != id_dir, "and the shell is not the home directory again"
+    )
 
     var name = string_to_char_ptr("root")
     var by_name = getpwnam(name)

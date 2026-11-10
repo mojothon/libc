@@ -13,6 +13,7 @@ from std.testing import assert_equal, assert_true
 from libc.glob import (
     GLOB_DOOFFS,
     GLOB_MAGCHAR,
+    GLOB_MARK,
     GLOB_NOCHECK,
     GLOB_NOMATCH,
     GLOB_NOSORT,
@@ -127,6 +128,56 @@ def test_a_star_finds_the_names_it_covers() raises:
     pattern.unsafe_free()
 
 
+def test_the_mark_flags_the_directories_with_a_slash() raises:
+    """`GLOB_MARK` is the one flag whose work is visible in the answer
+    rather than in the list: every name under `/dev` that is a
+    directory comes back with a trailing slash, and the same names
+    asked without the flag do not.
+
+    The pair is the point. A machine that reads the flag as the one
+    beside it in the header does not mark anything, and the two runs
+    then answer with the same strings -- so the difference between
+    them is what says the flag was read at all.
+    """
+    var marked = unsafe_alloc[glob_t](1)
+    marked.unsafe_offset(0)[] = glob_t()
+    var plain = unsafe_alloc[glob_t](1)
+    plain.unsafe_offset(0)[] = glob_t()
+    var pattern = string_to_char_ptr("/dev/*")
+
+    assert_equal(
+        glob(pattern, GLOB_NOSORT | GLOB_MARK, null_ptr[UInt8](), marked),
+        0,
+        "the expansion with the mark finds something",
+    )
+    assert_equal(
+        glob(pattern, GLOB_NOSORT, null_ptr[UInt8](), plain),
+        0,
+        "and so does the one without it",
+    )
+
+    var marked_paths = marked.unsafe_offset(0)[].gl_pathv()
+    var marked_count = Int(marked.unsafe_offset(0)[].gl_pathc())
+    var plain_paths = plain.unsafe_offset(0)[].gl_pathv()
+    var plain_count = Int(plain.unsafe_offset(0)[].gl_pathc())
+    assert_equal(marked_count, plain_count, "the two runs list the same names")
+
+    var marked_a_directory = False
+    var plain_a_directory = False
+    for at in range(marked_count):
+        var name = char_ptr_to_string(marked_paths.unsafe_offset(at)[])
+        if name.endswith("/"):
+            marked_a_directory = True
+    for at in range(plain_count):
+        var name = char_ptr_to_string(plain_paths.unsafe_offset(at)[])
+        if name.endswith("/"):
+            plain_a_directory = True
+    # `/dev` holds directories -- `pts`, `shm`, `mqueue` on both
+    # platforms -- so a run with the mark has to have marked one.
+    assert_true(marked_a_directory, "a directory among the matches is marked")
+    assert_true(not plain_a_directory, "and unmarked when nobody asked")
+
+
 def test_the_flags_are_the_ones_asked_for_and_the_magic_bit_beside_them() raises:
     """`gl_flags` is the one member of this struct that is neither a count
     nor a pointer, and it is the one that sits in the half of a word the
@@ -230,5 +281,6 @@ def main() raises:
     test_nothing_matching_is_a_number_or_the_pattern_itself()
     test_a_star_finds_the_names_it_covers()
     test_the_flags_are_the_ones_asked_for_and_the_magic_bit_beside_them()
+    test_the_mark_flags_the_directories_with_a_slash()
     test_the_head_of_the_vector_is_left_empty_when_asked()
     print("test_glob: ok")
