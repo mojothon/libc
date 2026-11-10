@@ -2,7 +2,7 @@
 
 This is a binding, so what it can call is a subset of what C can call and
 will stay that way. What can be counted exactly is how much is here: this
-binds 1059 C symbols, every one checked against the header it comes from. C
+binds 1061 C symbols, every one checked against the header it comes from. C
 offers more, and calling more of it is not what this is for.
 
 How much of what C offers that is, is not a number that holds still. `nm -D
@@ -231,8 +231,8 @@ member on every `_set_string`, into whatever the struct holds next.
 
 | what a struct does with its members | how many |
 | --- | --- |
-| places one by hand, at an offset listed in `OFFSETS` | 124 |
-| declares them in order and leaves the layout to Mojo | 195 |
+| places one by hand, at an offset listed in `OFFSETS` | 135 |
+| declares them in order and leaves the layout to Mojo | 196 |
 | reads none of them, and claims only a size | 21 |
 | has a struct only Linux has | 13 |
 | gives itself a fixed room to read or write a member | 4 |

@@ -4,9 +4,12 @@ It is `statvfs` asked about a descriptor rather than about a path,
 which is the same question put to something already open.
 """
 from std.memory.alloc import unsafe_alloc
+from std.collections.list import List
+from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.fcntl import O_RDONLY, open as open_reading
+from libc.sys.statfs import Statfs, fstatfs, statfs
 from libc.sys.statvfs import Statvfs, fstatvfs, statvfs
 from libc.unistd import close
 from libc.utils import string_to_char_ptr
@@ -95,7 +98,95 @@ def test_the_room_for_others_and_the_identity_of_the_file_system() raises:
     _ = close(fd)
 
 
+def test_the_kernel_s_own_account_agrees_with_the_posix_one() raises:
+    """The same file system asked in both shapes, answering with the
+    same numbers.
+
+    `statvfs` and `statfs` are two spellings of one question, and the
+    kernel fills both from the same superblock: the block size, the
+    counts of blocks and inodes total and free and free to the
+    unprivileged. A struct whose member is read one word away from
+    where it lives answers with its neighbour, and the neighbour is
+    another occupancy counter of the same kind -- which is why the
+    numbers alone could never be pressed. But the two structures do
+    not slide the same way: the member that sits at one offset in
+    `statvfs` sits at another in `statfs`, so a mistake in one binding
+    moves its answer and the other binding does not move with it. The
+    equalities below are witnesses that do not go through the constant
+    they are checking.
+
+    Two members are not asked to agree, because glibc does not carry
+    the kernel's word over unchanged: `f_frsize` is `f_bsize` in the
+    POSIX shape and the kernel's own fundamental size in the other,
+    and `f_fsid` is packed by the library out of the two halves in one
+    shape and by this binding in the other. `/proc` is asked beside
+    `/`: a file system whose counters answer zero is a second shape of
+    truth, and a slide that lands on a zero where a count should be is
+    caught by the file system that has none.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var by_path = unsafe_alloc[Statvfs](1)
+        var by_kernel = unsafe_alloc[Statfs](1)
+
+        var places = List[String]()
+        places.append("/")
+        places.append("/proc")
+        for place in places:
+            var there = string_to_char_ptr(place)
+            assert_equal(
+                statvfs(there, by_path), 0, "statvfs answers about the place"
+            )
+            assert_equal(
+                statfs(there, by_kernel), 0, "and statfs answers about it too"
+            )
+            assert_equal(
+                Int(by_path.unsafe_offset(0)[].f_bsize()),
+                Int(by_kernel.unsafe_offset(0)[].f_bsize()),
+                "the block size is the same number in both shapes",
+            )
+            assert_equal(
+                Int(by_path.unsafe_offset(0)[].f_blocks()),
+                Int(by_kernel.unsafe_offset(0)[].f_blocks()),
+                "the blocks there are the same count both ways",
+            )
+            assert_equal(
+                Int(by_path.unsafe_offset(0)[].f_bfree()),
+                Int(by_kernel.unsafe_offset(0)[].f_bfree()),
+                "and the free blocks",
+            )
+            assert_equal(
+                Int(by_path.unsafe_offset(0)[].f_bavail()),
+                Int(by_kernel.unsafe_offset(0)[].f_bavail()),
+                "and the blocks free to others",
+            )
+            assert_equal(
+                Int(by_path.unsafe_offset(0)[].f_files()),
+                Int(by_kernel.unsafe_offset(0)[].f_files()),
+                "the file slots are the same count both ways",
+            )
+            assert_equal(
+                Int(by_path.unsafe_offset(0)[].f_ffree()),
+                Int(by_kernel.unsafe_offset(0)[].f_ffree()),
+                "and the slots free",
+            )
+            # The mount flags are not the same numbers in the two
+            # shapes -- glibc re-encodes them for `statvfs` -- so the
+            # flag is not asked to agree. But a mount has options:
+            # procfs is put up with nosuid and nodev and noexec, and
+            # the flags answering zero would be a reader over
+            # `f_namemax`, which is 255 everywhere.
+            if place == "/proc":
+                assert_true(
+                    Int(by_path.unsafe_offset(0)[].f_flag()) != 0,
+                    "the flags of a mounted file system are not nothing",
+                )
+
+        by_path.unsafe_free()
+        by_kernel.unsafe_free()
+
+
 def main() raises:
     test_fstatvfs_on_what_is_already_open()
     test_the_room_for_others_and_the_identity_of_the_file_system()
+    test_the_kernel_s_own_account_agrees_with_the_posix_one()
     print("test_statvfs: ok")

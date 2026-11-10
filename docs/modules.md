@@ -60,6 +60,7 @@ the bottom.
 | `libc.wordexp` | `<wordexp.h>` shell-style word splitting | 6 |
 | `libc.wctype` | `<wctype.h>` | 5 |
 | `libc.uchar` | `<uchar.h>` the UTF-16 and UTF-32 conversions | 4 |
+| `libc.sys.statfs` | `<sys/statfs.h>` the kernel's own account of a file system | 15 |
 | `libc.sys.statvfs` | `<sys/statvfs.h>` | 15 |
 | `libc.sys.select` | `<sys/select.h>` | 9 |
 | `libc.sys.shm` | `<sys/shm.h>` shared memory | 7 |

@@ -782,7 +782,7 @@ SAME_CONSTANT = {
     "STATVFS_FFREE_OFFSET": "free file slots now, moving as the machine works",
     "STATVFS_FAVAIL_OFFSET": "file slots free to unprivileged users, moving; bounds are not identities",
     "STATVFS_FLAG_OFFSET": "mount flags, a bitmap the mount chose; the misaligned reader answers another word of the same struct and nothing here can name the true one",
-    "STATVFS_FSID_OFFSET": "the filesystem id, opaque by definition; two reads of the same field agree with a mistake, since both go through the one constant",
+    "STATVFS_FSID_OFFSET": "the filesystem id, opaque by definition; two reads of the same field agree with a mistake, since both go through the one constant -- and `statfs` beside it packs the two halves the other way, so the two shapes cannot be asked to agree",
     "STATVFS_NAMEMAX_OFFSET": "maximum filename length, reported by the filesystem; the neighbour answers another limit of the same kind",
     "AIOCB_OFFSET": "the offset field is the caller's own bookkeeping: what was written is only checked by the kernel doing the read, and a test asserting the struct agrees with itself proves nothing",
     "AIOCB_REQPRIO": "the priority hint the caller wrote; the kernel is free to ignore it, so no behaviour separates a right read from a wrong one",
