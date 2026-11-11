@@ -952,12 +952,13 @@ begin where a Linux number ends.
 With that, the sample's question of the constants' axis is answered the
 way the other two axes are: forty-eight mutants drawn by the weekly seed
 come back twenty-four caught and twenty-four written down, and not one
-survived. The axis is still sampled rather than swept -- five hundred and
-ninety-six constants, a few more than the calls themselves, each mutant a
-compile and a run -- so a full sweep is half a machine's day, and the
-fraction is what the week can ask. What the fraction has already shown is
-that the numbers needed a second source each, and the sources are bound
-now.
+survived. And then the axis was swept, all five hundred and ninety-six,
+which the other two checks made short: the two that ask C -- what the
+number is, what the offset spells -- go first, and where C disagrees the
+mutant is caught without compiling the suite. Five hundred and sixty-six
+C caught, twenty-nine the tables carry with the reason each, and not one
+survived. What the sweep had already shown held: the numbers needed a
+second source each, and the sources were bound before the sweep ran.
 
 ## Next to Rust's `libc`
 
