@@ -58,7 +58,10 @@ tell them apart -- and a test that passes `getuid()` for both has not.
 
 `--limit` samples, because each mutant is a full rebuild of the package and a
 suite run. The sample is spread over the modules rather than taken from the
-front, and it is the same sample every run so two runs can be compared.
+front, and it is the same sample every run so two runs can be compared. The
+default is twelve -- a sweep of an axis passes a number bigger than the pool,
+and a run that asks for a sample and gets twelve mutants without being told
+has asked the question the default answers.
 
 `--kind constant` asks it of the numbers the layouts are spelled with: a
 `comptime DIRENT_INO_OFFSET = 0` made 1, a `DIRENT_BYTES` made one byte
@@ -1532,7 +1535,12 @@ def check_tables() -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--limit", type=int, default=12, help="how many mutants")
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=12,
+        help="how many mutants (12 by default; pass more than the pool to sweep)",
+    )
     parser.add_argument("--seed", type=int, default=1, help="which sample")
     parser.add_argument(
         "--only", default="", help="comma separated binding names to keep"
