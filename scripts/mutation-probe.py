@@ -103,6 +103,7 @@ import platform
 import random
 import signal
 import re
+import sys
 import queue
 import shutil
 import subprocess
@@ -1059,7 +1060,10 @@ def targets(mutant: Mutant) -> list[Path]:
     A binding mutant is asked of the files whose bodies call it. A layout
     constant has no callers to find: what it is for shows in the module's
     own tests, so those are the files that import the module, plus
-    `test_layout`, which is where the offsets are asserted against C.
+    `test_layout`, which is where the offsets are asserted against C --
+    and `check-constants`, which asks C itself what the number is. A
+    constant is a copy of a number C owns, and the copy is read against
+    the original whether or not a test ever uses it.
     """
     if mutant.kind != "constant":
         return [path for path in callers(mutant.name) if path not in BASELINE_RED]
@@ -1072,6 +1076,15 @@ def targets(mutant: Mutant) -> list[Path]:
     layout = ROOT / "tests" / "test_layout.mojo"
     if layout not in hits:
         hits.append(layout)
+    # And the check that asks C itself: a constant is a number copied out
+    # of a header, and the copy can be read against the original whether
+    # or not any test ever uses it -- which is how a mutation of an item
+    # the suite never mentions stopped being a survivor.
+    hits.append(ROOT / "scripts" / "check-constants.py")
+    # And the check that asks C what every offset is: an offset is a
+    # number copied out of a struct, and `check-layouts` has the member
+    # each one names, measured in C, on this machine.
+    hits.append(ROOT / "scripts" / "check-layouts.py")
     return [path for path in hits if path not in BASELINE_RED]
 
 
@@ -1122,6 +1135,8 @@ def classify(returncode: int, text: str) -> str:
     if returncode == 0:
         return "survived"
     if "AssertionError" in text or "Unhandled exception" in text:
+        return "caught"
+    if "disagree with C" in text:
         return "caught"
     if BUILD_FAILURE.search(text):
         return "error"
@@ -1684,8 +1699,21 @@ def main() -> int:
             with tempfile.NamedTemporaryFile(
                 mode="w+b", suffix=".out", delete=True
             ) as answer:
-                proc = subprocess.Popen(
-                    [
+                # A python check is run from the tree it sits in, but the
+                # package it asks about is the copy: the script's own
+                # variable says which tree's constants are the ones under
+                # question, and the C program it builds lands beside that
+                # tree -- which is also why four workers can ask it at
+                # once without one compiling over another's answer.
+                if test.suffix == ".py":
+                    argv = [sys.executable, str(test)]
+                    env = dict(
+                        os.environ,
+                        CHECK_CONSTANTS_SRC=str(copy / "libc"),
+                    )
+                    workdir = ROOT
+                else:
+                    argv = [
                         "pixi",
                         "run",
                         "mojo",
@@ -1695,8 +1723,13 @@ def main() -> int:
                         "-I",
                         "tests",
                         str(test.relative_to(ROOT)),
-                    ],
-                    cwd=ROOT,
+                    ]
+                    env = None
+                    workdir = ROOT
+                proc = subprocess.Popen(
+                    argv,
+                    env=env,
+                    cwd=workdir,
                     stdout=answer,
                     stderr=answer,
                     stdin=subprocess.DEVNULL,
@@ -1726,7 +1759,29 @@ def main() -> int:
                     return
                 said_text = ""
                 asked = targets(mutant)
-                outs = [run_one(copy, test) for test in asked]
+                if mutant.kind == "constant":
+                    # C answers first for a constant: the checks against C
+                    # read the number as it is written and the offset as
+                    # the struct spells it, and neither depends on any
+                    # test. Where either disagrees the mutant is caught
+                    # without compiling the suite -- which is what turns a
+                    # sweep of the axis from an evening into minutes --
+                    # and where C agrees, the tests are the only asking
+                    # left worth doing.
+                    asked = [t for t in asked if t.suffix != ".py"]
+                    against_c = [
+                        ROOT / "scripts" / "check-constants.py",
+                        ROOT / "scripts" / "check-layouts.py",
+                    ]
+                    if any(
+                        run_one(copy, check) == "caught"
+                        for check in against_c
+                    ):
+                        outs = ["caught"]
+                    else:
+                        outs = [run_one(copy, test) for test in asked]
+                else:
+                    outs = [run_one(copy, test) for test in asked]
                 # A red run is the mutant's doing only if the same run
                 # comes back green without the mistake. One file in this
                 # suite goes red on a machine whose limits are already
@@ -1791,8 +1846,19 @@ def main() -> int:
                 known = reason_for(mutant)
                 unseen = unobservable_for(mutant)
                 if verdict == "caught" and (known or unseen):
+                    # The asking is repeated as it was asked: a verdict
+                    # that came from C is asked of C again, which is
+                    # deterministic and costs seconds, and one that came
+                    # from the suite is asked of the suite again.
+                    if outs == ["caught"]:
+                        again_asked = [
+                            ROOT / "scripts" / "check-constants.py",
+                            ROOT / "scripts" / "check-layouts.py",
+                        ]
+                    else:
+                        again_asked = targets(mutant)
                     if "caught" not in [
-                        run_one(copy, t) for t in targets(mutant)
+                        run_one(copy, t) for t in again_asked
                     ]:
                         verdict = "flaky"
                 if verdict == "crashed":

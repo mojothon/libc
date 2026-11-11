@@ -29,6 +29,7 @@ checked.
 """
 
 import importlib.util
+import os
 import re
 import shutil
 import subprocess
@@ -36,7 +37,23 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCES = sorted((ROOT / "src" / "libc").rglob("*.mojo"))
+# Where the package's Mojo lives. The mutation probe asks this script
+# about a tree it has copied and mutated, and names that tree here; on
+# its own this is the tree the script sits in.
+SRC = Path(os.environ.get("CHECK_CONSTANTS_SRC", ROOT / "src" / "libc"))
+SOURCES = sorted(SRC.rglob("*.mojo"))
+
+
+def against_root(path: Path) -> str:
+    """A path as it is named from the tree the sources were read from.
+
+    On its own that is the tree this script sits in; under the probe it
+    is the copy, which is not under this root at all.
+    """
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path.relative_to(SRC.parent))
 
 CC = ["cc"]
 DEFINES = ["-D_GNU_SOURCE", "-D_DEFAULT_SOURCE", "-D_DARWIN_C_SOURCE"]
@@ -343,7 +360,11 @@ def stated_counts(counts: dict[str, int]) -> list[str]:
 
 def module_of(path: Path) -> str:
     """The name this file is imported by."""
-    relative = path.relative_to(ROOT / "src").with_suffix("")
+    try:
+        relative = path.relative_to(ROOT / "src")
+    except ValueError:
+        relative = path.relative_to(SRC.parent)
+    relative = relative.with_suffix("")
     return ".".join(relative.parts[:-1] if relative.name == "syscalls" else relative.parts)
 
 
@@ -372,7 +393,7 @@ def placed_by_hand() -> dict[tuple[str, str], str]:
     for path in SOURCES:
         module = module_of(path)
         for match in PLACED.finditer(path.read_text()):
-            found[(module, match.group(1))] = str(path.relative_to(ROOT))
+            found[(module, match.group(1))] = against_root(path)
     return found
 
 
@@ -396,7 +417,7 @@ def read_at_a_literal() -> list[str]:
             at = match.group(1) if match.group(1) is not None else match.group(2)
             found.append(
                 f"{module_of(path)} {did} at {at}"
-                f"  ({path.relative_to(ROOT)}:{number})"
+                f"  ({against_root(path)}:{number})"
             )
     return found
 
@@ -570,7 +591,7 @@ def read_widths() -> tuple[
             for platform in (("linux", "macos") if guard is None else (guard,)):
                 per[platform].add((kept, kept_from, by_hand))
                 places.setdefault(
-                    key, f"{path.relative_to(ROOT)}:{number}"
+                    key, f"{against_root(path)}:{number}"
                 )
     return found, places
 
@@ -635,7 +656,7 @@ def write_widths() -> tuple[
             per = found.setdefault(key, {"linux": set(), "macos": set()})
             for platform in (("linux", "macos") if guard is None else (guard,)):
                 per[platform].add(width)
-                places.setdefault(key, f"{path.relative_to(ROOT)}:{number}")
+                places.setdefault(key, f"{against_root(path)}:{number}")
     return found, places
 
 
@@ -663,7 +684,7 @@ def rooms() -> dict[tuple[str, str, str], str]:
                 continue
             found.setdefault(
                 (module, match.group(2), match.group(3)),
-                f"{path.relative_to(ROOT)}:{number}",
+                f"{against_root(path)}:{number}",
             )
     return found
 
@@ -710,11 +731,11 @@ def mojo_layouts(batch: list[tuple[str, str, str]]) -> tuple[dict[str, tuple[int
     def ask(items: list[tuple[str, str, str]]) -> None:
         if not items:
             return
-        source = ROOT / ".build-check" / "layout.mojo"
+        source = SRC.parent / ".build-check" / "layout.mojo"
         source.parent.mkdir(exist_ok=True)
         source.write_text(program(items))
         ran = subprocess.run(
-            [*mojo(), "run", "-I", str(ROOT / "src"), str(source)],
+            [*mojo(), "run", "-I", str(SRC.parent), str(source)],
             capture_output=True,
             text=True,
             cwd=ROOT,
@@ -760,18 +781,18 @@ def c_layouts(items: list[tuple[str, str]]) -> tuple[dict[str, tuple[int, int]],
                 f'    printf("%zu %zu\\n", sizeof({spelled}), '
                 f'_Alignof({spelled}));'
             )
-            source = ROOT / ".build-check" / "layout.c"
+            source = SRC.parent / ".build-check" / "layout.c"
             source.parent.mkdir(exist_ok=True)
             source.write_text(f"#include <stdio.h>\n{includes}\nint main(void) {{\n{body}\n    return 0;\n}}\n")
             built = subprocess.run(
-                [*CC, *DEFINES, "-w", "-o", str(ROOT / ".build-check" / "layout"), str(source)],
+                [*CC, *DEFINES, "-w", "-o", str(SRC.parent / ".build-check" / "layout"), str(source)],
                 capture_output=True,
                 text=True,
             )
             if built.returncode != 0:
                 continue
             ran = subprocess.run(
-                [str(ROOT / ".build-check" / "layout")], capture_output=True, text=True
+                [str(SRC.parent / ".build-check" / "layout")], capture_output=True, text=True
             )
             size, align = ran.stdout.split()
             said[label] = (int(size), int(align))
@@ -808,11 +829,11 @@ def mojo_numbers(
     def ask(batch: list[tuple[str, str]]) -> None:
         if not batch:
             return
-        source = ROOT / ".build-check" / "offsets.mojo"
+        source = SRC.parent / ".build-check" / "offsets.mojo"
         source.parent.mkdir(exist_ok=True)
         source.write_text(program(batch))
         ran = subprocess.run(
-            [*mojo(), "run", "-I", str(ROOT / "src"), str(source)],
+            [*mojo(), "run", "-I", str(SRC.parent), str(source)],
             capture_output=True,
             text=True,
             cwd=ROOT,
@@ -884,7 +905,7 @@ def c_offsets() -> tuple[
         struct: str, members: list[tuple[tuple[str, str], str]], tagged: bool
     ) -> bool:
         """Asks C about these members, once, and keeps the answers it got."""
-        source = ROOT / ".build-check" / "offsets.c"
+        source = SRC.parent / ".build-check" / "offsets.c"
         source.parent.mkdir(exist_ok=True)
         source.write_text(program(struct, members, tagged))
         built = subprocess.run(
@@ -893,7 +914,7 @@ def c_offsets() -> tuple[
                 *DEFINES,
                 "-w",
                 "-o",
-                str(ROOT / ".build-check" / "offsets"),
+                str(SRC.parent / ".build-check" / "offsets"),
                 str(source),
             ],
             capture_output=True,
@@ -902,7 +923,7 @@ def c_offsets() -> tuple[
         if built.returncode != 0:
             return False
         ran = subprocess.run(
-            [str(ROOT / ".build-check" / "offsets")],
+            [str(SRC.parent / ".build-check" / "offsets")],
             capture_output=True,
             text=True,
         )
@@ -1179,7 +1200,7 @@ def main() -> int:
     cmsg_disagree = []
     if cmsg_here:
         includes = "\n".join(f"#include <{h}>" for h in CHECK_CONSTANTS.headers())
-        source = ROOT / ".build-check" / "cmsghdr.c"
+        source = SRC.parent / ".build-check" / "cmsghdr.c"
         source.parent.mkdir(exist_ok=True)
         source.write_text(
             "#include <stdio.h>\n#include <stddef.h>\n" + includes + "\n"
@@ -1189,13 +1210,13 @@ def main() -> int:
             "    return 0;\n}\n"
         )
         built = subprocess.run(
-            [*CC, *DEFINES, "-w", "-o", str(ROOT / ".build-check" / "cmsghdr"), str(source)],
+            [*CC, *DEFINES, "-w", "-o", str(SRC.parent / ".build-check" / "cmsghdr"), str(source)],
             capture_output=True,
             text=True,
         )
         if built.returncode == 0:
             ran = subprocess.run(
-                [str(ROOT / ".build-check" / "cmsghdr")], capture_output=True, text=True
+                [str(SRC.parent / ".build-check" / "cmsghdr")], capture_output=True, text=True
             )
             header, space, length = (int(n) for n in ran.stdout.split())
             asked = [

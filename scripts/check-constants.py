@@ -57,6 +57,7 @@ listed, because silently ignoring them is how a gap becomes permanent.
 
 from __future__ import annotations
 
+import os
 import platform
 import re
 import subprocess
@@ -86,14 +87,20 @@ def sibling(name: str):
 # hyphen in it, so this cannot be an ordinary import.
 cp = sibling("check-prototypes")
 
-SOURCES = sorted((ROOT / "src" / "libc").rglob("*.mojo"))
+# Where the package's Mojo lives. The mutation probe asks this script
+# about a tree it has copied and mutated, and names that tree here; on
+# its own this is the tree the script sits in.
+SRC = Path(os.environ.get("CHECK_CONSTANTS_SRC", ROOT / "src" / "libc"))
+SOURCES = sorted(SRC.rglob("*.mojo"))
 CONSTANT = re.compile(r"^comptime (\w+)(?::[^=]+)? = (.+)$", re.MULTILINE)
 MACOS_ONLY = "CompilationTarget.is_macos()"
 X86_ONLY = "CompilationTarget.is_x86()"
-# The arm constants are written as the compound that names both halves of
-# the question -- the silicon alone is not enough, since Apple's silicon is
-# ARM too and its Darwin answers nothing like glibc's.
-ARM_ONLY = "(CompilationTarget.is_linux() and CompilationTarget.is_arm())"
+LINUX_ONLY = "CompilationTarget.is_linux()"
+# The arm question is the compound -- the silicon alone is not enough,
+# since Apple's silicon is ARM too and its Darwin answers nothing like
+# glibc's -- and `answer` settles it by its parts, each of which is a
+# question it knows on its own.
+ARM_ONLY = "CompilationTarget.is_arm()"
 
 # `cc` rather than `gcc`, because on macOS it is clang and clang is what
 # has the right to say what Darwin's headers mean.
@@ -365,7 +372,7 @@ def sizes_from_c(items: list[tuple[str, str, bool]]) -> dict[str, tuple[int, int
             f"#include <stdio.h>\n{includes}\nint main(void) {{\n{body}\n"
             "    return 0;\n}\n"
         )
-        work = ROOT / ".build-check"
+        work = SRC.parent / ".build-check"
         work.mkdir(exist_ok=True)
         src = work / "constants-sizes.c"
         exe = work / "constants-sizes"
@@ -431,6 +438,15 @@ def read_literal(raw: str) -> float | None:
     return None
 
 
+def is_linux() -> bool:
+    """Whether this machine's C library is the Linux one.
+
+    `sys.platform` says `linux` on every Linux spelling this package
+    runs on, which is the question `is_linux()` asks here.
+    """
+    return sys.platform.startswith("linux")
+
+
 def is_x86() -> bool:
     """Whether this machine compiles as x86, in the sense `is_x86()` means.
 
@@ -492,11 +508,33 @@ def answer(condition: str) -> bool | None:
     here would report the package wrong for disagreeing with a branch this
     machine never compiles.
     """
+    # A compound question is answered by its parts, each asked the same
+    # way. The package writes the same question with and without its
+    # brackets -- `is_linux() and is_arm()` and the parenthesised spelling
+    # beside it -- and both name one question this machine settles.
+    condition = condition.strip()
+    depth, wrapped = 0, condition.startswith("(") and len(condition) > 1
+    for index, char in enumerate(condition):
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0 and index != len(condition) - 1:
+                wrapped = False
+    if wrapped:
+        return answer(condition[1:-1].strip())
+    parts = re.split(r"\s+and\s+", condition)
+    if len(parts) > 1:
+        answers = [answer(part.strip()) for part in parts]
+        if None in answers:
+            return None
+        return all(answers)
     inverted = condition.startswith("not ")
     if inverted:
         condition = condition[len("not ") :].strip()
     here = {
         MACOS_ONLY: sys.platform == "darwin",
+        LINUX_ONLY: is_linux(),
         X86_ONLY: is_x86(),
         ARM_ONLY: is_arm(),
     }.get(condition)
@@ -550,7 +588,13 @@ def constants() -> list[tuple[str, str, str, float | None]]:
     opening = re.compile(r"^comptime (\w+)(?::[^=]+)? = (.*)$")
     found: list[tuple[str, str, str, float | None]] = []
     for path in SOURCES:
-        place = str(path.relative_to(ROOT))
+        # The place is asked of the tree the sources were named from:
+        # the probe's copy is not under this script's own root, and a
+        # relative_to that answers a ValueError is no place at all.
+        try:
+            place = str(path.relative_to(ROOT))
+        except ValueError:
+            place = str(path.relative_to(SRC.parent))
         lines = path.read_text().split("\n")
         index = 0
         while index < len(lines):
@@ -612,7 +656,7 @@ def ask_c(items: list[tuple[str, str]], mode: str) -> subprocess.CompletedProces
     body = "\n".join(print_in_c(label, expr, mode) for label, expr in items)
     source = f"#include <stdio.h>\n{includes}\nint main(void) {{\n{body}\n    return 0;\n}}\n"
 
-    work = ROOT / ".build-check"
+    work = SRC.parent / ".build-check"
     work.mkdir(exist_ok=True)
     src = work / "constants.c"
     exe = work / "constants"
@@ -723,7 +767,7 @@ def from_c_names(items: list[tuple[str, str]], mode: str) -> dict[str, float]:
             f"#include <stdio.h>\n{includes}\nint main(void) {{\n{body}\n"
             "    return 0;\n}\n"
         )
-        work = ROOT / ".build-check"
+        work = SRC.parent / ".build-check"
         work.mkdir(exist_ok=True)
         src = work / "constants-by-name.c"
         exe = work / "constants-by-name"
@@ -908,16 +952,23 @@ def main() -> int:
     # a type -- `size_t`, `c_int` -- and no constant at all; the ones worth
     # asking about are the enumerators, which the headers spell but which
     # are not macros: `PTHREAD_MUTEX_NORMAL` is 0 because the header says
-    # so, and nothing here had ever asked it.
+    # so, and nothing here had ever asked it. C spells several of its
+    # enumerators with a leading underscore the package does not carry --
+    # `_SC_STREAM_MAX` here is `SC_STREAM_MAX`, `_PC_PATH_MAX` is
+    # `PC_PATH_MAX` -- and the header text is where the C spelling is
+    # found, which is how a whole family of items the machine answers at
+    # run time went unasked: a mutation of the package's number agreed
+    # with C only because C was never asked about it at all.
     spelled = header_text()
     for mode in ("i", "u", "f"):
-        enumerators = [
-            (f"{index}:{name}", name)
-            for index, (name, _place, _raw, _value) in enumerate(listed)
-            if modes.get(index) == mode
-            and f"{index}:{name}" not in named
-            and re.search(rf"\b{re.escape(name)}\b", spelled)
-        ]
+        enumerators = []
+        for index, (name, _place, _raw, _value) in enumerate(listed):
+            if modes.get(index) != mode or f"{index}:{name}" in named:
+                continue
+            for spelling in (name, f"_{name}"):
+                if re.search(rf"\b{re.escape(spelling)}\b", spelled):
+                    enumerators.append((f"{index}:{name}", spelling))
+                    break
         found, _ = from_c(enumerators, mode)
         named.update(found)
 
