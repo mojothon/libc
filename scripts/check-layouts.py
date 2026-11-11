@@ -272,6 +272,21 @@ OFFSETS: dict[tuple[str, str], tuple[str, str]] = {
     ("libc.utmpx", "UT_HOST_OFFSET"): ("utmpx", "ut_host"),
 }
 
+# Some numbers are not where a member sits but how much room it has: a
+# structure's whole size, the subtraction that leaves one member's share,
+# the width of a type. Each is C's arithmetic, and C can do it here rather
+# than have it believed -- the constant is asked of the expression beside
+# it, on the machine, in the headers the package is bound against.
+DERIVED_SIZES: dict[tuple[str, str], str] = {
+    ("libc.sys.un", "SOCKADDR_UN_BYTES"): "sizeof(struct sockaddr_un)",
+    ("libc.sys.un", "SOCKADDR_UN_PATH_BYTES"): (
+        "sizeof(struct sockaddr_un) - offsetof(struct sockaddr_un, sun_path)"
+    ),
+    ("libc.sys.socket", "CMSGHDR_HEADER_BYTES"): "sizeof(struct cmsghdr)",
+    ("libc.termios", "TERMIOS_SPEED_BYTES"): "sizeof(speed_t)",
+    ("libc.utmpx", "UT_USER_ROOM"): "sizeof(((struct utmpx *)0)->ut_user)",
+}
+
 # Constants that state how wide a C type is, rather than standing for one.
 # `libc.termios` reads its flag and speed words out of a slot, and how much of
 # that slot is the word is C's answer: four bytes of `unsigned int` on glibc,
@@ -957,6 +972,73 @@ def c_offsets() -> tuple[
     return said, sizes, missing
 
 
+def c_derived_sizes() -> tuple[dict[tuple[str, str], int], list[tuple[str, str]]]:
+    """What C's own arithmetic says each derived size comes to.
+
+    One compilation asks every expression at once, an answer each. An
+    expression that will not build -- a type or a member this platform's
+    headers do not spell -- is taken out and the rest asked again, and
+    one alone that will not build is reported rather than assumed.
+    """
+    said: dict[tuple[str, str], int] = {}
+    missing: list[tuple[str, str]] = []
+    includes = "\n".join(f"#include <{h}>" for h in CHECK_CONSTANTS.headers())
+
+    def record(expressions: list[tuple[tuple[str, str], str]]) -> bool:
+        lines = "\n".join(
+            f'    printf("_{index} %zu\\n", (unsigned long)({spelled}));'
+            for index, (_key, spelled) in enumerate(expressions)
+        )
+        source = SRC.parent / ".build-check" / "derived.c"
+        source.parent.mkdir(exist_ok=True)
+        source.write_text(
+            f"#include <stdio.h>\n#include <stddef.h>\n{includes}\n"
+            f"int main(void) {{\n{lines}\n    return 0;\n}}\n"
+        )
+        built = subprocess.run(
+            [
+                *CC,
+                *DEFINES,
+                "-w",
+                "-o",
+                str(SRC.parent / ".build-check" / "derived"),
+                str(source),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if built.returncode != 0:
+            return False
+        ran = subprocess.run(
+            [str(SRC.parent / ".build-check" / "derived")],
+            capture_output=True,
+            text=True,
+        )
+        seen = {}
+        for line in ran.stdout.splitlines():
+            parts = line.split()
+            if len(parts) == 2 and parts[0].startswith("_"):
+                seen[parts[0]] = int(parts[1])
+        if not all(f"_{index}" in seen for index in range(len(expressions))):
+            return False
+        for index, (key, _spelled) in enumerate(expressions):
+            said[key] = seen[f"_{index}"]
+        return True
+
+    def ask(expressions: list[tuple[tuple[str, str], str]]) -> None:
+        if record(expressions):
+            return
+        if len(expressions) == 1:
+            missing.append(expressions[0][0])
+            return
+        middle = len(expressions) // 2
+        ask(expressions[:middle])
+        ask(expressions[middle:])
+
+    ask(list(DERIVED_SIZES.items()))
+    return said, missing
+
+
 def main() -> int:
     declared = structs()
     comparable = []
@@ -1096,6 +1178,36 @@ def main() -> int:
     if offset_unchecked:
         print(f"      {len(offset_unchecked)} could not be checked:")
         for line in offset_unchecked:
+            print(f"      {line}")
+
+    sized_here, sized_missing = mojo_numbers(list(DERIVED_SIZES))
+    sized_by_c, size_unheard_of = c_derived_sizes()
+    size_agree = 0
+    size_disagree = []
+    size_unchecked = []
+    for key, spelled in DERIVED_SIZES.items():
+        module, constant = key
+        if key in sized_missing:
+            size_unchecked.append(f"{module}.{constant} Mojo will not say")
+        elif key in size_unheard_of:
+            size_unchecked.append(f"{module}.{constant} C will not build {spelled}")
+        elif sized_here[key] == sized_by_c[key]:
+            size_agree += 1
+        else:
+            size_disagree.append((key, spelled))
+
+    print(f"\n  Derived sizes, for the {len(DERIVED_SIZES)} numbers C can do its own arithmetic for:")
+    print(f"      {size_agree} agree with C's own arithmetic")
+    if size_disagree:
+        print(f"      {len(size_disagree)} disagree, and cannot:")
+        for (module, constant), spelled in size_disagree:
+            print(
+                f"      {module + '.' + constant:<40} here {sized_here[(module, constant)]:>4}  "
+                f"C says {sized_by_c[(module, constant)]:>4}   {spelled}"
+            )
+    if size_unchecked:
+        print(f"      {len(size_unchecked)} could not be checked:")
+        for line in size_unchecked:
             print(f"      {line}")
 
     here = "macos" if ON_DARWIN else "linux"
@@ -1398,7 +1510,12 @@ def main() -> int:
         or room_disagree
         or write_disagree
         or cmsg_disagree
+        or size_disagree
     ):
+        # The one line every reader of this run's red is told to look
+        # for: the probe reads the answer back out of the text, and
+        # "disagree with C" is the sentence it knows the check makes.
+        print("  the layouts disagree with C")
         return 1
     print("  nothing disagrees with C")
     return 0

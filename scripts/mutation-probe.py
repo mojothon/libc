@@ -848,11 +848,6 @@ SAME_CONSTANT = {
     "B115200": "the speed's index in the header, and which header is a question of the machine's libc: a glibc before 2.42 spells the index and the check against C agrees with the package, while a glibc from 2.42 on spells the rate itself and the number this package compiles cannot follow -- there the number is set and read back through the one termios this suite holds, which has no line attached to be set at the wrong speed, and no asking this suite has tells it from the truth",
     "B230400": "the speed's index in the header, and which header is a question of the machine's libc: a glibc before 2.42 spells the index and the check against C agrees with the package, while a glibc from 2.42 on spells the rate itself and the number this package compiles cannot follow -- there the number is set and read back through the one termios this suite holds, which has no line attached to be set at the wrong speed, and no asking this suite has tells it from the truth",
     "B9600": "the speed's index in the header, and which header is a question of the machine's libc: a glibc before 2.42 spells the index and the check against C agrees with the package, while a glibc from 2.42 on spells the rate itself and the number this package compiles cannot follow -- there the number is set and read back through the one termios this suite holds, which has no line attached to be set at the wrong speed, and no asking this suite has tells it from the truth",
-    "TERMIOS_SPEED_BYTES": "the width of the speed's slot, which is set and read back through the one termios this suite holds -- the round trip goes through this constant on both sides, and agrees with a mistake",
-    "SOCKADDR_UN_BYTES": "what the address structure is big for, written into the accessor that binds and read back through the accessor that names -- the two go through this constant, and C's answer is the same size nobody here asks for twice",
-    "SOCKADDR_UN_PATH_BYTES": "the room the path member has, which is the structure's size less what comes before it -- handed to the accessor and read out of the same accessor, and C's answer is the same subtraction nobody here performs twice",
-    "CMSGHDR_HEADER_BYTES": "the length of the ancillary header, which the writer puts in front of every payload and the reader steps over by the same constant -- a mistake agrees with itself on both sides of the round trip",
-    "UT_USER_ROOM": "the room the login name is given, handed to the accessor that writes the slot and the accessor that reads it -- both go through this constant, so the round trip agrees with a mistake",
     "O_EXEC": "the flag for opening only what will be executed, which Linux's header does not spell -- the package answers the refusal -- and Darwin's opens a file this suite never executes, so no call here can tell the flag from the one beside it",
     "O_SEARCH": "the flag for opening only for lookup, which Linux's header does not spell -- the package answers the refusal -- and Darwin's answers a directory walk this suite never makes, so nothing here asks the flag for anything its mistake would spoil",
 }
@@ -1768,7 +1763,17 @@ def main() -> int:
                     proc.wait()
                     return "hung"
                 answer.seek(0)
-                return classify(returncode, answer.read().decode(errors="replace"))
+                text = answer.read().decode(errors="replace")
+                if test.suffix == ".py" and returncode != 0:
+                    # A python check's own exit code is its verdict: it
+                    # was asked for an answer and refused to give a green
+                    # one, and every red it prints -- disagreeing
+                    # members, an unusable table, anything to come -- is
+                    # the mutant caught. Reading the red out of the text
+                    # instead would make the verdict wait on a sentence
+                    # each new check has to remember to write.
+                    return "caught"
+                return classify(returncode, text)
 
         def ask(mutant: Mutant):
             copy = copies.get()
