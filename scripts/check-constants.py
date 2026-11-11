@@ -57,6 +57,7 @@ listed, because silently ignoring them is how a gap becomes permanent.
 
 from __future__ import annotations
 
+import ctypes
 import os
 import platform
 import re
@@ -153,39 +154,42 @@ MORE_HEADERS = [
 # follow: the number is written once and compiled against whichever libc
 # is there. They are listed with what happened rather than left to pass,
 # because a disagreement nobody has to explain is one that spreads.
+# The termios speeds glibc 2.42 (August 2025) redefined from indices into
+# `c_cflag` to the baud rates themselves: 13 used to mean 9600 baud and
+# now 9600 does. A constant written here is compiled against one libc or
+# the other, so it cannot be both; these are the indices, which is what
+# every glibc before 2.42 says and what the Darwin branch beside them
+# already says. The other half of the same change -- a system where
+# `cfsetispeed` wants the rate -- is served by `libc.termios` taking the
+# number from the caller, which is where the `termios` documentation says
+# so. The exemption is asked of the machine's own glibc: a young one says
+# what the package says, and the asking goes on there.
+SPEEDS_REDEFINED = frozenset((
+    "B50", "B75", "B110", "B134", "B150", "B200", "B300", "B600", "B1200",
+    "B1800", "B2400", "B4800", "B9600", "B19200", "B38400", "B57600",
+    "B115200", "B230400",
+))
+
+
+def glibc_version() -> tuple[int, int] | None:
+    """The version of glibc this machine answers with, if it has one.
+
+    Only a Linux machine runs glibc, and the asking goes through the
+    loader's own name for itself, `gnu_get_libc_version`, which says
+    `2.35` in the form the comparison wants.
+    """
+    if sys.platform != "linux":
+        return None
+    try:
+        libc = ctypes.CDLL(None)
+        libc.gnu_get_libc_version.restype = ctypes.c_char_p
+        parts = libc.gnu_get_libc_version().decode().split(".")
+        return int(parts[0]), int(parts[1])
+    except (OSError, AttributeError, ValueError, IndexError):
+        return None
+
+
 SPELLED_DIFFERENTLY: dict[str, str] = {
-    # glibc 2.42 (August 2025) redefined these from indices into `c_cflag`
-    # to the baud rates themselves, and changed `cfsetispeed` to take them
-    # that way: 13 used to mean 9600 baud and now 9600 does. A constant
-    # written here is compiled against one libc or the other, so it cannot
-    # be both; these are the indices, which is what every glibc before
-    # 2.42 says and what the Darwin branch beside them already says. The
-    # other half of the same change -- a system where `cfsetispeed` wants
-    # the rate -- is served by `libc.termios` taking the number from the
-    # caller, which is where the `termios` documentation says so.
-    **{
-        speed: "glibc 2.42 turned this index into the rate itself"
-        for speed in (
-            "B50",
-            "B75",
-            "B110",
-            "B134",
-            "B150",
-            "B200",
-            "B300",
-            "B600",
-            "B1200",
-            "B1800",
-            "B2400",
-            "B4800",
-            "B9600",
-            "B19200",
-            "B38400",
-            "B57600",
-            "B115200",
-            "B230400",
-        )
-    },
     # glibc 2.34 did the same to this one: `SIGSTKSZ` became
     # `sysconf(_SC_SIGSTKSZ)`, which answers 13504 on a machine with
     # AVX-512 and 8192 without -- a number that depends on the machine the
@@ -436,6 +440,24 @@ def read_literal(raw: str) -> float | None:
             return None
 
     return None
+
+
+def excused_from(name: str) -> str | None:
+    """The reason a name's own header cannot be followed here, if any.
+
+    Some disagreements are the header's doing, and only on the machines
+    where the header changed: glibc 2.42 turned the termios speeds from
+    indices into rates, so a glibc that new answers something the number
+    this package compiles cannot follow, and a younger one -- and every
+    Darwin, which spells the rates as the rates already -- says what the
+    package says, and the asking goes on.
+    """
+    if name in SPEEDS_REDEFINED:
+        version = glibc_version()
+        if version is not None and version >= (2, 42):
+            return "glibc 2.42 turned this index into the rate itself"
+        return None
+    return SPELLED_DIFFERENTLY.get(name)
 
 
 def is_linux() -> bool:
@@ -1072,7 +1094,7 @@ def main() -> int:
             agree.append(name)
         elif same_word(value, truth):
             signed.append((name, place, value, truth))
-        elif name in SPELLED_DIFFERENTLY:
+        elif excused_from(name):
             excused.append((name, place, value, truth))
         else:
             disagree.append((name, place, value, truth))
@@ -1090,7 +1112,7 @@ def main() -> int:
         print(f"  {len(excused)} the header spells differently, and cannot be followed:")
         reasons: dict[str, list[str]] = {}
         for name, _place, _mine, _theirs in excused:
-            reasons.setdefault(SPELLED_DIFFERENTLY[name], []).append(name)
+            reasons.setdefault(excused_from(name), []).append(name)
         for reason, names in reasons.items():
             print(f"      {reason}")
             print(f"          {' '.join(names)}")
