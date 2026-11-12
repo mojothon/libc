@@ -772,6 +772,13 @@ asks <code>conda.anaconda.org/mojo-force</code>, which does not exist — and pi
 which is why both of the commands above spell it out. Written the short way
 the failure is a <code>404</code> for a channel that is not there, on a package that is.</p>
 </div>
+<div class="admonition note">
+<p class="admonition-title">This page is walked, not only written</p>
+<p>Every release, an empty directory that has never seen the checkout runs
+the commands above, installs the release the way a reader does, and calls
+the library — <code>EINVAL</code> by number, a process id, a user id. If the page
+ever stops working, the release that broke it does not go out green.</p>
+</div>
 <h2 id="from-source">From source<a class="headerlink" href="#from-source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/mojothon/libc.git
 <span class="nb">cd</span><span class="w"> </span>libc
