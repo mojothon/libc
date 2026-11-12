@@ -38,8 +38,12 @@ conda install -c https://conda.modular.com/max -c https://prefix.dev/mojo-force 
 !!! note "This page is walked, not only written"
     Every release, an empty directory that has never seen the checkout runs
     the commands above, installs the release the way a reader does, and calls
-    the library — `EINVAL` by number, a process id, a user id. If the page
-    ever stops working, the release that broke it does not go out green.
+    the library — `EINVAL` by number, a process id, a user id. The walk also
+    happens every week against the newest version on the channel and whatever
+    toolchain pixi resolves that day: the compiled package is frozen at the
+    compiler that built it, and the compiler moves without this repository
+    moving. If the page ever stops working — at a release, or under a new
+    compiler — the patrol that caught it does not go out green.
 
 ## From source
 

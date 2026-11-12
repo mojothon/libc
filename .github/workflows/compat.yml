@@ -1,0 +1,41 @@
+name: Compatibility patrol
+
+# The compiled package is frozen at the compiler that built it, and the
+# compiler moves without this repository moving: the reader journey ran
+# against `mojo 1.1.0` at release time while pixi already resolves
+# `1.2.0`. A package that stops importing under a new compiler fails
+# silently for every reader who asks for it, and nobody here would hear
+# of it until the next release's journey happened to walk into the
+# same compiler. This walks it weekly: an empty directory, the
+# channels the install page names, the newest version on the shelf,
+# and a call to the library -- with whatever toolchain pixi resolves
+# today. Red means the shelf and the compiler have come apart, and the
+# answer is a release built with the compiler that now holds the
+# shelf, not a fix to the patrol.
+
+on:
+  schedule:
+    # Fridays, 05:17 UTC -- two days after the mutation sample's asking,
+    # an odd minute, so the two never queue behind each other.
+    - cron: "17 5 * * 5"
+  workflow_dispatch:
+
+concurrency:
+  group: compatibility-patrol
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  patrol:
+    name: The frozen package, met by today's compiler
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.11.0
+        with:
+          cache: false
+      - name: Walk the install page as a reader walks it today
+        run: bash scripts/ask-install.sh latest
