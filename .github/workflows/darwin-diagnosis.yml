@@ -1,0 +1,58 @@
+name: darwin diagnosis
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.11.0
+        with:
+          cache: true
+      - name: Why are the sysconf names not asked here
+        run: |
+          python3 - <<'PY'
+          import importlib.util, re, sys
+
+          spec = importlib.util.spec_from_file_location(
+              "cc", "scripts/check-constants.py"
+          )
+          cc = importlib.util.module_from_spec(spec)
+          sys.argv = ["check-constants"]
+          spec.loader.exec_module(cc)
+
+          text = cc.header_text()
+          print(f"header_text: {len(text)} bytes")
+          listed = cc.constants()
+          names = (
+              "SC_STREAM_MAX", "SC_GETPW_R_SIZE_MAX", "SC_GETGR_R_SIZE_MAX",
+              "SC_NPROCESSORS_CONF", "PC_NO_TRUNC",
+          )
+          for name in names:
+              rows = [row for row in listed if row[0] == name]
+              print(f"\n== {name}")
+              if not rows:
+                  print("   NOT LISTED from the package's source")
+                  continue
+              _name, place, raw, value = rows[0]
+              expr = cc.c_expression(raw)
+              print(f"   raw: {raw[:70]}")
+              print(f"   c_expression: {expr}   read value: {value}")
+              if expr is None:
+                  print("   -> never asked: c_expression said nothing")
+                  continue
+              for spelling in (name, f"_{name}"):
+                  hits = len(re.findall(rf"\b{re.escape(spelling)}\b", text))
+                  print(f"   header_text[{spelling}]: {hits} hit(s)")
+                  if hits:
+                      said, refused = cc.from_c(
+                          [(f"0:{name}", spelling)], "i"
+                      )
+                      print(f"   from_c({spelling}): said={said} refused={refused}")
+          PY
