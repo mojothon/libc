@@ -93,6 +93,26 @@ jobs:
             python3 scripts/ask-channel.py "$PLATFORM" "$VERSION" "$CHANNEL"
           done
 
+  reader:
+    # Every link before this one is a claim about parts: the package
+    # builds, the upload lands, the repodata holds the version, the
+    # download opens. What a reader does is none of those -- an empty
+    # directory, pixi, the channels the install page names, and a call
+    # to the library. The journey is walked once per release, on the
+    # machine class a reader most likely has, by the page's own words.
+    name: The install page, walked
+    runs-on: ubuntu-latest
+    needs: [channel]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.11.0
+        with:
+          cache: false
+      - name: Ask for the release the way a reader does
+        run: |
+          VERSION=$(python3 -c "import re; print(re.search(r'version = \"([^\"]+)\"', open('pixi.toml').read()).group(1))")
+          bash scripts/ask-install.sh "$VERSION"
+
   docs:
     name: Deploy docs
     runs-on: ubuntu-latest

@@ -35,6 +35,12 @@ conda install -c https://conda.modular.com/max -c https://prefix.dev/mojo-force 
     which is why both of the commands above spell it out. Written the short way
     the failure is a `404` for a channel that is not there, on a package that is.
 
+!!! note "This page is walked, not only written"
+    Every release, an empty directory that has never seen the checkout runs
+    the commands above, installs the release the way a reader does, and calls
+    the library — `EINVAL` by number, a process id, a user id. If the page
+    ever stops working, the release that broke it does not go out green.
+
 ## From source
 
 ```bash
