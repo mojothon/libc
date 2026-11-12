@@ -76,6 +76,6 @@ docs/               mkdocs site sources
 
 ## Version
 
-`libc.__version__` is `0.14.0`; `pixi run check-release` fails unless the
+`libc.__version__` is `0.14.1`; `pixi run check-release` fails unless the
 number here, `pixi.toml`, `recipe/recipe.yaml` and the two pages state the
 same one. See [CHANGELOG.md](CHANGELOG.md) for the release history.

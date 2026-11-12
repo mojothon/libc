@@ -5,7 +5,32 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.14.0] - 2026-11-05
+## [0.14.1] - 2026-11-12
+
+### Fixed
+
+- **`statfs` reads the second shape on Darwin.** The offsets come out of
+  the machine's own headers instead of the Linux ones, the members Darwin
+  keeps in four bytes are read as four, and the flags and file-id counts
+  the page carries are named where C says them.
+- **`stat` sits where the ARM ABI puts it.** Five members the thirty-two-bit
+  ABI lays differently are read from where it lays them, and two are read
+  at the width it gives them.
+- **`epoll`'s record is one body for both ABI.** x86-64 packs the struct to
+  twelve bytes and aarch64 lays it sixteen at eight, so the members are held
+  as two words and read where each platform keeps them -- the stride the
+  kernel writes is `EPOLL_EVENT_STRIDE`, and `data`'s place is
+  `EPOLL_DATA_AT`.
+- **`is_arm` asks the silicon, not the system.** Apple's silicon is ARM,
+  and the branches that took the machine's word on which ISA it runs now
+  take it on both platforms.
+- **`write` goes by glibc's own alias**, and the syscall number it lowers
+  to is the machine's table's, not this package's guess at it.
+
+### Changed
+
+- The open flags live where the open is, and the constants of `fcntl`,
+  `netdb` and `epoll` are asked of C once each, not twice.
 
 ### Added
 
