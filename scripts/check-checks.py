@@ -15,10 +15,10 @@ away, and the tree being checked is the one in the working directory, so
 a case that no longer applies -- because the line it edits was rewritten
 -- is a failure too, rather than a case that quietly stops running.
 
-Two of the thirty-two are slow -- the one that builds every example and the
+Two of the thirty-four are slow -- the one that builds every example and the
 one that asks gcc about every constant, eighteen seconds each -- which is why
 this runs as its own job rather than as one more step of the lint job.
-The assurance is the same for all thirty-two: a page of examples that compiles
+The assurance is the same for all thirty-four: a page of examples that compiles
 nothing prints `all 0 examples compile`, which is the sentence this is
 here to make impossible to earn honestly.
 """
@@ -79,6 +79,20 @@ BREAKS = [
         "docs/install.md",
         "-c https://prefix.dev/mojo-force",
         "-c mojo-force",
+    ),
+    Break(
+        "check-channels",
+        "the README names the channel the way the install page used to",
+        "README.md",
+        "-c https://prefix.dev/mojo-force",
+        "-c mojo-force",
+    ),
+    Break(
+        "check-examples",
+        "the README gives an install command the install page does not",
+        "README.md",
+        "pixi add libc",
+        "pixi add libc-extras",
     ),
     Break(
         "check-duplicates",
