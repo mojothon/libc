@@ -5,6 +5,26 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-11-13
+
+### Fixed
+
+- **`write`'s count goes as what C's `size_t` is.** The compiler of
+  Mojo 1.2.0 checks an external call's argument types against the
+  signature the symbol really has, and `write`'s count is an unsigned
+  64 where this package passed a signed one -- 1.1.0 said nothing and
+  1.2.0 marks the call illegal, so every test that touches a file
+  descriptor stopped compiling. The count goes as `UInt64` and the fd
+  as the `Int32` it always was; every test passes under 1.2.0.
+
+### Changed
+
+- **The Mojo range is `>=1.2.0,<2`.** The compiler whose check caught
+  the count is the one the package is built with, and every place the
+  range is said -- the lock, the recipe, the pages -- says it together.
+  The matrix that found no shape acceptable to both 1.1.0 and 1.2.0
+  is why the floor moved instead of a version branch being kept.
+
 ## [0.14.1] - 2026-11-12
 
 ### Fixed
