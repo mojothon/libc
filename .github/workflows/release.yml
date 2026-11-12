@@ -72,6 +72,27 @@ jobs:
           CHANNEL: ${{ inputs.channel || 'mojo-force' }}
         run: pixi run -e build publish
 
+  channel:
+    # An upload that said done is not a package a user can ask the
+    # channel for. The repodata is the channel's own word about what it
+    # holds, and this is the release read back from it -- every
+    # platform the matrix built, the version this tag names. The index
+    # can take a minute to catch up with the upload, so the asking
+    # waits and asks again before it believes an absence.
+    name: The channel answers
+    runs-on: ubuntu-latest
+    needs: [publish]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ask the repodata for the version just published
+        env:
+          CHANNEL: ${{ inputs.channel || 'mojo-force' }}
+        run: |
+          VERSION=$(python3 -c "import re; print(re.search(r'version = \"([^\"]+)\"', open('pixi.toml').read()).group(1))")
+          for PLATFORM in linux-64 linux-aarch64 osx-arm64; do
+            python3 scripts/ask-channel.py "$PLATFORM" "$VERSION" "$CHANNEL"
+          done
+
   docs:
     name: Deploy docs
     runs-on: ubuntu-latest

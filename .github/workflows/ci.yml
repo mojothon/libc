@@ -82,8 +82,10 @@ jobs:
     # nothing checked the claim: `check-channels` spent its first ten
     # minutes passing by finding no channel names at all. This breaks one
     # thing at a time on a copy of the tree and asks the check that owns
-    # it to say so. A hundred seconds, which is its own job rather than
-    # one more step of the lint job for exactly that reason.
+    # it to say so, the mutation tables are asked to still answer pairs
+    # that can be made, and the probe is asked of the two mutants whose
+    # answers are known. A dozen minutes, which is its own job rather
+    # than one more step of the lint job for exactly that reason.
     name: The checks themselves
     runs-on: ubuntu-latest
     steps:
