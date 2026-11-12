@@ -243,6 +243,13 @@ BREAKS = [
     ),
     Break(
         "check-layouts",
+        "a derived size C's own arithmetic does not come to",
+        "src/libc/sys/un/syscalls.mojo",
+        "comptime SOCKADDR_UN_BYTES: Int = 106 if CompilationTarget.is_macos() else 110",
+        "comptime SOCKADDR_UN_BYTES: Int = 106 if CompilationTarget.is_macos() else 109",
+    ),
+    Break(
+        "check-layouts",
         "a member written at a number rather than at a named offset",
         "src/libc/utmpx/syscalls.mojo",
         "self._set_u32(UT_PID_OFFSET, UInt32(pid))",
