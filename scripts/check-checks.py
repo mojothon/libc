@@ -15,10 +15,11 @@ away, and the tree being checked is the one in the working directory, so
 a case that no longer applies -- because the line it edits was rewritten
 -- is a failure too, rather than a case that quietly stops running.
 
-Two of the thirty-four are slow -- the one that builds every example and the
-one that asks gcc about every constant, eighteen seconds each -- which is why
+Three of the thirty-five are slow -- the one that builds every example, the
+one that asks gcc about every constant, and the one that walks the
+constants' table against what the sweep can still make -- which is why
 this runs as its own job rather than as one more step of the lint job.
-The assurance is the same for all thirty-four: a page of examples that compiles
+The assurance is the same for all thirty-five: a page of examples that compiles
 nothing prints `all 0 examples compile`, which is the sentence this is
 here to make impossible to earn honestly.
 """
@@ -93,6 +94,14 @@ BREAKS = [
         "README.md",
         "pixi add libc",
         "pixi add libc-extras",
+    ),
+    Break(
+        "mutation-probe",
+        "a constants' reason about a name the sweep does not carry",
+        "scripts/mutation-probe.py",
+        '"SYSINFO_FREERAM": "free memory',
+        '"SYSINFO_FREERAM_NOT_HERE": "free memory',
+        args=("--check-tables",),
     ),
     Break(
         "check-duplicates",
