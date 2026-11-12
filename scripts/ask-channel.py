@@ -48,9 +48,16 @@ def untape(blob: bytes) -> dict[str, bytes]:
 
 
 def repodata_entry(platform: str, version: str, channel: str) -> dict:
-    """The channel's record of the version, waiting out the index."""
+    """The channel's record of the version, waiting out the index.
+
+    The wait is fifty minutes, not five: 0.14.1 appeared in the index
+    within five minutes of its upload, 0.14.2 took forty -- the server
+    took the packages the moment they were offered and its index let
+    them be seen when it was ready, which is the server's own pace and
+    not a promise the release makes. The asking keeps the pace it needs.
+    """
     url = f"https://prefix.dev/{channel}/{platform}/repodata.json"
-    for attempt in range(6):
+    for attempt in range(50):
         data = json.loads(fetch(url))
         packages = list(data["packages"].values()) + list(
             data.get("packages.conda", {}).values()
