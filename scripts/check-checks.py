@@ -340,7 +340,33 @@ def run(check: str, tree: Path, args: tuple[str, ...] = ()) -> int:
     return done.returncode
 
 
+def unowned() -> list[str]:
+    """The checks on the tree that no case of this one breaks.
+
+    Every check is a claim, and a check with no case is a claim this
+    file does not collect on -- the same silence `check-channels` spent
+    its first morning inside. The one exception is this check itself:
+    breaking the tree in a way check-checks would miss means writing a
+    second one of these, and the tree cannot hold both.
+    """
+    owned = {b.check for b in BREAKS}
+    on_disk = sorted(p.stem for p in (ROOT / "scripts").glob("check-*.py"))
+    return [
+        name
+        for name in on_disk
+        if name != "check-checks" and name not in owned
+    ]
+
+
 def main() -> int:
+    missing = unowned()
+    if missing:
+        print("\n  *** a check no case of this one breaks ***")
+        for name in missing:
+            print(f"    {name}")
+        print("  a check with no case is a claim nobody collects on")
+        return 1
+
     with tempfile.TemporaryDirectory() as work:
         tree = Path(work) / "tree"
         shutil.copytree(ROOT, tree, ignore=IGNORED)
