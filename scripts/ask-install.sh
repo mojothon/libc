@@ -28,20 +28,38 @@ if [ "$VERSION" = "latest" ]; then
     # The newest version the channel holds, by the same asking the
     # channel job makes of a release. Highest of what is there, so a
     # patrol never installs something that is no longer the shelf.
+    #
+    # The asking goes to the GraphQL view, not to the repodata file:
+    # the repodata a bare request gets is the channel's newest
+    # publication, a snapshot that rolls with the index's own pace and
+    # has been caught mid-roll holding none of the shelf at all, while
+    # the GraphQL view is the server's word about what the channel
+    # keeps. A patrol that asks the snapshot can be red on a version
+    # that is there; a patrol that asks the server's word is red only
+    # when the shelf itself has changed.
     VERSION="$(python3 - <<'PY'
 import json, urllib.request
 
 request = urllib.request.Request(
-    "https://prefix.dev/mojo-force/linux-64/repodata.json",
-    headers={"User-Agent": "libc-release-check/1.0"},
+    "https://prefix.dev/api/graphql",
+    data=json.dumps(
+        {
+            "query": '{ p: package(channelName: "mojo-force", '
+            'name: "libc") { versions { page { version } } } }'
+        }
+    ).encode(),
+    headers={
+        "User-Agent": "libc-release-check/1.0",
+        "Content-Type": "application/json",
+    },
 )
-data = json.load(urllib.request.urlopen(request))
-packages = list(data["packages"].values()) + list(
-    data.get("packages.conda", {}).values()
-)
-versions = sorted(
-    {p["version"] for p in packages if p["name"] == "libc"}
-)
+result = json.load(urllib.request.urlopen(request))
+entry = result["data"]["p"]
+if entry is None:
+    raise SystemExit("the channel's view holds no libc at all")
+versions = sorted(v["version"] for v in entry["versions"]["page"])
+if not versions:
+    raise SystemExit("the channel's view holds no libc at all")
 print(versions[-1])
 PY
 )"
