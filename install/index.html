@@ -776,8 +776,12 @@ the failure is a <code>404</code> for a channel that is not there, on a package 
 <p class="admonition-title">This page is walked, not only written</p>
 <p>Every release, an empty directory that has never seen the checkout runs
 the commands above, installs the release the way a reader does, and calls
-the library — <code>EINVAL</code> by number, a process id, a user id. If the page
-ever stops working, the release that broke it does not go out green.</p>
+the library — <code>EINVAL</code> by number, a process id, a user id. The walk also
+happens every week against the newest version on the channel and whatever
+toolchain pixi resolves that day: the compiled package is frozen at the
+compiler that built it, and the compiler moves without this repository
+moving. If the page ever stops working — at a release, or under a new
+compiler — the patrol that caught it does not go out green.</p>
 </div>
 <h2 id="from-source">From source<a class="headerlink" href="#from-source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/mojothon/libc.git
