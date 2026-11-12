@@ -964,16 +964,28 @@ The asking kept growing after the sweep did, and the table shrank to
 match. Five of the entries were numbers C's own arithmetic answers -- a
 structure's whole size, the subtraction that leaves the path its share,
 the width of a type, the room a login name is given -- and the layouts'
-check asks the expressions beside them now, so five entries came off and
-the table holds a hundred and nine. The termios speeds are asked where
-the header still spells the index: a glibc from 2.42 on says the rates
-themselves, and there the excuse is the machine's to take, while every
-younger libc and every Darwin goes on to the asking. The rest are the
-branches this machine does not compile -- Darwin's own numbering, its
-refusals, its wider slots -- and those are not excused so much as
-delegated: the same two checks run on the Darwin runner against Darwin's
-headers, where the branch the Linux machine never reads is the branch
-the machine reading it compiles.
+check asks the expressions beside them now, so five entries came off.
+The termios speeds are asked where the header still spells the index: a
+glibc from 2.42 on says the rates themselves, and there the excuse is
+the machine's to take, while every younger libc and every Darwin goes
+on to the asking.
+
+The branches this machine does not compile are not excused so much as
+delegated, and the delegation is proved the way everything else here
+is: the sampling itself runs on the runner that compiles the Darwin
+branches, the same seed as the other machines, and where the Linux
+sample wrote a branch down as unread, that runner reads it and asks C
+about it. Its first sample came back with three survivors that are the
+number's whole life on one side -- the sysinfo struct only Linux's
+kernel fills, the statfs member Apple's header does not spell, the
+epoll field whose header Darwin has none of -- and they are on the
+table as what they are, entries whose reason is the other machine's to
+check. Five more were sysconf items that had never been asked there at
+all: Apple spells them as defines, the preprocessor takes a define out
+of the text its printed answer is read from, and the asking now reads
+the preprocessor's own table beside it, where a define still says its
+name. What the Darwin reader answers now is forty-two caught, six the
+tables carry, and not one survived.
 
 ## Next to Rust's `libc`
 
