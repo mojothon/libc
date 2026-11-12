@@ -305,6 +305,31 @@ def headers() -> list[str]:
 
 
 @lru_cache(maxsize=1)
+def macro_text() -> str:
+    """The headers' own `#define` lines, which `cc -E` swallows.
+
+    Preprocessing keeps an enumeration constant -- the declaration is
+    still there for the compiler to read -- but takes a `#define` out
+    of the text it prints, and Apple spells its sysconf names as
+    defines: the text the asking reads on that machine did not contain
+    them, and five names went unasked on the runner that compiles the
+    Darwin branches. `-dM` makes the preprocessor print its own table,
+    and there a define still says its name. glibc spells the same
+    names as an enumeration, so this table adds nothing there -- and
+    nothing it adds could disagree, its answers being asked of the
+    names this package only borrows.
+    """
+    includes = "\n".join(f"#include <{h}>" for h in headers())
+    expanded = subprocess.run(
+        [*CC, *DEFINES, "-E", "-dM", "-x", "c", "-"],
+        input=includes,
+        capture_output=True,
+        text=True,
+    )
+    return expanded.stdout
+
+
+@lru_cache(maxsize=1)
 def header_text() -> str:
     """Everything the headers say, with the macros already expanded.
 
@@ -981,7 +1006,7 @@ def main() -> int:
     # found, which is how a whole family of items the machine answers at
     # run time went unasked: a mutation of the package's number agreed
     # with C only because C was never asked about it at all.
-    spelled = header_text()
+    spelled = header_text() + macro_text()
     for mode in ("i", "u", "f"):
         enumerators = []
         for index, (name, _place, _raw, _value) in enumerate(listed):

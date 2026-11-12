@@ -49,8 +49,14 @@ jobs:
                   continue
               for spelling in (name, f"_{name}"):
                   hits = len(re.findall(rf"\b{re.escape(spelling)}\b", text))
-                  print(f"   header_text[{spelling}]: {hits} hit(s)")
-                  if hits:
+                  mhits = len(
+                      re.findall(rf"\b{re.escape(spelling)}\b", cc.macro_text())
+                  )
+                  print(
+                      f"   header_text[{spelling}]: {hits}   "
+                      f"macro_text[{spelling}]: {mhits}"
+                  )
+                  if hits or mhits:
                       said, refused = cc.from_c(
                           [(f"0:{name}", spelling)], "i"
                       )
