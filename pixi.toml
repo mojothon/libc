@@ -63,6 +63,7 @@ check-duplicates = "python3 scripts/check-duplicates.py"
 # bindings, `--strict` to fail on a survivor that is not a known pair.
 mutation-probe = "python3 scripts/mutation-probe.py"
 mutation-tables = "python3 scripts/mutation-probe.py --check-tables"
+mutation-self = "python3 scripts/mutation-probe.py --self-test"
 check-walk = "python3 scripts/check-walk.py"
 # Every numeric constant here was read out of `gcc -dM` by eye, once, and
 # a number nobody rechecks is a number nothing stops from being wrong: 55

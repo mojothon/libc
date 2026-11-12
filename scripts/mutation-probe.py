@@ -1568,6 +1568,68 @@ def check_tables() -> int:
     return 1
 
 
+# The probe is the watcher of the watchers, and nothing watched it: a
+# verdict that misread -- a caught one called unobservable, a survivor
+# called caught -- would read as an honest answer to every question
+# asked after it, and the tables would sign it. So the probe asks
+# itself, of two mutants the answer is known for on the machine doing
+# the asking: one the check against C refuses, one the tables carry
+# with a reason. Either answer coming back differently is the machinery
+# being wrong. The two are the ones each machine's own sweep answered
+# that way, so a reading that disagrees with them disagrees with the
+# sweep and not with a guess.
+def pinned() -> dict[str, tuple[str, str]]:
+    """The two mutants this machine's verdicts are pinned to."""
+    if sys.platform == "darwin":
+        return {
+            "EAGAIN": (
+                "caught",
+                "the check against C refuses it before any test runs",
+            ),
+            "O_RSYNC": (
+                "unobservable",
+                "a flag Darwin spells and no asking here reads",
+            ),
+        }
+    return {
+        "EAGAIN": (
+            "caught",
+            "the check against C refuses it before any test runs",
+        ),
+        "PASSWD_CHANGE_OFFSET": (
+            "unobservable",
+            "the member Linux's passwd keeps and no asking here reads",
+        ),
+    }
+
+
+def self_test(verdicts: dict[str, list[str]]) -> int:
+    """Say whether the probe's own verdicts are the known ones.
+
+    Two mutants whose answers the asking has settled -- `EACCES`,
+    caught by C on every machine this runs, and `FM_READ`, carried by
+    the constants' table on every machine this runs -- are asked of the
+    machinery that grades everything else. What comes back must be
+    what is written here, or the run is a wrong reader reading right.
+    """
+    wrong: list[tuple[str, str, list[str]]] = []
+    for name, (expected, why) in pinned().items():
+        given = verdicts.get(name, [])
+        if given and all(v == expected for v in given):
+            print(f"  {name:12} {expected:12} {why}")
+        else:
+            said = ", ".join(given) or "nothing"
+            wrong.append((name, expected, given))
+            print(f"  {name:12} {expected:12} -- the probe said {said}")
+    if wrong:
+        print("\n  the probe's verdicts are not the ones the asking knows:")
+        print("  a verdict that misreads is an honest-looking answer to")
+        print("  every question asked after it, and this one misreads.")
+        return 1
+    print("\n  the probe's verdicts are the known ones")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -1597,10 +1659,19 @@ def main() -> int:
         action="store_true",
         help="ask nothing of the suite: only that the two tables still apply",
     )
+    parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="ask the probe of two mutants the answer is known for",
+    )
     args = parser.parse_args()
 
     if args.check_tables:
         return check_tables()
+
+    if args.self_test:
+        args.kind = "constant"
+        args.only = ",".join(pinned())
 
     # The suite is asked first as it stands, before any mistake is made.
     # A file that is red on its own -- the machine's limits already spent
@@ -1702,6 +1773,7 @@ def main() -> int:
             "error": 0,
         }
         answered: list[str] = []
+        verdicts: dict[str, list[str]] = {}
         # The workers print as they finish, so the report is in the order the
         # answers came back rather than the order they were asked in -- which is
         # the order a reader of a sweep wants anyway.
@@ -1915,6 +1987,7 @@ def main() -> int:
                     known = unseen
                 with say:
                     tally[verdict] += 1
+                    verdicts.setdefault(mutant.name, []).append(verdict)
                     if mutant.kind == "symbol":
                         print(f"  {verdict:12} {where:44} {mutant.what}")
                     else:
@@ -1946,6 +2019,8 @@ def main() -> int:
             f" survived {tally['survived']}, flaky {tally['flaky']},"
             f" did not build {tally['error']}"
         )
+        if args.self_test:
+            return self_test(verdicts)
         if tally["flaky"]:
             print(
                 "  a flaky one was survived once and caught on the asking"

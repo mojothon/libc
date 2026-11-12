@@ -100,6 +100,14 @@ jobs:
         # hole. This is what keeps a written answer from outliving the pair
         # it excuses, and it is cheap -- no mutant is built or run.
         run: pixi run mutation-tables
+      - name: Ask the probe of the two mutants the answer is known for
+        # The probe is what grades everything else, and a verdict that
+        # misread -- a caught one called unobservable, a survivor called
+        # caught -- would read as an honest answer to every question
+        # asked after it. Two mutants whose answers the sweep has
+        # settled on this machine are asked of it: one the check
+        # against C refuses, one the tables carry with a reason.
+        run: pixi run mutation-self
 
   test:
     name: Test (${{ matrix.os }})
