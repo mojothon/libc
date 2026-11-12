@@ -23,6 +23,15 @@ docs this has already found were.
 A block with no `def main` gets one, because the compiler wants a program
 whether or not the example is one. That is the only edit made to a block:
 what is compiled is what the reader sees, plus an empty entry point.
+
+The fenced `bash` blocks are claims of the same kind -- commands a reader
+can type and run -- and the install commands among them are asked
+something the compiler cannot say: that the ones the README gives are
+the ones the install page gives. The README said `pixi add --from ...`
+for four releases, a command pixi has no flag for, because it stood
+where a reader would copy it and nobody had typed it. The install
+page's commands are the ones the release walks as a reader walks it,
+so the page is the source and the README must say what it says.
 """
 
 import re
@@ -35,6 +44,8 @@ PAGES = [ROOT / "README.md", *sorted((ROOT / "docs").glob("*.md"))]
 BUILD = ROOT / ".build-check" / "examples"
 
 BLOCK = re.compile(r"^```mojo( +fragment)?\n(.*?)^```", re.M | re.S)
+BASH = re.compile(r"^```bash\n(.*?)^```", re.M | re.S)
+INSTALL = re.compile(r"^(pixi (?:init|add) .+)$", re.M)
 MAIN = re.compile(r"^def main\(", re.M)
 
 
@@ -79,6 +90,17 @@ def compile(name: str, source: str) -> str:
     return built.stderr.strip().splitlines()[0] if built.stderr.strip() else "failed"
 
 
+def install_commands(path: Path) -> set[str]:
+    """The `pixi init`/`pixi add` lines the page's bash blocks spell out."""
+    said = set()
+    for block in BASH.finditer(path.read_text()):
+        for line in block.group(1).splitlines():
+            line = line.split("#")[0].strip()
+            if INSTALL.match(line):
+                said.add(line)
+    return said
+
+
 def main() -> int:
     failed = []
     fragments = []
@@ -95,6 +117,17 @@ def main() -> int:
             if said:
                 failed.append((f"{where} block {index}", said))
 
+    # The install page's commands are the ones the release walks; the
+    # README's must be the page's, not a paraphrase nobody has typed.
+    walked = install_commands(ROOT / "docs" / "install.md")
+    told = install_commands(ROOT / "README.md")
+    off_page = sorted(told - walked)
+    if off_page:
+        print("\n  install commands the README gives that the install")
+        print("  page does not -- and only the page's are walked:")
+        for line in off_page:
+            print(f"    {line}")
+
     if failed:
         print("\n  examples that no longer compile:")
         for where, said in failed:
@@ -106,7 +139,7 @@ def main() -> int:
         )
 
     print()
-    if failed:
+    if failed or off_page:
         print("  *** examples the package has outgrown ***")
         return 1
     print(f"  all {compiled} examples compile against this package")

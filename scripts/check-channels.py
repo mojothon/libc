@@ -72,7 +72,11 @@ def decides(name: str) -> bool:
 def main() -> int:
     problems = []
     count = 0
-    for page in sorted((ROOT / "docs").glob("*.md")):
+    # The README names channels too, and it stood outside this glob for
+    # four releases while carrying the bare name the install page had
+    # been cured of -- a page the asking skips is a page it cannot cure.
+    pages = [ROOT / "README.md", *sorted((ROOT / "docs").glob("*.md"))]
+    for page in pages:
         text = page.read_text()
         for start, language, body in blocks(text):
             for offset, name in named(language, body):

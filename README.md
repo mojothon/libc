@@ -14,7 +14,8 @@ one place and your code reads like the C it replaces.
 ## Install
 
 ```bash
-pixi add --from https://conda.modular.com/max --channel mojo-force libc
+pixi init -c https://conda.modular.com/max -c conda-forge -c https://prefix.dev/mojo-force .
+pixi add libc
 ```
 
 ```mojo
