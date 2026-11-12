@@ -19,7 +19,7 @@ channels = ["https://conda.modular.com/max", "conda-forge", "https://prefix.dev/
 
 [dependencies]
 libc = ">=0.14.1,<0.15"
-mojo = ">=1.1.0,<2"
+mojo = ">=1.2.0,<2"
 ```
 
 ## conda / mamba

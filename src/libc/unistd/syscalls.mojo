@@ -1087,8 +1087,14 @@ def write(fd: Int32, buf: c_ptr[UInt8], count: UInt32) -> Int:
     # and on aarch64 the two spellings of it refuse to share a module --
     # the third machine's compiler is what refused them. The alias is the
     # same address.
-    return external_call[WRITE_AS, Int, Int, c_ptr[UInt8], Int](
-        Int(fd), buf, Int(count)
+    #
+    # `count` goes as `UInt64`, which is what C's `size_t` is on the
+    # platforms this binds: the compiler of 1.2.0 checks the argument
+    # types of an external call against the signature the symbol really
+    # has, and an `Int` where the kernel takes an unsigned count is the
+    # mismatch it refuses -- 1.1.0 accepted it without a word.
+    return external_call[WRITE_AS, Int, Int32, c_ptr[UInt8], UInt64](
+        fd, buf, UInt64(count)
     )
 
 

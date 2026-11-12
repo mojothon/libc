@@ -7,7 +7,7 @@ Every C header is exposed as a Mojo sub-package — `libc.math`, `libc.string`,
 `libc.unistd`, `libc.sys.socket`, ... — so `external_call` boilerplate lives in
 one place and your code reads like the C it replaces.
 
-- **Mojo:** `>=1.1.0,<2`
+- **Mojo:** `>=1.2.0,<2`
 - **Platforms:** `linux-64`, `linux-aarch64`, `osx-arm64`
 - **License:** MIT
 

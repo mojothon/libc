@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | `libc.__version__` | `0.14.1` |
-| Mojo | `>=1.1.0,<2` |
+| Mojo | `>=1.2.0,<2` |
 | Platforms | `linux-64`, `linux-aarch64`, `osx-arm64` |
 
 ```mojo
