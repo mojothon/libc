@@ -44,16 +44,19 @@ def gh(*argv: str) -> str:
 def tallies(run: str) -> list[tuple[str, str, dict[str, int]]]:
     """Every tally the run's logs printed, with the job and step that said it."""
     log = None
-    for attempt in range(3):
+    for attempt in range(12):
         proc = subprocess.run(
             ["gh", "run", "view", run, "--log"], capture_output=True, text=True
         )
         if proc.returncode == 0 and proc.stdout.strip():
             log = proc.stdout
             break
-        # The log download answers with a gateway error now and then;
-        # it has answered to the asking again every time so far.
-        time.sleep(30)
+        # A run's logs come down whole or not at all, and the putting
+        # together of them takes a minute after the run has ended -- the
+        # asking inside the run itself lands here before the logs are
+        # there to be had. Wait, and ask again before believing an
+        # absence.
+        time.sleep(45)
     if log is None:
         raise SystemExit("the run's logs would not come down; ask again later")
     found = []
@@ -81,7 +84,9 @@ def main() -> int:
             "--json", "databaseId", "--jq", ".[0].databaseId",
         ).strip()
     report = json.loads(gh("run", "view", run, "--json", "jobs,conclusion"))
-    if report.get("conclusion") not in (None, "success"):
+    # A run that has only just ended carries no conclusion for a while;
+    # an answer that is not there yet is not an answer that failed.
+    if report.get("conclusion") not in (None, "", "success"):
         print(f"the run ended {report['conclusion']}\n")
     answers = tallies(run)
     per_job: dict[str, list[tuple[str, dict[str, int]]]] = {}
