@@ -9,13 +9,20 @@ on:
         description: prefix.dev channel to upload to
         required: true
         default: mojo-force
+      rehearsal:
+        description: build and publish nothing; ask the chain what the channel already holds
+        type: boolean
+        default: false
 
 jobs:
   conda:
     # One package per platform. The library binds both Linux's and Darwin's
     # C libraries, and the workspace declares both platforms, so a release
     # that only shipped `linux-64` left macOS readers with an install page
-    # describing a package their platform's subdir does not have.
+    # describing a package their platform's subdir does not have. A
+    # rehearsal builds nothing; it asks the chain about what the channel
+    # already holds, which is what the last release left there.
+    if: inputs.rehearsal != true
     name: Build conda package (${{ matrix.os }})
     strategy:
       fail-fast: false
@@ -46,7 +53,9 @@ jobs:
 
   publish:
     # Needs PREFIX_API_KEY. Kept in its own job so that a missing key, or a
-    # prefix.dev outage, cannot stop the GitHub release from going out.
+    # prefix.dev outage, cannot stop the GitHub release from going out. A
+    # rehearsal publishes nothing -- the asking is of what is already there.
+    if: inputs.rehearsal != true
     name: Publish conda package
     runs-on: ubuntu-latest
     needs: [conda]
@@ -82,6 +91,7 @@ jobs:
     name: The channel answers
     runs-on: ubuntu-latest
     needs: [publish]
+    if: always()
     steps:
       - uses: actions/checkout@v4
       - name: Ask the repodata for the version just published
@@ -103,6 +113,7 @@ jobs:
     name: The install page, walked
     runs-on: ubuntu-latest
     needs: [channel]
+    if: always()
     steps:
       - uses: actions/checkout@v4
       - uses: prefix-dev/setup-pixi@v0.11.0
