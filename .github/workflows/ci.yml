@@ -58,6 +58,12 @@ jobs:
       # that sends readers to a release that is no longer the one shipped.
       - name: Check that the version is said the same everywhere
         run: pixi run check-release
+      # The release page and the channel hold the same packages, fed by two
+      # jobs from the same build. 0.14.1's and 0.14.2's assets were asked of
+      # the channel's bytes by hand -- twice is a habit the tree should keep
+      # without the hand, so the sums are asked every push, both ways.
+      - name: Check that the release page holds the channel's bytes
+        run: pixi run check-release-assets
       # The install page asked for the package on `-c mojo-force`, which conda
       # reads as an anaconda.org channel and answers with a 404, while the
       # package was on prefix.dev behind a URL. A shell command compiles

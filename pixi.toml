@@ -128,6 +128,13 @@ check-tests = "python3 scripts/check-tests.py"
 # This compares them, and asks whether the version this checkout is
 # actually satisfies what the install page says to ask for.
 check-release = "python3 scripts/check-release.py"
+# The release page and the channel are two shelves for the same bytes, fed
+# by two different jobs from the same build. A copy that a hand replaces or
+# an upload that lands twice is a difference neither shelf can see, and the
+# reader who downloads from one would hold bytes the other never shipped.
+# This asks the sum the channel's index records of every asset the release
+# page holds, both ways, so the shelves cannot come apart quietly.
+check-release-assets = "python3 scripts/check-release-assets.py"
 # The install page named the channel three ways and two of them were wrong:
 # `-c mojo-force` and `"mojo-force"` are read as anaconda.org channels, where
 # there is none, while the package was on prefix.dev behind a URL. Nothing
