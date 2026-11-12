@@ -102,6 +102,13 @@ jobs:
       # does not compile, this machine compiles -- and the same two
       # checks that ask C on Linux ask C here. Two workers, the runner
       # having three cores and the compilations being slower ones.
+      # The probe's own verdicts are pinned to two mutants this machine's
+      # sweep has settled, and the Darwin ones are not the Linux ones: the
+      # member the tables carry here is `O_RSYNC`, which no asking here
+      # reads. The same self-test that the checks job runs on Linux runs
+      # here first, so the pinned pair is the pair the machine proves.
+      - name: Ask the probe of the two mutants the answer is known for
+        run: python3 scripts/mutation-probe.py --self-test
       - name: Ask the constants axis
         env:
           MUTATION_TIMEOUT: "300"
