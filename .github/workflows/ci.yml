@@ -80,6 +80,12 @@ jobs:
       # nowhere, so this asks what can be asked without the network.
       - name: Check that every channel the docs name can resolve
         run: pixi run check-channels
+      # The install page's "From source" tells a reader to point the
+      # compiler at `src` and run their program; the smoke program is
+      # this checkout's own "their program", and it is asked on every
+      # push so the command the page gives is one that has been typed.
+      - name: Run the smoke program the way the install page says
+        run: pixi run run
       # The two tables of reasons in the probe excuse a survivor, so an entry
       # that outlives the pair it was written for excuses nothing. This asks
       # only that the pair can still be made, and takes seconds.
