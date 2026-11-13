@@ -42,3 +42,11 @@ jobs:
           cache: false
       - name: Walk the install page as a reader walks it today
         run: bash scripts/ask-install.sh latest
+      - name: Walk the front page as a reader walks it today
+        # The front page asks three channels to resolve together, and
+        # whichever of them carries the `mojo` a reader resolves is the
+        # compiler the frozen package meets -- an interaction one
+        # channel does not have. The commands and the example are
+        # lifted out of the README, so what the patrol walks is what
+        # the reader is told.
+        run: bash scripts/ask-readme.sh
