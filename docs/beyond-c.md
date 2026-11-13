@@ -999,6 +999,21 @@ the preprocessor's own table beside it, where a define still says its
 name. What the Darwin reader answers now is forty-two caught, six the
 tables carry, and not one survived.
 
+The release page and the conda channel are two shelves holding the
+same packages, fed by two jobs from the same build, and nothing walked
+the distance between them until two releases had been checked by
+hand -- twice is a habit, and a habit the tree keeps without the hand
+is what a check is. The comparison is by the sum the channel's index
+already records: every asset the release page holds is asked what it
+sums to, and the answer is held against the index's word about the
+package of the same name, both ways, so a shelf that gains a file or
+loses one or holds different bytes under the same name is a check
+that goes out red. The asking itself learned the week's other lesson:
+the release's metadata is asked of `gh`, whose own credentials and
+patience outlast the api dropping connections for minutes at a
+stretch, and every fetch carries a timeout and three asks, because a
+red a dropped packet can cause is a red the shelves never made.
+
 The patrols that walk when the tree does not were given a schedule,
 and the schedule kept the first one waiting: the patrol's first Friday
 came, its minute passed, and three hours later the scheduler had still
