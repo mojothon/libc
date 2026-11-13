@@ -135,6 +135,11 @@ check-release = "python3 scripts/check-release.py"
 # This asks the sum the channel's index records of every asset the release
 # page holds, both ways, so the shelves cannot come apart quietly.
 check-release-assets = "python3 scripts/check-release-assets.py"
+# Two workflows are meant to run themselves on a schedule the scheduler
+# is free to break in silence -- a patrol that stops firing fails exactly
+# the way the patrol exists to catch, quietly. This asks when each patrol
+# last walked, any run counting, and says so when one has stopped.
+check-patrol = "python3 scripts/check-patrol.py"
 # The install page named the channel three ways and two of them were wrong:
 # `-c mojo-force` and `"mojo-force"` are read as anaconda.org channels, where
 # there is none, while the package was on prefix.dev behind a URL. Nothing

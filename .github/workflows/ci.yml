@@ -69,6 +69,11 @@ jobs:
       # without the hand, so the sums are asked every push, both ways.
       - name: Check that the release page holds the channel's bytes
         run: pixi run check-release-assets
+      # The patrols run on a schedule the scheduler can skip in silence.
+      # This asks when each last walked -- a dispatch counts -- so a
+      # patrol that has stopped is said out loud within days of stopping.
+      - name: Check that the weekly patrols are still walking
+        run: pixi run check-patrol
       # The install page asked for the package on `-c mojo-force`, which conda
       # reads as an anaconda.org channel and answers with a 404, while the
       # package was on prefix.dev behind a URL. A shell command compiles
