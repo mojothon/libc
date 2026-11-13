@@ -999,6 +999,21 @@ the preprocessor's own table beside it, where a define still says its
 name. What the Darwin reader answers now is forty-two caught, six the
 tables carry, and not one survived.
 
+The patrols that walk when the tree does not were given a schedule,
+and the schedule kept the first one waiting: the patrol's first Friday
+came, its minute passed, and three hours later the scheduler had still
+not said anything -- its own words allow a scheduled event to be
+delayed or skipped at busy times, and a skip is not reported to
+anyone. A weekly promise kept by a scheduler that may decline in
+silence is kept only while someone happens to look, and a patrol that
+stops walking fails the way the patrol exists to catch: quietly, week
+after week, while the frozen package and the moving compiler drift
+apart unwitnessed. The answer is a check that asks each patrol when it
+last walked -- any run counting, a dispatch as much as a schedule,
+because what the patrol owes the shelf is the walk and not the reason
+the walk happened -- and that says a patrol which has stopped out
+loud, within eight days of its stopping.
+
 ## Next to Rust's `libc`
 
 The nearest thing to this that is not this: [rust-lang/libc](
