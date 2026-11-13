@@ -64,6 +64,39 @@ def fetch(url: str) -> bytes:
             time.sleep(10)
 
 
+def gh_ask(args: list[str]) -> str:
+    """The api's answer, by the way `gh` asks: three asks, spaced.
+
+    The same patience the fetches are given, given to the process that
+    asks the api for them: a connection `gh` cannot make is the
+    network's weather, and the red the check raises must be the
+    shelves having come apart, not a dropped packet. A 404 is not
+    weather -- it is the api saying the release is not there, which is
+    the check's red, said the first time it is said.
+    """
+    for attempt in range(3):
+        try:
+            done = subprocess.run(
+                ["gh", "api", *args],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+        except subprocess.TimeoutExpired:
+            if attempt == 2:
+                raise
+            time.sleep(10)
+            continue
+        if done.returncode == 0:
+            return done.stdout
+        if "HTTP 404" in done.stderr:
+            break
+        if attempt == 2:
+            raise SystemExit(f"asking GitHub failed: {done.stderr.strip()}")
+        time.sleep(10)
+    return ""
+
+
 def release_assets(version: str) -> dict[str, str]:
     """{asset name: the sum its bytes make}, from the release page.
 
@@ -74,17 +107,10 @@ def release_assets(version: str) -> dict[str, str]:
     own patience. The assets themselves come from the download URLs
     the metadata names -- the same CDN, asked the way a browser asks.
     """
-    done = subprocess.run(
-        ["gh", "api", f"repos/mojothon/libc/releases/tags/v{version}"],
-        capture_output=True,
-        text=True,
-    )
-    if done.returncode != 0:
-        raise SystemExit(
-            f"asking GitHub for the v{version} release failed: "
-            f"{done.stderr.strip()}"
-        )
-    release = json.loads(done.stdout)
+    done = gh_ask([f"repos/mojothon/libc/releases/tags/v{version}"])
+    if not done:
+        raise SystemExit(f"GitHub holds no release tagged v{version}")
+    release = json.loads(done)
     assets = {}
     for asset in release["assets"]:
         blob = fetch(asset["browser_download_url"])

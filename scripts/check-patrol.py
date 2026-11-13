@@ -25,6 +25,7 @@ socket's patience with the API, the way the release-assets check asks.
 import json
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 
 WORKFLOWS = {
@@ -34,24 +35,50 @@ WORKFLOWS = {
 MAX_AGE_DAYS = 8
 
 
+def gh_ask(args: list[str]) -> str:
+    """The api's answer, by the way `gh` asks: three asks, spaced.
+
+    A connection `gh` cannot make is the network's weather, and the
+    api.github.com has been caught dropping them for minutes at a
+    stretch -- the same asking the release-assets check makes of its
+    own fetches, made here of the process that asks. A 404 is not
+    weather: it is the api saying there is nothing there, and it is
+    reported the first time it is said.
+    """
+    for attempt in range(3):
+        try:
+            done = subprocess.run(
+                ["gh", "api", *args],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+        except subprocess.TimeoutExpired:
+            if attempt == 2:
+                raise
+            time.sleep(10)
+            continue
+        if done.returncode == 0:
+            return done.stdout
+        if "HTTP 404" in done.stderr:
+            break
+        if attempt == 2:
+            raise SystemExit(f"asking GitHub failed: {done.stderr.strip()}")
+        time.sleep(10)
+    return ""
+
+
 def last_run(workflow: str) -> dict | None:
     """The most recent run of a workflow, any event that ran it."""
-    done = subprocess.run(
+    done = gh_ask(
         [
-            "gh",
-            "api",
-            f"repos/mojothon/libc/actions/workflows/{workflow}/runs"
-            "?per_page=1",
-        ],
-        capture_output=True,
-        text=True,
+            "repos/mojothon/libc/actions/workflows/" f"{workflow}/runs"
+            "?per_page=1"
+        ]
     )
-    if done.returncode != 0:
-        raise SystemExit(
-            f"asking GitHub for the {workflow} runs failed: "
-            f"{done.stderr.strip()}"
-        )
-    runs = json.loads(done.stdout)["workflow_runs"]
+    if not done:
+        return None
+    runs = json.loads(done)["workflow_runs"]
     return runs[0] if runs else None
 
 
