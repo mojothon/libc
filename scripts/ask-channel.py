@@ -30,8 +30,19 @@ def fetch(url: str) -> bytes:
     # The channel sits behind a content network that answers a default
     # Python client with forbidden, and answers a browser with the
     # data; say whose asking this is.
-    request = urllib.request.Request(url, headers={"User-Agent": UA})
-    return urllib.request.urlopen(request).read()
+    #
+    # Three asks, spaced: a connection that times out, or a request the
+    # server drops, is the network's weather and not the version being
+    # missing, and the wait's red is only meaningful if a dropped
+    # packet cannot cause it.
+    for attempt in range(3):
+        request = urllib.request.Request(url, headers={"User-Agent": UA})
+        try:
+            return urllib.request.urlopen(request, timeout=120).read()
+        except OSError:
+            if attempt == 2:
+                raise
+            time.sleep(10)
 
 
 def untape(blob: bytes) -> dict[str, bytes]:

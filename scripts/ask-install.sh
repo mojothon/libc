@@ -38,22 +38,35 @@ if [ "$VERSION" = "latest" ]; then
     # that is there; a patrol that asks the server's word is red only
     # when the shelf itself has changed.
     VERSION="$(python3 - <<'PY'
-import json, urllib.request
+import json, time, urllib.request
 
-request = urllib.request.Request(
-    "https://prefix.dev/api/graphql",
-    data=json.dumps(
-        {
-            "query": '{ p: package(channelName: "mojo-force", '
-            'name: "libc") { versions { page { version } } } }'
-        }
-    ).encode(),
-    headers={
-        "User-Agent": "libc-release-check/1.0",
-        "Content-Type": "application/json",
-    },
-)
-result = json.load(urllib.request.urlopen(request))
+# The same asking as the channel job's: three asks, spaced, with a
+# timeout -- a dropped connection is the network's weather, and the
+# patrol's red should say the shelf changed, not that a packet was lost.
+body = json.dumps(
+    {
+        "query": '{ p: package(channelName: "mojo-force", '
+        'name: "libc") { versions { page { version } } } }'
+    }
+).encode()
+headers = {
+    "User-Agent": "libc-release-check/1.0",
+    "Content-Type": "application/json",
+}
+result = None
+for attempt in range(3):
+    request = urllib.request.Request(
+        "https://prefix.dev/api/graphql",
+        data=body,
+        headers=headers,
+    )
+    try:
+        result = json.load(urllib.request.urlopen(request, timeout=120))
+        break
+    except OSError:
+        if attempt == 2:
+            raise
+        time.sleep(10)
 entry = result["data"]["p"]
 if entry is None:
     raise SystemExit("the channel's view holds no libc at all")
