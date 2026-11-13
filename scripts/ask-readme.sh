@@ -18,36 +18,44 @@ cd "$(mktemp -d)"
 README="$(git -C "$ROOT" show HEAD:README.md 2>/dev/null ||
   cat "$ROOT/README.md")"
 
-# The install block: the first fenced bash block that asks for a
-# `pixi init` -- the later one is the maintainers' commands, and a
-# reader does not run those to try the package.
-INSTALL_BLOCK="$(python3 - "$README" <<'PY'
+# The extraction is by python, whose text is written to a file and
+# asked from there: the bash that ships with macOS is 3.2, and its
+# parser loses track of where a command substitution ends when the
+# heredoc inside one carries quotes or backticks of its own -- and the
+# fences the README marks its blocks with are backticks.
+
+EXTRACT="$(mktemp)"
+cat > "$EXTRACT" <<'PY'
 import re
 import sys
 
-text = sys.argv[1]
-for block in re.findall(r"```bash\n(.*?)```", text, re.S):
-    if "pixi init" in block:
-        print(block)
-        break
+which, text = sys.argv[1], sys.argv[2]
+fence = "```" + which + "\n"
+blocks = []
+for chunk in text.split(fence)[1:]:
+    blocks.append(chunk.split("```")[0])
+if which == "bash":
+    for block in blocks:
+        if "pixi init" in block:
+            print(block)
+            break
+    else:
+        raise SystemExit("the README gives no install block to walk")
 else:
-    raise SystemExit("the README gives no install block to walk")
+    if not blocks:
+        raise SystemExit("the README gives no mojo example to walk")
+    print(blocks[0])
 PY
-)"
+
+# The install block: the first fenced bash block that asks for a
+# `pixi init` -- the later one is the commands for the people keeping
+# the package, and a reader does not run those to try it.
+INSTALL_BLOCK="$(python3 "$EXTRACT" bash "$README")"
 
 # The example: the first fenced mojo block, which is what the front
 # page tells a reader their first program looks like.
-EXAMPLE_BLOCK="$(python3 - "$README" <<'PY'
-import re
-import sys
-
-text = sys.argv[1]
-blocks = re.findall(r"```mojo\n(.*?)```", text, re.S)
-if not blocks:
-    raise SystemExit("the README gives no mojo example to walk")
-print(blocks[0])
-PY
-)"
+EXAMPLE_BLOCK="$(python3 "$EXTRACT" mojo "$README")"
+rm -f "$EXTRACT"
 
 printf '%s\n' "$INSTALL_BLOCK" | bash -e
 printf '%s\n' "$EXAMPLE_BLOCK" > main.mojo

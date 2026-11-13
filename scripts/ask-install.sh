@@ -37,16 +37,23 @@ if [ "$VERSION" = "latest" ]; then
     # keeps. A patrol that asks the snapshot can be red on a version
     # that is there; a patrol that asks the server's word is red only
     # when the shelf itself has changed.
-    VERSION="$(python3 - <<'PY'
+    # The python is written to a file and asked from there, not read
+    # from a heredoc inside a command substitution: the bash that ships
+    # with macOS is 3.2, and its parser loses track of where a command
+    # substitution ends when the heredoc inside one carries quotes of
+    # its own -- the asking never began, on one platform of three. A
+    # heredoc at the top level is read the way it is written.
+    PYSCRIPT="$(mktemp)"
+    cat > "$PYSCRIPT" <<'PY'
 import json, time, urllib.request
 
-# The same asking as the channel job's: three asks, spaced, with a
+# The same asking as the channel job makes: three asks, spaced, with a
 # timeout -- a dropped connection is the network's weather, and the
-# patrol's red should say the shelf changed, not that a packet was lost.
+# patrol red should say the shelf changed, not that a packet was lost.
 body = json.dumps(
     {
-        "query": '{ p: package(channelName: "mojo-force", '
-        'name: "libc") { versions { page { version } } } }'
+        "query": "{ p: package(channelName: \"mojo-force\", "
+        "name: \"libc\") { versions { page { version } } } }"
     }
 ).encode()
 headers = {
@@ -69,13 +76,14 @@ for attempt in range(3):
         time.sleep(10)
 entry = result["data"]["p"]
 if entry is None:
-    raise SystemExit("the channel's view holds no libc at all")
+    raise SystemExit("the channel view holds no libc at all")
 versions = sorted(v["version"] for v in entry["versions"]["page"])
 if not versions:
-    raise SystemExit("the channel's view holds no libc at all")
+    raise SystemExit("the channel view holds no libc at all")
 print(versions[-1])
 PY
-)"
+    VERSION="$(python3 "$PYSCRIPT")"
+    rm -f "$PYSCRIPT"
     echo "the channel's newest is $VERSION; that is what a reader gets"
 fi
 
