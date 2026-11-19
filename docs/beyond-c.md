@@ -1029,6 +1029,21 @@ because what the patrol owes the shelf is the walk and not the reason
 the walk happened -- and that says a patrol which has stopped out
 loud, within eight days of its stopping.
 
+The patrol walks on three machines, and the walk is held by more than
+the compiler: the front page's walk was written the same week, and the
+first run of it went red on macOS before the asking began -- line
+108, an unexpected end, looking for a matching quote -- while the
+same file walked green on both Linux machines. The difference was not
+in the file. The bash that ships with macOS is `3.2`, and its parser
+loses track of where a command substitution ends when the heredoc
+inside one carries quotes of its own: the asking's python carried
+single quotes, the walk's fences carried backticks, and the bash on
+one machine of three counted them and lost. The python is written to
+a file and asked from there now, heredocs at the top level where they
+are read the way they are written -- and the lesson is the week's in
+another spelling: green on the machines that answer is not green on
+the machine that does not, which is why the patrol walks all three.
+
 The compiler moved again -- `1.1.0` gave way to `1.2.0` -- and a check
 on the count of a write's bytes gave way to the type C itself keeps,
 and the weekly sample that came back green on the tree as it now
