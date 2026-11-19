@@ -22,11 +22,11 @@ The asking goes to `gh`, whose own credentials outlast the bare
 socket's patience with the API, the way the release-assets check asks.
 """
 
+import importlib.util
 import json
-import subprocess
 import sys
-import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 WORKFLOWS = {
     "compat.yml": "the compatibility patrol",
@@ -34,38 +34,15 @@ WORKFLOWS = {
 }
 MAX_AGE_DAYS = 8
 
-
-def gh_ask(args: list[str]) -> str:
-    """The api's answer, by the way `gh` asks: three asks, spaced.
-
-    A connection `gh` cannot make is the network's weather, and the
-    api.github.com has been caught dropping them for minutes at a
-    stretch -- the same asking the release-assets check makes of its
-    own fetches, made here of the process that asks. A 404 is not
-    weather: it is the api saying there is nothing there, and it is
-    reported the first time it is said.
-    """
-    for attempt in range(3):
-        try:
-            done = subprocess.run(
-                ["gh", "api", *args],
-                capture_output=True,
-                text=True,
-                timeout=120,
-            )
-        except subprocess.TimeoutExpired:
-            if attempt == 2:
-                raise
-            time.sleep(10)
-            continue
-        if done.returncode == 0:
-            return done.stdout
-        if "HTTP 404" in done.stderr:
-            break
-        if attempt == 2:
-            raise SystemExit(f"asking GitHub failed: {done.stderr.strip()}")
-        time.sleep(10)
-    return ""
+# The asking of the api is the shared one -- one copy of the patience,
+# where a copy of it here and one in the release-assets check would
+# have been the same omission twice waiting to happen.
+_gh_spec = importlib.util.spec_from_file_location(
+    "gh", Path(__file__).resolve().parent / "gh.py"
+)
+gh = importlib.util.module_from_spec(_gh_spec)
+_gh_spec.loader.exec_module(gh)
+gh_ask = gh.gh_ask
 
 
 def last_run(workflow: str) -> dict | None:

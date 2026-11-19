@@ -25,9 +25,9 @@ is the one the release was cut for.
 """
 
 import hashlib
+import importlib.util
 import json
 import re
-import subprocess
 import time
 import urllib.request
 from pathlib import Path
@@ -35,6 +35,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 UA = "libc-release-check/1.0"
 PLATFORMS = ["linux-64", "linux-aarch64", "osx-arm64"]
+
+# The asking of the api is the shared one -- one copy of the patience,
+# where a copy of it here and one in the patrol check would have been
+# the same omission twice waiting to happen.
+_gh_spec = importlib.util.spec_from_file_location(
+    "gh", Path(__file__).resolve().parent / "gh.py"
+)
+gh = importlib.util.module_from_spec(_gh_spec)
+_gh_spec.loader.exec_module(gh)
+gh_ask = gh.gh_ask
 
 
 def changelog_version() -> str:
@@ -62,39 +72,6 @@ def fetch(url: str) -> bytes:
             if attempt == 2:
                 raise
             time.sleep(10)
-
-
-def gh_ask(args: list[str]) -> str:
-    """The api's answer, by the way `gh` asks: three asks, spaced.
-
-    The same patience the fetches are given, given to the process that
-    asks the api for them: a connection `gh` cannot make is the
-    network's weather, and the red the check raises must be the
-    shelves having come apart, not a dropped packet. A 404 is not
-    weather -- it is the api saying the release is not there, which is
-    the check's red, said the first time it is said.
-    """
-    for attempt in range(3):
-        try:
-            done = subprocess.run(
-                ["gh", "api", *args],
-                capture_output=True,
-                text=True,
-                timeout=120,
-            )
-        except subprocess.TimeoutExpired:
-            if attempt == 2:
-                raise
-            time.sleep(10)
-            continue
-        if done.returncode == 0:
-            return done.stdout
-        if "HTTP 404" in done.stderr:
-            break
-        if attempt == 2:
-            raise SystemExit(f"asking GitHub failed: {done.stderr.strip()}")
-        time.sleep(10)
-    return ""
 
 
 def release_assets(version: str) -> dict[str, str]:
