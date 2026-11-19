@@ -70,9 +70,17 @@ def test_strlen() raises:
 
 def test_strcpy() raises:
     var src = string_to_char_ptr("hello, libc")
+    # The destination starts with something in it: a copy that appends
+    # instead of overwrites -- `strcat` in `strcpy`'s place, which no
+    # test noticed until the sweep pointed one at the other -- leaves
+    # the old bytes where they were, and the answer shows it.
     var dst = unsafe_alloc[UInt8](32)
+    dst.unsafe_store(0, UInt8(ord("o")))
+    dst.unsafe_store(1, UInt8(ord("l")))
+    dst.unsafe_store(2, UInt8(ord("d")))
+    dst.unsafe_store(3, 0)
     _ = strcpy(dst, src)
-    assert_equal(char_ptr_to_string(dst), "hello, libc")
+    assert_equal(char_ptr_to_string(dst), "hello, libc", "strcpy overwrites")
     dst.unsafe_free()
     src.unsafe_free()
 
