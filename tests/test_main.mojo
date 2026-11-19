@@ -37,6 +37,7 @@ from test_shm import main as run_shm
 from test_wait import main as run_wait
 from test_auxv import main as run_auxv
 from test_statvfs import main as run_statvfs
+from test_mqueue import main as run_mqueue
 from test_sync import main as run_sync
 from test_logging import main as run_logging
 from test_sendfile import main as run_sendfile
@@ -98,6 +99,15 @@ def main() raises:
     run_dirent()
     run_fcntl()
     run_file()
+    # `run_mqueue` walks before `run_mman` and not after it: the fork that
+    # `mman`'s read-only-page test makes leaves the run time's own heap
+    # answering wrongly to the frees an mqueue test makes afterwards -- the
+    # whole suite passes with this call here and dies in `free` with it
+    # later. Whether that is the fork, the `mlockall`, or the run time's
+    # tcmalloc is not yet settled; the order is what is settled, and the
+    # comment is here so the next move of these lines does not land on it
+    # unawares.
+    run_mqueue()
     run_mman()
     run_mutex()
     run_dlfcn()

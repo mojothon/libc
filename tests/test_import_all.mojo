@@ -1624,6 +1624,21 @@ def bring_in_libc_sys_stat():
     )
 
 
+def bring_in_libc_sys_mqueue():
+    from libc.sys.mqueue import (
+        MqAttr,
+        mq_close,
+        mq_getattr,
+        mq_open,
+        mq_receive,
+        mq_send,
+        mq_setattr,
+        mq_timedreceive,
+        mq_timedsend,
+        mq_unlink,
+    )
+
+
 def bring_in_libc_sys_statvfs():
     from libc.sys.statvfs import (
         Statvfs,
@@ -2020,6 +2035,7 @@ def main() raises:
     bring_in_libc_sys_socket()
     bring_in_libc_sys_stat()
     bring_in_libc_sys_statvfs()
+    bring_in_libc_sys_mqueue()
     bring_in_libc_sys_utsname()
     bring_in_libc_sys_wait()
     bring_in_libc_sys_un()

@@ -61,6 +61,7 @@ the bottom.
 | `libc.wctype` | `<wctype.h>` | 5 |
 | `libc.uchar` | `<uchar.h>` the UTF-16 and UTF-32 conversions | 4 |
 | `libc.sys.statfs` | `<sys/statfs.h>` the kernel's own account of a file system | 15 |
+| `libc.sys.mqueue` | `<mqueue.h>` | 10 |
 | `libc.sys.statvfs` | `<sys/statvfs.h>` | 15 |
 | `libc.sys.select` | `<sys/select.h>` | 9 |
 | `libc.sys.shm` | `<sys/shm.h>` shared memory | 7 |
@@ -159,7 +160,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1062 bindings are asked something, and the 1 that is not has a reason.
+1071 bindings are asked something, and the 1 that is not has a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
