@@ -5,6 +5,31 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **`libc.sys.mqueue` -- POSIX message queues, nine bindings and their
+  attributes.** C's `<mqueue.h>` opens a queue by name, sends and
+  receives messages across processes, and waits either of those two
+  out. The bindings are Linux's own -- Darwin has no such header --
+  and `mq_open`, variadic in C, takes the four arguments the fixed
+  prototype names, the way `fcntl` and `openat` already do here. The
+  struct is four `long`s by name and four more the header calls
+  `__pad[4]`: sixty-four bytes, as `check-layouts` said the first
+  time it was tried at thirty-two.
+- **`MqAttr` keeps the padding the header keeps.** The named members
+  come to thirty-two bytes and the header says sixty-four, and the
+  automated layout check asked C and heard the difference before a
+  release could carry the short shape.
+
+### Fixed
+
+- **`strcpy`'s test could not tell a copy from an append.** The whole
+  sweep of the tree found the one survivor in fourteen hundred
+  mutants: `strcpy` pointed at `strcat`, which no test noticed,
+  because the test's destination was empty and appending onto an
+  empty string is the copy. The destination starts with something in
+  it now, and the probe comes back caught.
+
 ## [0.14.2] - 2026-11-13
 
 ### Fixed
