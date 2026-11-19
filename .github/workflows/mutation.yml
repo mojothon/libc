@@ -21,6 +21,17 @@ name: Mutation sample
 # or the bindings do, and a push job this heavy would be paid on every
 # commit for a difference the lint job's `check-tables` already watches.
 #
+# The sample is the patrol, not the whole audit: a sweep of the tree as
+# it stands found the one survivor in fourteen hundred mutants -- a
+# `strcpy` test whose destination was empty, where appending and
+# overwriting look the same -- that every weekly sample before it had
+# missed, twelve mutants a seed being too few to have reached it. After
+# a change that moves the ground the tests stand on -- a new compiler,
+# a changed binding, a corrected answer -- the whole sweep is owed:
+# `python3 scripts/mutation-probe.py --kind symbol --limit 99999
+# --strict` and its two siblings, an evening's work on the machine
+# that owes it.
+#
 # Each machine writes its tally into the run's summary, so the three
 # machines' answers are one page a click away. A job inside the run
 # cannot read the run's logs for the asking -- they only exist once the
