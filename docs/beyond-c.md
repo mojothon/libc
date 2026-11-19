@@ -1029,6 +1029,23 @@ because what the patrol owes the shelf is the walk and not the reason
 the walk happened -- and that says a patrol which has stopped out
 loud, within eight days of its stopping.
 
+The compiler moved again -- `1.1.0` gave way to `1.2.0` -- and a check
+on the count of a write's bytes gave way to the type C itself keeps,
+and the weekly sample that came back green on the tree as it now
+stands was the patrol, not the audit. The audit, the whole sweep run
+on the tree as it stands, came back with one survivor in fourteen
+hundred mutants: `strcpy` pointed at `strcat`, and no test in the
+suite knew the difference. The test had asked a copy onto an empty
+destination, and an append onto an empty string is the copy -- the
+two calls differ in the one place the test had left nothing for them
+to differ in. The destination starts with something in it now, so
+overwriting means the old bytes are gone, and the probe that points
+one at the other comes back caught. The sample is the patrol and the
+sweep is the audit, and neither is the other: a weekly fraction keeps
+watch, and after the ground the tests stand on moves -- a compiler, a
+changed binding, a corrected answer -- the whole sweep is owed, the
+workflow's own words now saying so.
+
 ## Next to Rust's `libc`
 
 The nearest thing to this that is not this: [rust-lang/libc](
