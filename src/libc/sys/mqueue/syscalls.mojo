@@ -12,12 +12,11 @@ from libc.constant import c_long, c_ptr
 from libc.time import timespec
 
 
-# C's `struct mq_attr` is four `long`s in a row on every platform that
-# has the header at all, which here is Linux only, so the struct carries
-# its members by name and there is nothing for a platform branch to say.
-# It is not registered with `scripts/check-layouts.py`, because that
-# script asks C's `offsetof` the question, and the machine that compiles
-# the Darwin tests has no `<mqueue.h>` to ask.
+# C's `struct mq_attr` is four `long`s and then four more the header
+# calls `__pad[4]` -- room the library keeps for itself, so the struct
+# is sixty-four bytes and not the thirty-two its named members come to.
+# Linux being the only platform that has the header at all, there is
+# nothing for a platform branch to say.
 
 
 struct MqAttr(TrivialRegisterPassable):
@@ -36,6 +35,10 @@ struct MqAttr(TrivialRegisterPassable):
     var mq_maxmsg: c_long
     var mq_msgsize: c_long
     var mq_curmsgs: c_long
+    var __pad: c_long
+    var __pad2: c_long
+    var __pad3: c_long
+    var __pad4: c_long
 
     def __init__(out self):
         """Zeroes every member, which is what `memset` would leave behind."""
@@ -43,6 +46,10 @@ struct MqAttr(TrivialRegisterPassable):
         self.mq_maxmsg = 0
         self.mq_msgsize = 0
         self.mq_curmsgs = 0
+        self.__pad = 0
+        self.__pad2 = 0
+        self.__pad3 = 0
+        self.__pad4 = 0
 
     @staticmethod
     def of(maxmsg: Int64, msgsize: Int64) -> MqAttr:
