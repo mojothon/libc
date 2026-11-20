@@ -29,6 +29,14 @@ All notable changes to this project are documented here. The format follows
   because the test's destination was empty and appending onto an
   empty string is the copy. The destination starts with something in
   it now, and the probe comes back caught.
+- **The mutation probe reads a zero that says nothing as no answer.**
+  The sweep that followed the message queues reported a survivor that
+  died on the asking again: `pixi run`, asked four runs at once, can
+  come back green without having run anything, and a zero that
+  carries neither `ok` nor `skipped` -- the words every green run of
+  the suite ends with -- is read as an error now. The self-test asks
+  the reading directly, four ways, where no build and no mutant's
+  mood can move it.
 
 ## [0.14.2] - 2026-11-13
 
