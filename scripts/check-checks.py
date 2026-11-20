@@ -105,6 +105,14 @@ BREAKS = [
         args=("--check-tables",),
     ),
     Break(
+        "mutation-probe",
+        "a zero that says nothing reads as a survivor",
+        "scripts/mutation-probe.py",
+        'if "ok" in text or "skipped" in text:',
+        'if "ok" in text or "skipped" in text or True:',
+        args=("--self-test",),
+    ),
+    Break(
         "check-release-assets",
         "the two sums are asked whether they agree, so agreeing is the red",
         "scripts/check-release-assets.py",
