@@ -1623,6 +1623,25 @@ def self_test(verdicts: dict[str, list[str]]) -> int:
     what is written here, or the run is a wrong reader reading right.
     """
     wrong: list[tuple[str, str, list[str]]] = []
+    # The verdict's own reading, asked directly: a zero is a survivor
+    # only when the run's words are a green run's words, and the case
+    # the sweep met -- a zero that said nothing -- is answered here
+    # without a build, where no mutant's mood can move it.
+    readings: list[tuple[int, str, str, str]] = [
+        (0, "test_aio: ok\n", "survived", "a green run's words"),
+        (0, "", "error", "a zero that said nothing"),
+        (1, "Unhandled exception: AssertionError", "caught", "the red a run says"),
+        (0, "test_inotify: skipped, the machine's watches are spent\n", "survived", "a spent machine's green"),
+    ]
+    for code, text, expected, why in readings:
+        given = classify(code, text)
+        if given == expected:
+            print(f"  {why:28} {expected}")
+        else:
+            print(
+                f"  {why:28} -- the probe said {given}, not {expected}"
+            )
+            wrong.append((why, expected, [given]))
     for name, (expected, why) in pinned().items():
         given = verdicts.get(name, [])
         if given and all(v == expected for v in given):
