@@ -14,6 +14,7 @@ the bottom.
 | `libc.file` | `<stdio.h>` file operations | 32 |
 | `libc.ctype` | `<ctype.h>` | 30 |
 | `libc.sys.socket` | `<sys/socket.h>` | 53 |
+| `libc.sys.uio` | `<sys/uio.h>` | 2 |
 | `libc.sys.stat` | `<sys/stat.h>` | 36 |
 | `libc.sys.times` | `<sys/times.h>` | 2 |
 | `libc.time` | `<time.h>` | 39 |
@@ -122,6 +123,7 @@ format. `libc.locale` has no `FE_DFL_ENV`, see `fenv_t`.
 
 `libc.sys.epoll`, `libc.sys.prctl`, `libc.sys.sendfile`, `libc.sys.eventfd`, `libc.sys.memfd`,
 `libc.sys.inotify`, `libc.sys.sigqueue`, `libc.sys.timer`, `libc.sys.auxv`,
+`libc.sys.uio`,
 `libc.threads` and `libc.uchar`
 wrap Linux-only
 calls; importing them on Darwin will not link. `libc.uchar` is there because
@@ -161,7 +163,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1078 bindings are asked something, and the 1 that is not has a reason.
+1080 bindings are asked something, and the 1 that is not has a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.

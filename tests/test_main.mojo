@@ -34,6 +34,7 @@ from test_signal import main as run_signal
 from test_random import main as run_random
 from test_memfd import main as run_memfd
 from test_splice import main as run_splice
+from test_uio import main as run_uio
 from test_setjmp import main as run_setjmp
 from test_shm import main as run_shm
 from test_wait import main as run_wait
@@ -118,6 +119,7 @@ def main() raises:
     run_random()
     run_memfd()
     run_splice()
+    run_uio()
     run_setjmp()
     run_shm()
     run_wait()

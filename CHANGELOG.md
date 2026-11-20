@@ -3,6 +3,23 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+- **`libc.sys.uio` gains the carrying between address spaces --
+  `process_vm_readv` and `process_vm_writev`.** C's `<sys/uio.h>`
+  reads and writes another process's memory, an iovec on each side,
+  the kernel carrying the bytes. The wrapper has been in the C
+  library since 2.14, so the asking is by name, and the permission
+  behind both is the permission to trace. The test's counts are two
+  different numbers on purpose: a binding that swapped the local
+  count with the remote one would still be answered, and a test
+  where both counts are one would have nothing to say about which
+  was which. Two pipe lessons are in the test the way the runs
+  found them: the child's buffers are made before the fork, the
+  allocator of a freshly forked process being the allocator of a
+  process that may have been holding its own lock when it was
+  split, and the wake and the answer travel by two pipes, the
+  caller that waits for an answer being unable to tell its own
+  wake from the child's word.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
