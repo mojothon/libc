@@ -32,6 +32,7 @@ from test_threads import main as run_threads
 from test_timer import main as run_timer
 from test_signal import main as run_signal
 from test_random import main as run_random
+from test_memfd import main as run_memfd
 from test_setjmp import main as run_setjmp
 from test_shm import main as run_shm
 from test_wait import main as run_wait
@@ -114,6 +115,7 @@ def main() raises:
     run_timer()
     run_signal()
     run_random()
+    run_memfd()
     run_setjmp()
     run_shm()
     run_wait()

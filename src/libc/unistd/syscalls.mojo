@@ -2350,3 +2350,52 @@ def sbrk(increment: c_long) -> c_ptr[c_void]:
         allocator again.
     """
     return external_call["sbrk", c_ptr[c_void], c_long](increment)
+
+
+def copy_file_range(
+    fd_in: Int32,
+    off_in: c_ptr[Int64],
+    fd_out: Int32,
+    off_out: c_ptr[Int64],
+    count: UInt64,
+    flags: UInt32,
+) -> Int:
+    """Libc POSIX `copy_file_range` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/copy_file_range.2.html
+
+    Description:
+        copy_file_range() copies count bytes from the file associated with fd_in
+        to the file associated with fd_out, working through the kernel rather
+        than through a user-space buffer: the bytes go from one page cache to
+        the other, and never come up to the caller and back down.
+
+    Args:
+        fd_in: The file to copy from.
+        off_in: Where the position to copy from is, and where the position
+            that was copied to is put back; null means the file's own
+            position is used and advanced instead.
+        fd_out: The file to copy into.
+        off_out: The same, for the file being written.
+        count: Number of bytes to copy.
+        flags: None the kernel answers to yet; zero goes.
+
+    Returns:
+        How many bytes were copied, which can be short when one of the
+        files ran out before the count did -- a copy that asked for the
+        whole of a file shorter than the count comes back with what was
+        there, and the next ask comes back with zero -- or -1 with
+        `errno` set. A position that was given is advanced by what was
+        copied; a file's own position is too, when it was used.
+    """
+    return external_call[
+        "copy_file_range",
+        Int,
+        Int32,
+        c_ptr[Int64],
+        Int32,
+        c_ptr[Int64],
+        UInt64,
+        UInt32,
+    ](fd_in, off_in, fd_out, off_out, count, flags)

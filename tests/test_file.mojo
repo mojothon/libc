@@ -1,6 +1,8 @@
 """Tests for the `libc.file` bindings that nothing had called."""
 from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
+from std.memory.alloc import unsafe_alloc
+from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.constant import (
@@ -47,7 +49,18 @@ from libc.file import (
 from libc.stdlib import exit, free
 from libc.sys.socket import iovec
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, waitpid
-from libc.unistd import close, dup, dup2, fork, pipe, unlink, write
+from libc.unistd import (
+    close,
+    copy_file_range,
+    dup,
+    dup2,
+    fork,
+    lseek,
+    pipe,
+    read,
+    unlink,
+    write,
+)
 from libc.utils import char_ptr_to_string, is_null, null_ptr, string_to_char_ptr
 
 
@@ -515,6 +528,67 @@ def test_fprintf_writes_the_format_as_it_stands() raises:
     _ = fclose(stream)
 
 
+def test_the_kernel_copies_between_two_files() raises:
+    """`copy_file_range` and the positions it is given: the bytes
+    cross between two files the kernel owns the move of, the
+    position each file is copied from is put back where the copy
+    ended -- and the two are put back by different amounts, the
+    one having started two bytes in and the other at the start.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var in_path = string_to_char_ptr("/tmp/libc_cfr_in")
+        var out_path = string_to_char_ptr("/tmp/libc_cfr_out")
+        # Whatever the last run of this test left behind is taken away
+        # first: the files are opened to be written, not appended to,
+        # and a run that died before it could take its own files away
+        # would otherwise leave bytes for the next run to find -- which
+        # is how one red run would turn into every run after it being
+        # red too, each one reading the last one's leftovers.
+        _ = remove(in_path)
+        _ = remove(out_path)
+        var src = open_with_mode(in_path, Int32(66), Int32(384))
+        var dst = open_with_mode(out_path, Int32(66), Int32(384))
+        assert_true(src >= 0, "the file to copy from is made")
+        assert_true(dst >= 0, "and the file to copy into")
+
+        var text = string_to_char_ptr("abcdefgh")
+        assert_equal(Int(write(src, text, 8)), 8, "the source is filled")
+        text.unsafe_free()
+
+        var off_in = unsafe_alloc[Int64](1)
+        var off_out = unsafe_alloc[Int64](1)
+        off_in.unsafe_offset(0)[] = 2
+        off_out.unsafe_offset(0)[] = 0
+        var moved = copy_file_range(src, off_in, dst, off_out, 4, 0)
+        assert_equal(Int(moved), 4, "four bytes cross")
+        assert_equal(
+            Int(off_in.unsafe_offset(0)[]), 6, "the in position ends at six"
+        )
+        assert_equal(
+            Int(off_out.unsafe_offset(0)[]), 4, "and the out position at four"
+        )
+
+        assert_equal(
+            Int(lseek(dst, 0, 0)), 0, "the copy is read from the start"
+        )
+        var buf = unsafe_alloc[UInt8](8)
+        assert_equal(
+            Int(read(dst, buf, 8)), 4, "four bytes come back out of it"
+        )
+        assert_true(
+            buf.unsafe_offset(0)[] == 99 and buf.unsafe_offset(3)[] == 102,
+            "and they are the two the source held at two",
+        )
+        buf.unsafe_free()
+
+        off_in.unsafe_free()
+        off_out.unsafe_free()
+        _ = close(src)
+        _ = close(dst)
+        _ = remove(in_path)
+        _ = remove(out_path)
+
+
 def main() raises:
     test_the_scanf_family_asked_for_nothing()
     test_a_stream_back_and_forth()
@@ -524,4 +598,5 @@ def main() raises:
     test_pieces_at_an_offset()
     test_scanf_reads_the_standard_input_it_is_given()
     test_fprintf_writes_the_format_as_it_stands()
+    test_the_kernel_copies_between_two_files()
     print("test_file: ok")

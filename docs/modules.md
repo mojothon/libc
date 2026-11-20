@@ -10,7 +10,7 @@ the bottom.
 | `libc.stdlib` | `<stdlib.h>` | 84 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.limits` | `<limits.h>` the widths of the integer types, and what a process may have | 24 |
-| `libc.unistd` | `<unistd.h>` | 209 |
+| `libc.unistd` | `<unistd.h>` | 210 |
 | `libc.file` | `<stdio.h>` file operations | 32 |
 | `libc.ctype` | `<ctype.h>` | 30 |
 | `libc.sys.socket` | `<sys/socket.h>` | 44 |
@@ -62,6 +62,7 @@ the bottom.
 | `libc.uchar` | `<uchar.h>` the UTF-16 and UTF-32 conversions | 4 |
 | `libc.sys.statfs` | `<sys/statfs.h>` the kernel's own account of a file system | 15 |
 | `libc.sys.mqueue` | `<mqueue.h>` | 10 |
+| `libc.sys.memfd` | `<sys/memfd.h>` a file the kernel holds and nothing names | 4 |
 | `libc.sys.statvfs` | `<sys/statvfs.h>` | 15 |
 | `libc.sys.select` | `<sys/select.h>` | 9 |
 | `libc.sys.shm` | `<sys/shm.h>` shared memory | 7 |
@@ -119,7 +120,7 @@ nothing for a binding to link against whatever the callback situation is.
 because Mojo has no type to pass: on x86-64 the C type is the 80-bit x87
 format. `libc.locale` has no `FE_DFL_ENV`, see `fenv_t`.
 
-`libc.sys.epoll`, `libc.sys.prctl`, `libc.sys.sendfile`, `libc.sys.eventfd`,
+`libc.sys.epoll`, `libc.sys.prctl`, `libc.sys.sendfile`, `libc.sys.eventfd`, `libc.sys.memfd`,
 `libc.sys.inotify`, `libc.sys.sigqueue`, `libc.sys.timer`, `libc.sys.auxv`,
 `libc.threads` and `libc.uchar`
 wrap Linux-only
@@ -160,7 +161,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1071 bindings are asked something, and the 1 that is not has a reason.
+1073 bindings are asked something, and the 1 that is not has a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.

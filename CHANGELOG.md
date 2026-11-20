@@ -3,6 +3,38 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- **`libc.sys.memfd` -- a file the kernel holds and nothing names.**
+  C's `<sys/memfd.h>` makes an anonymous file: a descriptor that
+  reads and writes like a regular file's, backed by memory rather
+  than by any filesystem, and reachable through no path at all. The
+  name is a label for `/proc/self/fd` and nothing looks it up --
+  which the kernel means quite literally, an empty label making a
+  file all the same, where the page this package learned the call
+  from was written saying an empty one would be refused.
+- **`copy_file_range` -- the copy the kernel does itself.** C's
+  `<unistd.h>` moves bytes from one file to another through the
+  kernel, and the position each side copies from is put back where
+  the copy ended. The test asks for the two positions' being
+  different amounts of moved, which is how a binding that handed C
+  the two files the other way round would say itself.
+
+### Changed
+
+- **The order axis asks the pairs it had been walking past.** A
+  mutant that exchanges two arguments was made only where the two
+  sat next to each other, and `copy_file_range` is the binding that
+  shows what that missed: one offset for each file, nothing of a
+  different type between them, and exactly the two a reader could
+  have misplaced -- with two descriptors of another type sitting in
+  front. Every pair that sits next to its own kind is asked as it
+  was, and one pair of each type that does not sit next to its own
+  kind is asked too: two hundred mutants more, each one a mistake a
+  reader of the call could have made.
+
 ## [0.14.3] - 2026-11-20
 
 ### Added

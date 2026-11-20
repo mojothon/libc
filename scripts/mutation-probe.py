@@ -1451,29 +1451,37 @@ def build(kind: str) -> list[Mutant]:
                 continue
             path = str(here(given))
             params = parameters(here(given).read_text(), name)
-            pair = next(
-                (
-                    index
-                    for index in range(len(params) - 1)
-                    if params[index][1] == params[index + 1][1]
-                ),
-                None,
-            )
-            if pair is None:
-                continue
-            # The first pair is asked, not every pair: three arguments of one
-            # type are three ways to be wrong about the same three names, and
-            # the sample is spread over bindings rather than over one of them.
-            mutants.append(
-                Mutant(
-                    path,
-                    name,
-                    "order",
-                    f"{params[pair][0]} <-> {params[pair + 1][0]}",
-                    first=pair,
-                    second=pair + 1,
-                )
-            )
+            # Every pair that sits next to its own kind, and one pair of
+            # each type that does not. Three arguments of one type are
+            # three ways to be wrong about the same three names, and the
+            # sample is spread over bindings rather than over one of
+            # them -- but a pair with nothing of another type between
+            # the two of it was the only kind the asking once saw, and
+            # `copy_file_range`'s two offsets are why that stopped being
+            # enough: one offset for each file, nothing of a different
+            # type between them, and exactly the two a reader could
+            # have misplaced -- with two descriptors of another type
+            # sitting in front, where next to next never reached.
+            seen_distant: set[str] = set()
+            for first in range(len(params)):
+                for second in range(first + 1, len(params)):
+                    type_of = params[first][1]
+                    if type_of != params[second][1]:
+                        continue
+                    if second > first + 1 and type_of in seen_distant:
+                        continue
+                    if second > first + 1:
+                        seen_distant.add(type_of)
+                    mutants.append(
+                        Mutant(
+                            path,
+                            name,
+                            "order",
+                            f"{params[first][0]} <-> {params[second][0]}",
+                            first=first,
+                            second=second,
+                        )
+                    )
     return mutants
 
 
