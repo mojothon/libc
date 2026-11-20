@@ -213,6 +213,11 @@ OFFSETS: dict[tuple[str, str], tuple[str, str]] = {
     ("libc.sys.socket", "MSGHDR_CONTROL_OFFSET"): ("msghdr", "msg_control"),
     ("libc.sys.socket", "MSGHDR_CONTROLLEN_OFFSET"): ("msghdr", "msg_controllen"),
     ("libc.sys.socket", "MSGHDR_FLAGS_OFFSET"): ("msghdr", "msg_flags"),
+    ("libc.sys.socket", "MMSHDR_NAME_OFFSET"): ("mmsghdr", "msg_hdr.msg_name"),
+    ("libc.sys.socket", "MMSHDR_NAMELEN_OFFSET"): ("mmsghdr", "msg_hdr.msg_namelen"),
+    ("libc.sys.socket", "MMSHDR_IOV_OFFSET"): ("mmsghdr", "msg_hdr.msg_iov"),
+    ("libc.sys.socket", "MMSHDR_IOVLEN_OFFSET"): ("mmsghdr", "msg_hdr.msg_iovlen"),
+    ("libc.sys.socket", "MMSHDR_LEN_OFFSET"): ("mmsghdr", "msg_len"),
     ("libc.sys.socket", "MSGHDR_LEN_OFFSET"): ("mmsghdr", "msg_len"),
     ("libc.sys.socket", "CMSGHDR_LEN_OFFSET"): ("cmsghdr", "cmsg_len"),
     ("libc.sys.socket", "CMSGHDR_LEVEL_OFFSET"): ("cmsghdr", "cmsg_level"),
@@ -284,7 +289,7 @@ DERIVED_SIZES: dict[tuple[str, str], str] = {
         "sizeof(struct sockaddr_un) - offsetof(struct sockaddr_un, sun_path)"
     ),
     ("libc.sys.socket", "CMSGHDR_HEADER_BYTES"): "sizeof(struct cmsghdr)",
-    ("libc.sys.socket", "MSGHDR_BYTES"): "sizeof(struct mmsghdr)",
+    ("libc.sys.socket", "MMSHDR_BYTES"): "sizeof(struct mmsghdr)",
     ("libc.termios", "TERMIOS_SPEED_BYTES"): "sizeof(speed_t)",
     ("libc.utmpx", "UT_USER_ROOM"): "sizeof(((struct utmpx *)0)->ut_user)",
 }
@@ -329,6 +334,11 @@ LINUX_ONLY: set[tuple[str, str]] = {
     ("libc.sys.sysinfo", "SYSINFO_FREEHIGH"),
     ("libc.sys.sysinfo", "SYSINFO_MEM_UNIT"),
     ("libc.sys.timer", "SIGEVENT_NOTIFY_OFFSET"),
+    ("libc.sys.socket", "MMSHDR_NAME_OFFSET"),
+    ("libc.sys.socket", "MMSHDR_NAMELEN_OFFSET"),
+    ("libc.sys.socket", "MMSHDR_IOV_OFFSET"),
+    ("libc.sys.socket", "MMSHDR_IOVLEN_OFFSET"),
+    ("libc.sys.socket", "MMSHDR_LEN_OFFSET"),
 }
 
 ON_DARWIN = sys.platform == "darwin"
@@ -1276,6 +1286,8 @@ def main() -> int:
         module, offset, accessor = key
         widths = sorted(per[here])
         if not widths:
+            continue
+        if here == "macos" and (module, offset) in LINUX_ONLY:
             continue
         member_width = member_sizes.get((module, offset))
         if member_width is None:

@@ -554,8 +554,12 @@ struct msghdr:
 # is no second shape to hold, and the offsets are the glibc ones read
 # plainly. `check-layouts.py` asks C for the two that matter -- where
 # the length sits and how wide the whole thing is.
-comptime MSGHDR_LEN_OFFSET: Int = 56
-comptime MSGHDR_BYTES: Int = 64
+comptime MMSHDR_NAME_OFFSET: Int = 0
+comptime MMSHDR_NAMELEN_OFFSET: Int = 8
+comptime MMSHDR_IOV_OFFSET: Int = 16
+comptime MMSHDR_IOVLEN_OFFSET: Int = 24
+comptime MMSHDR_LEN_OFFSET: Int = 56
+comptime MMSHDR_BYTES: Int = 64
 
 
 struct Mmsghdr:
@@ -600,38 +604,38 @@ struct Mmsghdr:
     def msg_name(self) -> c_ptr[UInt8]:
         """Where the address goes, or null for a connected socket."""
         return c_ptr[UInt8](
-            unsafe_from_address=Int(self._at(MSGHDR_NAME_OFFSET))
+            unsafe_from_address=Int(self._at(MMSHDR_NAME_OFFSET))
         )
 
     def set_msg_name(mut self, value: c_ptr[UInt8]) -> None:
         """Sets where the address comes from."""
-        self._set_at(MSGHDR_NAME_OFFSET, UInt64(Int(value)))
+        self._set_at(MMSHDR_NAME_OFFSET, UInt64(Int(value)))
 
     def msg_namelen(self) -> UInt32:
         """How long the address is, a `socklen_t` on both platforms."""
-        return UInt32(self._u32(MSGHDR_NAMELEN_OFFSET))
+        return UInt32(self._u32(MMSHDR_NAMELEN_OFFSET))
 
     def set_msg_namelen(mut self, value: UInt32) -> None:
         """Sets how long the address is."""
-        self._set_u32(MSGHDR_NAMELEN_OFFSET, UInt64(value))
+        self._set_u32(MMSHDR_NAMELEN_OFFSET, UInt64(value))
 
     def msg_iov(self) -> c_ptr[iovec]:
         """The scatter/gather array of pieces the message is made of."""
         return c_ptr[iovec](
-            unsafe_from_address=Int(self._at(MSGHDR_IOV_OFFSET))
+            unsafe_from_address=Int(self._at(MMSHDR_IOV_OFFSET))
         )
 
     def set_msg_iov(mut self, value: c_ptr[iovec]) -> None:
         """Sets the array of pieces."""
-        self._set_at(MSGHDR_IOV_OFFSET, UInt64(Int(value)))
+        self._set_at(MMSHDR_IOV_OFFSET, UInt64(Int(value)))
 
     def msg_iovlen(self) -> UInt64:
         """How many pieces the message is made of."""
-        return self._at(MSGHDR_IOVLEN_OFFSET)
+        return self._at(MMSHDR_IOVLEN_OFFSET)
 
     def set_msg_iovlen(mut self, value: UInt64) -> None:
         """Sets how many pieces the message is made of."""
-        self._set_at(MSGHDR_IOVLEN_OFFSET, value)
+        self._set_at(MMSHDR_IOVLEN_OFFSET, value)
 
     def msg_len(self) -> UInt32:
         """The length the call itself keeps: `sendmmsg` writes here
@@ -639,7 +643,7 @@ struct Mmsghdr:
         writes what each one brought. The caller's own idea of the
         length lives in the pieces, not here.
         """
-        return UInt32(self._u32(MSGHDR_LEN_OFFSET))
+        return UInt32(self._u32(MMSHDR_LEN_OFFSET))
 
 
 def sendmmsg(
