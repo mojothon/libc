@@ -803,7 +803,7 @@ the bottom.</p>
 <tr>
 <td><code>libc.unistd</code></td>
 <td><code>&lt;unistd.h&gt;</code></td>
-<td>209</td>
+<td>210</td>
 </tr>
 <tr>
 <td><code>libc.file</code></td>
@@ -1061,6 +1061,11 @@ the bottom.</p>
 <td>10</td>
 </tr>
 <tr>
+<td><code>libc.sys.memfd</code></td>
+<td><code>&lt;sys/memfd.h&gt;</code> a file the kernel holds and nothing names</td>
+<td>4</td>
+</tr>
+<tr>
 <td><code>libc.sys.statvfs</code></td>
 <td><code>&lt;sys/statvfs.h&gt;</code></td>
 <td>15</td>
@@ -1200,7 +1205,7 @@ nothing for a binding to link against whatever the callback situation is.</p>
 <p><code>libc.math</code> has no <code>long double</code> variants — no <code>fabsl</code>, no <code>nexttoward</code> —
 because Mojo has no type to pass: on x86-64 the C type is the 80-bit x87
 format. <code>libc.locale</code> has no <code>FE_DFL_ENV</code>, see <code>fenv_t</code>.</p>
-<p><code>libc.sys.epoll</code>, <code>libc.sys.prctl</code>, <code>libc.sys.sendfile</code>, <code>libc.sys.eventfd</code>,
+<p><code>libc.sys.epoll</code>, <code>libc.sys.prctl</code>, <code>libc.sys.sendfile</code>, <code>libc.sys.eventfd</code>, <code>libc.sys.memfd</code>,
 <code>libc.sys.inotify</code>, <code>libc.sys.sigqueue</code>, <code>libc.sys.timer</code>, <code>libc.sys.auxv</code>,
 <code>libc.threads</code> and <code>libc.uchar</code>
 wrap Linux-only
@@ -1236,7 +1241,7 @@ pointed at whatever descriptor 1 holds. A child that points descriptor 1 at
 a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.</p>
-<p>1071 bindings are asked something, and the 1 that is not has a reason.
+<p>1073 bindings are asked something, and the 1 that is not has a reason.
 Both numbers are read back out of this page by
 <code>scripts/check-tests.py</code>, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.</p>
