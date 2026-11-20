@@ -53,7 +53,7 @@ the bottom.
 | `libc.libgen` | `<libgen.h>` cutting a path in two | 2 |
 | `libc.logging` | `<syslog.h>` | 6 |
 | `libc.pty` | `<pty.h>` a terminal a program can hold | 4 |
-| `libc.fcntl` | `<fcntl.h>` | 49 |
+| `libc.fcntl` | `<fcntl.h>` | 56 |
 | `libc.getopt` | `<getopt.h>` taking a command line apart | 12 |
 | `libc.dlfcn` | `<dlfcn.h>` | 9 |
 | `libc.wchar` | `<wchar.h>` | 99 |
@@ -161,7 +161,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1073 bindings are asked something, and the 1 that is not has a reason.
+1076 bindings are asked something, and the 1 that is not has a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.

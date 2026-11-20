@@ -7,6 +7,7 @@ from std.memory import Pointer
 from std.ffi import external_call
 from std.sys import CompilationTarget
 from libc.constant import AT_FDCWD, c_ptr
+from libc.sys.socket import iovec
 
 
 # What `open` is given. The three access modes are the same everywhere and
@@ -329,3 +330,152 @@ def flock(fd: Int32, operation: Int32) -> Int32:
         open file share the lock they have.
     """
     return external_call["flock", Int32, Int32, Int32](fd, operation)
+
+
+# What the flags are worth. The move one is a hint the kernel has
+# taken to ignoring -- pages have gone the way it asks for years --
+# and the gift one is vmsplice's own: a page handed over that the
+# caller promises not to touch again.
+comptime SPLICE_F_MOVE: UInt32 = 1
+comptime SPLICE_F_NONBLOCK: UInt32 = 2
+comptime SPLICE_F_MORE: UInt32 = 4
+comptime SPLICE_F_GIFT: UInt32 = 8
+
+
+def splice(
+    fd_in: Int32,
+    off_in: c_ptr[Int64],
+    fd_out: Int32,
+    off_out: c_ptr[Int64],
+    count: UInt64,
+    flags: UInt32,
+) -> Int:
+    """Libc Linux `splice` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/splice.2.html
+
+    Description:
+        splice() moves count bytes from the file associated with fd_in to
+        the file associated with fd_out, through a pipe the kernel owns:
+        at least one of the two ends has to be the pipe, and the bytes
+        the pipe holds are handed over rather than copied -- nothing
+        comes up to the caller and nothing goes back down.
+
+    Args:
+        fd_in: The file to move bytes out of, one end of the pipe
+            being moved through.
+        off_in: Where the position to move from is, and where the
+            position that was moved to is put back; null means the
+            file's own position is used and advanced instead.
+        fd_out: The file to move bytes into, the other end of the pipe
+            the bytes go through.
+        off_out: The same, for the file being written.
+        count: Number of bytes to move.
+        flags: `SPLICE_F_NONBLOCK` for the ends that would otherwise
+            wait, `SPLICE_F_MORE` to tell the kernel there is more of
+            this coming, `SPLICE_F_MOVE` for the hint the kernel has
+            taken to ignoring, in any combination.
+
+    Returns:
+        How many bytes were moved, or -1 with `errno` set.
+
+    Notes:
+        Linux-specific, which the man page says on its first line:
+        there is nothing on the other side to call.
+
+        One end has to be the pipe. Two regular files are not
+        spliced together by this call -- that is what
+        `copy_file_range` is for, which needs no pipe and no pages
+        in one on the way through.
+
+        An empty pipe answers zero rather than waiting, and a zero
+        from this call is not a failure: it is the pipe having
+        nothing to hand over, the way a read at the end of a file
+        is not one either.
+    """
+    return external_call[
+        "splice", Int, Int32, c_ptr[Int64], Int32, c_ptr[Int64], UInt64, UInt32
+    ](fd_in, off_in, fd_out, off_out, count, flags)
+
+
+def vmsplice(
+    fd: Int32, iov: c_ptr[iovec], nr_segs: UInt64, flags: UInt32
+) -> Int:
+    """Libc Linux `vmsplice` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/vmsplice.2.html
+
+    Description:
+        vmsplice() puts the caller's own memory into the pipe the
+        descriptor fd opens: the pages the iovec names are handed to
+        the kernel to be the pipe's contents, rather than copied into
+        what the pipe already holds.
+
+    Args:
+        fd: A descriptor for the pipe the pages are put into.
+        iov: The pieces of the caller's memory to put there, where
+            each starts and how long it is.
+        nr_segs: How many pieces the iovec holds.
+        flags: `SPLICE_F_GIFT` to promise the pages are not touched
+            again, which lets the kernel keep them rather than copy
+            them; the rest of the flags say nothing here.
+
+    Returns:
+        How many bytes were put into the pipe, or -1 with `errno`
+        set.
+
+    Notes:
+        Linux-specific, and the giving is the part worth having
+        words for: what the kernel does with a gifted page is its
+        own business from then on, and a caller who keeps writing
+        through it is changing what the pipe holds behind the
+        reader's back. The pages a caller means to keep are better
+        handed over without the gift, and the copy that costs is
+        the copy that keeps.
+
+        A read end takes instead of gives: `vmsplice` on the read
+        end of a pipe fills the caller's pages from what the pipe
+        holds, which is the same moving in the other direction.
+    """
+    return external_call["vmsplice", Int, Int32, c_ptr[iovec], UInt64, UInt32](
+        fd, iov, nr_segs, flags
+    )
+
+
+def tee(fd_in: Int32, fd_out: Int32, count: UInt64, flags: UInt32) -> Int:
+    """Libc Linux `tee` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/tee.2.html
+
+    Description:
+        tee() copies count bytes from one pipe to another, and what
+        it copies stays where it was: the pipe read from holds its
+        bytes still, and the pipe written to holds a copy of them,
+        with nothing coming up to the caller in between.
+
+    Args:
+        fd_in: The pipe to copy from, which keeps what it holds.
+        fd_out: The pipe to copy into, which has to have room.
+        count: Number of bytes to copy.
+        flags: `SPLICE_F_NONBLOCK` for the pipes that would
+            otherwise wait; the rest say nothing here.
+
+    Returns:
+        How many bytes were copied, or -1 with `errno` set.
+
+    Notes:
+        Linux-specific, and the keeping is the whole of it: `splice`
+        moves what it takes and the pipe read from is emptier for
+        it, where `tee` leaves the source exactly as it stood --
+        which is how one pipe's contents get handed to two readers
+        without the caller ever holding the bytes.
+
+        Both ends have to be pipes. There is no file form of this
+        one, and no `tee` for a regular file at either end.
+    """
+    return external_call["tee", Int, Int32, Int32, UInt64, UInt32](
+        fd_in, fd_out, count, flags
+    )

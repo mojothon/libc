@@ -35,6 +35,15 @@ All notable changes to this project are documented here. The format follows
   kind is asked too: two hundred mutants more, each one a mistake a
   reader of the call could have made.
 
+- **`libc.fcntl` gains the pipes' own moving -- `splice`, `vmsplice`
+  and `tee`.** C's `<fcntl.h>` moves bytes through a pipe the kernel
+  owns, puts the caller's own pages into one, and copies one pipe's
+  contents to another without emptying it. The two zeros the moving
+  can give are in the test the way the asking of the call returned
+  them: an empty pipe that might still be filled refuses with
+  `EAGAIN`, and a pipe whose writer is gone answers zero -- which is
+  the end, and not a failure.
+
 ## [0.14.3] - 2026-11-20
 
 ### Added
