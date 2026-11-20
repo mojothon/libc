@@ -1153,7 +1153,17 @@ BUILD_FAILURE = re.compile(
 
 def classify(returncode: int, text: str) -> str:
     if returncode == 0:
-        return "survived"
+        # A zero is a survivor only if the run said what a green run
+        # says: every unit ends with `test_x: ok` or, where the
+        # machine's own limits spent it, `test_x: skipped`. A zero with
+        # neither in it is not an answer at all -- `pixi run` asked
+        # four at once has come back without having run anything and
+        # without a code to say so, and reading that zero as a test
+        # the mutant survived is how a sweep reports a survivor that
+        # dies on the asking again.
+        if "ok" in text or "skipped" in text:
+            return "survived"
+        return "error"
     if "AssertionError" in text or "Unhandled exception" in text:
         return "caught"
     if "disagree with C" in text:
