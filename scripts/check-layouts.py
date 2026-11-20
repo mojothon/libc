@@ -213,6 +213,7 @@ OFFSETS: dict[tuple[str, str], tuple[str, str]] = {
     ("libc.sys.socket", "MSGHDR_CONTROL_OFFSET"): ("msghdr", "msg_control"),
     ("libc.sys.socket", "MSGHDR_CONTROLLEN_OFFSET"): ("msghdr", "msg_controllen"),
     ("libc.sys.socket", "MSGHDR_FLAGS_OFFSET"): ("msghdr", "msg_flags"),
+    ("libc.sys.socket", "MSGHDR_LEN_OFFSET"): ("mmsghdr", "msg_len"),
     ("libc.sys.socket", "CMSGHDR_LEN_OFFSET"): ("cmsghdr", "cmsg_len"),
     ("libc.sys.socket", "CMSGHDR_LEVEL_OFFSET"): ("cmsghdr", "cmsg_level"),
     ("libc.sys.socket", "CMSGHDR_TYPE_OFFSET"): ("cmsghdr", "cmsg_type"),
@@ -283,6 +284,7 @@ DERIVED_SIZES: dict[tuple[str, str], str] = {
         "sizeof(struct sockaddr_un) - offsetof(struct sockaddr_un, sun_path)"
     ),
     ("libc.sys.socket", "CMSGHDR_HEADER_BYTES"): "sizeof(struct cmsghdr)",
+    ("libc.sys.socket", "MSGHDR_BYTES"): "sizeof(struct mmsghdr)",
     ("libc.termios", "TERMIOS_SPEED_BYTES"): "sizeof(speed_t)",
     ("libc.utmpx", "UT_USER_ROOM"): "sizeof(((struct utmpx *)0)->ut_user)",
 }

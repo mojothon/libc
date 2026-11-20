@@ -61,6 +61,8 @@ from libc.sys.socket import (
 from libc.network import in_addr, inet_addr, ntohs
 from libc.poll import poll, pollfd
 from libc.sys.stat import timeval
+from libc.time import timespec
+from libc.sys.socket import Mmsghdr, recvmmsg, sendmmsg
 from libc.unistd import close
 from libc.utils import null_ptr, string_to_char_ptr
 
@@ -1062,6 +1064,106 @@ def test_the_inet_view_is_the_layout_c_has() raises:
     bound.unsafe_free()
 
 
+def test_a_batch_of_messages_in_one_descent() raises:
+    """`sendmmsg` and `recvmmsg` on a connected pair: two messages
+    go out in one call and come back in one call, and the length
+    each message carries beside it is the count the kernel wrote
+    -- what each one moved, not what the caller asked for.
+
+    A datagram pair carries the messages as the messages they are,
+    which is what a batch is made of: a stream has no boundaries for
+    the kernel to keep, and the batch would read as one run of bytes.
+    The two messages are sent as different sizes on purpose: the
+    lengths the batch fills are two different numbers, and a
+    binding that gave the kernel one message twice would say the
+    same thing about both.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var ends = unsafe_alloc[Int32](2)
+        assert_equal(
+            socketpair(AF_UNIX, SOCK_DGRAM, 0, ends), 0, "a pair to batch over"
+        )
+        var left = ends.unsafe_offset(0)[]
+        var right = ends.unsafe_offset(1)[]
+
+        var first = unsafe_alloc[UInt8](2)
+        first.unsafe_offset(0)[] = 0x41
+        first.unsafe_offset(1)[] = 0x42
+        var second = unsafe_alloc[UInt8](1)
+        second.unsafe_offset(0)[] = 0x43
+
+        var pieces_one = unsafe_alloc[iovec](1)
+        pieces_one.unsafe_offset(0)[] = iovec(first, UInt64(2))
+        var pieces_two = unsafe_alloc[iovec](1)
+        pieces_two.unsafe_offset(0)[] = iovec(second, UInt64(1))
+
+        var outgoing = unsafe_alloc[Mmsghdr](2)
+        outgoing.unsafe_offset(0)[].set_msg_iov(pieces_one)
+        outgoing.unsafe_offset(0)[].set_msg_iovlen(1)
+        outgoing.unsafe_offset(1)[].set_msg_iov(pieces_two)
+        outgoing.unsafe_offset(1)[].set_msg_iovlen(1)
+
+        assert_equal(
+            Int(sendmmsg(left, outgoing, UInt32(2), 0)),
+            2,
+            "two messages go out in one call",
+        )
+        assert_equal(
+            Int(outgoing.unsafe_offset(0)[].msg_len()),
+            2,
+            "and the kernel says the first moved two",
+        )
+        assert_equal(
+            Int(outgoing.unsafe_offset(1)[].msg_len()),
+            1,
+            "and the second moved one",
+        )
+
+        var coming = unsafe_alloc[Mmsghdr](2)
+        var back_one = unsafe_alloc[UInt8](2)
+        var back_two = unsafe_alloc[UInt8](2)
+        var arriving_one = unsafe_alloc[iovec](1)
+        var arriving_two = unsafe_alloc[iovec](1)
+        arriving_one.unsafe_offset(0)[] = iovec(back_one, UInt64(2))
+        arriving_two.unsafe_offset(0)[] = iovec(back_two, UInt64(2))
+        coming.unsafe_offset(0)[].set_msg_iov(arriving_one)
+        coming.unsafe_offset(0)[].set_msg_iovlen(1)
+        coming.unsafe_offset(1)[].set_msg_iov(arriving_two)
+        coming.unsafe_offset(1)[].set_msg_iovlen(1)
+        var count = recvmmsg(right, coming, UInt32(2), 0, null_ptr[timespec]())
+        assert_equal(Int(count), 2, "and they come back in one call")
+        assert_equal(
+            Int(coming.unsafe_offset(0)[].msg_len()), 2, "the first brought two"
+        )
+        assert_true(
+            back_one.unsafe_offset(0)[] == 0x41
+            and back_one.unsafe_offset(1)[] == 0x42,
+            "and they are the first's bytes",
+        )
+        assert_equal(
+            Int(coming.unsafe_offset(1)[].msg_len()),
+            1,
+            "and the second brought one",
+        )
+        assert_true(
+            back_two.unsafe_offset(0)[] == 0x43, "and it is the second's byte"
+        )
+
+        first.unsafe_free()
+        second.unsafe_free()
+        pieces_one.unsafe_free()
+        pieces_two.unsafe_free()
+        outgoing.unsafe_free()
+        coming.unsafe_free()
+        back_one.unsafe_free()
+        back_two.unsafe_free()
+        arriving_one.unsafe_free()
+        arriving_two.unsafe_free()
+        ends.unsafe_free()
+        _ = close(left)
+        _ = close(right)
+
+
 def main() raises:
     test_a_connection_over_the_loopback()
     test_accept4()
@@ -1069,6 +1171,7 @@ def main() raises:
     test_sendto_and_recvfrom()
     test_sendmsg()
     test_recvmsg_gathers_without_taking()
+    test_a_batch_of_messages_in_one_descent()
     test_the_mark_that_out_of_band_data_leaves()
     test_a_message_sent_to_a_name_and_answered_with_one()
     test_a_descriptor_traveling_as_ancillary_data()

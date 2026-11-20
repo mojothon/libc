@@ -44,6 +44,17 @@ All notable changes to this project are documented here. The format follows
   `EAGAIN`, and a pipe whose writer is gone answers zero -- which is
   the end, and not a failure.
 
+- **`libc.sys.socket` gains the batch -- `sendmmsg`, `recvmmsg` and
+  their `Mmsghdr`.** C's `<sys/socket.h>` sends and receives an array
+  of messages in one descent into the kernel, each carrying the
+  length the kernel wrote beside it. The struct is Linux's alone --
+  the one-message form's seven slots with the length at 56 -- and
+  `check-layouts` asked C for the two numbers that matter, where the
+  length sits and how wide the whole thing is, before this went
+  anywhere. The test sends two messages of different sizes on
+  purpose, so a binding that handed the kernel one message twice
+  would say the same thing about both.
+
 ## [0.14.3] - 2026-11-20
 
 ### Added

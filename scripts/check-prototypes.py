@@ -712,6 +712,7 @@ SPELLED_DIFFERENTLY = {
     "Stat": "stat",
     "Statvfs": "statvfs",
     "MqAttr": "mq_attr",
+    "Mmsghdr": "mmsghdr",
     "Utsname": "utsname",
     "Rlimit": "rlimit",
     "Aiocb": "aiocb",

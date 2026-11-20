@@ -13,7 +13,7 @@ the bottom.
 | `libc.unistd` | `<unistd.h>` | 210 |
 | `libc.file` | `<stdio.h>` file operations | 32 |
 | `libc.ctype` | `<ctype.h>` | 30 |
-| `libc.sys.socket` | `<sys/socket.h>` | 44 |
+| `libc.sys.socket` | `<sys/socket.h>` | 49 |
 | `libc.sys.stat` | `<sys/stat.h>` | 36 |
 | `libc.sys.times` | `<sys/times.h>` | 2 |
 | `libc.time` | `<time.h>` | 39 |
@@ -161,7 +161,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1076 bindings are asked something, and the 1 that is not has a reason.
+1078 bindings are asked something, and the 1 that is not has a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.

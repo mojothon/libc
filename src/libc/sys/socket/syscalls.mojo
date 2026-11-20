@@ -9,6 +9,7 @@ from std.memory import Pointer
 from std.utils.static_tuple import StaticTuple
 from libc.constant import c_int, c_ptr
 from libc.network import in_addr
+from libc.time import timespec
 
 
 # What `accept4` is asked for, and both of them differ: SOCK_NONBLOCK is
@@ -542,6 +543,200 @@ struct msghdr:
     def set_msg_flags(mut self, value: Int32) -> None:
         """Sets the flags."""
         self._set_u32(MSGHDR_FLAGS_OFFSET, UInt64(value))
+
+
+# The `struct mmsghdr` that `recvmmsg` and `sendmmsg` walk, which is
+# C's `struct msghdr` with the message's own length carried behind it:
+# the header is the seven slots the one-message form has, and the
+# length is the four bytes at 56 -- where glibc's `msghdr` ends -- with
+# the four the alignment leaves filling the room to sixty-four. Only
+# Linux has the struct or either of the calls that walk it, so there
+# is no second shape to hold, and the offsets are the glibc ones read
+# plainly. `check-layouts.py` asks C for the two that matter -- where
+# the length sits and how wide the whole thing is.
+comptime MSGHDR_LEN_OFFSET: Int = 56
+comptime MSGHDR_BYTES: Int = 64
+
+
+struct Mmsghdr:
+    """One message in the array `recvmmsg` and `sendmmsg` walk: the
+    message the one-message form holds, and the length beside it
+    that the call fills or takes.
+
+    The header's members are read and written through the same
+    offsets the one-message form uses, so a caller that has built a
+    `msghdr` once can build this one the same way, and the length
+    is the only member that belongs to the array and not to the
+    message.
+    """
+
+    var _slots: Array[UInt64, 8]
+
+    def __init__(out self):
+        """Zeroes the message, which is what `memset` would leave."""
+        self._slots = Array[UInt64, 8](fill=0)
+
+    def _at(self, off: Int) -> UInt64:
+        """The eight bytes at an eight-aligned `off`."""
+        return self._slots[off // 8]
+
+    def _u32(self, off: Int) -> UInt64:
+        """The four bytes at a four-aligned `off`, little-endian."""
+        return (self._slots[off // 8] >> UInt64((off % 8) * 8)) & 0xFFFFFFFF
+
+    def _set_at(mut self, off: Int, value: UInt64) -> None:
+        """Writes the eight bytes at an eight-aligned `off`."""
+        self._slots[off // 8] = value
+
+    def _set_u32(mut self, off: Int, value: UInt64) -> None:
+        """Writes the four bytes at a four-aligned `off`, leaving the rest."""
+        var slot = off // 8
+        var shift = UInt64((off % 8) * 8)
+        var keep = ~(UInt64(0xFFFFFFFF) << shift)
+        self._slots[slot] = (self._slots[slot] & keep) | (
+            (value & 0xFFFFFFFF) << shift
+        )
+
+    def msg_name(self) -> c_ptr[UInt8]:
+        """Where the address goes, or null for a connected socket."""
+        return c_ptr[UInt8](
+            unsafe_from_address=Int(self._at(MSGHDR_NAME_OFFSET))
+        )
+
+    def set_msg_name(mut self, value: c_ptr[UInt8]) -> None:
+        """Sets where the address comes from."""
+        self._set_at(MSGHDR_NAME_OFFSET, UInt64(Int(value)))
+
+    def msg_namelen(self) -> UInt32:
+        """How long the address is, a `socklen_t` on both platforms."""
+        return UInt32(self._u32(MSGHDR_NAMELEN_OFFSET))
+
+    def set_msg_namelen(mut self, value: UInt32) -> None:
+        """Sets how long the address is."""
+        self._set_u32(MSGHDR_NAMELEN_OFFSET, UInt64(value))
+
+    def msg_iov(self) -> c_ptr[iovec]:
+        """The scatter/gather array of pieces the message is made of."""
+        return c_ptr[iovec](
+            unsafe_from_address=Int(self._at(MSGHDR_IOV_OFFSET))
+        )
+
+    def set_msg_iov(mut self, value: c_ptr[iovec]) -> None:
+        """Sets the array of pieces."""
+        self._set_at(MSGHDR_IOV_OFFSET, UInt64(Int(value)))
+
+    def msg_iovlen(self) -> UInt64:
+        """How many pieces the message is made of."""
+        return self._at(MSGHDR_IOVLEN_OFFSET)
+
+    def set_msg_iovlen(mut self, value: UInt64) -> None:
+        """Sets how many pieces the message is made of."""
+        self._set_at(MSGHDR_IOVLEN_OFFSET, value)
+
+    def msg_len(self) -> UInt32:
+        """The length the call itself keeps: `sendmmsg` writes here
+        what the kernel took for each message, and `recvmmsg`
+        writes what each one brought. The caller's own idea of the
+        length lives in the pieces, not here.
+        """
+        return UInt32(self._u32(MSGHDR_LEN_OFFSET))
+
+
+def sendmmsg(
+    sockfd: Int32, msgvec: c_ptr[Mmsghdr], vlen: UInt32, flags: Int32
+) -> Int64:
+    """C library <sys/socket.h> function `sendmmsg`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/sendmmsg.2.html
+
+    Description:
+        sendmmsg() sends vlen messages the array msgvec holds over the
+        socket sockfd, one sendmsg for each, and the kernel writes what
+        it took for every one of them into the length each message
+        carries -- a batch of sends in one descent into the kernel,
+        which is the whole of what it buys.
+
+    Args:
+        sockfd: The socket to send over.
+        msgvec: The array of messages, each holding its address and
+            its pieces, and room for the length the kernel writes back.
+        vlen: How many messages the array holds.
+        flags: The flags `sendmsg` takes, applied to every message
+            in the array.
+
+    Returns:
+        How many messages were sent, or -1 with `errno` set. Each
+        message's own length says what that one moved.
+
+    Notes:
+        Linux-specific, which the man page says on its first line:
+        there is no such call on the other side to name.
+
+        A batch stops where it fails, and what has been sent stays
+        sent: the count that comes back is the count the kernel
+        carried, and the caller's lengths say which ones moved. A
+        message whose pieces were not all taken is not taken again
+        by anybody.
+    """
+    return external_call[
+        "sendmmsg", Int64, Int32, c_ptr[Mmsghdr], UInt32, Int32
+    ](sockfd, msgvec, vlen, flags)
+
+
+def recvmmsg(
+    sockfd: Int32,
+    msgvec: c_ptr[Mmsghdr],
+    vlen: UInt32,
+    flags: Int32,
+    timeout: c_ptr[timespec],
+) -> Int64:
+    """C library <sys/socket.h> function `recvmmsg`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/recvmmsg.2.html
+
+    Description:
+        recvmmsg() receives into the array msgvec until it is full or
+        the timeout has passed, each message's pieces filled the way one
+        `recvmsg` fills them, and the length each message carries saying
+        what that one brought. A batch of receives in one descent into
+        the kernel, which is the whole of what it buys.
+
+    Args:
+        sockfd: The socket to receive from.
+        msgvec: The array of messages to fill, each holding where its
+            address goes and the pieces to fill, and room for the
+            length the kernel writes.
+        vlen: How many messages the array holds.
+        flags: The flags `recvmsg` takes, applied to every message
+            in the array.
+        timeout: How long to wait for the first of the messages,
+            which may be null to wait as long as the socket's own
+            settings say.
+
+    Returns:
+        How many messages were received, or -1 with `errno` set.
+        Each message's own length says what that one brought.
+
+    Notes:
+        Linux-specific, which the man page says on its first line.
+
+        The timeout is spent on the first message only: once one
+        message has arrived the rest are taken as they are there,
+        without waiting for the ones that are not, and a batch that
+        comes back short of full is not a failure -- it is what the
+        socket had, the way one receive that comes back short is.
+
+        The messages the array does not fill are left as they were,
+        and their lengths are not written: a caller that wants to
+        know which ones arrived reads the count, and a caller that
+        wants to know what each one held reads the lengths beside
+        the count.
+    """
+    return external_call[
+        "recvmmsg", Int64, Int32, c_ptr[Mmsghdr], UInt32, Int32, c_ptr[timespec]
+    ](sockfd, msgvec, vlen, flags, timeout)
 
 
 def sendmsg(sockfd: Int32, msg: c_ptr[msghdr], flags: Int32) -> Int64:
