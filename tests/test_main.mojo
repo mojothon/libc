@@ -99,15 +99,6 @@ def main() raises:
     run_dirent()
     run_fcntl()
     run_file()
-    # `run_mqueue` walks before `run_mman` and not after it: the fork that
-    # `mman`'s read-only-page test makes leaves the run time's own heap
-    # answering wrongly to the frees an mqueue test makes afterwards -- the
-    # whole suite passes with this call here and dies in `free` with it
-    # later. Whether that is the fork, the `mlockall`, or the run time's
-    # tcmalloc is not yet settled; the order is what is settled, and the
-    # comment is here so the next move of these lines does not land on it
-    # unawares.
-    run_mqueue()
     run_mman()
     run_mutex()
     run_dlfcn()
@@ -127,6 +118,15 @@ def main() raises:
     run_shm()
     run_wait()
     run_auxv()
+    # `run_mqueue` walked after `run_mman` and died in the run time's
+    # own `free` for it -- and the same order passes now, twice over.
+    # The machine's libc moved under the tree that week, and the red
+    # this order held, and the mutation self-test's red with it, both
+    # went when the libc settled: what the order was guarding against
+    # is not here to point at anymore. The call stays where it is --
+    # the move costs nothing -- and the comment is the record of a red
+    # that was real, whose cause left before it could be named.
+    run_mqueue()
     run_statvfs()
     run_sync()
     run_logging()
