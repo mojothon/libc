@@ -821,6 +821,11 @@ the bottom.</p>
 <td>53</td>
 </tr>
 <tr>
+<td><code>libc.sys.uio</code></td>
+<td><code>&lt;sys/uio.h&gt;</code></td>
+<td>2</td>
+</tr>
+<tr>
 <td><code>libc.sys.stat</code></td>
 <td><code>&lt;sys/stat.h&gt;</code></td>
 <td>36</td>
@@ -1207,6 +1212,7 @@ because Mojo has no type to pass: on x86-64 the C type is the 80-bit x87
 format. <code>libc.locale</code> has no <code>FE_DFL_ENV</code>, see <code>fenv_t</code>.</p>
 <p><code>libc.sys.epoll</code>, <code>libc.sys.prctl</code>, <code>libc.sys.sendfile</code>, <code>libc.sys.eventfd</code>, <code>libc.sys.memfd</code>,
 <code>libc.sys.inotify</code>, <code>libc.sys.sigqueue</code>, <code>libc.sys.timer</code>, <code>libc.sys.auxv</code>,
+<code>libc.sys.uio</code>,
 <code>libc.threads</code> and <code>libc.uchar</code>
 wrap Linux-only
 calls; importing them on Darwin will not link. <code>libc.uchar</code> is there because
@@ -1241,7 +1247,7 @@ pointed at whatever descriptor 1 holds. A child that points descriptor 1 at
 a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.</p>
-<p>1078 bindings are asked something, and the 1 that is not has a reason.
+<p>1080 bindings are asked something, and the 1 that is not has a reason.
 Both numbers are read back out of this page by
 <code>scripts/check-tests.py</code>, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.</p>
