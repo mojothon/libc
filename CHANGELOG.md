@@ -181,6 +181,27 @@ All notable changes to this project are documented here. The format follows
   kernel does not know, refused before any descriptor is
   made -- the buffer it pointed at untouched.
 
+- **`libc.pthread` gains the POSIX semaphore family --
+  `sem_open`, `sem_close`, `sem_unlink`, `sem_wait`,
+  `sem_trywait`, `sem_post`, `sem_timedwait`, `sem_init`,
+  `sem_destroy` and `sem_getvalue`, with `SEM_FAILED`.** C's
+  `<semaphore.h>` counts: the named kind the system keeps by
+  name until it is unlinked -- opened or made with a starting
+  count, held and given back, taken down with the last hold --
+  and the unnamed kind made in room the caller has and
+  destroyed there. The wrappers have been in the C library
+  since 2.2.5, and `sem_open` is asked in the four-argument
+  form, the mode and the starting value riding along with an
+  opening ask whose kernel leaves them alone. The test makes a
+  named semaphore with a count of one and takes it without
+  standing in line, is refused the second ask with the word
+  for try again, reads the count the giver left, and finds
+  nothing under the name once it is unlinked; waits on a
+  count of nothing and gives up at a moment taken from the
+  clock, refused with the word for time spent; and, where the
+  C library implements the unnamed kind, makes one in room of
+  its own, reads its count down and takes the room back.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added

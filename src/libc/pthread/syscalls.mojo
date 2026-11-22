@@ -6,7 +6,7 @@
 from std.memory import Pointer
 from std.ffi import external_call
 from std.sys import CompilationTarget
-from libc.constant import c_ptr, c_void
+from libc.constant import c_int, c_ptr, c_void
 from libc.sched import sched_param
 from libc.time import timespec
 
@@ -2518,3 +2518,326 @@ def pthread_setschedparam(
     return external_call[
         "pthread_setschedparam", Int32, pthread_t, Int32, c_ptr[sched_param]
     ](thread, policy, param)
+
+
+# What a refused `sem_open` hands back: a pointer no check passes,
+# the word for failure in the slot a semaphore comes back in.
+comptime SEM_FAILED: c_int = 0
+
+
+def sem_open(
+    name: c_ptr[UInt8], oflag: Int32, mode: c_int, value: c_int
+) -> c_ptr[c_int]:
+    """C library <semaphore.h> function `sem_open`, taken with the
+    mode and the starting value the creating ask carries.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sem_open.3.html
+
+    Description:
+        A named semaphore opened or made: the caller's name finds
+        it among the system's, and the creating ask -- the flag
+        saying a new one is wanted, the mode it is made with, the
+        count it starts from -- leaves it ready for the first
+        `sem_wait` before anything waits.
+
+    Args:
+        name: The name it is known by, starting with a slash.
+        oflag: The flag word: `O_CREAT` to make one if there is
+            not one, `O_CREAT` with `O_EXCL` to refuse one that
+            already is.
+        mode: The permissions a made semaphore is made with.
+        value: The count a made semaphore starts from.
+
+    Returns:
+        The semaphore, and the word for failure when the ask is
+        refused -- the same slot carrying the semaphore or the
+        refusal, which is why the caller checks.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5. C's own
+        prototype is variadic: two arguments when the caller
+        opens what exists, four when it makes what does not --
+        and the asking here is the four-argument form, the two
+        the opening ask does not want being ones the kernel
+        leaves alone, so an opener hands any numbers for them.
+        A name that has a slash behind it and one after is the
+        caller's to get right; the system keeps the semaphores
+        by name until they are unlinked, the same keeping files
+        get.
+    """
+    return external_call[
+        "sem_open", c_ptr[c_int], c_ptr[UInt8], Int32, c_int, c_int
+    ](name, oflag, mode, value)
+
+
+def sem_close(sem: c_ptr[c_int]) -> Int32:
+    """C library <semaphore.h> function `sem_close`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sem_close.3.html
+
+    Description:
+        The caller's hold on a named semaphore given back: the
+        descriptor the name gave this process is closed, the
+        semaphore itself staying with the system until it is
+        unlinked, for whoever opens the name next.
+
+    Args:
+        sem: The semaphore the caller holds.
+
+    Returns:
+        0 on success, -1 with `errno` saying why.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5. What
+        closing does not do is destroy: a named semaphore is the
+        system's, and it outlives the process that closed it --
+        the taking down is `sem_unlink`'s, and the semaphore
+        whose last name goes is gone when the last hold does.
+    """
+    return external_call["sem_close", Int32, c_ptr[c_int]](sem)
+
+
+def sem_unlink(name: c_ptr[UInt8]) -> Int32:
+    """C library <semaphore.h> function `sem_unlink`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sem_unlink.3.html
+
+    Description:
+        The name taken off the system's list of semaphores: what
+        is open stays open, what opens the name after finds
+        nothing, and the semaphore dies when the last of its
+        holds goes -- the taking down the way an unlink of a
+        file is.
+
+    Args:
+        name: The name the semaphore is known by.
+
+    Returns:
+        0 on success, -1 with `errno` saying why.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5. The
+        name and the semaphore are two things until the last
+        hold goes: an unlink of a name others hold is the start
+        of the end, not the end, and a caller that tests what
+        unlinking means opens the name after and finds nothing.
+    """
+    return external_call["sem_unlink", Int32, c_ptr[UInt8]](name)
+
+
+def sem_wait(sem: c_ptr[c_int]) -> Int32:
+    """C library <semaphore.h> function `sem_wait`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sem_wait.3.html
+
+    Description:
+        The count taken down by one: when there is a count to
+        take, this comes back having taken it, and when there is
+        not, this is where the caller waits until there is.
+
+    Args:
+        sem: The semaphore to take from.
+
+    Returns:
+        0 on success, -1 with `errno` saying why.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5. What
+        a count of nothing means is a wait, and what a caller
+        that cannot wait wants is `sem_trywait`, which asks the
+        same question and refuses to stand in line -- the two
+        being the same ask with the waiting on or off.
+    """
+    return external_call["sem_wait", Int32, c_ptr[c_int]](sem)
+
+
+def sem_trywait(sem: c_ptr[c_int]) -> Int32:
+    """C library <semaphore.h> function `sem_trywait`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sem_trywait.3.html
+
+    Description:
+        The count taken down by one if there is a count, and a
+        refusal with `EAGAIN` if there is not -- the same ask
+        `sem_wait` asks, answered without the standing in line.
+
+    Args:
+        sem: The semaphore to try to take from.
+
+    Returns:
+        0 on success, -1 with `errno` saying why.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5. The
+        refusal is the answer: a caller that probes whether the
+        thing is available gets its answer at once, and a
+        caller that meant to wait should have called the one
+        that waits.
+    """
+    return external_call["sem_trywait", Int32, c_ptr[c_int]](sem)
+
+
+def sem_post(sem: c_ptr[c_int]) -> Int32:
+    """C library <semaphore.h> function `sem_post`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sem_post.3.html
+
+    Description:
+        The count put up by one: the half of the semaphore's
+        work the giver does, and the waking of whoever is
+        waiting for the count to be there.
+
+    Args:
+        sem: The semaphore to add to.
+
+    Returns:
+        0 on success, -1 with `errno` saying why.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5. The
+        count has no top the kernel holds it under -- a giver
+        that posts more than the takers take builds the count
+        up as high as it posts, which is the caller's own
+        arithmetic to keep sane.
+    """
+    return external_call["sem_post", Int32, c_ptr[c_int]](sem)
+
+
+def sem_timedwait(sem: c_ptr[c_int], abs_timeout: c_ptr[timespec]) -> Int32:
+    """C library <semaphore.h> function `sem_timedwait`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sem_timedwait.3.html
+
+    Description:
+        The count taken down by one, or the waiting given up on
+        at a time the caller names: the same ask `sem_wait`
+        asks, with a moment after which the caller would rather
+        be told there was nothing than kept waiting.
+
+    Args:
+        sem: The semaphore to take from.
+        abs_timeout: The moment to give up at, as `CLOCK_REALTIME`
+            counts it -- absolute, not a length of waiting.
+
+    Returns:
+        0 on success, -1 with `errno` saying why.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5. The
+        moment is a moment and not a wait: the caller that
+        wants to stand in line for a second takes the clock's
+        reading now and hands the clock's reading in a second --
+        and the refusal that comes at the moment is `ETIMEDOUT`,
+        the word for the time being spent and the count still
+        not there.
+    """
+    return external_call["sem_timedwait", Int32, c_ptr[c_int], c_ptr[timespec]](
+        sem, abs_timeout
+    )
+
+
+def sem_init(sem: c_ptr[c_int], pshared: Int32, value: c_int) -> Int32:
+    """C library <semaphore.h> function `sem_init`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sem_init.3.html
+
+    Description:
+        An unnamed semaphore made where the caller has room for
+        it: the count starts where the caller says, and the
+        second argument says who may share it -- the one process
+        that holds it, or processes across a map made for
+        sharing.
+
+    Args:
+        sem: Where the semaphore is made, room the caller has.
+        pshared: 0 for a semaphore of this process alone, not 0
+            for one shared through a map the processes have in
+            common.
+        value: The count it starts from.
+
+    Returns:
+        0 on success, -1 with `errno` saying why.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5. What
+        is made unnamed is taken down unnamed: `sem_destroy`
+        for the room the caller gave, there being no name for
+        the system to keep alive after. A semaphore made this
+        way in memory that vanishes with the process is a
+        semaphore that vanishes with it, which is what the
+        named ones are for.
+    """
+    return external_call["sem_init", Int32, c_ptr[c_int], Int32, c_int](
+        sem, pshared, value
+    )
+
+
+def sem_destroy(sem: c_ptr[c_int]) -> Int32:
+    """C library <semaphore.h> function `sem_destroy`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sem_destroy.3.html
+
+    Description:
+        The unnamed semaphore taken down: the room the caller
+        gave is the caller's again, and a semaphore whose
+        takers or givers are still waiting is one that refuses
+        to be taken down.
+
+    Args:
+        sem: The unnamed semaphore to take down.
+
+    Returns:
+        0 on success, -1 with `errno` saying why.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5. What
+        a caller destroys it must not use again -- the room is
+        the caller's, and what the room held is the caller's to
+        have left there, which is why the named kind, kept by
+        the system and closed rather than destroyed, is the
+        kind that outlives its maker.
+    """
+    return external_call["sem_destroy", Int32, c_ptr[c_int]](sem)
+
+
+def sem_getvalue(sem: c_ptr[c_int], valp: c_ptr[Int32]) -> Int32:
+    """C library <semaphore.h> function `sem_getvalue`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sem_getvalue.3.html
+
+    Description:
+        The count as it stands at the moment of the asking,
+        written where the caller points -- a reading and not a
+        promise, the count being whatever it is when the answer
+        is used.
+
+    Args:
+        sem: The semaphore to read.
+        valp: Where the count is written.
+
+    Returns:
+        0 on success, -1 with `errno` saying why.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5, and
+        the answer is a reading the caller cannot build a
+        decision on: between the ask and the use, another
+        thread may take or give, and the standard says the
+        value is right when it is written and says nothing
+        about when it is read. A caller that means to act on
+        the count acts with `sem_trywait`, whose answer comes
+        with the count taken, or does not.
+    """
+    return external_call["sem_getvalue", Int32, c_ptr[c_int], c_ptr[Int32]](
+        sem, valp
+    )

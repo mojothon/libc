@@ -27,7 +27,7 @@ the bottom.
 | `libc.aio` | `<aio.h>` I/O handed over rather than waited for | 24 |
 | `libc.sys.sysinfo` | `<sys/sysinfo.h>` | 18 |
 | `libc.sys.timer` | `<time.h>` the timers Darwin does not have | 12 |
-| `libc.pthread` | `<pthread.h>` | 103 |
+| `libc.pthread` | `<pthread.h>` | 114 |
 | `libc.threads` | `<threads.h>` Linux only, the C11 threads | 40 |
 | `libc.string` | `<string.h>` | 48 |
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 47 |
@@ -164,7 +164,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1094 bindings are asked something, and the 1 that is not has a reason.
+1104 bindings are asked something, and the 1 that is not has a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.

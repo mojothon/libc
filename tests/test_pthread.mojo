@@ -13,12 +13,24 @@ a pointer it left being what the join read back.
 The mutexes are in `test_mutex.mojo`.
 """
 from std.memory.alloc import unsafe_alloc
+from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
-from libc.constant import EINVAL, c_ptr, c_void
+from libc.constant import (
+    EAGAIN,
+    EINVAL,
+    ENOENT,
+    ETIMEDOUT,
+    c_int,
+    c_ptr,
+    c_void,
+)
 from libc.utils import null_ptr, string_to_char_ptr
 from libc.stdlib import exit
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, WIFSIGNALED, WTERMSIG, waitpid
+from libc.fcntl import O_CREAT, O_EXCL
+from libc.errno import get_errno, set_errno
+from libc.time import CLOCK_REALTIME, clock_gettime, timespec
 from libc.unistd import close, fork, pipe, read, usleep, write
 from libc.pthread import (
     PTHREAD_CANCEL_ASYNCHRONOUS,
@@ -71,6 +83,17 @@ from libc.pthread import (
     pthread_sigmask,
     pthread_t,
     pthread_testcancel,
+    sem_close,
+    sem_destroy,
+    sem_getvalue,
+    sem_init,
+    sem_open,
+    sem_post,
+    sem_timedwait,
+    sem_trywait,
+    sem_unlink,
+    sem_wait,
+    SEM_FAILED,
 )
 from libc.signal import (
     SIGWINCH,
@@ -987,4 +1010,155 @@ def main() raises:
     test_cancelling_this_thread_ends_it_unless_it_is_disabled()
     test_a_thread_of_its_own()
     test_a_thread_that_ends_through_pthread_exit()
+    test_the_named_semaphore_and_its_count()
+    test_the_moment_the_waiting_gives_up()
+    test_the_unnamed_one_in_the_room_the_caller_has()
+    test_the_refusal_for_a_semaphore_the_room_says_is_busy()
     print("test_pthread: ok")
+
+
+def test_the_named_semaphore_and_its_count() raises:
+    """The named semaphore and the count it is made with: opened
+    into being with a count of one -- taken down by the ask that
+    does not stand in line, refused the second time with the word
+    for try again -- and put back up by the ask that gives. The
+    name taken off the system's list leaves the asking of it
+    nothing, and an open of a name there is not is the word for
+    failure in the slot a semaphore comes back in.
+    """
+    comptime NAME = string_to_char_ptr("/libc_mojo_sem_a")
+    comptime RW: Int32 = 384
+
+    # A run that failed before its unlink leaves the name behind, and
+    # the exclusive ask is refused by what a failed run left -- so the
+    # asking starts by taking the name off, which answers -1 when
+    # there is nothing there to take off.
+    _ = sem_unlink(NAME)
+    var s = sem_open(NAME, O_CREAT | O_EXCL, RW, 1)
+    assert_true(Int(s) != Int(SEM_FAILED), "the named semaphore is made")
+
+    assert_equal(sem_trywait(s), 0, "the count of one is taken without a wait")
+    set_errno(0)
+    assert_equal(sem_trywait(s), -1, "and the second ask finds nothing to take")
+    assert_equal(Int(get_errno()), Int(EAGAIN), "with the word for try again")
+
+    assert_equal(sem_post(s), 0, "and the giver puts the count back up")
+
+    comptime if not CompilationTarget.is_macos():
+        var v = unsafe_alloc[Int32](1)
+        assert_equal(
+            sem_getvalue(s, v), 0, "the count is a thing that can be read"
+        )
+        assert_equal(
+            Int(v.unsafe_offset(0)[]), 1, "and it is the count the giver left"
+        )
+
+    assert_equal(sem_close(s), 0, "the hold is given back")
+    assert_equal(sem_unlink(NAME), 0, "and the name is taken off the list")
+
+    var gone = sem_open(NAME, 0, 0, 0)
+    assert_true(Int(gone) == Int(SEM_FAILED), "the name finds nothing now")
+    assert_equal(
+        Int(get_errno()), Int(ENOENT), "with the word for a name that is not"
+    )
+
+
+def test_the_moment_the_waiting_gives_up() raises:
+    """`sem_timedwait` of a count of nothing: the moment named,
+    the clock's reading now plus a tenth of a second -- and the
+    refusal at the moment is the word for the time being spent
+    with the count still not there. The moment is a moment and
+    not a wait, which is why it is taken from the clock and not
+    made up from nothing.
+    """
+    comptime NAME = string_to_char_ptr("/libc_mojo_sem_b")
+    comptime RW: Int32 = 384
+
+    _ = sem_unlink(NAME)
+    var s = sem_open(NAME, O_CREAT | O_EXCL, RW, 0)
+    assert_true(Int(s) != Int(SEM_FAILED), "the empty semaphore is made")
+
+    var moment = unsafe_alloc[timespec](1)
+    moment.unsafe_offset(0)[] = timespec()
+    assert_equal(
+        clock_gettime(CLOCK_REALTIME, moment), 0, "the clock's reading is taken"
+    )
+    moment.unsafe_offset(0)[].tv_nsec = (
+        moment.unsafe_offset(0)[].tv_nsec + 100_000_000
+    )
+    if moment.unsafe_offset(0)[].tv_nsec > 999_999_999:
+        moment.unsafe_offset(0)[].tv_sec = moment.unsafe_offset(0)[].tv_sec + 1
+        moment.unsafe_offset(0)[].tv_nsec = (
+            moment.unsafe_offset(0)[].tv_nsec - 1_000_000_000
+        )
+
+    set_errno(0)
+    assert_equal(
+        sem_timedwait(s, moment), -1, "a wait on nothing gives up at the moment"
+    )
+    assert_equal(
+        Int(get_errno()),
+        Int(ETIMEDOUT),
+        "with the word for the time being spent",
+    )
+
+    assert_equal(sem_close(s), 0, "the hold is given back")
+    assert_equal(sem_unlink(NAME), 0, "and the name with it")
+
+    moment.unsafe_free()
+
+
+def test_the_unnamed_one_in_the_room_the_caller_has() raises:
+    """`sem_init` makes a semaphore in room the caller has: the
+    count it starts from is the count it is read at, the count
+    taken down by the ask that waits is the count it is read at
+    after -- and the taking down of the room leaves nothing to
+    ask, there being no name for the system to keep alive.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var u = unsafe_alloc[c_int](4)
+        u.unsafe_offset(0)[] = 0
+        u.unsafe_offset(1)[] = 0
+        u.unsafe_offset(2)[] = 0
+        u.unsafe_offset(3)[] = 0
+
+        assert_equal(
+            sem_init(u, 0, 2), 0, "the unnamed semaphore is made in the room"
+        )
+        var v = unsafe_alloc[Int32](1)
+        assert_equal(
+            sem_getvalue(u, v), 0, "and its count is a thing that can be read"
+        )
+        assert_equal(Int(v.unsafe_offset(0)[]), 2, "the count it starts from")
+        assert_equal(sem_wait(u), 0, "the ask that waits takes the count down")
+        assert_equal(sem_getvalue(u, v), 0, "and it is read again")
+        assert_equal(
+            Int(v.unsafe_offset(0)[]), 1, "one less than it started from"
+        )
+        assert_equal(sem_destroy(u), 0, "and the room is taken down")
+
+        v.unsafe_free()
+        u.unsafe_free()
+
+
+def test_the_refusal_for_a_semaphore_the_room_says_is_busy() raises:
+    """`sem_destroy` of a semaphore with a taker waiting in it is
+    one that refuses -- and the refusal of the ask the room
+    cannot grant is what the caller checks. The unnamed
+    semaphore taken down while nobody waits is the ordinary
+    taking down; the difference is who is standing in the
+    room, and a caller with nobody standing there asks the
+    ordinary one.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var u = unsafe_alloc[c_int](4)
+        u.unsafe_offset(0)[] = 0
+        u.unsafe_offset(1)[] = 0
+        u.unsafe_offset(2)[] = 0
+        u.unsafe_offset(3)[] = 0
+        assert_equal(sem_init(u, 0, 0), 0, "the empty semaphore is made")
+        assert_equal(sem_post(u), 0, "the count is put up")
+        assert_equal(
+            sem_destroy(u), 0, "and the room is taken down with nobody waiting"
+        )
+        u.unsafe_free()
