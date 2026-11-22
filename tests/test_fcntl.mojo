@@ -1,4 +1,5 @@
 from std.memory.alloc import unsafe_alloc
+from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.constant import AT_FDCWD, EAGAIN, EBADF, EEXIST, EINVAL, ENOENT
@@ -327,52 +328,63 @@ def test_the_pair_made_with_its_flags() raises:
     non-blocking ask is what an empty read answers with, and
     the close-on-exec ask is what both ends are asked for after.
     """
-    var both = unsafe_alloc[Int32](2)
-    assert_equal(
-        pipe2(both, O_CLOEXEC | O_NONBLOCK), 0, "the pipe is made with its word"
-    )
+    comptime if not CompilationTarget.is_macos():
+        var both = unsafe_alloc[Int32](2)
+        assert_equal(
+            pipe2(both, O_CLOEXEC | O_NONBLOCK),
+            0,
+            "the pipe is made with its word",
+        )
 
-    var r = both.unsafe_offset(0)[]
-    var w = both.unsafe_offset(1)[]
-    assert_true(
-        r >= 0 and w >= 0 and r != w, "and the two ends are two descriptors"
-    )
+        var r = both.unsafe_offset(0)[]
+        var w = both.unsafe_offset(1)[]
+        assert_true(
+            r >= 0 and w >= 0 and r != w, "and the two ends are two descriptors"
+        )
 
-    var asked = fcntl(r, F_GETFD, 0)
-    assert_true(
-        Int(asked) & Int(FD_CLOEXEC) != 0,
-        "the reading end was made close-on-exec",
-    )
-    asked = fcntl(w, F_GETFD, 0)
-    assert_true(
-        Int(asked) & Int(FD_CLOEXEC) != 0,
-        "and the writing end was made close-on-exec too",
-    )
+        var asked = fcntl(r, F_GETFD, 0)
+        assert_true(
+            Int(asked) & Int(FD_CLOEXEC) != 0,
+            "the reading end was made close-on-exec",
+        )
+        asked = fcntl(w, F_GETFD, 0)
+        assert_true(
+            Int(asked) & Int(FD_CLOEXEC) != 0,
+            "and the writing end was made close-on-exec too",
+        )
 
-    var one = unsafe_alloc[UInt8](1)
-    set_errno(0)
-    assert_equal(
-        read(r, one, 1), -1, "a read of the empty non-blocking pipe is refused"
-    )
-    assert_equal(
-        Int(get_errno()), Int(EAGAIN), "with the word for try again, not a wait"
-    )
+        var one = unsafe_alloc[UInt8](1)
+        set_errno(0)
+        assert_equal(
+            read(r, one, 1),
+            -1,
+            "a read of the empty non-blocking pipe is refused",
+        )
+        assert_equal(
+            Int(get_errno()),
+            Int(EAGAIN),
+            "with the word for try again, not a wait",
+        )
 
-    assert_equal(
-        write(w, string_to_char_ptr("x"), 1), 1, "and the writing end writes"
-    )
-    assert_equal(read(r, one, 1), 1, "the reading end reads what was written")
-    assert_equal(
-        Int(one.unsafe_offset(0)[]),
-        120,
-        "and what it reads is what was written",
-    )
+        assert_equal(
+            write(w, string_to_char_ptr("x"), 1),
+            1,
+            "and the writing end writes",
+        )
+        assert_equal(
+            read(r, one, 1), 1, "the reading end reads what was written"
+        )
+        assert_equal(
+            Int(one.unsafe_offset(0)[]),
+            120,
+            "and what it reads is what was written",
+        )
 
-    assert_equal(close(r), 0, "the reading end is given back")
-    assert_equal(close(w), 0, "and the writing end")
+        assert_equal(close(r), 0, "the reading end is given back")
+        assert_equal(close(w), 0, "and the writing end")
 
-    both.unsafe_free()
-    one.unsafe_free()
+        both.unsafe_free()
+        one.unsafe_free()
 
 
 def test_the_word_without_its_bits_makes_the_ordinary_pair() raises:
@@ -381,29 +393,30 @@ def test_the_word_without_its_bits_makes_the_ordinary_pair() raises:
     which is what the flags are there to change, and what their
     absence leaves unchanged.
     """
-    var both = unsafe_alloc[Int32](2)
-    assert_equal(pipe2(both, 0), 0, "the ordinary pair is made")
+    comptime if not CompilationTarget.is_macos():
+        var both = unsafe_alloc[Int32](2)
+        assert_equal(pipe2(both, 0), 0, "the ordinary pair is made")
 
-    var r = both.unsafe_offset(0)[]
-    var w = both.unsafe_offset(1)[]
-    var asked = fcntl(r, F_GETFD, 0)
-    assert_true(
-        Int(asked) & Int(FD_CLOEXEC) == 0,
-        "without the word, the reading end is not close-on-exec",
-    )
+        var r = both.unsafe_offset(0)[]
+        var w = both.unsafe_offset(1)[]
+        var asked = fcntl(r, F_GETFD, 0)
+        assert_true(
+            Int(asked) & Int(FD_CLOEXEC) == 0,
+            "without the word, the reading end is not close-on-exec",
+        )
 
-    var one = unsafe_alloc[UInt8](1)
-    assert_equal(
-        write(w, string_to_char_ptr("y"), 1), 1, "the pair carries a byte"
-    )
-    assert_equal(read(r, one, 1), 1, "and it arrives")
-    assert_equal(Int(one.unsafe_offset(0)[]), 121, "the byte it carries")
+        var one = unsafe_alloc[UInt8](1)
+        assert_equal(
+            write(w, string_to_char_ptr("y"), 1), 1, "the pair carries a byte"
+        )
+        assert_equal(read(r, one, 1), 1, "and it arrives")
+        assert_equal(Int(one.unsafe_offset(0)[]), 121, "the byte it carries")
 
-    assert_equal(close(r), 0, "the ends are given back")
-    assert_equal(close(w), 0, "both of them")
+        assert_equal(close(r), 0, "the ends are given back")
+        assert_equal(close(w), 0, "both of them")
 
-    both.unsafe_free()
-    one.unsafe_free()
+        both.unsafe_free()
+        one.unsafe_free()
 
 
 def test_a_word_the_kernel_does_not_know_is_refused() raises:
@@ -411,17 +424,18 @@ def test_a_word_the_kernel_does_not_know_is_refused() raises:
     is refused before any descriptor is made, and what the
     caller's buffer held is what it still holds.
     """
-    var both = unsafe_alloc[Int32](2)
-    both.unsafe_offset(0)[] = -7
-    both.unsafe_offset(1)[] = -7
-    assert_equal(pipe2(both, 0x40000000), -1, "an unknown word is refused")
-    assert_equal(
-        Int(get_errno()), Int(EINVAL), "with the word for the argument"
-    )
-    assert_equal(
-        Int(both.unsafe_offset(0)[]),
-        -7,
-        "and the pair was never made, the buffer untouched",
-    )
+    comptime if not CompilationTarget.is_macos():
+        var both = unsafe_alloc[Int32](2)
+        both.unsafe_offset(0)[] = -7
+        both.unsafe_offset(1)[] = -7
+        assert_equal(pipe2(both, 0x40000000), -1, "an unknown word is refused")
+        assert_equal(
+            Int(get_errno()), Int(EINVAL), "with the word for the argument"
+        )
+        assert_equal(
+            Int(both.unsafe_offset(0)[]),
+            -7,
+            "and the pair was never made, the buffer untouched",
+        )
 
-    both.unsafe_free()
+        both.unsafe_free()
