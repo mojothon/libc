@@ -374,3 +374,69 @@ def sched_yield() -> Int32:
 
     """
     return external_call["sched_yield", Int32]()
+
+
+def sched_getcpu() -> Int32:
+    """C library <sched.h> function `sched_getcpu`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sched_getcpu.3.html
+
+    Description:
+        Which processor the calling thread is running on, as a
+        number -- the one answer a caller that means to pin work,
+        to watch a thread move, or to ask after the fairness of
+        a schedule starts from.
+
+    Returns:
+        The number of the processor, starting from zero.
+
+    Notes:
+        The wrapper has been in the C library since 2.6, and
+        the answer is a reading and not a promise: a thread
+        that the scheduler moves is answered with a different
+        number the next time, which is not a lie but a word
+        about when the question was asked. The caller that
+        wants the reading to stay is the caller that sets the
+        affinity, which is the other side of this header.
+    """
+    return external_call["sched_getcpu", Int32]()
+
+
+def getcpu(cpu: c_ptr[UInt32], node: c_ptr[UInt32]) -> Int32:
+    """C library <sched.h> function `getcpu`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/getcpu.2.html
+
+    Description:
+        Which processor and which node of the machine's memory the
+        calling thread is running on, written where the caller
+        points -- the pair behind `sched_getcpu`'s one number, the
+        node being the half of the answer that says which memory
+        is near.
+
+    Args:
+        cpu: Where the processor number is written, or a null
+            pointer where the caller does not want it.
+        node: Where the node number is written, or a null pointer
+            where the caller does not want it.
+
+    Returns:
+        0 on success, -1 with `errno` saying why.
+
+    Notes:
+        The wrapper has been in the C library since 2.29, and
+        the asking takes what it takes: either pointer may be
+        null, the kernel writing only what is asked for, which
+        is how a caller that wants one half of the pair asks
+        for one half of the pair. The numbers are the same
+        reading `sched_getcpu` gives, taken with the node
+        beside it -- and they are readings, both: a thread
+        that moves between the ask and the use of the answer
+        is a thread whose answer has aged, and the caller
+        that minds pins the thread first.
+    """
+    return external_call["getcpu", Int32, c_ptr[UInt32], c_ptr[UInt32]](
+        cpu, node
+    )

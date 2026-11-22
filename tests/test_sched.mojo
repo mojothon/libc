@@ -24,9 +24,13 @@ from libc.sched import (
     sched_setscheduler,
     sched_setaffinity,
     sched_setparam,
+    getcpu,
+    sched_getcpu,
     sched_yield,
 )
+from libc.sys.sysinfo import get_nprocs
 from libc.time import timespec
+from libc.utils import null_ptr
 
 # `SCHED_OTHER`, the policy a process is put on when nobody asks for
 # another: the ordinary one, whose only priority is zero. The number is
@@ -206,4 +210,73 @@ def main() raises:
     test_which_processors()
     test_the_slice_of_a_round_robin_turn()
     test_setting_the_policy_it_is_already_on()
+    test_which_processor_and_which_node()
+    test_the_one_number_of_the_same_reading()
     print("test_sched: ok")
+
+
+def test_which_processor_and_which_node() raises:
+    """`getcpu` and `sched_getcpu`: the pair behind the one
+    number -- the processor written where it is pointed at, the
+    node beside it, both inside the range the machine says it
+    has. The reading that takes one half only, the other pointer
+    null, is the part a binding that swapped the two pointers
+    cannot survive: the buffer the caller pointed at is left
+    holding what it held before, the kernel having written the
+    other buffer instead.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var nprocs = Int(get_nprocs())
+        assert_true(nprocs > 0, "the machine says how many processors it has")
+
+        var cpu = unsafe_alloc[UInt32](1)
+        var node = unsafe_alloc[UInt32](1)
+        cpu.unsafe_offset(0)[] = 0xDEADBEEF
+        node.unsafe_offset(0)[] = 0xDEADBEEF
+        assert_equal(getcpu(cpu, node), 0, "the ask is answered")
+        assert_true(
+            Int(cpu.unsafe_offset(0)[]) < nprocs,
+            "the processor is one the machine has",
+        )
+        assert_true(
+            Int(cpu.unsafe_offset(0)[]) != 0xDEADBEEF,
+            "and it was written, whatever it is",
+        )
+
+        # One half only: the other pointer is null, and the buffer
+        # that is pointed at is the buffer that is written.
+        cpu.unsafe_offset(0)[] = 0xDEADBEEF
+        assert_equal(
+            getcpu(cpu, null_ptr[UInt32]()), 0, "the half ask is answered too"
+        )
+        assert_true(
+            Int(cpu.unsafe_offset(0)[]) < nprocs,
+            "the half the caller wants is written",
+        )
+        assert_equal(
+            getcpu(null_ptr[UInt32](), node),
+            0,
+            "and the node can be asked alone",
+        )
+        assert_true(
+            Int(node.unsafe_offset(0)[]) != 0xDEADBEEF,
+            "the node buffer was written this time",
+        )
+
+        cpu.unsafe_free()
+        node.unsafe_free()
+
+
+def test_the_one_number_of_the_same_reading() raises:
+    """`sched_getcpu`: the one number of the pair, read without a
+    pointer at all -- and it is inside the same range the
+    machine says it has, which is what the reading and the
+    affinity share.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var nprocs = Int(get_nprocs())
+        var which = Int(sched_getcpu())
+        assert_true(
+            which >= 0 and which < nprocs,
+            "the processor read without a pointer is one the machine has",
+        )

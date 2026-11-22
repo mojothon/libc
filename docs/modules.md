@@ -32,7 +32,7 @@ the bottom.
 | `libc.string` | `<string.h>` | 48 |
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 47 |
 | `libc.complex` | `<complex.h>` | 46 |
-| `libc.sched` | `<sched.h>` | 15 |
+| `libc.sched` | `<sched.h>` | 17 |
 | `libc.signal` | `<signal.h>` an action, and a handler as its number | 67 |
 | `libc.spawn` | `<spawn.h>` start a process without fork | 25 |
 | `libc.locale` | `<locale.h>` | 23 |
@@ -164,7 +164,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1090 bindings are asked something, and the 1 that is not has a reason.
+1092 bindings are asked something, and the 1 that is not has a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -204,10 +204,11 @@ other platform's C library has no such call.
 - `thrd_detach`, `thrd_equal` and `tss_create` are C11 threads, which
   Darwin's libSystem does not provide.
 - `timerfd_create` is a timer held as a descriptor -- Linux's own family,
+- `sched_getcpu` reads which processor the thread runs on, which is the scheduler's own idea; Darwin has no such call to ask, and its pthread calls keep the answer where they keep the rest of the thread's state.
   of which eventfd's counter is the other half, and Darwin answers the same
   need with kqueue, which is a different call with different answers.
 
-Linux asks 11 bindings that Darwin passes over, and Darwin 0 that Linux
+Linux asks 12 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked

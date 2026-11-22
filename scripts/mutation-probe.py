@@ -262,6 +262,14 @@ SAME_ORDER = {
         "the same pair. The pair that differs is the one a privileged process "
         "would be refused"
     ),
+    "getcpu:cpu <-> node": (
+        "which processor and which node are two numbers of one reading, and "
+        "a machine whose whole memory is one node answers both with numbers "
+        "of the same range -- here the node is 0 and the processor may be "
+        "0, so the swapped call writes the same answers into the same two "
+        "buffers. The pair that differs is a machine with more than one "
+        "node, which this suite does not have"
+    ),
     "setregid:rgid <-> egid": (
         "the group ids this process may ask for are its own, and the two are "
         "the same number, for the reason `setreuid`'s are"

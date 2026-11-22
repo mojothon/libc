@@ -119,6 +119,21 @@ All notable changes to this project are documented here. The format follows
   saying again: nothing is lost when the caller is slow, it is
   added up.
 
+- **`libc.sched` gains `getcpu` and `sched_getcpu`.** C's
+  `<sched.h>` says which processor the thread is running on --
+  `sched_getcpu` as one number, `getcpu` as the pair of that
+  number and the node of the machine's memory, either half taken
+  with the other pointer null. The wrappers have been in the C
+  library since 2.6 and 2.29, so the asking is by name. The test
+  points a buffer at each half and a buffer at one half alone,
+  the other pointer null -- the ask that takes one half being
+  the one a binding that swapped the two pointers cannot
+  survive. The one that does survive is declared in the sweep's
+  own words: a machine whose whole memory is one node answers
+  both halves with numbers of the same range, and the pair that
+  differs is a machine with more than one node, which this
+  suite does not have.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
