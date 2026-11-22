@@ -913,7 +913,7 @@ the bottom.</p>
 <tr>
 <td><code>libc.sched</code></td>
 <td><code>&lt;sched.h&gt;</code></td>
-<td>15</td>
+<td>17</td>
 </tr>
 <tr>
 <td><code>libc.signal</code></td>
@@ -1252,7 +1252,7 @@ pointed at whatever descriptor 1 holds. A child that points descriptor 1 at
 a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.</p>
-<p>1090 bindings are asked something, and the 1 that is not has a reason.
+<p>1092 bindings are asked something, and the 1 that is not has a reason.
 Both numbers are read back out of this page by
 <code>scripts/check-tests.py</code>, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.</p>
@@ -1287,11 +1287,12 @@ other platform's C library has no such call.</p>
   <code>getenv</code> there with no setuid distinction to ask about.</li>
 <li><code>thrd_detach</code>, <code>thrd_equal</code> and <code>tss_create</code> are C11 threads, which
   Darwin's libSystem does not provide.</li>
-<li><code>timerfd_create</code> is a timer held as a descriptor -- Linux's own family,
+<li><code>timerfd_create</code> is a timer held as a descriptor -- Linux's own family,</li>
+<li><code>sched_getcpu</code> reads which processor the thread runs on, which is the scheduler's own idea; Darwin has no such call to ask, and its pthread calls keep the answer where they keep the rest of the thread's state.
   of which eventfd's counter is the other half, and Darwin answers the same
   need with kqueue, which is a different call with different answers.</li>
 </ul>
-<p>Linux asks 11 bindings that Darwin passes over, and Darwin 0 that Linux
+<p>Linux asks 12 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked
