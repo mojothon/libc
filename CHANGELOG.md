@@ -53,6 +53,22 @@ All notable changes to this project are documented here. The format follows
   flag `fcntl` reads back is the close-on-exec bit on the two
   inside and nothing on the one outside.
 
+- **`libc.stdio` gains `renameat2`, and the how is an argument.**
+  C's `<stdio.h>` can refuse a rename where the name it would
+  land on is taken, or exchange two names in one motion -- the
+  check and the move in one descent, which a caller cannot do
+  itself, another process being free to take the name between
+  its check and its move. `RENAME_EXCHANGE` is the motion the
+  plain rename cannot make: neither name removed, each ending
+  up answering for the file the other did. The wrapper has been
+  in the C library since 2.28, so the asking is by name. The
+  test's two dirfds are two different numbers on purpose, one
+  side of each rename named relative to a directory that is
+  open: a binding that swapped them would still be answered,
+  by a call that read from the wrong side's directory, and a
+  test where both were the working directory would have
+  nothing to say about which was which.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added

@@ -1042,3 +1042,76 @@ def setlinebuf(stream: c_ptr[FILE]):
         time rather than a full buffer at a time.
     """
     external_call["setlinebuf", NoneType, c_ptr[FILE]](stream)
+
+
+# `renameat2` is the one that can say how the renaming is to go:
+# refuse what is there, or swap two names in one motion. The bits
+# are Linux's own, from a header of its own, and there is no
+# Darwin name for any of them.
+comptime RENAME_NOREPLACE: UInt32 = 1 << 0
+comptime RENAME_EXCHANGE: UInt32 = 1 << 1
+comptime RENAME_WHITEOUT: UInt32 = 1 << 2
+
+
+def renameat2(
+    olddirfd: c_int,
+    oldpath: c_ptr[c_char],
+    newdirfd: c_int,
+    newpath: c_ptr[c_char],
+    flags: UInt32,
+) -> c_int:
+    """C library <stdio.h> function `renameat2`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/renameat2.2.html
+
+    Description:
+        The renaming `renameat` does, with a say in how: two
+        names can be exchanged in one motion, and a rename can
+        be refused where the name it would land on is taken --
+        which is the race the plain rename carries, the check
+        and the move being two descents where one was asked
+        for.
+
+    Args:
+        olddirfd: A descriptor for the directory `oldpath` is
+            relative to, or `AT_FDCWD` for the current one.
+        oldpath: The existing path.
+        newdirfd: The same for `newpath`.
+        newpath: The new path.
+        flags: 0 for the renaming `renameat` does, `RENAME_NOREPLACE`
+            to refuse a newpath that is taken, `RENAME_EXCHANGE` to
+            swap the two names rather than replace one with the
+            other, `RENAME_WHITEOUT` where a filesystem keeps a
+            whiteout and this caller asks for one.
+
+    Returns:
+        0 on success, -1 on failure with `errno` set.
+
+    Notes:
+        Linux-specific; the wrapper has been in the C library
+        since 2.28. `RENAME_EXCHANGE` is the one that reads
+        backwards: neither name is removed, and each ends up
+        answering for the file the other did -- which is a
+        motion the plain rename cannot make, because the plain
+        rename's newpath is what goes away. Both files have to
+        be there for an exchange to go, where a replace is the
+        replacement of one of them.
+
+        `RENAME_NOREPLACE` is the check-and-move in one descent:
+        the rename that happens only where nothing is taken,
+        which the caller who checks first cannot promise,
+        another process being free to take the name between
+        the check and the move. Two processes that both mean
+        to be first are answered by the kernel, one of them
+        with `EEXIST`, rather than by who happened to run.
+    """
+    return external_call[
+        "renameat2",
+        c_int,
+        c_int,
+        c_ptr[c_char],
+        c_int,
+        c_ptr[c_char],
+        UInt32,
+    ](olddirfd, oldpath, newdirfd, newpath, flags)

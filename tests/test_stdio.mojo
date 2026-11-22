@@ -1,5 +1,6 @@
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
+from std.sys import CompilationTarget
 
 from libc.constant import (
     AT_FDCWD,
@@ -10,8 +11,9 @@ from libc.constant import (
     c_size_t,
     c_void,
 )
+from libc.constant import EEXIST
 from libc.errno import get_errno, set_errno
-from libc.fcntl import O_RDONLY, open
+from libc.fcntl import O_CREAT, O_RDONLY, O_WRONLY, open
 from libc.file import (
     FILE,
     close,
@@ -59,6 +61,9 @@ from libc.stdio import (
     putw,
     remove,
     rename,
+    renameat2,
+    RENAME_EXCHANGE,
+    RENAME_NOREPLACE,
     renameat,
     setbuf,
     setbuffer,
@@ -780,6 +785,8 @@ def main() raises:
     test_stream_locking()
     test_putw_and_getw()
     test_renameat()
+    test_two_names_swapped_in_one_motion()
+    test_the_name_that_is_taken_is_refused_in_one_descent()
     test_getdelim()
     test_the_two_that_write_one_character()
     test_setbuf_and_tmpnam()
@@ -791,3 +798,152 @@ def main() raises:
     test_saying_how_a_stream_buffers()
     test_getchar_reads_what_stdin_is_made_of()
     print("test_stdio: ok")
+
+
+def test_two_names_swapped_in_one_motion() raises:
+    """`renameat2` and `RENAME_EXCHANGE`: two files are made, each
+    holding its own name as its content, and one descent swaps
+    them -- neither name removed, each now answering for the file
+    the other did. The plain rename cannot make this motion: its
+    newpath is what goes away, and a replace is the loss of one
+    of the two.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var a = string_to_char_ptr("/tmp/libc_rename2_a")
+        var b = string_to_char_ptr("/tmp/libc_rename2_b")
+        _ = unlink(a)
+        _ = unlink(b)
+
+        var fa = open(a, O_CREAT | O_WRONLY, 0o600)
+        assert_equal(
+            Int(write(fa, string_to_char_ptr("from a"), 6)),
+            6,
+            "the first holds its own name",
+        )
+        _ = close(fa)
+        var fb = open(b, O_CREAT | O_WRONLY, 0o600)
+        assert_equal(
+            Int(write(fb, string_to_char_ptr("from b"), 6)),
+            6,
+            "and so does the second",
+        )
+        _ = close(fb)
+
+        # One side is named relative to a directory that is open and
+        # the other is absolute, and the two dirfds are two different
+        # numbers on purpose: a binding that swapped them would still
+        # be answered, by a call that read from the wrong side's
+        # directory, and a test where both are the working directory
+        # would have nothing to say about which was which.
+        var there = open(string_to_char_ptr("/tmp"), O_RDONLY, 0)
+        assert_true(there >= 0, "the directory is open")
+        assert_equal(
+            renameat2(
+                there,
+                string_to_char_ptr("libc_rename2_a"),
+                AT_FDCWD,
+                b,
+                RENAME_EXCHANGE,
+            ),
+            0,
+            "the two are swapped in one descent",
+        )
+        _ = close(there)
+
+        var got = unsafe_alloc[UInt8](8)
+        var back = open(a, O_RDONLY, 0)
+        assert_true(back >= 0, "the first name still answers")
+        assert_equal(
+            Int(read(back, got, 8)), 6, "and holds what the second held"
+        )
+        got.unsafe_offset(6)[] = 0
+        assert_equal(
+            char_ptr_to_string(got.unsafe_bitcast[c_char]()),
+            "from b",
+            "the first name is where the second's file now is",
+        )
+        _ = close(back)
+
+        back = open(b, O_RDONLY, 0)
+        assert_true(back >= 0, "the second name still answers too")
+        assert_equal(
+            Int(read(back, got, 8)), 6, "and holds what the first held"
+        )
+        got.unsafe_offset(6)[] = 0
+        assert_equal(
+            char_ptr_to_string(got.unsafe_bitcast[c_char]()),
+            "from a",
+            "the second name is where the first's file now is",
+        )
+        _ = close(back)
+
+        _ = unlink(a)
+        _ = unlink(b)
+
+
+def test_the_name_that_is_taken_is_refused_in_one_descent() raises:
+    """`renameat2` and `RENAME_NOREPLACE`: the rename happens only
+    where nothing is taken, and where something is taken the
+    kernel says `EEXIST` -- the check and the move in one descent,
+    which a caller cannot do itself, another process being free
+    to take the name between its check and its move. The file
+    that held the name keeps it, and the source keeps its place.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var a = string_to_char_ptr("/tmp/libc_rename2_keep")
+        var b = string_to_char_ptr("/tmp/libc_rename2_held")
+        _ = unlink(a)
+        _ = unlink(b)
+
+        var fa = open(a, O_CREAT | O_WRONLY, 0o600)
+        assert_equal(
+            Int(write(fa, string_to_char_ptr("mine"), 4)),
+            4,
+            "the source is made",
+        )
+        _ = close(fa)
+        var fb = open(b, O_CREAT | O_WRONLY, 0o600)
+        assert_equal(
+            Int(write(fb, string_to_char_ptr("held"), 4)),
+            4,
+            "and so is the name that is taken",
+        )
+        _ = close(fb)
+
+        # The two dirfds are two different numbers here as well, for
+        # the same reason: the refusal has to follow the swap, and a
+        # call whose two directory descriptors are the same number
+        # would survive it.
+        var there = open(string_to_char_ptr("/tmp"), O_RDONLY, 0)
+        assert_true(there >= 0, "the directory is open")
+        assert_equal(
+            renameat2(
+                there,
+                string_to_char_ptr("libc_rename2_keep"),
+                AT_FDCWD,
+                b,
+                RENAME_NOREPLACE,
+            ),
+            -1,
+            "the rename is refused",
+        )
+        assert_equal(get_errno(), EEXIST, "and refused is what EEXIST says")
+        _ = close(there)
+        var got = unsafe_alloc[UInt8](8)
+        var back = open(b, O_RDONLY, 0)
+        assert_equal(
+            Int(read(back, got, 8)), 4, "the taken name kept what it held"
+        )
+        got.unsafe_offset(4)[] = 0
+        assert_equal(
+            char_ptr_to_string(got.unsafe_bitcast[c_char]()),
+            "held",
+            "and nothing moved under it",
+        )
+        _ = close(back)
+        back = open(a, O_RDONLY, 0)
+        assert_true(back >= 0, "the source keeps its place too")
+        _ = close(back)
+
+        _ = unlink(a)
+        _ = unlink(b)
