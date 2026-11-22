@@ -2519,11 +2519,11 @@ def closefrom(lowfd: c_int) raises:
         lowfd: The lowest descriptor number to close, which the
             span closes and every number above.
 
-    Returns:
-        Nothing, which is the C library's own answer: a call that
-        cannot be refused is a call that reports nothing.
 
     Notes:
+        The C library's own answer to this call is void: a span
+        with no top is a call that cannot be refused, and a call
+        that cannot be refused is a call that reports nothing.
         The wrapper has been in the C library since 2.34, and the
         work is the span with no top: `close_range(lowfd,
         UINT32_MAX, 0)` is what it asks for, said without a name
