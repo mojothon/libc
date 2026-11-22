@@ -19,7 +19,7 @@ the bottom.
 | `libc.sys.times` | `<sys/times.h>` | 2 |
 | `libc.time` | `<time.h>` | 39 |
 | `libc.fenv` | `<fenv.h>` | 26 |
-| `libc.sys.mman` | `<sys/mman.h>` | 15 |
+| `libc.sys.mman` | `<sys/mman.h>` | 19 |
 | `libc.sys.sigqueue` | `<signal.h>` a signal sent with a number, and the two waits | 5 |
 | `libc.sys.inotify` | `<sys/inotify.h>` watching files for what happens | 24 |
 | `libc.sys.eventfd` | `<sys/eventfd.h>` a counter behind a descriptor | 6 |
@@ -164,7 +164,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1092 bindings are asked something, and the 1 that is not has a reason.
+1093 bindings are asked something, and the 1 that is not has a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.

@@ -17,6 +17,7 @@ from libc.constant import (
     PROT_WRITE,
     MS_SYNC,
 )
+from libc.constant import c_ptr
 from libc.errno import get_errno, set_errno
 from libc.signal import SIGABRT, SIGSEGV, signal
 from libc.sys.mman import (
@@ -30,6 +31,8 @@ from libc.sys.mman import (
     msync,
     munlock,
     munlockall,
+    MREMAP_MAYMOVE,
+    mremap,
     munmap,
     posix_madvise,
     remap_file_pages,
@@ -322,4 +325,109 @@ def main() raises:
     test_mlock_keeps_a_page_and_munlock_lets_it_go()
     test_munlockall_takes_back_everything()
     test_the_two_that_are_linux_only()
+    test_the_map_grows_and_keeps_what_it_holds()
+    test_the_sizes_are_promises_about_pages()
+    test_a_refused_ask_comes_back_a_pointer_no_check_passes()
     print("test_mman: ok")
+
+
+def test_the_map_grows_and_keeps_what_it_holds() raises:
+    """`mremap` and `MREMAP_MAYMOVE`: a mapping of one page grown to
+    two -- the bytes the caller wrote before the ask are the bytes
+    read after it, at whatever address the answer names, which may
+    not be the address the caller gave. The kernel moves a map the
+    flag says it may move, and the content goes with it.
+    """
+    comptime if not CompilationTarget.is_macos():
+        comptime SIZE = 4096
+        comptime RW: Int32 = PROT_READ | PROT_WRITE
+
+        var first = mmap(
+            null_ptr[UInt8](), SIZE, RW, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
+        )
+        assert_true(Int(UInt(first)) > 0, "the mapping is made")
+
+        for i in range(0, SIZE):
+            first.unsafe_store(i, UInt8(65))
+        assert_equal(
+            Int(first.unsafe_load(0)), 65, "and it holds what was written"
+        )
+
+        var wider = mremap(first, SIZE, SIZE * 2, MREMAP_MAYMOVE)
+        assert_true(Int(UInt(wider)) > 0, "the mapping is grown")
+        assert_equal(
+            Int(wider.unsafe_load(0)),
+            65,
+            "the first byte of what was written is read back",
+        )
+        assert_equal(
+            Int(wider.unsafe_load(SIZE - 1)),
+            65,
+            "and the last byte of the old page too",
+        )
+
+        wider.unsafe_store(SIZE, UInt8(66))
+        assert_equal(
+            Int(wider.unsafe_load(SIZE)),
+            66,
+            "the page the grow added is writable",
+        )
+
+        assert_equal(
+            munmap(wider, SIZE * 2), 0, "and the wider map is given back"
+        )
+
+
+def test_the_sizes_are_promises_about_pages() raises:
+    """`mremap` and the rounding: a grow by a byte is a grow by a
+    page -- the kernel rounds both sizes up, so an ask for one more
+    byte of map is answered with a whole page more, which is a
+    page that can be written.
+    """
+    comptime if not CompilationTarget.is_macos():
+        comptime SIZE = 4096
+        comptime RW: Int32 = PROT_READ | PROT_WRITE
+
+        var first = mmap(
+            null_ptr[UInt8](), SIZE, RW, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
+        )
+        assert_true(Int(UInt(first)) > 0, "the mapping is made")
+
+        var wider = mremap(first, SIZE, SIZE + 1, MREMAP_MAYMOVE)
+        assert_true(Int(UInt(wider)) > 0, "the grow by a byte is answered")
+        wider.unsafe_store(SIZE, UInt8(77))
+        assert_equal(
+            Int(wider.unsafe_load(SIZE)),
+            77,
+            "and the page it rounded up to is writable",
+        )
+
+        assert_equal(munmap(wider, SIZE * 2), 0, "and the map is given back")
+
+
+def test_a_refused_ask_comes_back_a_pointer_no_check_passes() raises:
+    """`mremap` of an address the kernel never mapped: the ask is
+    refused, and what comes back fails the caller's check for a
+    map -- the word for failure and the address of a map travelling
+    in the same slot.
+    """
+    comptime if not CompilationTarget.is_macos():
+        comptime RW: Int32 = PROT_READ | PROT_WRITE
+
+        var refused = mremap(
+            c_ptr[UInt8](unsafe_from_address=Int(0x700000000000)),
+            4096,
+            8192,
+            MREMAP_MAYMOVE,
+        )
+        # `MAP_FAILED` is `(void *) -1`, the one answer that is not a
+        # positive number, the word for failure in the slot a map comes
+        # back in.
+        # The refusal is the all-ones word, read as a number -- and
+        # the success the two tests above had is the one answer
+        # that is a positive number.
+        assert_true(Int(refused) != 0, "a refusal is not the null answer")
+        assert_true(
+            Int(refused) != 0x700000000000,
+            "and it is not the address the ask named",
+        )

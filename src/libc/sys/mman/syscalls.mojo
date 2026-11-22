@@ -346,3 +346,70 @@ def posix_madvise(addr: c_ptr[UInt8], length: Int64, advice: Int32) -> Int32:
     return external_call["posix_madvise", Int32, c_ptr[UInt8], Int64, Int32](
         addr, length, advice
     )
+
+
+# The two bits of `mremap`'s flag word, and the one the kernel added
+# for a caller that wants the old pages left standing behind the new
+# map: the word is the kernel's own, Linux only, which is where the
+# call itself lives.
+comptime MREMAP_MAYMOVE: Int32 = 1
+comptime MREMAP_FIXED: Int32 = 2
+comptime MREMAP_DONTUNMAP: Int32 = 4
+
+
+def mremap(
+    old_address: c_ptr[UInt8], old_size: Int64, new_size: Int64, flags: Int32
+) -> c_ptr[UInt8]:
+    """C library <sys/mman.h> function `mremap`, taken without the
+    fifth argument, which only the `MREMAP_FIXED` ask needs.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/mremap.3.html
+
+    Description:
+        Grows or shrinks a mapping the kernel made, keeping what was
+        in it: the pages the caller had are the pages the caller has
+        again, at whatever address the kernel can hold the wider or
+        the narrower map -- which may be the address the caller gave
+        and may not, the flag word saying whether the kernel may
+        move it.
+
+    Args:
+        old_address: The map the caller has, as `mmap` gave it.
+        old_size: How many bytes the old map holds; the kernel rounds
+            up to whole pages, which is why a size smaller than one
+            page is the same ask as one page.
+        new_size: How many bytes the caller wants the map to be.
+        flags: `MREMAP_MAYMOVE` to let the kernel move the map where
+            it fits, which is the asking a grow usually needs.
+
+    Returns:
+        The address of the map as it now stands, or the old one
+        returned unchanged when it could stand, and a pointer that
+        fails the caller's check for failure with `errno` saying
+        why.
+
+    Notes:
+        Linux-specific; the wrapper has been in the C library since
+        2.2.5. C's own prototype takes a fifth argument, a new
+        address for the `MREMAP_FIXED` ask, and the asking here is
+        the four-argument form: the fixed ask wants a spot the
+        caller names, which this binding does not take, and a
+        caller that wants it asks the kernel directly with what
+        this package does not pretend to hand it. What a refused
+        ask comes back as is a pointer no check passes -- the call
+        returning the map or the word for failure, in the same
+        slot.
+
+        The sizes are promises about pages: the kernel rounds both
+        up, so a grow by a byte is a grow by a page, and a size
+        the caller says is smaller than the map really holds is
+        the caller's mistake to unmap the rest.
+
+        What the kernel keeps is the content, whatever it moves:
+        the bytes the caller wrote before the ask are the bytes it
+        reads after it, at the address the answer names.
+    """
+    return external_call[
+        "mremap", c_ptr[UInt8], c_ptr[UInt8], Int64, Int64, Int32
+    ](old_address, old_size, new_size, flags)

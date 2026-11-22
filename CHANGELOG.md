@@ -134,6 +134,22 @@ All notable changes to this project are documented here. The format follows
   differs is a machine with more than one node, which this
   suite does not have.
 
+- **`libc.sys.mman` gains `mremap`, with `MREMAP_MAYMOVE`,
+  `MREMAP_FIXED` and `MREMAP_DONTUNMAP`.** C's `<sys/mman.h>`
+  grows or shrinks a mapping the kernel made, keeping what was
+  in it: the bytes the caller wrote before the ask are the
+  bytes it reads after, at whatever address the kernel can hold
+  the wider map -- which may be the address the caller gave and
+  may not, the flag word saying whether it may move. The
+  wrapper has been in the C library since 2.2.5, and the asking
+  is the four-argument form: C's own prototype takes a fifth
+  argument for the fixed ask, which this binding does not take
+  rather than pretend to hand. The test grows a page to two,
+  reads back what it wrote at the address the answer names,
+  grows by a byte and finds a whole page there, and asks for a
+  map of an address the kernel never gave -- refused, the word
+  for failure travelling in the slot a map comes back in.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
