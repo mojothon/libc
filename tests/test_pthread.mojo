@@ -1065,47 +1065,57 @@ def test_the_named_semaphore_and_its_count() raises:
 
 def test_the_moment_the_waiting_gives_up() raises:
     """`sem_timedwait` of a count of nothing: the moment named,
+    asked where the C library has the call -- Darwin's libSystem
+    has no symbol for it, and the moment is asked of the clock
+    that has one.
     the clock's reading now plus a tenth of a second -- and the
     refusal at the moment is the word for the time being spent
     with the count still not there. The moment is a moment and
     not a wait, which is why it is taken from the clock and not
     made up from nothing.
     """
-    comptime NAME = string_to_char_ptr("/libc_mojo_sem_b")
-    comptime RW: Int32 = 384
+    comptime if not CompilationTarget.is_macos():
+        comptime NAME = string_to_char_ptr("/libc_mojo_sem_b")
+        comptime RW: Int32 = 384
 
-    _ = sem_unlink(NAME)
-    var s = sem_open(NAME, O_CREAT | O_EXCL, RW, 0)
-    assert_true(Int(s) != Int(SEM_FAILED), "the empty semaphore is made")
+        _ = sem_unlink(NAME)
+        var s = sem_open(NAME, O_CREAT | O_EXCL, RW, 0)
+        assert_true(Int(s) != Int(SEM_FAILED), "the empty semaphore is made")
 
-    var moment = unsafe_alloc[timespec](1)
-    moment.unsafe_offset(0)[] = timespec()
-    assert_equal(
-        clock_gettime(CLOCK_REALTIME, moment), 0, "the clock's reading is taken"
-    )
-    moment.unsafe_offset(0)[].tv_nsec = (
-        moment.unsafe_offset(0)[].tv_nsec + 100_000_000
-    )
-    if moment.unsafe_offset(0)[].tv_nsec > 999_999_999:
-        moment.unsafe_offset(0)[].tv_sec = moment.unsafe_offset(0)[].tv_sec + 1
+        var moment = unsafe_alloc[timespec](1)
+        moment.unsafe_offset(0)[] = timespec()
+        assert_equal(
+            clock_gettime(CLOCK_REALTIME, moment),
+            0,
+            "the clock's reading is taken",
+        )
         moment.unsafe_offset(0)[].tv_nsec = (
-            moment.unsafe_offset(0)[].tv_nsec - 1_000_000_000
+            moment.unsafe_offset(0)[].tv_nsec + 100_000_000
+        )
+        if moment.unsafe_offset(0)[].tv_nsec > 999_999_999:
+            moment.unsafe_offset(0)[].tv_sec = (
+                moment.unsafe_offset(0)[].tv_sec + 1
+            )
+            moment.unsafe_offset(0)[].tv_nsec = (
+                moment.unsafe_offset(0)[].tv_nsec - 1_000_000_000
+            )
+
+        set_errno(0)
+        assert_equal(
+            sem_timedwait(s, moment),
+            -1,
+            "a wait on nothing gives up at the moment",
+        )
+        assert_equal(
+            Int(get_errno()),
+            Int(ETIMEDOUT),
+            "with the word for the time being spent",
         )
 
-    set_errno(0)
-    assert_equal(
-        sem_timedwait(s, moment), -1, "a wait on nothing gives up at the moment"
-    )
-    assert_equal(
-        Int(get_errno()),
-        Int(ETIMEDOUT),
-        "with the word for the time being spent",
-    )
+        assert_equal(sem_close(s), 0, "the hold is given back")
+        assert_equal(sem_unlink(NAME), 0, "and the name with it")
 
-    assert_equal(sem_close(s), 0, "the hold is given back")
-    assert_equal(sem_unlink(NAME), 0, "and the name with it")
-
-    moment.unsafe_free()
+        moment.unsafe_free()
 
 
 def test_the_unnamed_one_in_the_room_the_caller_has() raises:
