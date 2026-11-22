@@ -150,6 +150,20 @@ All notable changes to this project are documented here. The format follows
   map of an address the kernel never gave -- refused, the word
   for failure travelling in the slot a map comes back in.
 
+- **`libc.constant.mman` gains the fifteen `MADV_` advice the
+  Linux kernel names and Darwin does not -- `MADV_REMOVE`,
+  `MADV_DONTFORK` and `MADV_DOFORK`, `MADV_MERGEABLE` and
+  `MADV_UNMERGEABLE`, `MADV_HUGEPAGE` and `MADV_NOHUGEPAGE`,
+  `MADV_DONTDUMP` and `MADV_DODUMP`, `MADV_WIPEONFORK` and
+  `MADV_KEEPONFORK`, `MADV_COLD`, `MADV_PAGEOUT`,
+  `MADV_POPULATE_READ` and `MADV_POPULATE_WRITE`.** The test
+  asks each of an anonymous mapping and is answered 0, reads
+  back the byte it wrote before the asking, and is refused
+  once: `MADV_REMOVE` is for a file's pages, which an
+  anonymous mapping has not. Each number is written with the
+  platform conditional it is worth, and the check that reads
+  the C headers agrees on both platforms the CI runs.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added

@@ -37,3 +37,21 @@ comptime POSIX_MADV_DONTNEED = 4
 
 comptime MCL_CURRENT = 1
 comptime MCL_FUTURE = 2
+# The advice the Linux kernel takes and Darwin does not: the bits
+# about forking and dumping and huge pages and KSM are the Linux
+# kernel's own ideas, and the numbers are what its headers say.
+comptime MADV_REMOVE: Int32 = 9 if CompilationTarget.is_linux() else -1
+comptime MADV_DONTFORK: Int32 = 10 if CompilationTarget.is_linux() else -1
+comptime MADV_DOFORK: Int32 = 11 if CompilationTarget.is_linux() else -1
+comptime MADV_MERGEABLE: Int32 = 12 if CompilationTarget.is_linux() else -1
+comptime MADV_UNMERGEABLE: Int32 = 13 if CompilationTarget.is_linux() else -1
+comptime MADV_HUGEPAGE: Int32 = 14 if CompilationTarget.is_linux() else -1
+comptime MADV_NOHUGEPAGE: Int32 = 15 if CompilationTarget.is_linux() else -1
+comptime MADV_DONTDUMP: Int32 = 16 if CompilationTarget.is_linux() else -1
+comptime MADV_DODUMP: Int32 = 17 if CompilationTarget.is_linux() else -1
+comptime MADV_WIPEONFORK: Int32 = 18 if CompilationTarget.is_linux() else -1
+comptime MADV_KEEPONFORK: Int32 = 19 if CompilationTarget.is_linux() else -1
+comptime MADV_COLD: Int32 = 20 if CompilationTarget.is_linux() else -1
+comptime MADV_PAGEOUT: Int32 = 21 if CompilationTarget.is_linux() else -1
+comptime MADV_POPULATE_READ: Int32 = 22 if CompilationTarget.is_linux() else -1
+comptime MADV_POPULATE_WRITE: Int32 = 23 if CompilationTarget.is_linux() else -1

@@ -10,6 +10,21 @@ from libc.constant import (
     MADV_WILLNEED,
     MCL_CURRENT,
     MAP_ANONYMOUS,
+    MADV_COLD,
+    MADV_DODUMP,
+    MADV_DOFORK,
+    MADV_DONTDUMP,
+    MADV_DONTFORK,
+    MADV_HUGEPAGE,
+    MADV_KEEPONFORK,
+    MADV_MERGEABLE,
+    MADV_NOHUGEPAGE,
+    MADV_PAGEOUT,
+    MADV_POPULATE_READ,
+    MADV_POPULATE_WRITE,
+    MADV_REMOVE,
+    MADV_UNMERGEABLE,
+    MADV_WIPEONFORK,
     MAP_PRIVATE,
     MAP_SHARED,
     POSIX_MADV_NORMAL,
@@ -328,6 +343,7 @@ def main() raises:
     test_the_map_grows_and_keeps_what_it_holds()
     test_the_sizes_are_promises_about_pages()
     test_a_refused_ask_comes_back_a_pointer_no_check_passes()
+    test_the_advice_the_linux_kernel_takes()
     print("test_mman: ok")
 
 
@@ -431,3 +447,76 @@ def test_a_refused_ask_comes_back_a_pointer_no_check_passes() raises:
             Int(refused) != 0x700000000000,
             "and it is not the address the ask named",
         )
+
+
+def test_the_advice_the_linux_kernel_takes() raises:
+    """The `MADV_` advice the Linux kernel's headers name and Darwin
+    does not: each ask answered 0 of an anonymous mapping, the
+    content untouched by advice that moves no bytes -- and the
+    one ask the kernel refuses here, `MADV_REMOVE`, named for
+    the filesystem-backed mappings it works on, which an
+    anonymous one is not.
+    """
+    comptime if not CompilationTarget.is_macos():
+        comptime SIZE = 4096
+        comptime RW: Int32 = PROT_READ | PROT_WRITE
+
+        var p = mmap(
+            null_ptr[UInt8](), SIZE, RW, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
+        )
+        assert_true(Int(UInt(p)) > 0, "the mapping is made")
+        p.unsafe_store(0, UInt8(65))
+
+        assert_equal(madvise(p, SIZE, MADV_DONTFORK), 0, "not across a fork")
+        assert_equal(
+            madvise(p, SIZE, MADV_DOFORK),
+            0,
+            "and the asking again is inherited",
+        )
+        assert_equal(madvise(p, SIZE, MADV_DONTDUMP), 0, "not into a core dump")
+        assert_equal(madvise(p, SIZE, MADV_DODUMP), 0, "and back into one")
+        assert_equal(
+            madvise(p, SIZE, MADV_MERGEABLE),
+            0,
+            "the kernel may merge the identical",
+        )
+        assert_equal(
+            madvise(p, SIZE, MADV_UNMERGEABLE), 0, "and may be told not to"
+        )
+        assert_equal(madvise(p, SIZE, MADV_HUGEPAGE), 0, "worth a huge page")
+        assert_equal(madvise(p, SIZE, MADV_NOHUGEPAGE), 0, "and not worth one")
+        assert_equal(
+            madvise(p, SIZE, MADV_WIPEONFORK), 0, "wiped for the child"
+        )
+        assert_equal(
+            madvise(p, SIZE, MADV_KEEPONFORK), 0, "and kept for the child"
+        )
+        assert_equal(
+            madvise(p, SIZE, MADV_COLD), 0, "expected to be needed less"
+        )
+        assert_equal(
+            madvise(p, SIZE, MADV_PAGEOUT),
+            0,
+            "expected to be needed less still",
+        )
+        assert_equal(
+            madvise(p, SIZE, MADV_POPULATE_READ), 0, "brought in for reading"
+        )
+        assert_equal(
+            madvise(p, SIZE, MADV_POPULATE_WRITE), 0, "brought in for writing"
+        )
+
+        assert_equal(
+            Int(p.unsafe_load(0)),
+            65,
+            "and advice that moves no bytes leaves the byte",
+        )
+        assert_equal(
+            madvise(p, SIZE, MADV_REMOVE),
+            -1,
+            "the ask that works on a file's pages",
+        )
+        assert_equal(
+            Int(get_errno()), Int(EINVAL), "refused of an anonymous map"
+        )
+        assert_equal(munmap(p, SIZE), 0, "and the mapping is given back")
