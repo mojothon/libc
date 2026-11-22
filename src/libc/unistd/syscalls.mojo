@@ -2421,13 +2421,13 @@ def close_range(first: UInt32, last: UInt32, flags: Int32) -> Int32:
         to run another image would otherwise do descriptor by
         descriptor, and the closing of a descriptor whose number
         the process never knew is no error here, because the span
-        is the promise and not a list of names. `UINT32_MAX` in
+        is the promise and not a list of names. a number with no top in
         `last` is how the span says "everything from here up".
 
     Args:
         first: The lowest descriptor number in the span.
         last: The highest descriptor number in the span, which may
-            be `UINT32_MAX` where the span has no top.
+            be the largest descriptor number there is, where the span has no top.
         flags: 0, or `CLOSE_RANGE_CLOEXEC` to mark the span for
             closing at the next exec rather than closing it now.
 
