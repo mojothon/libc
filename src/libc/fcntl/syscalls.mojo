@@ -479,3 +479,43 @@ def tee(fd_in: Int32, fd_out: Int32, count: UInt64, flags: UInt32) -> Int:
     return external_call["tee", Int, Int32, Int32, UInt64, UInt32](
         fd_in, fd_out, count, flags
     )
+
+
+def pipe2(pipefd: c_ptr[Int32], flags: Int32) -> Int32:
+    """C library <unistd.h> function `pipe2`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/pipe.2.html
+
+    Description:
+        A pipe made with its flags set as it is made: the pair of
+        descriptors written where the caller points, and the flag
+        word -- close on exec, non-blocking reads -- applied by the
+        making itself, before anything can read or write, rather
+        than after.
+
+    Args:
+        pipefd: Where the pair is written, the reading end first
+            and the writing end second.
+        flags: The word of flags the making applies: `O_CLOEXEC`
+            so both ends are closed when a program is exec'd, and
+            `O_NONBLOCK` so a read of nothing is answered with
+            `EAGAIN` rather than waiting.
+
+    Returns:
+        0 on success, -1 with `errno` saying why.
+
+    Notes:
+        The wrapper has been in the C library since 2.9. What it
+        adds over `pipe` is the word: the same two descriptors
+        come back either way, and the flags a caller sets with
+        `pipe` and then `fcntl` are set in the gap between the
+        two calls, which is a gap another thread can race a
+        `fork` and an `exec` through -- the flags in `pipe2`
+        are set before the descriptors exist to be raced for,
+        which is the reason the word is worth having.
+
+        The reading end lands first and the writing end second,
+        whatever the caller's buffer says the order should be.
+    """
+    return external_call["pipe2", Int32, c_ptr[Int32], Int32](pipefd, flags)

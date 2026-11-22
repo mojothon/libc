@@ -1,7 +1,7 @@
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import AT_FDCWD, EBADF, EEXIST, ENOENT
+from libc.constant import AT_FDCWD, EAGAIN, EBADF, EEXIST, EINVAL, ENOENT
 from libc.errno import errno_message, get_errno, set_errno
 from libc.sys.stat import Stat, fchmod, fstat
 from libc.fcntl import (
@@ -28,8 +28,9 @@ from libc.fcntl import (
     fcntl,
     open,
     openat,
+    pipe2,
 )
-from libc.unistd import close, unlink, write
+from libc.unistd import close, read, unlink, write
 from libc.utils import string_to_char_ptr
 
 
@@ -312,4 +313,115 @@ def main() raises:
     test_open_with_the_flags()
     test_openat_opens_by_way_of_a_directory()
     test_flock_is_taken_on_the_open_file()
+    test_the_pair_made_with_its_flags()
+    test_the_word_without_its_bits_makes_the_ordinary_pair()
+    test_a_word_the_kernel_does_not_know_is_refused()
     print("test_fcntl: ok")
+
+
+def test_the_pair_made_with_its_flags() raises:
+    """`pipe2` is `pipe` with the flag word applied at the making:
+    the pair of descriptors written where the caller points,
+    reading end first -- and the word the caller asks for set on
+    both ends before anything can be read or written. The
+    non-blocking ask is what an empty read answers with, and
+    the close-on-exec ask is what both ends are asked for after.
+    """
+    var both = unsafe_alloc[Int32](2)
+    assert_equal(
+        pipe2(both, O_CLOEXEC | O_NONBLOCK), 0, "the pipe is made with its word"
+    )
+
+    var r = both.unsafe_offset(0)[]
+    var w = both.unsafe_offset(1)[]
+    assert_true(
+        r >= 0 and w >= 0 and r != w, "and the two ends are two descriptors"
+    )
+
+    var asked = fcntl(r, F_GETFD, 0)
+    assert_true(
+        Int(asked) & Int(FD_CLOEXEC) != 0,
+        "the reading end was made close-on-exec",
+    )
+    asked = fcntl(w, F_GETFD, 0)
+    assert_true(
+        Int(asked) & Int(FD_CLOEXEC) != 0,
+        "and the writing end was made close-on-exec too",
+    )
+
+    var one = unsafe_alloc[UInt8](1)
+    set_errno(0)
+    assert_equal(
+        read(r, one, 1), -1, "a read of the empty non-blocking pipe is refused"
+    )
+    assert_equal(
+        Int(get_errno()), Int(EAGAIN), "with the word for try again, not a wait"
+    )
+
+    assert_equal(
+        write(w, string_to_char_ptr("x"), 1), 1, "and the writing end writes"
+    )
+    assert_equal(read(r, one, 1), 1, "the reading end reads what was written")
+    assert_equal(
+        Int(one.unsafe_offset(0)[]),
+        120,
+        "and what it reads is what was written",
+    )
+
+    assert_equal(close(r), 0, "the reading end is given back")
+    assert_equal(close(w), 0, "and the writing end")
+
+    both.unsafe_free()
+    one.unsafe_free()
+
+
+def test_the_word_without_its_bits_makes_the_ordinary_pair() raises:
+    """`pipe2` with an empty word is `pipe` as it always was: the
+    pair comes back and neither end was made close-on-exec --
+    which is what the flags are there to change, and what their
+    absence leaves unchanged.
+    """
+    var both = unsafe_alloc[Int32](2)
+    assert_equal(pipe2(both, 0), 0, "the ordinary pair is made")
+
+    var r = both.unsafe_offset(0)[]
+    var w = both.unsafe_offset(1)[]
+    var asked = fcntl(r, F_GETFD, 0)
+    assert_true(
+        Int(asked) & Int(FD_CLOEXEC) == 0,
+        "without the word, the reading end is not close-on-exec",
+    )
+
+    var one = unsafe_alloc[UInt8](1)
+    assert_equal(
+        write(w, string_to_char_ptr("y"), 1), 1, "the pair carries a byte"
+    )
+    assert_equal(read(r, one, 1), 1, "and it arrives")
+    assert_equal(Int(one.unsafe_offset(0)[]), 121, "the byte it carries")
+
+    assert_equal(close(r), 0, "the ends are given back")
+    assert_equal(close(w), 0, "both of them")
+
+    both.unsafe_free()
+    one.unsafe_free()
+
+
+def test_a_word_the_kernel_does_not_know_is_refused() raises:
+    """`pipe2` with a flag word the kernel does not know: the ask
+    is refused before any descriptor is made, and what the
+    caller's buffer held is what it still holds.
+    """
+    var both = unsafe_alloc[Int32](2)
+    both.unsafe_offset(0)[] = -7
+    both.unsafe_offset(1)[] = -7
+    assert_equal(pipe2(both, 0x40000000), -1, "an unknown word is refused")
+    assert_equal(
+        Int(get_errno()), Int(EINVAL), "with the word for the argument"
+    )
+    assert_equal(
+        Int(both.unsafe_offset(0)[]),
+        -7,
+        "and the pair was never made, the buffer untouched",
+    )
+
+    both.unsafe_free()

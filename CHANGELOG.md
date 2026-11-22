@@ -164,6 +164,23 @@ All notable changes to this project are documented here. The format follows
   platform conditional it is worth, and the check that reads
   the C headers agrees on both platforms the CI runs.
 
+- **`libc.fcntl` gains `pipe2`.** C's `<unistd.h>` makes the
+  pipe with its flags applied at the making: the pair of
+  descriptors written where the caller points, reading end
+  first, and the word -- close-on-exec, non-blocking reads --
+  set on both ends before anything can be read or written.
+  The wrapper has been in the C library since 2.9, and what
+  the word is worth is the gap it closes: the flags a caller
+  sets with `pipe` and then `fcntl` are set in the gap between
+  the two calls, which is a gap another thread can race a
+  fork and an exec through. The test asks for the pair with
+  both bits, finds both ends close-on-exec, is answered
+  `EAGAIN` by an empty read, and carries a byte; asks again
+  with an empty word and finds neither end close-on-exec,
+  which is what the absence leaves; and asks with a word the
+  kernel does not know, refused before any descriptor is
+  made -- the buffer it pointed at untouched.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
