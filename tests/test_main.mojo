@@ -78,6 +78,7 @@ from test_sem import main as run_sem
 from test_stdio import main as run_stdio
 from test_spawn import main as run_spawn
 from test_stat import main as run_stat
+from test_timerfd import main as run_timerfd
 from test_sys import main as run_sys
 from test_stdlib import main as run_stdlib
 from test_string import main as run_string
@@ -172,6 +173,7 @@ def main() raises:
     run_stdio()
     run_spawn()
     run_stat()
+    run_timerfd()
     run_sys()
     run_stdlib()
     run_string()

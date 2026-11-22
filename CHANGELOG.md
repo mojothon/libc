@@ -102,6 +102,23 @@ All notable changes to this project are documented here. The format follows
   it would lead to, which is nothing, so no; asked with the
   flag it is answered for the link, and the link is there.
 
+- **`libc.sys.timerfd` is a new package -- a timer that is a
+  descriptor.** C's `<sys/timerfd.h>` arms a timer whose run-out
+  is a readable byte count: eight bytes saying how many times it
+  went, which is the answer a caller waiting on many descriptors
+  can take without a handler and without a signal -- the timer
+  being one more thing in the list rather than one more thing to
+  catch. The wrappers have been in the C library since 2.8, so
+  the asking is by name. The test's four timers are the lesson:
+  the one that goes once, whose count reads back as one; the
+  nonblocking one read before it has run out, answered with
+  `EAGAIN` rather than waited for; the ask made twice in a row,
+  answered with less the second time, the clock's word that the
+  timer is running; and the one with an interval, whose second
+  reading is as fresh as its first. What the count is worth
+  saying again: nothing is lost when the caller is slow, it is
+  added up.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added

@@ -23,6 +23,7 @@ the bottom.
 | `libc.sys.sigqueue` | `<signal.h>` a signal sent with a number, and the two waits | 5 |
 | `libc.sys.inotify` | `<sys/inotify.h>` watching files for what happens | 24 |
 | `libc.sys.eventfd` | `<sys/eventfd.h>` a counter behind a descriptor | 6 |
+| `libc.sys.timerfd` | `<sys/timerfd.h>` a timer behind a descriptor | 6 |
 | `libc.aio` | `<aio.h>` I/O handed over rather than waited for | 24 |
 | `libc.sys.sysinfo` | `<sys/sysinfo.h>` | 18 |
 | `libc.sys.timer` | `<time.h>` the timers Darwin does not have | 12 |
@@ -121,7 +122,7 @@ nothing for a binding to link against whatever the callback situation is.
 because Mojo has no type to pass: on x86-64 the C type is the 80-bit x87
 format. `libc.locale` has no `FE_DFL_ENV`, see `fenv_t`.
 
-`libc.sys.epoll`, `libc.sys.prctl`, `libc.sys.sendfile`, `libc.sys.eventfd`, `libc.sys.memfd`,
+`libc.sys.epoll`, `libc.sys.prctl`, `libc.sys.sendfile`, `libc.sys.eventfd`, `libc.sys.timerfd`, `libc.sys.memfd`,
 `libc.sys.inotify`, `libc.sys.sigqueue`, `libc.sys.timer`, `libc.sys.auxv`,
 `libc.sys.uio`,
 `libc.threads` and `libc.uchar`
@@ -163,7 +164,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1087 bindings are asked something, and the 1 that is not has a reason.
+1090 bindings are asked something, and the 1 that is not has a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
