@@ -78,6 +78,7 @@ ASKED_ON_ONE_PLATFORM = {
     "thrd_detach": "C11 threads, which Darwin's libSystem does not provide -- the suite asks these where the library has them",
     "thrd_equal": "C11 threads, which Darwin's libSystem does not provide -- the suite asks these where the library has them",
     "tss_create": "C11 threads, which Darwin's libSystem does not provide -- the suite asks these where the library has them",
+    "timerfd_create": "a timer that is a descriptor -- Linux's own family, of which eventfd's counter is the other half, and Darwin answers the same need with kqueue, which is a different call with different answers",
 }
 
 # Bindings that could be asked something and have not been. This is the list

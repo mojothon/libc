@@ -203,8 +203,11 @@ other platform's C library has no such call.
   `getenv` there with no setuid distinction to ask about.
 - `thrd_detach`, `thrd_equal` and `tss_create` are C11 threads, which
   Darwin's libSystem does not provide.
+- `timerfd_create` is a timer held as a descriptor -- Linux's own family,
+  of which eventfd's counter is the other half, and Darwin answers the same
+  need with kqueue, which is a different call with different answers.
 
-Linux asks 10 bindings that Darwin passes over, and Darwin 0 that Linux
+Linux asks 11 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked
