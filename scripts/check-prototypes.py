@@ -711,6 +711,7 @@ def declared_structs() -> set[str]:
 SPELLED_DIFFERENTLY = {
     "Stat": "stat",
     "Statvfs": "statvfs",
+    "Statx": "statx",
     "MqAttr": "mq_attr",
     "Mmsghdr": "mmsghdr",
     "Utsname": "utsname",

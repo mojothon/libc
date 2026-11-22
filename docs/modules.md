@@ -15,7 +15,7 @@ the bottom.
 | `libc.ctype` | `<ctype.h>` | 30 |
 | `libc.sys.socket` | `<sys/socket.h>` | 53 |
 | `libc.sys.uio` | `<sys/uio.h>` | 2 |
-| `libc.sys.stat` | `<sys/stat.h>` | 36 |
+| `libc.sys.stat` | `<sys/stat.h>` | 72 |
 | `libc.sys.times` | `<sys/times.h>` | 2 |
 | `libc.time` | `<time.h>` | 39 |
 | `libc.fenv` | `<fenv.h>` | 26 |
@@ -163,7 +163,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1080 bindings are asked something, and the 1 that is not has a reason.
+1081 bindings are asked something, and the 1 that is not has a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.

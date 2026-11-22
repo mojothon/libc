@@ -20,6 +20,24 @@ All notable changes to this project are documented here. The format follows
   caller that waits for an answer being unable to tell its own
   wake from the child's word.
 
+- **`libc.sys.stat` gains `statx`, and the birth time of the file
+  comes with it.** C's `<sys/stat.h>` answers by a mask of what is
+  wanted and the row carries a mask of what it gave, which is the
+  kernel's word for which fields it stands behind -- a caller that
+  reads a field the mask does not name is reading whatever the
+  buffer held. The layout is the kernel's own, one layout on both
+  machines and 256 bytes wide, which is more than its fields fill:
+  the device numbers come after the four timestamps, at 128, and
+  what the tail holds is the kernel's to name in a version to
+  come. The wrapper has been in the C library since 2.28, so the
+  asking is by name. Two lessons the runs taught: an empty path
+  rather than a null one is what `AT_EMPTY_PATH` takes, the
+  kernel reading the name the pointer carries and faulting on a
+  pointer that carries nothing at all; and the row's timestamps
+  are told apart from the device numbers by asking C for the
+  seconds member of each -- asking for the timestamp asks for a
+  sixteen-byte struct, and the width a binding reads is eight.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added

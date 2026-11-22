@@ -2,10 +2,17 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
-from libc.constant import AT_FDCWD, c_int, c_uint
-from libc.fcntl import O_CREAT, O_RDWR, O_TRUNC, O_WRONLY, open
+from libc.constant import (
+    AT_EMPTY_PATH,
+    AT_FDCWD,
+    AT_SYMLINK_NOFOLLOW,
+    c_int,
+    c_uint,
+)
+from libc.fcntl import O_CREAT, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY, open
 from libc.sys.stat import (
     Stat,
+    Statx,
     chmod,
     fchmodat,
     fstat,
@@ -21,6 +28,13 @@ from libc.sys.stat import (
     stat,
     timespec,
     timeval,
+    statx,
+    STATX_ALL,
+    STATX_MODE,
+    STATX_NLINK,
+    STATX_BTIME,
+    STATX_MTIME,
+    STATX_SIZE,
     umask,
     utimbuf,
     utime,
@@ -29,6 +43,7 @@ from libc.sys.stat import (
 )
 from libc.unistd import (
     access,
+    link,
     chown,
     close,
     getegid,
@@ -530,4 +545,217 @@ def main() raises:
     test_umask_answers_with_what_it_replaced()
     test_the_access_time_is_read_from_its_own_slot()
     test_the_device_and_group_of_a_file_this_test_made()
+    test_the_birth_time_is_in_the_wider_row()
+    test_asking_for_less_is_asking_by_the_mask()
+    test_a_link_asked_by_its_own_name()
+    test_two_names_for_one_file_say_so()
     print("test_stat: ok")
+
+
+def test_the_birth_time_is_in_the_wider_row() raises:
+    """`statx` and the clock `struct stat` on Linux has no room for:
+    the row carries the birth time of the file, which starts when
+    the file comes into being and does not move when the file is
+    written, renamed or told its permissions again -- and the row
+    carries its own mask, which says the birth time it holds is a
+    real field and not whatever the buffer was.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var path = string_to_char_ptr("/tmp/libc_statx_born")
+        _ = unlink(path)
+        var fd = open(path, O_CREAT | O_WRONLY, 0o644)
+        assert_true(fd >= 0, "the file is made")
+        assert_equal(
+            Int(write(fd, string_to_char_ptr("abc"), 3)),
+            3,
+            "and holds three bytes",
+        )
+        _ = close(fd)
+
+        var row = unsafe_alloc[Statx](1)
+        assert_equal(
+            statx(AT_FDCWD, path, 0, STATX_ALL, row),
+            0,
+            "statx asks and answers",
+        )
+
+        assert_true(
+            (
+                row.unsafe_offset(0)[].mask()
+                & Int64(STATX_SIZE | STATX_BTIME | STATX_MTIME)
+            )
+            == Int64(STATX_SIZE | STATX_BTIME | STATX_MTIME),
+            "the answer's mask stands behind size, birth and modify",
+        )
+        assert_equal(
+            row.unsafe_offset(0)[].size(),
+            3,
+            "the size is the three bytes the file holds",
+        )
+        assert_true(
+            row.unsafe_offset(0)[].btime() > 0,
+            "the birth time is a real clock, not the epoch",
+        )
+        assert_true(
+            row.unsafe_offset(0)[].mtime() >= row.unsafe_offset(0)[].btime(),
+            "and the file was not modified before it existed",
+        )
+
+        _ = unlink(path)
+
+
+def test_asking_for_less_is_asking_by_the_mask() raises:
+    """`statx` with a mask of two fields: the row comes back with
+    those two standing behind it -- the mask is not just a filter
+    on the answer but the kernel's instruction to fetch, and the
+    caller that wants the size and the birth time is not asking
+    the kernel to gather everything else beside.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var path = string_to_char_ptr("/tmp/libc_statx_masked")
+        _ = unlink(path)
+        var fd = open(path, O_CREAT | O_WRONLY, 0o644)
+        assert_true(fd >= 0, "the file is made")
+        assert_equal(
+            Int(write(fd, string_to_char_ptr("abcd"), 4)),
+            4,
+            "and holds four bytes",
+        )
+        _ = close(fd)
+
+        var row = unsafe_alloc[Statx](1)
+        assert_equal(
+            statx(AT_FDCWD, path, 0, STATX_SIZE | STATX_BTIME, row),
+            0,
+            "the asking names size and birth time",
+        )
+        assert_true(
+            (row.unsafe_offset(0)[].mask() & Int64(STATX_SIZE | STATX_BTIME))
+            == Int64(STATX_SIZE | STATX_BTIME),
+            "and the answer stands behind both",
+        )
+        assert_equal(
+            row.unsafe_offset(0)[].size(), 4, "the size is still the size"
+        )
+
+        _ = unlink(path)
+
+
+def test_a_link_asked_by_its_own_name() raises:
+    """`statx` and `AT_SYMLINK_NOFOLLOW`: the link is asked after
+    by its own name, and the row says it is a link whose size is
+    the length of the path it carries -- which is what a link is,
+    a file whose contents are another path. Without the flag the
+    same call reads through, and says what the link points at.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var target = string_to_char_ptr("/tmp/libc_statx_target")
+        var fd = open(target, O_CREAT | O_WRONLY, 0o644)
+        assert_true(fd >= 0, "the target is a real file")
+        _ = close(fd)
+
+        var link = string_to_char_ptr("/tmp/libc_statx_link")
+        _ = unlink(link)
+        assert_equal(symlink(target, link), 0, "and the link points at it")
+
+        var as_link = unsafe_alloc[Statx](1)
+        assert_equal(
+            statx(
+                AT_FDCWD,
+                link,
+                AT_SYMLINK_NOFOLLOW,
+                Int32(STATX_MODE | STATX_SIZE),
+                as_link,
+            ),
+            0,
+            "the link is asked after by its own name",
+        )
+        assert_equal(
+            as_link.unsafe_offset(0)[].mode() & S_IFMT,
+            S_IFLNK,
+            "and the row says it is a link",
+        )
+        # The path is twenty-two characters, and a link is a file
+        # whose contents are those characters.
+        assert_equal(
+            as_link.unsafe_offset(0)[].size(),
+            22,
+            "and its size is the length of the path it carries",
+        )
+
+        var followed = unsafe_alloc[Statx](1)
+        assert_equal(
+            statx(AT_FDCWD, link, 0, Int32(STATX_MODE), followed),
+            0,
+            "without the flag the same call reads through",
+        )
+        assert_equal(
+            followed.unsafe_offset(0)[].mode() & S_IFMT,
+            S_IFREG,
+            "and says what the link points at",
+        )
+
+        _ = unlink(link)
+        _ = unlink(target)
+
+
+def test_two_names_for_one_file_say_so() raises:
+    """`statx` and a hard link: a second name is made for the file
+    and the row's link count says two -- two names, one file, and
+    `AT_EMPTY_PATH` asking through the descriptor answers with the
+    same size the path did, which is the same file and not a copy.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var path = string_to_char_ptr("/tmp/libc_statx_nlink")
+        var second = string_to_char_ptr("/tmp/libc_statx_nlink2")
+        _ = unlink(path)
+        _ = unlink(second)
+        var fd = open(path, O_CREAT | O_WRONLY, 0o644)
+        assert_true(fd >= 0, "the file is made")
+        assert_equal(
+            Int(write(fd, string_to_char_ptr("xy"), 2)),
+            2,
+            "and holds two bytes",
+        )
+        _ = close(fd)
+
+        assert_equal(link(path, second), 0, "a second name is made for it")
+
+        var row = unsafe_alloc[Statx](1)
+        assert_equal(
+            statx(AT_FDCWD, path, 0, Int32(STATX_NLINK | STATX_SIZE), row),
+            0,
+            "the first name is asked",
+        )
+        assert_equal(
+            row.unsafe_offset(0)[].nlink(),
+            2,
+            "and its count is two: two names, one file",
+        )
+
+        var through = unsafe_alloc[Statx](1)
+        var fd2 = open(path, O_RDONLY, 0)
+        assert_true(fd2 >= 0, "the file is open again")
+        assert_equal(  # An empty path, not a null one: the kernel reads the name the
+            # pointer carries and only lets the flag say the reading is of
+            # the descriptor, and a pointer that carries nothing at all
+            # is a fault rather than an empty name.
+            statx(
+                fd2,
+                string_to_char_ptr(""),
+                AT_EMPTY_PATH,
+                Int32(STATX_SIZE),
+                through,
+            ),
+            0,
+            "the descriptor is asked by itself",
+        )
+        assert_equal(
+            through.unsafe_offset(0)[].size(),
+            2,
+            "and it is the same size the path said",
+        )
+        _ = close(fd2)
+
+        _ = unlink(path)
+        _ = unlink(second)

@@ -577,3 +577,225 @@ def fstatat(
     return external_call[
         "fstatat", Int32, Int32, c_ptr[UInt8], c_ptr[Stat], Int32
     ](dirfd, pathname, statbuf, flags)
+
+
+# The asking for a `statx` row is by a mask of what is wanted, and
+# the answer carries a mask of what it gave: the caller that wants
+# the size and the birth time asks for those two and the row says
+# which of what it holds is real. The bits are the kernel's, and
+# Linux only -- there is no `statx` on Darwin to ask, and the
+# struct's layout is the kernel's ABI, which is the same on the
+# architectures this package is built for.
+comptime STATX_TYPE: Int32 = 0x00000001
+comptime STATX_MODE: Int32 = 0x00000002
+comptime STATX_NLINK: Int32 = 0x00000004
+comptime STATX_UID: Int32 = 0x00000008
+comptime STATX_GID: Int32 = 0x00000010
+comptime STATX_ATIME: Int32 = 0x00000020
+comptime STATX_MTIME: Int32 = 0x00000040
+comptime STATX_CTIME: Int32 = 0x00000080
+comptime STATX_INO: Int32 = 0x00000100
+comptime STATX_SIZE: Int32 = 0x00000200
+comptime STATX_BLOCKS: Int32 = 0x00000400
+comptime STATX_BTIME: Int32 = 0x00000800
+comptime STATX_ALL: Int32 = 0x00000FFF
+
+
+# The kernel's own layout, which no platform here is free to move:
+# every member sits at the offset the kernel's table gives it, on
+# both of the machines that ask, and `check-layouts` asks C for the
+# ones that can be named.
+comptime STATX_SLOTS: Int = 32
+comptime STATX_MASK_OFFSET: Int = 0
+comptime STATX_BLKSIZE_OFFSET: Int = 4
+comptime STATX_ATTRIBUTES_OFFSET: Int = 8
+comptime STATX_NLINK_OFFSET: Int = 16
+comptime STATX_UID_OFFSET: Int = 20
+comptime STATX_GID_OFFSET: Int = 24
+comptime STATX_MODE_OFFSET: Int = 28
+comptime STATX_INO_OFFSET: Int = 32
+comptime STATX_SIZE_OFFSET: Int = 40
+comptime STATX_BLOCKS_OFFSET: Int = 48
+comptime STATX_ATTRIBUTES_MASK_OFFSET: Int = 56
+comptime STATX_RDEV_MAJOR_OFFSET: Int = 128
+comptime STATX_RDEV_MINOR_OFFSET: Int = 132
+comptime STATX_DEV_MAJOR_OFFSET: Int = 136
+comptime STATX_DEV_MINOR_OFFSET: Int = 140
+comptime STATX_ATIME_OFFSET: Int = 64
+comptime STATX_BTIME_OFFSET: Int = 80
+comptime STATX_CTIME_OFFSET: Int = 96
+comptime STATX_MTIME_OFFSET: Int = 112
+comptime STATX_BYTES: Int = 256
+
+
+struct Statx:
+    """A C `struct statx`, which `statx` fills in, and the row that
+    has what `struct stat` does not: the birth time of the file,
+    which is the one clock of the four that starts when the file
+    comes into being and does not move when it is written or
+    renamed or told its permissions again.
+
+    The layout is the kernel's and is one layout everywhere the
+    kernel answers, so the offsets carry no platform branch: every
+    member is read at the offset the table names. The bytes are
+    held as slots, and a timestamp is eight bytes of seconds and
+    four of nanoseconds with four the alignment leaves, sixteen
+    in all. The width is the kernel's own 256, which is more than
+    its fields fill: the device numbers come after the four
+    timestamps, and what the tail holds is the kernel's to name
+    in a version to come.
+    """
+
+    var _slots: Array[UInt64, STATX_SLOTS]
+
+    def __init__(out self):
+        """Zeroes all 256 bytes, which is what `memset` would leave
+        behind: a row whose mask reads zero, which is the honest
+        answer for nothing asked. The row is wider than its fields
+        -- the last members sit at 140 and the width is 256 -- and
+        the room in between is margin the kernel holds for fields
+        it has not named yet, which a future answer may carry.
+        """
+        self._slots = Array[UInt64, STATX_SLOTS](fill=0)
+
+    def _u16(self, off: Int) -> Int:
+        """The two bytes at a two-aligned `off`, little-endian."""
+        return Int((self._slots[off // 8] >> UInt64((off % 8) * 8)) & 0xFFFF)
+
+    def _u32(self, off: Int) -> Int64:
+        """The four bytes at a four-aligned `off`, little-endian."""
+        return Int64(
+            (self._slots[off // 8] >> UInt64((off % 8) * 8)) & 0xFFFFFFFF
+        )
+
+    def _u64(self, off: Int) -> Int64:
+        """The eight bytes at an eight-aligned `off`, which is all of a slot."""
+        return Int64(self._slots[off // 8])
+
+    def mask(self) -> Int64:
+        """The mask of what this row holds as truth."""
+        return self._u32(STATX_MASK_OFFSET)
+
+    def blksize(self) -> Int64:
+        """The block size the file is read in."""
+        return self._u32(STATX_BLKSIZE_OFFSET)
+
+    def nlink(self) -> Int64:
+        """How many hard links point at the file."""
+        return self._u32(STATX_NLINK_OFFSET)
+
+    def uid(self) -> Int:
+        """The user ID of the owner."""
+        return Int(self._u32(STATX_UID_OFFSET))
+
+    def gid(self) -> Int:
+        """The group ID of the owner."""
+        return Int(self._u32(STATX_GID_OFFSET))
+
+    def mode(self) -> Int:
+        """The file type and permission bits."""
+        return self._u16(STATX_MODE_OFFSET)
+
+    def ino(self) -> Int64:
+        """The file serial number, its inode."""
+        return self._u64(STATX_INO_OFFSET)
+
+    def size(self) -> Int64:
+        """How many bytes the file holds."""
+        return self._u64(STATX_SIZE_OFFSET)
+
+    def blocks(self) -> Int64:
+        """How many 512-byte blocks the file occupies."""
+        return self._u64(STATX_BLOCKS_OFFSET)
+
+    def atime(self) -> Int64:
+        """The seconds of the last access time."""
+        return self._u64(STATX_ATIME_OFFSET)
+
+    def atime_nsec(self) -> Int:
+        """The nanoseconds beside the last access time."""
+        return Int(self._u32(STATX_ATIME_OFFSET + 8))
+
+    def btime(self) -> Int64:
+        """The seconds of the birth time, which no `struct stat` on
+        Linux carries and which is the reason the wider row exists.
+        """
+        return self._u64(STATX_BTIME_OFFSET)
+
+    def btime_nsec(self) -> Int:
+        """The nanoseconds beside the birth time."""
+        return Int(self._u32(STATX_BTIME_OFFSET + 8))
+
+    def mtime(self) -> Int64:
+        """The seconds of the last modification time."""
+        return self._u64(STATX_MTIME_OFFSET)
+
+    def mtime_nsec(self) -> Int:
+        """The nanoseconds beside the last modification time."""
+        return Int(self._u32(STATX_MTIME_OFFSET + 8))
+
+    def ctime(self) -> Int64:
+        """The seconds of the last status change."""
+        return self._u64(STATX_CTIME_OFFSET)
+
+
+def statx(
+    dirfd: Int32,
+    pathname: c_ptr[UInt8],
+    flags: Int32,
+    mask: Int32,
+    statxbuf: c_ptr[Statx],
+) -> Int32:
+    """C library <sys/stat.h> function `statx`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/statx.2.html
+
+    Description:
+        statx() asks after a file the way `fstatat` does -- a path
+        relative to a directory, or `AT_FDCWD` -- and fills a wider
+        row than `struct stat`: the birth time is in it, and every
+        field beside it is 64 bits wide rather than the widths the
+        two platforms split over.
+
+    Args:
+        dirfd: The open directory the path is relative to, which is
+            `AT_FDCWD` where it is relative to the working directory
+            instead.
+        pathname: The path to ask after.
+        flags: Which of the `AT_` names to ask by, or 0 for none:
+            `AT_SYMLINK_NOFOLLOW` to ask after the link itself,
+            `AT_EMPTY_PATH` to ask after the file `dirfd` is.
+        mask: The mask of what is wanted, the `STATX_` bits or'd
+            together, or `STATX_ALL` for the lot.
+        statxbuf: The `Statx` to fill in, which is written to.
+
+    Returns:
+        0 where the file was asked after, or -1 with `errno` saying
+        why.
+
+    Notes:
+        Linux-specific, and the mask is the part worth words for:
+        the row that comes back carries its own mask, which says
+        which fields the kernel filled and stands behind. Asking
+        for the birth time does not promise the kernel knows it
+        on the filesystem it sits in -- the answer's mask says
+        whether the field is real, and a caller that reads a
+        field the mask does not stand behind is reading whatever
+        the buffer happened to hold.
+
+        What is asked for is also what the kernel is told to
+        fetch, and on a filesystem that answers only in part,
+        asking for less is cheaper than asking for all of it --
+        the mask is not just a filter on the answer but a limit
+        on the work.
+    """
+    return external_call[
+        "statx",
+        Int32,
+        Int32,
+        c_ptr[UInt8],
+        Int32,
+        Int32,
+        c_ptr[Statx],
+    ](dirfd, pathname, flags, mask, statxbuf)
