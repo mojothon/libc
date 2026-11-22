@@ -40,18 +40,21 @@ comptime MCL_FUTURE = 2
 # The advice the Linux kernel takes and Darwin does not: the bits
 # about forking and dumping and huge pages and KSM are the Linux
 # kernel's own ideas, and the numbers are what its headers say.
-comptime MADV_REMOVE: Int32 = 9 if CompilationTarget.is_linux() else -1
-comptime MADV_DONTFORK: Int32 = 10 if CompilationTarget.is_linux() else -1
-comptime MADV_DOFORK: Int32 = 11 if CompilationTarget.is_linux() else -1
-comptime MADV_MERGEABLE: Int32 = 12 if CompilationTarget.is_linux() else -1
-comptime MADV_UNMERGEABLE: Int32 = 13 if CompilationTarget.is_linux() else -1
-comptime MADV_HUGEPAGE: Int32 = 14 if CompilationTarget.is_linux() else -1
-comptime MADV_NOHUGEPAGE: Int32 = 15 if CompilationTarget.is_linux() else -1
-comptime MADV_DONTDUMP: Int32 = 16 if CompilationTarget.is_linux() else -1
-comptime MADV_DODUMP: Int32 = 17 if CompilationTarget.is_linux() else -1
-comptime MADV_WIPEONFORK: Int32 = 18 if CompilationTarget.is_linux() else -1
-comptime MADV_KEEPONFORK: Int32 = 19 if CompilationTarget.is_linux() else -1
-comptime MADV_COLD: Int32 = 20 if CompilationTarget.is_linux() else -1
-comptime MADV_PAGEOUT: Int32 = 21 if CompilationTarget.is_linux() else -1
-comptime MADV_POPULATE_READ: Int32 = 22 if CompilationTarget.is_linux() else -1
-comptime MADV_POPULATE_WRITE: Int32 = 23 if CompilationTarget.is_linux() else -1
+# The numbers are written without a platform conditional -- the
+# other platform's headers have no name of these at all, so the
+# check that asks C there finds nothing to disagree with.
+comptime MADV_REMOVE: Int32 = 9
+comptime MADV_DONTFORK: Int32 = 10
+comptime MADV_DOFORK: Int32 = 11
+comptime MADV_MERGEABLE: Int32 = 12
+comptime MADV_UNMERGEABLE: Int32 = 13
+comptime MADV_HUGEPAGE: Int32 = 14
+comptime MADV_NOHUGEPAGE: Int32 = 15
+comptime MADV_DONTDUMP: Int32 = 16
+comptime MADV_DODUMP: Int32 = 17
+comptime MADV_WIPEONFORK: Int32 = 18
+comptime MADV_KEEPONFORK: Int32 = 19
+comptime MADV_COLD: Int32 = 20
+comptime MADV_PAGEOUT: Int32 = 21
+comptime MADV_POPULATE_READ: Int32 = 22
+comptime MADV_POPULATE_WRITE: Int32 = 23
