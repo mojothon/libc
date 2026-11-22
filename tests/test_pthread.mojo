@@ -1036,6 +1036,8 @@ def test_the_named_semaphore_and_its_count() raises:
     _ = sem_unlink(NAME)
     var s = sem_open(NAME, O_CREAT | O_EXCL, RW, 1)
     assert_true(Int(s) != Int(SEM_FAILED), "the named semaphore is made")
+    if Int(s) == Int(SEM_FAILED):
+        print("sem_open failed, errno:", Int(get_errno()))
 
     assert_equal(sem_trywait(s), 0, "the count of one is taken without a wait")
     set_errno(0)
