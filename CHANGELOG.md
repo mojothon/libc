@@ -87,6 +87,21 @@ All notable changes to this project are documented here. The format follows
   which the check that asks C what the header says corrected
   before anything ran.
 
+- **`libc.unistd` gains `faccessat` and `closefrom`.** C's
+  `<unistd.h>` takes the question `access` asks to a directory
+  that is open -- and adds the flag `access` has never had:
+  `AT_SYMLINK_NOFOLLOW`, the link asked after by its own name,
+  which a caller wanting to know whether the link itself is
+  reachable has no other way to say. `closefrom` is the span
+  with no top, the tail of the work `close_range` does, and
+  the C library's answer to it is void -- a call that cannot
+  be refused is a call that reports nothing, which the run
+  that wrote it first as an `Int32` return was told by the
+  check that reads the C prototypes. The test's lesson is the
+  dangling link: asked by `access` it is answered for the file
+  it would lead to, which is nothing, so no; asked with the
+  flag it is answered for the link, and the link is there.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added

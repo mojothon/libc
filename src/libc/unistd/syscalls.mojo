@@ -2456,3 +2456,79 @@ def close_range(first: UInt32, last: UInt32, flags: Int32) -> Int32:
     return external_call["close_range", Int32, UInt32, UInt32, Int32](
         first, last, flags
     )
+
+
+def faccessat(
+    dirfd: c_int, path: c_ptr[UInt8], mode: Int32, flags: Int32
+) -> Int32:
+    """C library <unistd.h> function `faccessat`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/faccessat.3.html
+
+    Description:
+        The question `access` asks, of a path that is named
+        relative to a directory rather than to the working one --
+        which is the way of asking that cannot be led astray
+        between the open and the check, the name being taken
+        where the descriptor says and nowhere else.
+
+    Args:
+        dirfd: A descriptor for the directory `path` is relative to,
+            or `AT_FDCWD` for the working directory.
+        path: The path to ask after.
+        mode: The asking `access` takes: 0 to ask only that the file
+            is there, and the read, write and execute bits where the
+            caller means to ask after what it may do.
+        flags: 0, or `AT_SYMLINK_NOFOLLOW` to ask after the link
+            itself rather than the file it leads to.
+
+    Returns:
+        0 where the answer is yes, -1 with `errno` saying no and
+        why.
+
+    Notes:
+        The wrapper has been in the C library since 2.4. The
+        asking is the process's real permissions and not the
+        ids the caller may have put on: the kernel answers for
+        what this process may do, which is the same honest
+        answer `access` gives, taken now at a directory rather
+        than at the working one. The flag is the part a caller
+        of `access` has never had: a link asked by `access` is
+        always the file it leads to, and the caller that wants
+        to know whether the link itself is reachable has no
+        way to say so -- `faccessat` has the flag for it.
+    """
+    return external_call["faccessat", Int32, c_int, c_ptr[UInt8], Int32, Int32](
+        dirfd, path, mode, flags
+    )
+
+
+def closefrom(lowfd: c_int) raises:
+    """C library <unistd.h> function `closefrom`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/close_range.3.html
+
+    Description:
+        Closes every descriptor from `lowfd` up, in one descent --
+        the tail of the work `close_range` does, the span having
+        no top: from here to the highest number there is.
+
+    Args:
+        lowfd: The lowest descriptor number to close, which the
+            span closes and every number above.
+
+    Returns:
+        Nothing, which is the C library's own answer: a call that
+        cannot be refused is a call that reports nothing.
+
+    Notes:
+        The wrapper has been in the C library since 2.34, and the
+        work is the span with no top: `close_range(lowfd,
+        UINT32_MAX, 0)` is what it asks for, said without a name
+        this package binds -- the closing of a descriptor whose
+        number the process never knew is no error here, because
+        the span is the promise and not a list of names.
+    """
+    external_call["closefrom", NoneType, c_int](lowfd)

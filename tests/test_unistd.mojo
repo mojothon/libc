@@ -2,8 +2,10 @@
 from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
+from libc.constant import AT_SYMLINK_NOFOLLOW
 
 from libc.fcntl import (
+    O_WRONLY,
     FD_CLOEXEC,
     F_GETFD,
     O_CREAT,
@@ -62,6 +64,8 @@ from libc.unistd import (
     chown,
     confstr,
     close_range,
+    closefrom,
+    faccessat,
     dup,
     dup2,
     dup3,
@@ -1736,6 +1740,9 @@ def main() raises:
     test_dup3()
     test_a_span_of_descriptors_closes_at_one_descent()
     test_marking_a_span_for_the_next_image()
+    test_the_question_taken_at_a_directory()
+    test_the_link_itself_and_not_where_it_leads()
+    test_a_span_with_no_top()
     test_access_dup_and_link()
     test_syscall_by_number()
     test_the_exec_family_refuses_what_is_not_there()
@@ -1826,4 +1833,97 @@ def test_marking_a_span_for_the_next_image() raises:
         _ = close(low)
         _ = close(inside_a)
         _ = close(inside_b)
+        _ = unlink(path)
+
+
+def test_the_question_taken_at_a_directory() raises:
+    """`faccessat`: the asking `access` does, of a path named
+    relative to a directory that is open -- and the flag is
+    the part `access` has never had: a link asked by its own
+    name, `AT_SYMLINK_NOFOLLOW` saying the link and not the
+    file it leads to.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var there = open_with_mode(string_to_char_ptr("/tmp"), O_RDONLY, 0)
+        assert_true(there >= 0, "the directory is open")
+        var path = string_to_char_ptr("/tmp/libc_faccessat_made")
+        var fd = open_with_mode(path, O_CREAT | O_WRONLY, 0o600)
+        assert_true(fd >= 0, "the file is made")
+        _ = close(fd)
+
+        assert_equal(
+            faccessat(there, string_to_char_ptr("libc_faccessat_made"), 0, 0),
+            0,
+            "the relative name is asked and answered",
+        )
+        assert_equal(
+            faccessat(there, string_to_char_ptr("libc_faccessat_gone"), 0, 0),
+            -1,
+            "and the name that is not, is not",
+        )
+        assert_equal(get_errno(), ENOENT, "and not-there is what ENOENT says")
+
+        _ = unlink(path)
+        _ = close(there)
+
+
+def test_a_span_with_no_top() raises:
+    """`closefrom`: the span with no top -- the descriptors from
+    `lowfd` up all closed at one descent, the one below the
+    start of the span still answering and the ones from the
+    start up answering `EBADF`. A binding that closed the
+    other end of the span would be told by the descriptor
+    below, which survives, and by the one at the start,
+    which does not.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var path = string_to_char_ptr("/tmp/libc_closefrom_made")
+        var low = open_with_mode(path, O_CREAT | O_RDWR, 0o600)
+        assert_true(low >= 0, "the descriptor below the span is open")
+        var mid = dup(low)
+        var high = dup(low)
+        assert_true(mid >= 0 and high >= 0, "and two more sit above it")
+
+        closefrom(mid)
+        # The call reports nothing: a span with no top is a call that cannot be refused.
+        assert_equal(fcntl(low, F_GETFD, 0), 0, "the one below still answers")
+        assert_equal(
+            fcntl(mid, F_GETFD, 0),
+            -1,
+            "the one at the start of the span is gone",
+        )
+        assert_equal(get_errno(), EBADF, "and gone is what EBADF says")
+        assert_equal(fcntl(high, F_GETFD, 0), -1, "and so is the one above it")
+
+        _ = close(low)
+        _ = unlink(path)
+
+
+def test_the_link_itself_and_not_where_it_leads() raises:
+    """`faccessat` and `AT_SYMLINK_NOFOLLOW`: a link that leads
+    nowhere, asked by `access`, is answered for the file it
+    would lead to -- which is nothing, so no. Asked with the
+    flag, the link itself is what the kernel looks at, and a
+    link is a file whose contents are the name it carries:
+    reachable, whatever it points at.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var path = string_to_char_ptr("/tmp/libc_faccessat_dangling")
+        _ = unlink(path)
+        assert_equal(
+            symlink(string_to_char_ptr("/tmp/libc_faccessat_nowhere"), path),
+            0,
+            "the link is made, at a name that leads nowhere",
+        )
+
+        assert_equal(
+            access(path, 0), -1, "the following ask sees nothing at the end"
+        )
+        assert_equal(get_errno(), ENOENT, "and nothing is what ENOENT says")
+        assert_equal(
+            faccessat(AT_FDCWD, path, 0, AT_SYMLINK_NOFOLLOW),
+            0,
+            "the flag asks after the link, and the link is there",
+        )
+
         _ = unlink(path)
