@@ -4,15 +4,19 @@ from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.fcntl import (
+    FD_CLOEXEC,
+    F_GETFD,
     O_CREAT,
     O_NOCTTY,
     O_RDONLY,
     O_RDWR,
+    fcntl,
     open as open_with_mode,
 )
 from libc.constant import (
     AT_FDCWD,
     ENOMEM,
+    EBADF,
     ENOENT,
     ERANGE,
     c_ptr,
@@ -54,8 +58,10 @@ from libc.unistd import (
     access,
     alarm,
     chdir,
+    CLOSE_RANGE_CLOEXEC,
     chown,
     confstr,
+    close_range,
     dup,
     dup2,
     dup3,
@@ -1728,6 +1734,8 @@ def main() raises:
     test_process_groups()
     test_the_foreground_group_of_a_terminal()
     test_dup3()
+    test_a_span_of_descriptors_closes_at_one_descent()
+    test_marking_a_span_for_the_next_image()
     test_access_dup_and_link()
     test_syscall_by_number()
     test_the_exec_family_refuses_what_is_not_there()
@@ -1740,3 +1748,82 @@ def main() raises:
     test_pause_comes_back_because_a_signal_arrived()
     test_brk_and_sbrk_move_the_end_of_the_data_segment()
     print("test_unistd: ok")
+
+
+def test_a_span_of_descriptors_closes_at_one_descent() raises:
+    """`close_range` and the span: three descriptors are made,
+    one below the span and two inside it, and one call closes
+    the two -- the one below the span still answers, which is
+    the proof that the span closed what it named and nothing
+    else, and the ones inside answer with `EBADF`, which is
+    the proof they are gone.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var path = string_to_char_ptr("/tmp/libc_close_span")
+        var low = open_with_mode(path, O_CREAT | O_RDWR, 0o600)
+        assert_true(low >= 0, "the descriptor below the span is open")
+        var inside_a = dup(low)
+        var inside_b = dup(low)
+        assert_true(
+            inside_a >= 0 and inside_b >= 0, "and two more sit inside the span"
+        )
+
+        assert_equal(
+            close_range(UInt32(inside_a), UInt32(inside_b), 0),
+            0,
+            "the span closes at one descent",
+        )
+        assert_equal(
+            fcntl(low, F_GETFD, 0), 0, "the one below the span still answers"
+        )
+        assert_equal(
+            fcntl(inside_a, F_GETFD, 0), -1, "the first inside is gone"
+        )
+        assert_equal(get_errno(), EBADF, "and gone is what EBADF says")
+        assert_equal(fcntl(inside_b, F_GETFD, 0), -1, "and so is the second")
+
+        _ = close(low)
+        _ = unlink(path)
+
+
+def test_marking_a_span_for_the_next_image() raises:
+    """`close_range` and `CLOSE_RANGE_CLOEXEC`: the span is not
+    closed -- every descriptor in it still answers -- but each
+    has been told to close itself when the next image takes the
+    process over, and the flag `fcntl` reads back is the proof:
+    the close-on-exec bit, set on the two inside the span and
+    not on the one outside it.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var path = string_to_char_ptr("/tmp/libc_close_marked")
+        var low = open_with_mode(path, O_CREAT | O_RDWR, 0o600)
+        assert_true(low >= 0, "the descriptor below the span is open")
+        var inside_a = dup(low)
+        var inside_b = dup(low)
+        assert_true(
+            inside_a >= 0 and inside_b >= 0, "and two more sit inside the span"
+        )
+
+        assert_equal(
+            close_range(
+                UInt32(inside_a), UInt32(inside_b), CLOSE_RANGE_CLOEXEC
+            ),
+            0,
+            "the span is marked, not closed",
+        )
+        assert_equal(
+            fcntl(inside_a, F_GETFD, 0),
+            FD_CLOEXEC,
+            "the first is marked for the next image",
+        )
+        assert_equal(
+            fcntl(inside_b, F_GETFD, 0), FD_CLOEXEC, "and so is the second"
+        )
+        assert_equal(
+            fcntl(low, F_GETFD, 0), 0, "and the one below the span is neither"
+        )
+
+        _ = close(low)
+        _ = close(inside_a)
+        _ = close(inside_b)
+        _ = unlink(path)

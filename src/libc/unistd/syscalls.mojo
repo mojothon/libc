@@ -2399,3 +2399,60 @@ def copy_file_range(
         UInt64,
         UInt32,
     ](fd_in, off_in, fd_out, off_out, count, flags)
+
+
+# `close_range` asks for the descriptors of a span to be closed
+# at one descent, and its flag asks for the span to be kept and
+# marked instead: the two bits are Linux's own, from a header of
+# its own, and there is no Darwin name for either.
+comptime CLOSE_RANGE_UNSHARE: Int32 = 1 << 1
+comptime CLOSE_RANGE_CLOEXEC: Int32 = 1 << 2
+
+
+def close_range(first: UInt32, last: UInt32, flags: Int32) -> Int32:
+    """C library <unistd.h> function `close_range`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/close_range.2.html
+
+    Description:
+        Closes every descriptor in the span `first` through `last`,
+        inclusive, in one descent -- the work a process that means
+        to run another image would otherwise do descriptor by
+        descriptor, and the closing of a descriptor whose number
+        the process never knew is no error here, because the span
+        is the promise and not a list of names. `UINT32_MAX` in
+        `last` is how the span says "everything from here up".
+
+    Args:
+        first: The lowest descriptor number in the span.
+        last: The highest descriptor number in the span, which may
+            be `UINT32_MAX` where the span has no top.
+        flags: 0, or `CLOSE_RANGE_CLOEXEC` to mark the span for
+            closing at the next exec rather than closing it now.
+
+    Returns:
+        0 on success, or -1 with `errno` saying why.
+
+    Notes:
+        Linux-specific; the wrapper has been in the C library
+        since 2.34. The flag is the part worth words for: with
+        `CLOSE_RANGE_CLOEXEC` the descriptors stay open and are
+        told, each of them, to close themselves when the next
+        image takes the process over -- which is the difference
+        between throwing a bridge away and wiring it to fall
+        when the next train is on it, and the caller that runs
+        a child and wants its own descriptors gone from the
+        child's table does it without closing anything in
+        between. A span of numbers with nothing open in it
+        answers 0 as well, which is honest: the promise has
+        been kept, there simply was nothing to keep it against.
+
+        `close` on its own closes what is named, and errors
+        when the name is not open. `close_range` closes what
+        lies in the span, and cannot be told the difference
+        between a span that was empty and one that emptied.
+    """
+    return external_call["close_range", Int32, UInt32, UInt32, Int32](
+        first, last, flags
+    )

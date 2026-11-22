@@ -38,6 +38,21 @@ All notable changes to this project are documented here. The format follows
   seconds member of each -- asking for the timestamp asks for a
   sixteen-byte struct, and the width a binding reads is eight.
 
+- **`libc.unistd` gains `close_range`, and the span is the
+  promise.** C's `<unistd.h>` closes every descriptor in a range
+  at one descent -- the work of a process that means to run
+  another image, done without naming what is open, because the
+  span is the promise and not a list of names. `CLOSE_RANGE_CLOEXEC`
+  is the flag worth words for: the descriptors stay open and are
+  told to close themselves when the next image takes the process
+  over, which is wiring the bridge to fall rather than throwing
+  it away. The wrapper has been in the C library since 2.34, so
+  the asking is by name. The test's two spans are the lesson:
+  one closes, and the descriptor below the span still answers
+  while the two inside answer `EBADF`; the other marks, and the
+  flag `fcntl` reads back is the close-on-exec bit on the two
+  inside and nothing on the one outside.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
