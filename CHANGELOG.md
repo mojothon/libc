@@ -69,6 +69,24 @@ All notable changes to this project are documented here. The format follows
   test where both were the working directory would have
   nothing to say about which was which.
 
+- **`libc.file` gains `preadv2` and `pwritev2`, and the how is a
+  flag word.** C's `<sys/uio.h>` adds a flag word to the piecewise
+  calls -- `RWF_APPEND` for the write that lands after what is
+  there, the end of the file taken at the moment of the write
+  rather than the offset the caller carried; `RWF_NOWAIT` for the
+  reading that answers `EAGAIN` rather than wait; `RWF_HIPRI` for
+  the urgent lane of a device that has one, and taken as if the
+  bit were not there on a device without one. The wrappers have
+  been in the C library since 2.26, so the asking is by name.
+  The runs taught the claim to be honest about the position:
+  the append replaces the offset for the length of the write and
+  no longer, a fresh stream asked where it stands after an append
+  standing where it stood -- the first docstring said otherwise,
+  and the test that ran said the docstring was wrong. The first
+  draft also had `RWF_DSYNC` and `RWF_HIPRI` each other's value,
+  which the check that asks C what the header says corrected
+  before anything ran.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added

@@ -870,3 +870,126 @@ def ioctl(fildes: c_int, request: c_ulong) -> c_int:
         `TIOCNOTTY` is one -- where there is no third thing to be lost.
     """
     return external_call["ioctl", c_int, c_int, c_ulong](fildes, request)
+
+
+# `preadv2` and `pwritev2` carry a flag word the calls before
+# them did not: a say in how the reading or the writing is to
+# go, from the kernel's own header, and there is no Darwin
+# name for any of the bits.
+comptime RWF_DSYNC: UInt32 = 0x00000002
+comptime RWF_HIPRI: UInt32 = 0x00000001
+comptime RWF_SYNC: UInt32 = 0x00000004
+comptime RWF_NOWAIT: UInt32 = 0x00000008
+comptime RWF_APPEND: UInt32 = 0x00000010
+
+
+def preadv2(
+    fildes: c_int,
+    iov: c_ptr[iovec],
+    iovcnt: c_int,
+    offset: off_t,
+    flags: UInt32,
+) -> c_ssize_t:
+    """C library <sys/uio.h> function `preadv2`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/preadv2.2.html
+
+    Description:
+        The reading `preadv` does, with a flag word beside it:
+        the caller can say the reading is not to wait, or that
+        it is not to trouble the disk where the pages are
+        already near.
+
+    Args:
+        fildes: A File Descriptor to open the file with.
+        iov: The pieces to fill, `iovcnt` of them, each one a buffer and
+            how much of it to read into.
+        iovcnt: How many pieces there are, which is at most 1024.
+        offset: Where in the file to read from, counted in bytes from the
+            start. Where the stream was is left alone, as with `pread`.
+        flags: 0, or one of the `RWF_` bits: `RWF_NOWAIT` where the
+            reading that would wait is to answer `EAGAIN` instead,
+            `RWF_HIPRI` where the caller means to say the request is
+            urgent to a device that has an urgent lane, and the sync
+            bits where the writing is to be stood behind before the
+            call comes back.
+
+    Returns:
+        How many bytes were read in total across the pieces, which is
+        fewer than were asked for at the end of the file, or -1 on
+        failure with `errno` set.
+
+    Notes:
+        The wrapper has been in the C library since 2.26. What the
+        bits mean to a caller is worth words for: `RWF_NOWAIT` is
+        not a promise that the call comes back fast, it is a promise
+        that the call does not wait -- the reading that is already
+        near answers as usual, and the reading that would wait
+        answers `EAGAIN`, and the caller that cannot spare the wait
+        is the one who asks. `RWF_HIPRI` asks for the urgent lane
+        of a device that has one, and a device without one takes
+        the request as if the bit were not there -- on a plain
+        file it is ignored, which is the kernel being honest
+        about what it cannot do rather than refusing what it
+        could have done anyway.
+    """
+    return external_call[
+        "preadv2", c_ssize_t, c_int, c_ptr[iovec], c_int, off_t, UInt32
+    ](fildes, iov, iovcnt, offset, flags)
+
+
+def pwritev2(
+    fildes: c_int,
+    iov: c_ptr[iovec],
+    iovcnt: c_int,
+    offset: off_t,
+    flags: UInt32,
+) -> c_ssize_t:
+    """C library <sys/uio.h> function `pwritev2`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/pwritev2.2.html
+
+    Description:
+        The writing `pwritev` does, with a flag word beside it --
+        and the flag that reads backwards is `RWF_APPEND`: the
+        offset is where the end of the file is, whatever number
+        the caller carried, and the pieces land after what is
+        there rather than where the number said. Two callers
+        that both ask to append are answered in the order the
+        kernel takes them, and neither overwrites the other,
+        which is the promise `O_APPEND` makes and the promise
+        the offset argument alone cannot.
+
+    Args:
+        fildes: A File Descriptor to open the file with.
+        iov: The pieces to write, `iovcnt` of them, each one a buffer and
+            how much of it to write from.
+        iovcnt: How many pieces there are, which is at most 1024.
+        offset: Where in the file to write, counted in bytes from the
+            start, which `RWF_APPEND` replaces with the end of the file.
+        flags: 0, or one of the `RWF_` bits: `RWF_APPEND` for the
+            writing that lands after what is there, `RWF_DSYNC` or
+            `RWF_SYNC` for the writing that is stood behind before
+            the call comes back, `RWF_NOWAIT` for the writing that
+            answers `EAGAIN` rather than wait.
+
+    Returns:
+        How many bytes were written in total across the pieces, or -1
+        on failure with `errno` set.
+
+    Notes:
+        The wrapper has been in the C library since 2.26. The append
+        the flag does is the atomic one: the position is taken from
+        the end of the file at the moment of the write, so two
+        writers that ask together are kept in order by the kernel
+        rather than by whoever checked the size last. The stream's
+        own position is left where it was -- the flag replaces the
+        offset for the length of the write and no longer, and the
+        caller that asks where the stream stands asks about the
+        offset it carried, not about where the pieces landed.
+    """
+    return external_call[
+        "pwritev2", c_ssize_t, c_int, c_ptr[iovec], c_int, off_t, UInt32
+    ](fildes, iov, iovcnt, offset, flags)

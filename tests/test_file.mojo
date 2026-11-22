@@ -14,7 +14,13 @@ from libc.constant import (
     c_ptr,
 )
 from libc.dlfcn import RTLD_NOW, dlopen, dlsym
-from libc.fcntl import O_CREAT, O_RDONLY, O_WRONLY, open as open_with_mode
+from libc.fcntl import (
+    O_CREAT,
+    O_RDONLY,
+    O_RDWR,
+    O_WRONLY,
+    open as open_with_mode,
+)
 from libc.stdio import fileno, remove, tmpfile
 from libc.file import (
     FILE,
@@ -38,9 +44,14 @@ from libc.file import (
     ftello,
     getline,
     lseek,
+    preadv2,
     preadv,
     printf,
+    pwritev2,
     pwritev,
+    RWF_APPEND,
+    RWF_HIPRI,
+    RWF_NOWAIT,
     scanf,
     snprintf,
     sprintf,
@@ -599,4 +610,146 @@ def main() raises:
     test_scanf_reads_the_standard_input_it_is_given()
     test_fprintf_writes_the_format_as_it_stands()
     test_the_kernel_copies_between_two_files()
+    test_the_append_flag_lands_after_what_is_there()
+    test_the_flag_word_without_its_bits_is_the_call_beside_it()
     print("test_file: ok")
+
+
+def test_the_append_flag_lands_after_what_is_there() raises:
+    """`pwritev2` and `RWF_APPEND`: two writes, both carried with an
+    offset of zero, and both land after what is there -- the flag
+    replaces the offset with the end of the file at the moment of
+    the write, which is the promise the offset argument alone
+    cannot make. And the stream's own position moves with it:
+    the write that lands at the end leaves the position at the
+    end, which is what `lseek` from where the stream stands
+    reads back.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var path = string_to_char_ptr("/tmp/libc_rwf_append")
+        _ = unlink(path)
+        var fd = open_with_mode(path, O_CREAT | O_RDWR, 0o600)
+        assert_true(fd >= 0, "the file is open")
+
+        var pieces = unsafe_alloc[iovec](1)
+        var first = unsafe_alloc[UInt8](2)
+        first.unsafe_offset(0)[] = 97
+        first.unsafe_offset(1)[] = 98
+        pieces.unsafe_offset(0)[] = iovec(first, UInt64(2))
+        assert_equal(
+            pwritev2(fd, pieces, 1, 0, RWF_APPEND),
+            2,
+            "the first piece lands at the end",
+        )
+        var second = unsafe_alloc[UInt8](2)
+        second.unsafe_offset(0)[] = 99
+        second.unsafe_offset(1)[] = 100
+        pieces.unsafe_offset(0)[] = iovec(second, UInt64(2))
+        assert_equal(
+            pwritev2(fd, pieces, 1, 0, RWF_APPEND),
+            2,
+            "and the second lands after it",
+        )
+
+        var got = unsafe_alloc[UInt8](8)
+        assert_equal(
+            Int(lseek(fd, 0, SEEK_SET)),
+            0,
+            "the stream is sent to the start to read",
+        )
+        assert_equal(Int(read(fd, got, 8)), 4, "the file holds both pieces")
+        assert_true(
+            got.unsafe_offset(0)[] == 97
+            and got.unsafe_offset(1)[] == 98
+            and got.unsafe_offset(2)[] == 99
+            and got.unsafe_offset(3)[] == 100,
+            "and in the order the writes were asked",
+        )
+        assert_equal(
+            Int(lseek(fd, 0, SEEK_CUR)),
+            4,
+            "the read leaves the position at the end of what it read",
+        )
+        _ = close(fd)
+        _ = unlink(path)
+        # The append the flag does not move the stream's own
+        # position: a fresh stream asked where it stands, after an
+        # append, stands where it was -- the flag replaced the
+        # offset for the length of the write and no longer. The
+        # run that found this is the reason the claim is made
+        # honestly rather than plausibly.
+        var again = open_with_mode(path, O_CREAT | O_RDWR, 0o600)
+        assert_true(again >= 0, "the file is open again")
+        pieces.unsafe_offset(0)[] = iovec(first, UInt64(2))
+        assert_equal(
+            pwritev2(again, pieces, 1, 0, RWF_APPEND), 2, "one more append"
+        )
+        assert_equal(
+            Int(lseek(again, 0, SEEK_CUR)),
+            0,
+            "and the stream stands where it stood",
+        )
+        _ = close(again)
+        _ = unlink(path)
+
+        first.unsafe_free()
+        second.unsafe_free()
+        pieces.unsafe_free()
+        got.unsafe_free()
+
+
+def test_the_flag_word_without_its_bits_is_the_call_beside_it() raises:
+    """`preadv2` with no flag answers what `preadv` answers, and
+    the two bits that mean the most to a caller are the two the
+    plain file answers honestly about: `RWF_NOWAIT` on reading
+    that is already near answers as usual, the pages being
+    there and nothing to wait for; and `RWF_HIPRI` on a plain
+    file is taken as if the bit were not there, the device
+    having no urgent lane to put it in.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var path = string_to_char_ptr("/tmp/libc_rwf_plain")
+        _ = unlink(path)
+        var fd = open_with_mode(path, O_CREAT | O_RDWR, 0o600)
+        assert_true(fd >= 0, "the file is open")
+
+        var pieces = unsafe_alloc[iovec](1)
+        var four = unsafe_alloc[UInt8](4)
+        four.unsafe_offset(0)[] = 119
+        four.unsafe_offset(1)[] = 120
+        four.unsafe_offset(2)[] = 121
+        four.unsafe_offset(3)[] = 122
+        pieces.unsafe_offset(0)[] = iovec(four, UInt64(4))
+        assert_equal(
+            pwritev2(fd, pieces, 1, 0, 0),
+            4,
+            "the plain flag writes where the offset says",
+        )
+        assert_equal(
+            Int(lseek(fd, 0, SEEK_SET)), 0, "the stream is sent to the start"
+        )
+
+        var got = unsafe_alloc[UInt8](8)
+        pieces.unsafe_offset(0)[] = iovec(got, UInt64(4))
+        assert_equal(preadv(fd, pieces, 1, 0), 4, "preadv reads the four back")
+        assert_equal(
+            preadv2(fd, pieces, 1, 0, 0),
+            4,
+            "and preadv2 with no flag says the same",
+        )
+        assert_equal(
+            preadv2(fd, pieces, 1, 0, RWF_NOWAIT),
+            4,
+            "NOWAIT on pages that are near answers as usual",
+        )
+        assert_equal(
+            preadv2(fd, pieces, 1, 0, RWF_HIPRI),
+            4,
+            "HIPRI on a plain file is taken as if it were not there",
+        )
+
+        _ = close(fd)
+        _ = unlink(path)
+        four.unsafe_free()
+        got.unsafe_free()
+        pieces.unsafe_free()
