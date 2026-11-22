@@ -2521,8 +2521,10 @@ def pthread_setschedparam(
 
 
 # What a refused `sem_open` hands back: a pointer no check passes,
-# the word for failure in the slot a semaphore comes back in.
-comptime SEM_FAILED: c_int = 0
+# the word for failure in the slot a semaphore comes back in --
+# the null word here and the all-ones word on Darwin, which is
+# why the constant is asked of each platform's own headers.
+comptime SEM_FAILED: c_int = 0 if CompilationTarget.is_linux() else -1
 
 
 def sem_open(
