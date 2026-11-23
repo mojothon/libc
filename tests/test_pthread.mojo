@@ -1197,24 +1197,28 @@ def test_a_clock_that_counts_one_thread_own_work() raises:
     processor time one thread has used: the clock of the part,
     asked beside the clock of the whole, both answering with
     readings that are not taken away.
+    The clock named is asked where the C library has the call:
+    Darwin's libSystem declares it and has no symbol for it.
+
     """
-    var me = pthread_self()
-    var tcid = unsafe_alloc[c_int](1)
-    tcid.unsafe_offset(0)[] = -99
-    assert_equal(
-        Int(pthread_getcpuclockid(me, tcid)),
-        0,
-        "the thread's own clock is named",
-    )
-    var one = unsafe_alloc[timespec](1)
-    one.unsafe_offset(0)[] = timespec()
-    assert_equal(
-        Int(clock_gettime(tcid.unsafe_offset(0)[], one)),
-        0,
-        "and the clock it names answers",
-    )
-    assert_true(
-        one.unsafe_offset(0)[].tv_sec >= 0, "and the reading is a length"
-    )
-    tcid.unsafe_free()
-    one.unsafe_free()
+    comptime if not CompilationTarget.is_macos():
+        var me = pthread_self()
+        var tcid = unsafe_alloc[c_int](1)
+        tcid.unsafe_offset(0)[] = -99
+        assert_equal(
+            Int(pthread_getcpuclockid(me, tcid)),
+            0,
+            "the thread's own clock is named",
+        )
+        var one = unsafe_alloc[timespec](1)
+        one.unsafe_offset(0)[] = timespec()
+        assert_equal(
+            Int(clock_gettime(tcid.unsafe_offset(0)[], one)),
+            0,
+            "and the clock it names answers",
+        )
+        assert_true(
+            one.unsafe_offset(0)[].tv_sec >= 0, "and the reading is a length"
+        )
+        tcid.unsafe_free()
+        one.unsafe_free()

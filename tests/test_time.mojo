@@ -682,40 +682,44 @@ def test_a_clock_that_counts_the_process_own_work() raises:
     clock it names answers -- a reading had with the ask that
     takes any clock, and had again, the second reading not
     smaller than the first, work never being taken away.
+    The clock named is asked where the C library has the call:
+    Darwin's libSystem declares it and has no symbol for it.
+
     """
-    var cid = unsafe_alloc[c_int](1)
-    cid.unsafe_offset(0)[] = -99
-    assert_equal(
-        Int(clock_getcpuclockid(0, cid)),
-        0,
-        "the process's own clock is named",
-    )
-    var one = unsafe_alloc[timespec](1)
-    var two = unsafe_alloc[timespec](1)
-    one.unsafe_offset(0)[] = timespec()
-    two.unsafe_offset(0)[] = timespec()
-    assert_equal(
-        Int(clock_gettime(cid.unsafe_offset(0)[], one)),
-        0,
-        "and the clock it names answers",
-    )
-    assert_equal(
-        Int(clock_gettime(cid.unsafe_offset(0)[], two)),
-        0,
-        "and answers again when it is asked again",
-    )
-    var first = (
-        one.unsafe_offset(0)[].tv_sec * 1_000_000_000
-        + one.unsafe_offset(0)[].tv_nsec
-    )
-    var second = (
-        two.unsafe_offset(0)[].tv_sec * 1_000_000_000
-        + two.unsafe_offset(0)[].tv_nsec
-    )
-    assert_true(
-        second >= first,
-        "and the second reading of work is not smaller than the first",
-    )
-    cid.unsafe_free()
-    one.unsafe_free()
-    two.unsafe_free()
+    comptime if not CompilationTarget.is_macos():
+        var cid = unsafe_alloc[c_int](1)
+        cid.unsafe_offset(0)[] = -99
+        assert_equal(
+            Int(clock_getcpuclockid(0, cid)),
+            0,
+            "the process's own clock is named",
+        )
+        var one = unsafe_alloc[timespec](1)
+        var two = unsafe_alloc[timespec](1)
+        one.unsafe_offset(0)[] = timespec()
+        two.unsafe_offset(0)[] = timespec()
+        assert_equal(
+            Int(clock_gettime(cid.unsafe_offset(0)[], one)),
+            0,
+            "and the clock it names answers",
+        )
+        assert_equal(
+            Int(clock_gettime(cid.unsafe_offset(0)[], two)),
+            0,
+            "and answers again when it is asked again",
+        )
+        var first = (
+            one.unsafe_offset(0)[].tv_sec * 1_000_000_000
+            + one.unsafe_offset(0)[].tv_nsec
+        )
+        var second = (
+            two.unsafe_offset(0)[].tv_sec * 1_000_000_000
+            + two.unsafe_offset(0)[].tv_nsec
+        )
+        assert_true(
+            second >= first,
+            "and the second reading of work is not smaller than the first",
+        )
+        cid.unsafe_free()
+        one.unsafe_free()
+        two.unsafe_free()
