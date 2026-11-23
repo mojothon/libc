@@ -2387,3 +2387,44 @@ def bsearch(
         c_size_t,
         def(c_ptr[c_void], c_ptr[c_void]) thin -> Int32,
     ](key, base, count, size, compare)
+
+
+def mkostemp(template: c_ptr[c_char], flags: Int32) -> c_int:
+    """C library <stdlib.h> function `mkostemp`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/mkstemp.3.html
+
+    Description:
+        A temporary file made and opened with its flags set as it
+        is made: the name the template's last six crosses become
+        is rewritten where the template stands, and the flag word
+        -- close on exec, non-blocking -- applied by the making
+        itself, before anything can read or write the file.
+
+    Args:
+        template: The name to make, its last six characters
+            exactly the crosses the making fills in.
+        flags: The word the opening applies: `O_CLOEXEC` so the
+            file is closed when a program is exec'd, and the
+            rest of the `open` flags besides.
+
+    Returns:
+        The descriptor of the file, -1 with `errno` saying why.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5. What it
+        adds over `mkstemp` is the word: the flags a caller sets
+        with `mkstemp` and then `fcntl` are set in the gap
+        between the two calls, which is a gap another thread can
+        race a fork and an exec through -- the word in
+        `mkostemp` is set before the descriptor exists to be
+        raced for, and what the crossing's absence leaves is
+        what the ordinary making leaves, a file open for
+        reading and writing and nothing else. A template whose
+        last six are not crosses is refused, and the template
+        comes back as the caller handed it.
+    """
+    return external_call["mkostemp", c_int, c_ptr[c_char], Int32](
+        template, flags
+    )

@@ -11,8 +11,9 @@ from libc.constant import (
     c_void,
     c_wchar,
 )
-from libc.fcntl import O_RDWR, open
+from libc.fcntl import FD_CLOEXEC, F_GETFD, O_CLOEXEC, O_RDWR, fcntl, open
 from libc.math import fabs
+from libc.errno import EINVAL, get_errno, set_errno
 from libc.file import close, fclose, fopen, fputs, fread, read, write
 from libc.stdio import remove
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, WIFSIGNALED, waitpid
@@ -54,6 +55,7 @@ from libc.stdlib import (
     mbtowc,
     mkdtemp,
     mkstemp,
+    mkostemp,
     mkstemps,
     mktemp,
     mrand48,
@@ -1353,5 +1355,57 @@ def main() raises:
     test_system_hands_back_the_commands_own_ending()
     test_the_underscored_exit_ends_the_child_where_it_stands()
     test_the_order_the_comparator_asks_for()
+    test_the_made_temporary_opened_with_its_word()
     test_looking_for_one_in_the_array()
     print("test_stdlib: ok")
+
+
+def test_the_made_temporary_opened_with_its_word() raises:
+    """`mkostemp` makes the temporary and opens it with its flag
+    word applied as it is made: the crosses become a name, the
+    descriptor opens on it, and the word the making applies is
+    what the descriptor is asked for after -- close on exec
+    set before anything can be raced for. An empty word is the
+    ordinary making, and a name whose last six are not crosses
+    is refused with the template as the caller handed it.
+    """
+    var tpl = string_to_char_ptr("/tmp/libc_stdlib_mkoXXXXXX")
+    var fd = mkostemp(tpl, O_CLOEXEC)
+    assert_true(fd >= 0, "the temporary is made and opened")
+    assert_true(
+        char_ptr_to_string(tpl).startswith("/tmp/libc_stdlib_mko"),
+        "and the name is rewritten where the template stood",
+    )
+    assert_equal(
+        Int(fcntl(fd, F_GETFD, 0)) & Int(FD_CLOEXEC) != 0,
+        True,
+        "and the word the making applies is what the descriptor has",
+    )
+    assert_equal(close(fd), 0, "the file is given back")
+    assert_equal(remove(tpl), 0, "and the name with it")
+    tpl.unsafe_free()
+
+    var plain = string_to_char_ptr("/tmp/libc_stdlib_mkpXXXXXX")
+    var fd2 = mkostemp(plain, 0)
+    assert_true(fd2 >= 0, "the ordinary making makes the ordinary file")
+    assert_equal(
+        Int(fcntl(fd2, F_GETFD, 0)) & Int(FD_CLOEXEC) != 0,
+        False,
+        "and without the word there is nothing close-on-exec about it",
+    )
+    assert_equal(close(fd2), 0, "the file is given back")
+    assert_equal(remove(plain), 0, "and the name with it")
+    plain.unsafe_free()
+
+    var bad = string_to_char_ptr("/tmp/libc_stdlib_shortname")
+    set_errno(0)
+    assert_equal(
+        mkostemp(bad, 0), -1, "a name whose last six are not crosses is refused"
+    )
+    assert_equal(Int(get_errno()), EINVAL, "with the word for the argument")
+    assert_equal(
+        char_ptr_to_string(bad) == "/tmp/libc_stdlib_shortname",
+        True,
+        "and the template comes back as the caller handed it",
+    )
+    bad.unsafe_free()
