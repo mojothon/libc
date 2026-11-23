@@ -1,8 +1,9 @@
 from std.memory.alloc import unsafe_alloc
 from std.testing import assert_equal, assert_true
 
-from libc.constant import c_long, c_ptr
+from libc.constant import EINVAL, c_long, c_ptr
 from libc.stdlib import setenv, unsetenv
+from libc.errno import get_errno, set_errno
 from libc.unistd import geteuid
 from libc.sys.stat import timeval
 from libc.time import (
@@ -29,11 +30,13 @@ from libc.time import (
     localtime_r,
     mktime,
     nanosleep,
+    clock_nanosleep,
     setitimer,
     strftime,
     strftime_l,
     strptime,
     strptime_l,
+    TIMER_ABSTIME,
     time,
     timegm,
     timelocal,
@@ -596,8 +599,71 @@ def main() raises:
     test_strptime()
     test_clocks()
     test_nanosleep()
+    test_a_sleep_measured_on_a_clock_the_caller_names()
     test_localtime()
     test_the_ones_that_keep_their_own_buffer()
     test_a_timer_that_is_set_and_taken_back()
     test_asking_the_clock_how_far_it_is_to_move()
     print("test_time: ok")
+
+
+def test_a_sleep_measured_on_a_clock_the_caller_names() raises:
+    """`clock_nanosleep` sleeps on a clock the caller names: a
+    length, as that clock counts it, waited out and answered 0 --
+    and a moment waited for, the clock's reading taken now and a
+    tenth of a second added, the sleep answering 0 with the
+    moment behind it. A moment already past is answered 0 at
+    once, and the code for what went wrong comes back as the
+    answer itself, `errno` left as the caller left it.
+    """
+    var req = unsafe_alloc[timespec](1)
+    var rem = unsafe_alloc[timespec](1)
+
+    req.unsafe_offset(0)[] = timespec(0, 10_000_000)
+    set_errno(0)
+    assert_equal(
+        Int(clock_nanosleep(CLOCK_MONOTONIC, 0, req, rem)),
+        0,
+        "a length is waited out on the clock that counts it",
+    )
+    assert_equal(
+        Int(get_errno()),
+        0,
+        "and the answer carries its own words, errno untouched",
+    )
+
+    var now = unsafe_alloc[timespec](1)
+    now.unsafe_offset(0)[] = timespec()
+    assert_equal(
+        Int(clock_gettime(CLOCK_MONOTONIC, now)),
+        0,
+        "the clock's reading is taken",
+    )
+    var when = now.unsafe_offset(0)[]
+    when.tv_nsec = when.tv_nsec + 10_000_000
+    if when.tv_nsec > 999_999_999:
+        when.tv_sec = when.tv_sec + 1
+        when.tv_nsec = when.tv_nsec - 1_000_000_000
+    now.unsafe_offset(0)[] = when
+    assert_equal(
+        Int(clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, now, rem)),
+        0,
+        "a moment is waited for, whatever the length to it",
+    )
+
+    now.unsafe_offset(0)[] = timespec(1, 0)
+    assert_equal(
+        Int(clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, now, rem)),
+        0,
+        "and a moment already past is answered at once",
+    )
+
+    assert_equal(
+        Int(clock_nanosleep(0x7FFFFFFF, 0, req, rem)),
+        EINVAL,
+        "a clock the kernel does not know comes back as the code itself",
+    )
+
+    req.unsafe_free()
+    rem.unsafe_free()
+    now.unsafe_free()

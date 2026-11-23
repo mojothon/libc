@@ -262,6 +262,13 @@ SAME_ORDER = {
         "the same pair. The pair that differs is the one a privileged process "
         "would be refused"
     ),
+    "clock_nanosleep:request <-> remain": (
+        "what is left of an interrupted sleep is written where the caller's "
+        "fourth argument points, and a suite that never interrupts a sleep "
+        "never sees what is written there -- the swapped call sleeps for "
+        "what the buffer held and writes nothing, and the answers the "
+        "tests read are the same. The pair that differs is a test whose "
+        "sleep a signal interrupts"),
     "getcpu:cpu <-> node": (
         "which processor and which node are two numbers of one reading, and "
         "a machine whose whole memory is one node answers both with numbers "

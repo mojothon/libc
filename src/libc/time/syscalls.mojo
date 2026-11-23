@@ -807,3 +807,60 @@ def setitimer(
     return external_call[
         "setitimer", c_int, c_int, c_ptr[itimerval], c_ptr[itimerval]
     ](which, new_value, old_value)
+
+
+# The word that asks a sleep to wake at a moment rather than after
+# a length: `clock_nanosleep` takes it, and a sleep asked twice with
+# the same moment is a sleep interrupted that asks again, standing
+# not for what was left of a length but for the moment itself.
+comptime TIMER_ABSTIME: c_int = 1
+
+
+def clock_nanosleep(
+    clockid: c_int,
+    flags: Int32,
+    request: c_ptr[timespec],
+    remain: c_ptr[timespec],
+) -> Int32:
+    """C library <time.h> function `clock_nanosleep`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/clock_nanosleep.2.html
+
+    Description:
+        A sleep on a clock the caller names: the length, as that
+        clock counts it, is waited out -- or, with `TIMER_ABSTIME`
+        in the word, the moment is waited for, whatever length the
+        getting there takes.
+
+    Args:
+        clockid: The clock the sleeping is measured on.
+        flags: The word: `TIMER_ABSTIME` to sleep until a moment,
+            nothing in it to sleep for a length.
+        request: The length to sleep for, or the moment to sleep
+            until, as the clock counts it.
+        remain: Where what is left of the sleep is written when a
+            signal interrupts it, and left alone when nothing
+            does.
+
+    Returns:
+        0 on success, and the code for what went wrong on a
+        failure -- not -1, and nothing in `errno`: the answer
+        carries its own word for why.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5. What it
+        adds over `nanosleep` is the clock: a sleep measured on a
+        clock that never runs backwards is a sleep that one
+        adjustment of the system's time does not shorten or
+        lengthen, which is why the absolute form is asked on
+        `CLOCK_MONOTONIC` when what is wanted is a moment and
+        not merely a wait. A moment that is already past is
+        answered 0 at once -- there is nothing left to wait for
+        -- and the interrupting of a length is what the remain
+        argument is for, the caller that asks again after a
+        signal handing back what it was written with.
+    """
+    return external_call[
+        "clock_nanosleep", Int32, c_int, Int32, c_ptr[timespec], c_ptr[timespec]
+    ](clockid, flags, request, remain)

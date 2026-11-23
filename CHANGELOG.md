@@ -202,6 +202,22 @@ All notable changes to this project are documented here. The format follows
   C library implements the unnamed kind, makes one in room of
   its own, reads its count down and takes the room back.
 
+- **`libc.time` gains `clock_nanosleep`, with `TIMER_ABSTIME`.**
+  C's `<time.h>` sleeps on a clock the caller names: a length,
+  as that clock counts it, waited out -- or, with the word in
+  the flags, a moment waited for, whatever the length to it.
+  The wrapper has been in the C library since 2.2.5, and what
+  it adds over `nanosleep` is the clock: a sleep measured on a
+  clock that never runs backwards is a sleep one adjustment of
+  the system's time does not shorten or lengthen. The answer
+  carries its own words: 0 on success and the code for what
+  went wrong on a failure, nothing in `errno` -- the one
+  binding whose failure is not -1 and a lookup of `errno`. The
+  test waits out a length, waits for a moment a tenth of a
+  second ahead of the monotonic clock's reading, is answered 0
+  at once for a moment already past, and is handed the code
+  for a clock the kernel does not know.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
