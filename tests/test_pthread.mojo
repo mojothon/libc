@@ -1018,7 +1018,12 @@ def main() raises:
 
 
 def test_the_named_semaphore_and_its_count() raises:
-    """The named semaphore and the count it is made with: opened
+    """The named semaphore and the count it is made with: asked
+    where the making of one can be asked safely -- Darwin has the
+    named kind too, but a variadic callee there reads its extra
+    arguments from the stack, which a call that names all four
+    does not give it, so the mode and the value arrive as
+    something else and the making is refused. Opened
     into being with a count of one -- taken down by the ask that
     does not stand in line, refused the second time with the word
     for try again -- and put back up by the ask that gives. The
@@ -1026,43 +1031,52 @@ def test_the_named_semaphore_and_its_count() raises:
     nothing, and an open of a name there is not is the word for
     failure in the slot a semaphore comes back in.
     """
-    comptime NAME = string_to_char_ptr("/libc_mojo_sem_a")
-    comptime RW: Int32 = 384
-
-    # A run that failed before its unlink leaves the name behind, and
-    # the exclusive ask is refused by what a failed run left -- so the
-    # asking starts by taking the name off, which answers -1 when
-    # there is nothing there to take off.
-    _ = sem_unlink(NAME)
-    var s = sem_open(NAME, O_CREAT | O_EXCL, RW, 1)
-    if Int(s) == Int(SEM_FAILED):
-        print("sem_open refused, errno:", Int(get_errno()))
-    assert_true(Int(s) != Int(SEM_FAILED), "the named semaphore is made")
-
-    assert_equal(sem_trywait(s), 0, "the count of one is taken without a wait")
-    set_errno(0)
-    assert_equal(sem_trywait(s), -1, "and the second ask finds nothing to take")
-    assert_equal(Int(get_errno()), Int(EAGAIN), "with the word for try again")
-
-    assert_equal(sem_post(s), 0, "and the giver puts the count back up")
-
     comptime if not CompilationTarget.is_macos():
-        var v = unsafe_alloc[Int32](1)
+        comptime NAME = string_to_char_ptr("/libc_mojo_sem_a")
+        comptime RW: Int32 = 384
+
+        # A run that failed before its unlink leaves the name behind, and
+        # the exclusive ask is refused by what a failed run left -- so the
+        # asking starts by taking the name off, which answers -1 when
+        # there is nothing there to take off.
+        _ = sem_unlink(NAME)
+        var s = sem_open(NAME, O_CREAT | O_EXCL, RW, 1)
+        assert_true(Int(s) != Int(SEM_FAILED), "the named semaphore is made")
+
         assert_equal(
-            sem_getvalue(s, v), 0, "the count is a thing that can be read"
+            sem_trywait(s), 0, "the count of one is taken without a wait"
+        )
+        set_errno(0)
+        assert_equal(
+            sem_trywait(s), -1, "and the second ask finds nothing to take"
         )
         assert_equal(
-            Int(v.unsafe_offset(0)[]), 1, "and it is the count the giver left"
+            Int(get_errno()), Int(EAGAIN), "with the word for try again"
         )
 
-    assert_equal(sem_close(s), 0, "the hold is given back")
-    assert_equal(sem_unlink(NAME), 0, "and the name is taken off the list")
+        assert_equal(sem_post(s), 0, "and the giver puts the count back up")
 
-    var gone = sem_open(NAME, 0, 0, 0)
-    assert_true(Int(gone) == Int(SEM_FAILED), "the name finds nothing now")
-    assert_equal(
-        Int(get_errno()), Int(ENOENT), "with the word for a name that is not"
-    )
+        comptime if not CompilationTarget.is_macos():
+            var v = unsafe_alloc[Int32](1)
+            assert_equal(
+                sem_getvalue(s, v), 0, "the count is a thing that can be read"
+            )
+            assert_equal(
+                Int(v.unsafe_offset(0)[]),
+                1,
+                "and it is the count the giver left",
+            )
+
+        assert_equal(sem_close(s), 0, "the hold is given back")
+        assert_equal(sem_unlink(NAME), 0, "and the name is taken off the list")
+
+        var gone = sem_open(NAME, 0, 0, 0)
+        assert_true(Int(gone) == Int(SEM_FAILED), "the name finds nothing now")
+        assert_equal(
+            Int(get_errno()),
+            Int(ENOENT),
+            "with the word for a name that is not",
+        )
 
 
 def test_the_moment_the_waiting_gives_up() raises:
