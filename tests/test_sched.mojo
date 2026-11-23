@@ -280,3 +280,39 @@ def test_the_one_number_of_the_same_reading() raises:
             which >= 0 and which < nprocs,
             "the processor read without a pointer is one the machine has",
         )
+        # The number is also the one the affinity says: with the process
+        # pinned to a single processor -- the last, when the machine has
+        # more than one -- the reading has nowhere to be but there, and
+        # a call that answered something else would be told.
+        if nprocs > 1:
+            var held = unsafe_alloc[Int32](256)
+            for i in range(256):
+                held.unsafe_store(i, 0)
+            assert_equal(
+                sched_getaffinity(0, 1024, held),
+                0,
+                "the processors this may run on are taken down first",
+            )
+            var pinned = unsafe_alloc[Int32](256)
+            for i in range(256):
+                pinned.unsafe_store(i, 0)
+            pinned.unsafe_store(
+                (nprocs - 1) // 32, Int32(1) << Int32((nprocs - 1) % 32)
+            )
+            assert_equal(
+                sched_setaffinity(0, 1024, pinned),
+                0,
+                "the process is pinned to the last processor the machine has",
+            )
+            assert_equal(
+                Int(sched_getcpu()),
+                nprocs - 1,
+                "and the reading is that processor and no other",
+            )
+            assert_equal(
+                sched_setaffinity(0, 1024, held),
+                0,
+                "and the processors it may run on are given back",
+            )
+            held.unsafe_free()
+            pinned.unsafe_free()
