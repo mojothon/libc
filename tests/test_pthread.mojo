@@ -17,6 +17,7 @@ from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.constant import (
+    EBUSY,
     EAGAIN,
     EINVAL,
     ENOENT,
@@ -95,6 +96,13 @@ from libc.pthread import (
     sem_unlink,
     sem_wait,
     SEM_FAILED,
+    pthread_spin_init,
+    pthread_spin_destroy,
+    pthread_spin_lock,
+    pthread_spin_trylock,
+    pthread_spin_unlock,
+    PTHREAD_PROCESS_PRIVATE,
+    pthread_spinlock_t,
 )
 from libc.signal import (
     SIGWINCH,
@@ -1016,6 +1024,7 @@ def main() raises:
     test_the_unnamed_one_in_the_room_the_caller_has()
     test_the_refusal_for_a_semaphore_the_room_says_is_busy()
     test_a_clock_that_counts_one_thread_own_work()
+    test_a_lock_spun_until_it_is_free()
     print("test_pthread: ok")
 
 
@@ -1222,3 +1231,52 @@ def test_a_clock_that_counts_one_thread_own_work() raises:
         )
         tcid.unsafe_free()
         one.unsafe_free()
+
+
+def test_a_lock_spun_until_it_is_free() raises:
+    """`pthread_spin_init` makes the lock and the spin calls take
+    it and give it up: the ask that does not wait looks once and
+    is told `EBUSY` where somebody holds it, takes the lock at
+    once where nobody does, and the giving up hands it to
+    whoever asks next. A lock a thread holds is not a lock the
+    same thread can ask for twice.
+    """
+    var lock = unsafe_alloc[pthread_spinlock_t](1)
+    lock.unsafe_offset(0)[] = pthread_spinlock_t()
+    assert_equal(
+        Int(pthread_spin_init(lock, PTHREAD_PROCESS_PRIVATE)),
+        0,
+        "the lock is made",
+    )
+    assert_equal(Int(pthread_spin_lock(lock)), 0, "the lock is taken")
+    assert_equal(
+        Int(pthread_spin_trylock(lock)),
+        EBUSY,
+        "and the ask that does not wait is told somebody holds it",
+    )
+    assert_equal(Int(pthread_spin_unlock(lock)), 0, "the lock is given up")
+    assert_equal(
+        Int(pthread_spin_trylock(lock)),
+        0,
+        "and the ask that does not wait takes it at once",
+    )
+    assert_equal(Int(pthread_spin_unlock(lock)), 0, "and gives it up again")
+    assert_equal(
+        Int(pthread_spin_destroy(lock)), 0, "the storage is given back"
+    )
+    lock.unsafe_free()
+
+    # The kernel does not check the word here: a number that is
+    # neither the private one nor the shared one is taken as the
+    # private one, and the lock is made all the same.
+    var odd = unsafe_alloc[pthread_spinlock_t](1)
+    odd.unsafe_offset(0)[] = pthread_spinlock_t()
+    assert_equal(
+        Int(pthread_spin_init(odd, 0x7FFFFFFF)),
+        0,
+        "and a word that is neither is not refused",
+    )
+    assert_equal(
+        Int(pthread_spin_destroy(odd)), 0, "and its storage is given back"
+    )
+    odd.unsafe_free()

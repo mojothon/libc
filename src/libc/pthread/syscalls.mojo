@@ -2881,3 +2881,179 @@ def pthread_getcpuclockid(thread: pthread_t, clockid: c_ptr[c_int]) -> c_int:
     return external_call[
         "pthread_getcpuclockid", c_int, pthread_t, c_ptr[c_int]
     ](thread, clockid)
+
+
+# A `pthread_spinlock_t` from `<pthread.h>`: the storage a spin
+# lock is held in. glibc's is 4 bytes and Darwin's is also 4, and
+# the calls all take it by pointer, so libc only ever writes into
+# it, and the member is not exposed: what the kernel or the C
+# library keeps in it is not a thing a binding says.
+struct pthread_spinlock_t(TrivialRegisterPassable):
+    """An opaque `pthread_spinlock_t` from `<pthread.h>`.
+
+    glibc's and Darwin's are both 4 bytes, so this holds what
+    either writes. Every call takes it by pointer, so libc only
+    ever writes into it, and the member is not exposed: a binding
+    cannot say what one is without knowing which layout it is
+    looking at.
+
+    Zeroing one is not initialising it. `pthread_spin_init` is
+    what makes one into a lock, and `pthread_spin_destroy` is
+    what gives the storage back.
+    """
+
+    var _opaque: UInt32
+
+    def __init__(out self):
+        self._opaque = 0
+
+
+def pthread_spin_init(lock: c_ptr[pthread_spinlock_t], pshared: Int32) -> Int32:
+    """C library <pthread.h> function `pthread_spin_init`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_spin_init.3.html
+
+    Description:
+        Makes `lock` into a spin lock: the caller spins rather
+        than sleeps when the lock is held, which is the speed of
+        the lock where the wait is short and the cost of it where
+        the wait is not.
+
+    Args:
+        lock: The storage, which `pthread_spin_destroy` gives back.
+        pshared: The word for whether the lock can be shared
+            between processes -- `PTHREAD_PROCESS_PRIVATE` is the
+            nothing of it.
+
+    Returns:
+        0 on success.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5. What
+        the word asks is the reach of the lock: a lock shared
+        with other processes is a lock the kernel has a say in,
+        and a private one is a lock the process spins on alone.
+        The kernel does not check the word here: a number that
+        is neither the private one nor the shared one is taken
+        as the private one, and the lock is made all the same.
+    """
+    return external_call[
+        "pthread_spin_init", Int32, c_ptr[pthread_spinlock_t], Int32
+    ](lock, pshared)
+
+
+def pthread_spin_destroy(lock: c_ptr[pthread_spinlock_t]) -> Int32:
+    """C library <pthread.h> function `pthread_spin_destroy`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_spin_init.3.html
+
+    Description:
+        Gives back the storage `pthread_spin_init` made into a
+        lock. A lock that is held is not a lock this ends.
+
+    Args:
+        lock: The lock, whose storage is given back.
+
+    Returns:
+        0 on success.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5. What
+        is given back is the storage and not the holding: a
+        caller that destroys a lock while it is held is a caller
+        whose next ask of the storage is not about anything.
+    """
+    return external_call[
+        "pthread_spin_destroy", Int32, c_ptr[pthread_spinlock_t]
+    ](lock)
+
+
+def pthread_spin_lock(lock: c_ptr[pthread_spinlock_t]) -> Int32:
+    """C library <pthread.h> function `pthread_spin_lock`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_spin_lock.3.html
+
+    Description:
+        Takes the lock, spinning until it is free: the ask does
+        not sleep and does not come back with anything but the
+        lock in hand.
+
+    Args:
+        lock: The lock.
+
+    Returns:
+        0 on success.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5, and
+        the asking again of a caller who holds it is not
+        answered here at all: a spin lock is not one a thread
+        can take twice, and the ask of a thread that holds it
+        is an ask that spins forever. What the lock is for is
+        the wait the caller knows is short.
+    """
+    return external_call["pthread_spin_lock", Int32, c_ptr[pthread_spinlock_t]](
+        lock
+    )
+
+
+def pthread_spin_trylock(lock: c_ptr[pthread_spinlock_t]) -> Int32:
+    """C library <pthread.h> function `pthread_spin_trylock`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_spin_lock.3.html
+
+    Description:
+        Takes the lock only if it is free: the ask comes back at
+        once either way, with the lock in hand or with the word
+        that somebody else holds it.
+
+    Args:
+        lock: The lock.
+
+    Returns:
+        0 when the lock is taken, `EBUSY` where somebody else
+        holds it.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5, and
+        it is the spin lock's whole manners: where `pthread_spin_lock`
+        spins until the lock is free, this one looks once and
+        says so, which is what a caller asks for when the
+        waiting is not part of the plan.
+    """
+    return external_call[
+        "pthread_spin_trylock", Int32, c_ptr[pthread_spinlock_t]
+    ](lock)
+
+
+def pthread_spin_unlock(lock: c_ptr[pthread_spinlock_t]) -> Int32:
+    """C library <pthread.h> function `pthread_spin_unlock`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_spin_lock.3.html
+
+    Description:
+        Gives the lock up: the next ask that comes for it is the
+        next one that takes it.
+
+    Args:
+        lock: The lock.
+
+    Returns:
+        0 on success.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5. What
+        is given up is the holding, and the caller that unlocks
+        a lock it does not hold is a caller whose answer is not
+        about anything -- the lock is a thread's own word about
+        what it has, and the giving up is the same word said
+        the other way.
+    """
+    return external_call[
+        "pthread_spin_unlock", Int32, c_ptr[pthread_spinlock_t]
+    ](lock)
