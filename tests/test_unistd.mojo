@@ -346,13 +346,19 @@ def test_chown_on_what_is_not_there() raises:
         0,
         "the ask by descriptor and relative name is answered",
     )
+    # The group the ask leaves on the file is read back from the file
+    # itself -- a directory on one platform takes the group of the
+    # place it stands in, so the file is what tells, and a swap that
+    # reads the flags as the group gives it a different one.
     var st = unsafe_alloc[Stat](1)
     st.unsafe_offset(0)[] = Stat()
-    assert_equal(Int(fstat(dfd, st)), 0, "the directory is asked what it is")
+    assert_equal(
+        Int(stat(inside, st)), 0, "the file is asked what group it is in"
+    )
     assert_equal(
         st.unsafe_offset(0)[].gid(),
         Int(getgid()),
-        "and the group the file is given to is the one it already has",
+        "and the group the ask leaves is the one the caller is in",
     )
     assert_equal(
         fchownat(getuid(), rel, -1, getgid(), 0),
