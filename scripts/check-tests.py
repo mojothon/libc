@@ -81,6 +81,8 @@ ASKED_ON_ONE_PLATFORM = {
     "timerfd_create": "a timer that is a descriptor -- Linux's own family, of which eventfd's counter is the other half, and Darwin answers the same need with kqueue, which is a different call with different answers",
     "pipe2": "a pipe made with its flags set as it is made -- the word the making applies is the kernel's own speedup of what a caller sets with fcntl afterwards, and Darwin has no call that takes it",
     "sched_getcpu": "the number of the processor the thread runs on, which is the scheduler's own idea; Darwin has no such call to ask, and its pthread calls keep the answer where it keeps the rest of the thread's state",
+    "clock_getcpuclockid": "the number of the clock that counts one process's own processor time, and Darwin's libSystem declares the call and has no symbol for it",
+    "pthread_getcpuclockid": "the number of the clock that counts one thread's own processor time, and Darwin's libSystem declares the call and has no symbol for it",
 }
 
 # Bindings that could be asked something and have not been. This is the list
