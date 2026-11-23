@@ -40,6 +40,27 @@ from libc.sys.stat import (
     utime,
     utimensat,
     utimes,
+    STATX_SLOTS,
+    STATX_MASK_OFFSET,
+    STATX_BLKSIZE_OFFSET,
+    STATX_ATTRIBUTES_OFFSET,
+    STATX_NLINK_OFFSET,
+    STATX_UID_OFFSET,
+    STATX_GID_OFFSET,
+    STATX_MODE_OFFSET,
+    STATX_INO_OFFSET,
+    STATX_SIZE_OFFSET,
+    STATX_BLOCKS_OFFSET,
+    STATX_ATTRIBUTES_MASK_OFFSET,
+    STATX_ATIME_OFFSET,
+    STATX_BTIME_OFFSET,
+    STATX_CTIME_OFFSET,
+    STATX_MTIME_OFFSET,
+    STATX_RDEV_MAJOR_OFFSET,
+    STATX_RDEV_MINOR_OFFSET,
+    STATX_DEV_MAJOR_OFFSET,
+    STATX_DEV_MINOR_OFFSET,
+    STATX_BYTES,
 )
 from libc.unistd import (
     access,
@@ -549,6 +570,7 @@ def main() raises:
     test_asking_for_less_is_asking_by_the_mask()
     test_a_link_asked_by_its_own_name()
     test_two_names_for_one_file_say_so()
+    test_the_row_the_wider_answer_reads_is_one_layout()
     print("test_stat: ok")
 
 
@@ -759,3 +781,46 @@ def test_two_names_for_one_file_say_so() raises:
 
         _ = unlink(path)
         _ = unlink(second)
+
+
+def test_the_row_the_wider_answer_reads_is_one_layout() raises:
+    """The offsets the wider row is read at: the kernel's own table,
+    written as numbers and asked as numbers, on both of the
+    machines that ask -- a row whose members sit where the table
+    says they sit is a row no platform is free to move, and a
+    number that moves is a number the asking finds out. The
+    bytes are the row's length, the slots the mask's own count
+    of what may come back, and the mask the full asking.
+    """
+    assert_equal(Int(STATX_SLOTS), 32, "the mask has room for thirty-two words")
+    assert_equal(
+        Int(STATX_MASK_OFFSET), 0, "the mask is the first word of the row"
+    )
+    assert_equal(Int(STATX_BLKSIZE_OFFSET), 4, "the block size sits beside it")
+    assert_equal(
+        Int(STATX_ATTRIBUTES_OFFSET), 8, "and the attributes beside that"
+    )
+    assert_equal(Int(STATX_NLINK_OFFSET), 16, "the link count has its own word")
+    assert_equal(Int(STATX_UID_OFFSET), 20, "the owner's number is beside it")
+    assert_equal(Int(STATX_GID_OFFSET), 24, "and the group's beside that")
+    assert_equal(Int(STATX_MODE_OFFSET), 28, "the mode has its own word")
+    assert_equal(Int(STATX_INO_OFFSET), 32, "the number of the file is at 32")
+    assert_equal(Int(STATX_SIZE_OFFSET), 40, "the size is at 40")
+    assert_equal(Int(STATX_BLOCKS_OFFSET), 48, "the blocks are at 48")
+    assert_equal(
+        Int(STATX_ATTRIBUTES_MASK_OFFSET), 56, "the attributes' mask is at 56"
+    )
+    assert_equal(Int(STATX_ATIME_OFFSET), 64, "the read time is at 64")
+    assert_equal(Int(STATX_BTIME_OFFSET), 80, "the birth time is at 80")
+    assert_equal(Int(STATX_CTIME_OFFSET), 96, "the change time is at 96")
+    assert_equal(Int(STATX_MTIME_OFFSET), 112, "the write time is at 112")
+    assert_equal(
+        Int(STATX_RDEV_MAJOR_OFFSET), 128, "the device's major is at 128"
+    )
+    assert_equal(Int(STATX_RDEV_MINOR_OFFSET), 132, "and the minor beside it")
+    assert_equal(
+        Int(STATX_DEV_MAJOR_OFFSET), 136, "the other device's major at 136"
+    )
+    assert_equal(Int(STATX_DEV_MINOR_OFFSET), 140, "and its minor beside it")
+    assert_equal(Int(STATX_BYTES), 256, "and the row is 256 bytes long")
+    assert_equal(Int(STATX_ALL), 4095, "the full mask asks for everything")

@@ -30,7 +30,7 @@ from libc.constant import (
 from libc.signal import SIGALRM, SIGKILL, kill
 from libc.stdlib import _Exit, exit, grantpt, posix_openpt, ptsname, unlockpt
 from libc.time import CLOCK_MONOTONIC, clock_gettime, timespec
-from libc.sys.stat import Stat, fchmod, fstat, stat
+from libc.sys.stat import Stat, fchmod, fstat, mkdir, stat
 from libc.sys.utsname import Utsname, uname
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, WIFSIGNALED, WTERMSIG, waitpid
 from libc.time import ITIMER_REAL, getitimer, itimerval, setitimer
@@ -143,6 +143,7 @@ from libc.unistd import (
     ttyname_r,
     ualarm,
     unlink,
+    rmdir,
     unlinkat,
     usleep,
     write,
@@ -318,6 +319,53 @@ def test_chown_on_what_is_not_there() raises:
     _ = close(fd)
     _ = unlink(owned)
     assert_equal(fchownat(-1, nowhere, getuid(), getgid(), 0), -1)
+    # The `at` call is asked by a descriptor and a relative name, which
+    # is what the first argument is for: the file is given to the owner
+    # it already has through the directory it stands in, and answers 0.
+    # A swap reads the owner as the descriptor -- a number no descriptor
+    # is -- and the relative name has nowhere to go, so the ask is
+    # refused; a swap reads the flags as the group, and the group the
+    # file is given to is not the one it had.
+    # A run that failed before its taking-down leaves the folder behind,
+    # and the making is refused by what a failed run left -- so the
+    # asking starts by clearing what is there, which answers -1 when
+    # there is nothing to clear.
+    _ = unlink(string_to_char_ptr("/tmp/libc_fchown_dir/libc_fchown"))
+    _ = rmdir(string_to_char_ptr("/tmp/libc_fchown_dir"))
+    var folder = string_to_char_ptr("/tmp/libc_fchown_dir")
+    assert_equal(mkdir(folder, 0o700), 0, "the directory is made")
+    var inside = string_to_char_ptr("/tmp/libc_fchown_dir/libc_fchown")
+    var fd3 = open_with_mode(inside, O_CREAT | O_RDONLY, 0o600)
+    assert_true(fd3 >= 0, "the file to be owned is made inside it")
+    _ = close(fd3)
+    var dfd = open_with_mode(folder, O_RDONLY, 0)
+    assert_true(dfd >= 0, "and the directory is opened for the ask")
+    var rel = string_to_char_ptr("libc_fchown")
+    assert_equal(
+        fchownat(dfd, rel, getuid(), getgid(), 0),
+        0,
+        "the ask by descriptor and relative name is answered",
+    )
+    var st = unsafe_alloc[Stat](1)
+    st.unsafe_offset(0)[] = Stat()
+    assert_equal(Int(fstat(dfd, st)), 0, "the directory is asked what it is")
+    assert_equal(
+        st.unsafe_offset(0)[].gid(),
+        Int(getgid()),
+        "and the group the file is given to is the one it already has",
+    )
+    assert_equal(
+        fchownat(getuid(), rel, -1, getgid(), 0),
+        -1,
+        "and the swap reads the owner as a descriptor that is not",
+    )
+    assert_equal(close(dfd), 0, "the directory is given back")
+    _ = unlink(inside)
+    _ = rmdir(folder)
+    inside.unsafe_free()
+    folder.unsafe_free()
+    rel.unsafe_free()
+    st.unsafe_free()
 
     var link = string_to_char_ptr("/tmp/libc_dangling_link")
     _ = unlink(link)
