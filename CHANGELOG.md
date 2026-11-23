@@ -218,6 +218,17 @@ All notable changes to this project are documented here. The format follows
   at once for a moment already past, and is handed the code
   for a clock the kernel does not know.
 
+- **`libc.time` and `libc.pthread` gain the clocks that count one process's and one thread's own work.**
+  `clock_getcpuclockid` names the clock that counts the processor time one process has
+  used -- not one of the names the clocks are known by, and made from the process it
+  counts; `pthread_getcpuclockid` names the clock of the part beside the clock of the
+  whole. A process that sleeps for a second is a second its clock does not move, and
+  neither asking refuses what the kernel does not know: a process that does not exist
+  is given a clock all the same, and the refusal comes when the clock is read. Both
+  are asked only where the C library has the call -- Darwin's libSystem declares them
+  and has no symbol for either -- and the tests read the clocks they are named and
+  find the second reading of work not smaller than the first.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
