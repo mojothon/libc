@@ -1397,15 +1397,22 @@ def test_the_made_temporary_opened_with_its_word() raises:
     assert_equal(remove(plain), 0, "and the name with it")
     plain.unsafe_free()
 
-    var bad = string_to_char_ptr("/tmp/libc_stdlib_shortname")
-    set_errno(0)
-    assert_equal(
-        mkostemp(bad, 0), -1, "a name whose last six are not crosses is refused"
-    )
-    assert_equal(Int(get_errno()), EINVAL, "with the word for the argument")
-    assert_equal(
-        char_ptr_to_string(bad) == "/tmp/libc_stdlib_shortname",
-        True,
-        "and the template comes back as the caller handed it",
-    )
-    bad.unsafe_free()
+    # The refusal of a template whose last six are not crosses is the
+    # kernel's word here, and Darwin's maker does not make it -- the
+    # name being taken as it stands -- so the asking is put where the
+    # refusal is had.
+    comptime if not CompilationTarget.is_macos():
+        var bad = string_to_char_ptr("/tmp/libc_stdlib_shortname")
+        set_errno(0)
+        assert_equal(
+            mkostemp(bad, 0),
+            -1,
+            "a name whose last six are not crosses is refused",
+        )
+        assert_equal(Int(get_errno()), EINVAL, "with the word for the argument")
+        assert_equal(
+            char_ptr_to_string(bad) == "/tmp/libc_stdlib_shortname",
+            True,
+            "and the template comes back as the caller handed it",
+        )
+        bad.unsafe_free()
