@@ -8,7 +8,7 @@ from std.memory import Pointer
 from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 
-from libc.constant import c_int, c_long, c_ptr, c_size_t
+from libc.constant import Int32, c_int, c_long, c_ptr, c_size_t
 from libc.locale import locale_t
 from libc.sys.stat import timeval
 from libc.utils import char_ptr_to_string
@@ -864,3 +864,46 @@ def clock_nanosleep(
     return external_call[
         "clock_nanosleep", Int32, c_int, Int32, c_ptr[timespec], c_ptr[timespec]
     ](clockid, flags, request, remain)
+
+
+def clock_getcpuclockid(pid: Int32, clockid: c_ptr[c_int]) -> c_int:
+    """C library <time.h> function `clock_getcpuclockid`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/clock_getcpuclockid.3.html
+
+    Description:
+        The clock that counts the processor time one process has
+        used: the number of the clock is written where it is
+        pointed at, and a clock asked with it answers with the
+        time the process has spent on a processor -- a clock
+        that does not move while the process sleeps, which is
+        what keeps it apart from the ones that measure waiting.
+
+    Args:
+        pid: The process whose clock is asked for, nothing in it
+            meaning the process that asks.
+        clockid: Where the number of the clock is written.
+
+    Returns:
+        0 on success, -1 with `errno` saying why on a failure.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5. What
+        the clock counts is work and not waiting: a process
+        that sleeps for a second is a second its clock does not
+        move, and the reading is taken again and again without
+        the second reading being smaller than the first. The
+        number the clock is written with is not one of the
+        names the clocks are known by -- it is made from the
+        process it counts, and the asking of one process and
+        the asking of another are two clocks with two numbers.
+        What the kernel does not know is not refused with a
+        word here: a process that does not exist is given a
+        clock all the same, and the refusal comes when the
+        clock is read, from the reading and not from the
+        asking.
+    """
+    return external_call["clock_getcpuclockid", c_int, Int32, c_ptr[c_int]](
+        pid, clockid
+    )

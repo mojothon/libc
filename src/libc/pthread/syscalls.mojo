@@ -6,7 +6,7 @@
 from std.memory import Pointer
 from std.ffi import external_call
 from std.sys import CompilationTarget
-from libc.constant import c_int, c_ptr, c_void
+from libc.constant import Int32, c_int, c_ptr, c_void
 from libc.sched import sched_param
 from libc.time import timespec
 
@@ -2843,3 +2843,41 @@ def sem_getvalue(sem: c_ptr[c_int], valp: c_ptr[Int32]) -> Int32:
     return external_call["sem_getvalue", Int32, c_ptr[c_int], c_ptr[Int32]](
         sem, valp
     )
+
+
+def pthread_getcpuclockid(thread: pthread_t, clockid: c_ptr[c_int]) -> c_int:
+    """POSIX <pthread.h> function `pthread_getcpuclockid`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_getcpuclockid.3.html
+
+    Description:
+        The clock that counts the processor time one thread has
+        used: the number of the clock is written where it is
+        pointed at, and a clock asked with it answers with the
+        time the thread -- and not the whole of the process it
+        stands in -- has spent on a processor.
+
+    Args:
+        thread: The thread whose clock is asked for.
+        clockid: Where the number of the clock is written.
+
+    Returns:
+        0 on success, -1 with `errno` saying why on a failure.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5, and
+        it is POSIX rather than part of the C library's own
+        ground: `clock_getcpuclockid` names a clock for a whole
+        process, and this one names a clock for one thread
+        inside it -- the two clocks of one process, the whole
+        and the part, move by the same rule and are told apart
+        by their numbers, and a thread that waits while its
+        siblings work is a thread whose clock does not move.
+        The number is not one of the names the clocks are
+        known by, and the reading of it is had with the
+        `clock_gettime` that takes any clock.
+    """
+    return external_call[
+        "pthread_getcpuclockid", c_int, pthread_t, c_ptr[c_int]
+    ](thread, clockid)

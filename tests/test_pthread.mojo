@@ -76,6 +76,7 @@ from libc.pthread import (
     pthread_kill,
     pthread_getschedparam,
     pthread_self,
+    pthread_getcpuclockid,
     pthread_setschedparam,
     pthread_setcancelstate,
     pthread_setcanceltype,
@@ -1014,6 +1015,7 @@ def main() raises:
     test_the_moment_the_waiting_gives_up()
     test_the_unnamed_one_in_the_room_the_caller_has()
     test_the_refusal_for_a_semaphore_the_room_says_is_busy()
+    test_a_clock_that_counts_one_thread_own_work()
     print("test_pthread: ok")
 
 
@@ -1188,3 +1190,31 @@ def test_the_refusal_for_a_semaphore_the_room_says_is_busy() raises:
             sem_destroy(u), 0, "and the room is taken down with nobody waiting"
         )
         u.unsafe_free()
+
+
+def test_a_clock_that_counts_one_thread_own_work() raises:
+    """`pthread_getcpuclockid` names the clock that counts the
+    processor time one thread has used: the clock of the part,
+    asked beside the clock of the whole, both answering with
+    readings that are not taken away.
+    """
+    var me = pthread_self()
+    var tcid = unsafe_alloc[c_int](1)
+    tcid.unsafe_offset(0)[] = -99
+    assert_equal(
+        Int(pthread_getcpuclockid(me, tcid)),
+        0,
+        "the thread's own clock is named",
+    )
+    var one = unsafe_alloc[timespec](1)
+    one.unsafe_offset(0)[] = timespec()
+    assert_equal(
+        Int(clock_gettime(tcid.unsafe_offset(0)[], one)),
+        0,
+        "and the clock it names answers",
+    )
+    assert_true(
+        one.unsafe_offset(0)[].tv_sec >= 0, "and the reading is a length"
+    )
+    tcid.unsafe_free()
+    one.unsafe_free()

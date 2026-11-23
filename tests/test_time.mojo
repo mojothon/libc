@@ -2,7 +2,7 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
-from libc.constant import EINVAL, c_long, c_ptr
+from libc.constant import EINVAL, c_int, c_long, c_ptr
 from libc.stdlib import setenv, unsetenv
 from libc.errno import get_errno, set_errno
 from libc.unistd import geteuid
@@ -18,6 +18,7 @@ from libc.time import (
     clock,
     clock_getres,
     clock_gettime,
+    clock_getcpuclockid,
     clock_settime,
     ctime,
     ctime_r,
@@ -604,6 +605,7 @@ def main() raises:
     test_localtime()
     test_the_ones_that_keep_their_own_buffer()
     test_a_timer_that_is_set_and_taken_back()
+    test_a_clock_that_counts_the_process_own_work()
     test_asking_the_clock_how_far_it_is_to_move()
     print("test_time: ok")
 
@@ -671,3 +673,49 @@ def test_a_sleep_measured_on_a_clock_the_caller_names() raises:
         req.unsafe_free()
         rem.unsafe_free()
         now.unsafe_free()
+
+
+def test_a_clock_that_counts_the_process_own_work() raises:
+    """`clock_getcpuclockid` names the clock that counts the
+    processor time this process has used: the number it writes
+    is not one of the names the clocks are known by, and the
+    clock it names answers -- a reading had with the ask that
+    takes any clock, and had again, the second reading not
+    smaller than the first, work never being taken away.
+    """
+    var cid = unsafe_alloc[c_int](1)
+    cid.unsafe_offset(0)[] = -99
+    assert_equal(
+        Int(clock_getcpuclockid(0, cid)),
+        0,
+        "the process's own clock is named",
+    )
+    var one = unsafe_alloc[timespec](1)
+    var two = unsafe_alloc[timespec](1)
+    one.unsafe_offset(0)[] = timespec()
+    two.unsafe_offset(0)[] = timespec()
+    assert_equal(
+        Int(clock_gettime(cid.unsafe_offset(0)[], one)),
+        0,
+        "and the clock it names answers",
+    )
+    assert_equal(
+        Int(clock_gettime(cid.unsafe_offset(0)[], two)),
+        0,
+        "and answers again when it is asked again",
+    )
+    var first = (
+        one.unsafe_offset(0)[].tv_sec * 1_000_000_000
+        + one.unsafe_offset(0)[].tv_nsec
+    )
+    var second = (
+        two.unsafe_offset(0)[].tv_sec * 1_000_000_000
+        + two.unsafe_offset(0)[].tv_nsec
+    )
+    assert_true(
+        second >= first,
+        "and the second reading of work is not smaller than the first",
+    )
+    cid.unsafe_free()
+    one.unsafe_free()
+    two.unsafe_free()
