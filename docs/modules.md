@@ -208,6 +208,9 @@ other platform's C library has no such call.
 - `clock_getcpuclockid` and `pthread_getcpuclockid` name the clock that counts one
   process's or one thread's own processor time; Darwin's libSystem declares the calls
   and has no symbol for either.
+- `pthread_spin_init`, `pthread_spin_destroy`, `pthread_spin_lock`, `pthread_spin_trylock`
+  and `pthread_spin_unlock` are the lock whose wait is spun and not slept; Darwin's
+  libSystem has no symbols for the spin family.
 - `pipe2` is a pipe made with its flag word applied as it is
   made -- close-on-exec and non-blocking set before the
   descriptors exist to be raced for, which is the kernel's own
@@ -216,7 +219,7 @@ other platform's C library has no such call.
   of which eventfd's counter is the other half, and Darwin answers the same
   need with kqueue, which is a different call with different answers.
 
-Linux asks 15 bindings that Darwin passes over, and Darwin 0 that Linux
+Linux asks 20 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked

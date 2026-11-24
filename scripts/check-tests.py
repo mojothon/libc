@@ -83,6 +83,11 @@ ASKED_ON_ONE_PLATFORM = {
     "sched_getcpu": "the number of the processor the thread runs on, which is the scheduler's own idea; Darwin has no such call to ask, and its pthread calls keep the answer where it keeps the rest of the thread's state",
     "clock_getcpuclockid": "the number of the clock that counts one process's own processor time, and Darwin's libSystem declares the call and has no symbol for it",
     "pthread_getcpuclockid": "the number of the clock that counts one thread's own processor time, and Darwin's libSystem declares the call and has no symbol for it",
+    "pthread_spin_init": "the lock whose wait is spun and not slept -- the kernel's own spin lock, and Darwin's libSystem has no symbols for the spin family",
+    "pthread_spin_destroy": "the spin lock's storage given back -- Darwin's libSystem has no symbols for the spin family",
+    "pthread_spin_lock": "the spin lock taken by spinning -- Darwin's libSystem has no symbols for the spin family",
+    "pthread_spin_trylock": "the spin lock looked at once, taken or not -- Darwin's libSystem has no symbols for the spin family",
+    "pthread_spin_unlock": "the spin lock given up -- Darwin's libSystem has no symbols for the spin family",
 }
 
 # Bindings that could be asked something and have not been. This is the list
