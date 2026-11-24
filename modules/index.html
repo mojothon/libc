@@ -788,7 +788,7 @@ the bottom.</p>
 <tr>
 <td><code>libc.stdlib</code></td>
 <td><code>&lt;stdlib.h&gt;</code></td>
-<td>87</td>
+<td>90</td>
 </tr>
 <tr>
 <td><code>libc.float</code></td>
@@ -1237,7 +1237,7 @@ already own; see the note at the top of <code>src/libc/stdio/syscalls.mojo</code
 structs the ABI actually passes; <code>long double complex</code> is left out because
 Mojo has no 80-bit type.</p>
 <h2 id="what-the-suite-does-not-ask">What the suite does not ask<a class="headerlink" href="#what-the-suite-does-not-ask" title="Permanent link">&para;</a></h2>
-<p>One binding is not asked anything, and the reason is about the call rather
+<p>Three bindings are not asked anything, and the reason is about the call rather
 than about the suite:</p>
 <ul>
 <li><code>ioctl</code> is variadic, and its third argument is the address that nearly every
@@ -1248,7 +1248,12 @@ than about the suite:</p>
   leaves the integer it was asked about untouched. It is the same wall that
   makes the call that opens a file here be openat rather than open.</li>
 </ul>
-<p>It is not known to be broken; it is simply not asked.</p>
+<p>It is not known to be broken; it is simply not asked.
+- <code>atexit</code> and <code>at_quick_exit</code> are the sayings of the going, and a just-in-time run
+  looks their names up in vain: this machine's C library keeps them in what stands
+  beside it and links them from there, which a built form asks and this run cannot.
+  The going they say -- quick exit, whose name the library does hand over -- is
+  asked, and the sayings are in the package on purpose.</p>
 <p>The wide putwchar call used to be on this list, on the reading that a fork only hands a
 child the stream the suite has already oriented. That was wrong twice over:
 the C library exports its standard output as a variable that the dynamic
@@ -1257,7 +1262,7 @@ pointed at whatever descriptor 1 holds. A child that points descriptor 1 at
 a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.</p>
-<p>1125 bindings are asked something, and the 1 that is not has a reason.
+<p>1126 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 <code>scripts/check-tests.py</code>, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.</p>
@@ -1326,6 +1331,12 @@ other platform's C library has no such call.</p>
   them at once -- the asking to have the ports is refused with <code>EPERM</code> to a process that is
   not allowed to ask, and the asking to give up what it never had is answered with nothing
   done; Darwin's libSystem has no such call to say.</li>
+<li><code>atexit</code> and <code>at_quick_exit</code> say what the process is to do when it goes, the one when it
+  exits the way an exit is and the other when it goes the quick way, the functions said
+  later being called earlier, and <code>quick_exit</code> goes the quick way -- the two sayings kept
+  apart, a function said to the one not being called by the other. The two sayings are
+  asked by no line of this suite: their names are what this machine's C library does not
+  hand a just-in-time run to look up.</li>
 <li><code>setdomainname</code> is the saying again of the name of the network domain the machine stands in --
   the NIS domain and not the hostname; a process that is not allowed to say it is refused
   with <code>EPERM</code> whatever the name it says, and Darwin's libSystem has no such call
