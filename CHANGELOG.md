@@ -296,6 +296,14 @@ All notable changes to this project are documented here. The format follows
   Darwin's libSystem has no such call to say, so the saying is had where the kernel
   keeps the domain.
 
+- **`libc.sys.io` gains `ioperm` and `iopl`, in a package of their own for the header they
+  come from.**
+  The word for the ports of the machine, for some of them and for all of them at once: the
+  asking to have the ports is refused with `EPERM` to a process that is not allowed to
+  ask, and the asking to give up what it never had is answered with nothing done. The word
+  is had where the machine has ports -- Darwin's libSystem has no such call to say, and
+  aarch64's glibc does not export it either, the ports being x86's own ground.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
