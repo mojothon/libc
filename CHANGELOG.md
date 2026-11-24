@@ -256,6 +256,14 @@ All notable changes to this project are documented here. The format follows
   had -- refused with nothing and `errno` saying there is not room enough, the thing the
   caller had left as it was. Both platforms have the call.
 
+- **`libc.stdlib` gains `malloc_usable_size`.**
+  The length one allocation is good for: the answer is at least the number the asking was
+  made with, whatever the housekeeping rounds the keeping to, and the storage is written
+  through the whole of the answer and read back as what was written. It is the
+  allocator's own word and not a promise -- what one allocator keeps is not what another
+  keeps -- and Darwin's libSystem keeps the same word under another name, so the asking
+  is had where the C library has it.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
