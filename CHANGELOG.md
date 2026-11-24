@@ -287,6 +287,15 @@ All notable changes to this project are documented here. The format follows
   what the saying said back puts what was there back where it was. Darwin's libSystem
   has no such call to ask, so the persona is had where the kernel keeps it.
 
+- **`libc.unistd` gains `setdomainname`.**
+  The saying again of the name of the network domain the machine stands in -- the NIS
+  domain and not the hostname: the saying of it is had by a process that is allowed to
+  say it, and a process that is not is refused with `EPERM` whatever the name it says,
+  even the name the machine already goes by, the asking of a name too long for the
+  kernel's word being refused the same way before the kernel looks at what is said.
+  Darwin's libSystem has no such call to say, so the saying is had where the kernel
+  keeps the domain.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
