@@ -1292,14 +1292,15 @@ def test_a_lock_spun_until_it_is_free() raises:
 def test_a_thread_named_again_by_the_name_it_goes_by() raises:
     """`pthread_getname_np` and `pthread_setname_np` -- the
     thread's own word about what it is: the name it is made
-    with is the process's own, the naming again is had by the
-    ask that takes the thread, and the read-back says the name
-    the ask left. A name longer than the kernel keeps is
-    refused with `ERANGE`, and so is storage too short to hold
-    the name, both said by the return and not by `errno`.
-    The naming again is had where the kernel takes the thread
-    as well -- Darwin's libSystem has a call of the same name
-    that takes only the name.
+    with is the process's own where the kernel keeps one, the
+    naming again is had by the ask that takes the thread, and
+    the read-back says the name the ask left. A name longer
+    than the kernel keeps is refused with `ERANGE`, and so is
+    storage too short to hold the name, both said by the
+    return and not by `errno`. The naming again is had where
+    the kernel takes the thread as well -- Darwin's libSystem
+    has a call of the same name that takes only the name, and
+    its main thread has no name to read.
     """
     var me = pthread_self()
     var named = unsafe_alloc[UInt8](64)
@@ -1310,9 +1311,10 @@ def test_a_thread_named_again_by_the_name_it_goes_by() raises:
         0,
         "the thread's name is had",
     )
-    var born = char_ptr_to_string(named)
-    assert_true(born.byte_length() > 0, "and the name is something")
     comptime if not CompilationTarget.is_macos():
+        var born = unsafe_alloc[UInt8](64)
+        for i in range(64):
+            born.unsafe_offset(i)[] = named.unsafe_offset(i)[]
         var word = unsafe_alloc[UInt8](32)
         for i in range(32):
             word.unsafe_offset(i)[] = 0
@@ -1350,10 +1352,11 @@ def test_a_thread_named_again_by_the_name_it_goes_by() raises:
             "and storage too short for the name is refused the same way",
         )
         assert_equal(
-            Int(pthread_setname_np(me, named)),
+            Int(pthread_setname_np(me, born)),
             0,
             "and the thread is left with the name it was made with",
         )
         word.unsafe_free()
         long.unsafe_free()
+        born.unsafe_free()
     named.unsafe_free()
