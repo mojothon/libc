@@ -279,6 +279,14 @@ All notable changes to this project are documented here. The format follows
   has no such call to say, so the setting is had where the kernel keeps the third
   number.
 
+- **`libc.unistd` gains `personality` and `ADDR_NO_RANDOMIZE`.**
+  The word of how the kernel presents itself to what the process does, one flag of which
+  is whether the addresses the kernel hands out are shuffled or not: the asking of the
+  biggest number there is says what the persona is and leaves it, the saying of another
+  word makes that word the persona and says back the one it replaced, and the saying of
+  what the saying said back puts what was there back where it was. Darwin's libSystem
+  has no such call to ask, so the persona is had where the kernel keeps it.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
