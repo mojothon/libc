@@ -320,6 +320,15 @@ All notable changes to this project are documented here. The format follows
   the asking that puts the key in when it is not there brings the count back one more than
   it went in, and a key the table already holds is found where it was and written nowhere.
 
+- **`libc.stdlib` gains `ptsname_r`, where the C library has it.**
+  The name of the far end of a pseudo-terminal said in the room the caller gives rather
+  than where the library keeps it -- the room-given form a thread's own asking cannot
+  have another thread's asking overwrite. The writing comes back 0, a room too narrow is
+  refused with `ERANGE`, a descriptor that is no pseudo-terminal at all is refused with
+  `ENOTTY`, the reason coming back as the positive number the errno itself is, and the
+  asking is all or nothing: the refused askings wrote nothing, which the test that asks
+  them reads back.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
