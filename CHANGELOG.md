@@ -271,6 +271,14 @@ All notable changes to this project are documented here. The format follows
   apiece cannot do in one word. The third is the kernel's own keeping, and Darwin's
   libSystem has no such call to ask, so the asking is had where the kernel keeps it.
 
+- **`libc.unistd` gains `setresuid` and `setresgid`.**
+  Each of the three numbers of the user and of the group set to what the caller says,
+  the word for leave what is there being the biggest number there is. The saying of the
+  numbers the process already is is answered with nothing done and nothing said, and the
+  saying of three numbers the process is not is refused with `EPERM`. Darwin's libSystem
+  has no such call to say, so the setting is had where the kernel keeps the third
+  number.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
