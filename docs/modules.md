@@ -7,7 +7,7 @@ the bottom.
 | Module | C header | Symbols |
 | --- | --- | --- |
 | `libc.math` | `<math.h>` | 124 |
-| `libc.stdlib` | `<stdlib.h>` | 90 |
+| `libc.stdlib` | `<stdlib.h>` | 91 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.limits` | `<limits.h>` the widths of the integer types, and what a process may have | 24 |
 | `libc.unistd` | `<unistd.h>` | 222 |
@@ -170,7 +170,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1128 bindings are asked something, and the 3 that are not have a reason.
+1129 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -253,6 +253,11 @@ other platform's C library has no such call.
   the NIS domain and not the hostname; a process that is not allowed to say it is refused
   with `EPERM` whatever the name it says, and Darwin's libSystem has no such call
   to say.
+- `ptsname_r` says the name of the far end of a pseudo-terminal in the room the caller
+  gives rather than where the library keeps it -- the room-given form a thread's own
+  asking cannot have another thread's asking overwrite, a room too narrow refused
+  with `ERANGE` and the writing all or nothing; Darwin's libSystem has no such
+  call to say.
 - `pipe2` is a pipe made with its flag word applied as it is
   made -- close-on-exec and non-blocking set before the
   descriptors exist to be raced for, which is the kernel's own
@@ -261,7 +266,7 @@ other platform's C library has no such call.
   of which eventfd's counter is the other half, and Darwin answers the same
   need with kqueue, which is a different call with different answers.
 
-Linux asks 30 bindings that Darwin passes over, and Darwin 0 that Linux
+Linux asks 31 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked

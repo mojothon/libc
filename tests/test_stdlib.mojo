@@ -15,7 +15,7 @@ from libc.constant import (
 )
 from libc.fcntl import FD_CLOEXEC, F_GETFD, O_CLOEXEC, O_RDWR, fcntl, open
 from libc.math import fabs
-from libc.errno import EINVAL, get_errno, set_errno
+from libc.errno import EINVAL, ENOTTY, ERANGE, get_errno, set_errno
 from libc.file import close, fclose, fopen, fputs, fread, read, write
 from libc.stdio import remove
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, WIFSIGNALED, waitpid
@@ -110,6 +110,7 @@ from libc.stdlib import (
     wctomb,
     malloc_usable_size,
     quick_exit,
+    ptsname_r,
 )
 from libc.locale import LC_ALL_MASK, Locale, freelocale, newlocale
 from libc.utils import char_ptr_to_string, is_null, null_ptr, string_to_char_ptr
@@ -1340,6 +1341,50 @@ def test_looking_for_one_in_the_array() raises:
     values.unsafe_free()
 
 
+def test_the_far_end_named_in_the_room_given() raises:
+    """`ptsname_r` says where the far end of a pseudo-terminal
+    is, in the room the caller gives rather than where the
+    library keeps it, which is the saying the room-given form
+    exists for: a thread's own asking cannot have another
+    thread's asking overwriting. The name is what `ptsname`
+    says, the writing of it comes back 0, and a room too
+    narrow is refused with `ERANGE`, the asking being all or
+    nothing -- nothing part way written. A descriptor that is
+    no pseudo-terminal at all is refused with `ENOTTY`. The
+    reason comes back as the positive number the errno
+    itself is, and not through the errno's own keeping.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var master = posix_openpt(O_RDWR)
+        assert_true(master >= 0, "a pseudo-terminal can be opened")
+        assert_equal(grantpt(master), 0, "and its far end granted")
+        var room = unsafe_alloc[UInt8](128)
+        assert_equal(
+            Int(ptsname_r(master, room, 128)),
+            0,
+            "the far end is named in the room given",
+        )
+        var named = char_ptr_to_string(room)
+        assert_true(named.byte_length() > 0, "and the name is written")
+        assert_equal(
+            Int(ptsname_r(master, room, 2)),
+            Int(ERANGE),
+            "a room too narrow is refused with the saying of the room",
+        )
+        assert_equal(
+            Int(ptsname_r(master, room.unsafe_offset(0), 0)),
+            Int(ERANGE),
+            "and a room of no width is refused the same way",
+        )
+        assert_equal(
+            Int(ptsname_r(0, room, 128)),
+            Int(ENOTTY),
+            "a descriptor that is no pty is refused with the saying of that",
+        )
+        room.unsafe_free()
+        _ = close(master)
+
+
 def main() raises:
     test_malloc()
     test_the_untried_calls()
@@ -1374,6 +1419,7 @@ def main() raises:
     test_a_storage_asked_by_the_count_and_the_size()
     test_the_length_the_allocator_keeps()
     test_the_going_of_the_quick_way()
+    test_the_far_end_named_in_the_room_given()
     print("test_stdlib: ok")
 
 

@@ -2614,3 +2614,50 @@ def quick_exit(status: c_int) -> None:
         want its files flushed asks for.
     """
     _ = external_call["quick_exit", c_void, c_int](status)
+
+
+def ptsname_r(fildes: Int32, buffer: c_ptr[UInt8], length: c_size_t) -> Int32:
+    """C library <stdlib.h> function `ptsname_r`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/ptsname.3.html
+
+    Prototype:
+        int ptsname_r(int fildes, char *buffer, size_t length)
+
+    Description:
+        Says where the far end of a pseudo-terminal is, in
+        the room given: the name of the slave end the master
+        end `fildes` is paired with is written into
+        `buffer`, which has to be as wide as `length` says.
+        What comes back is 0 when the name is written, and a
+        number that is not 0 when it is not -- the number
+        being the saying of why, given as what it is rather
+        than through the errno's own keeping.
+
+    Args:
+        fildes: The descriptor on the master end of the
+            pseudo-terminal.
+        buffer: The room the name is written into.
+        length: How wide that room is.
+
+    Returns:
+        0 when the name is written, and the reason the
+        writing could not be done -- `ERANGE` when the room
+        is not wide enough, `ENOTTY` when the descriptor is
+        not the master end of a pseudo-terminal at all --
+        said as the number itself, the sign making it not 0.
+
+    Notes:
+        The asking is the asking of `ptsname` with the room
+        said by the caller rather than taken where the
+        library keeps it: the name a call like this says is
+        one a thread's own asking cannot have another
+        thread's asking overwriting, which is the saying the
+        room-given form exists for. A room too narrow is
+        refused with `ERANGE`, and the name is not written
+        part way -- the asking is all or nothing.
+    """
+    return external_call["ptsname_r", Int32, Int32, c_ptr[UInt8], c_size_t](
+        fildes, buffer, length
+    )
