@@ -6,7 +6,7 @@
 from std.memory import Pointer
 from std.ffi import external_call
 from std.sys import CompilationTarget
-from libc.constant import Int32, c_int, c_ptr, c_void
+from libc.constant import Int32, c_int, c_ptr, c_size_t, c_void
 from libc.sched import sched_param
 from libc.time import timespec
 
@@ -3057,3 +3057,88 @@ def pthread_spin_unlock(lock: c_ptr[pthread_spinlock_t]) -> Int32:
     return external_call[
         "pthread_spin_unlock", Int32, c_ptr[pthread_spinlock_t]
     ](lock)
+
+
+def pthread_getname_np(
+    thread: pthread_t, name: c_ptr[UInt8], length: c_size_t
+) -> c_int:
+    """POSIX <pthread.h> function `pthread_getname_np`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_setname_np.3.html
+
+    Description:
+        The name one thread goes by: a thread is named when it
+        is made, by the name the process that made it goes by,
+        and a caller names it again with the ask that names one
+        -- the name is had here where it is pointed at, as long
+        as the storage given is long enough to hold it and the
+        nothing that ends it.
+
+    Args:
+        thread: The thread whose name is asked for.
+        name: Where the name is written, ended with nothing.
+        length: The length of the storage, which the call
+            counts against the name and its ending.
+
+    Returns:
+        0 on success, or the number of an error -- `ERANGE` for
+        storage too short to hold the name -- said by the return
+        and not by `errno`.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5. What
+        the name is for is the naming a debugger or a `top` sees:
+        it is the thread's own word about what it is, and the
+        asking of it is not the asking of the process it stands
+        in -- the process and the thread that stands for it
+        answer the same name until the thread is named again.
+        The name the kernel keeps is short -- sixteen bytes
+        counting the ending -- and storage too short for that
+        much is refused with `ERANGE`, the refusal said by the
+        return and not by `errno`, which is what keeps the
+        `pthread_*_np` calls apart from the ones that say it the
+        other way.
+    """
+    return external_call[
+        "pthread_getname_np", c_int, pthread_t, c_ptr[UInt8], c_size_t
+    ](thread, name, length)
+
+
+def pthread_setname_np(thread: pthread_t, name: c_ptr[UInt8]) -> c_int:
+    """POSIX <pthread.h> function `pthread_setname_np`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/pthread_setname_np.3.html
+
+    Description:
+        Names one thread again: the name the kernel keeps is
+        short -- sixteen bytes counting the ending -- and a name
+        longer than that is refused.
+
+    Args:
+        thread: The thread to be named again.
+        name: The name, ended with nothing, at most fifteen of
+            what comes before the ending.
+
+    Returns:
+        0 on success, or the number of an error -- `ERANGE` for
+        a name longer than the kernel keeps -- said by the
+        return and not by `errno`.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5, and
+        it is POSIX's own naming rather than part of the C
+        library's own ground. What the name is for is the
+        seeing: a thread named again is a thread a debugger and
+        a `top` call by, and the naming is had by the thread
+        that asks of its own name as well as by a thread that
+        asks of another's. Darwin's libSystem has a call of the
+        same name that takes only the name -- the naming of the
+        thread that asks and no other -- so this one is asked
+        where the kernel takes the thread as well, and the
+        test says so where it is had.
+    """
+    return external_call["pthread_setname_np", c_int, pthread_t, c_ptr[UInt8]](
+        thread, name
+    )

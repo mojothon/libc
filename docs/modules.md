@@ -27,7 +27,7 @@ the bottom.
 | `libc.aio` | `<aio.h>` I/O handed over rather than waited for | 24 |
 | `libc.sys.sysinfo` | `<sys/sysinfo.h>` | 18 |
 | `libc.sys.timer` | `<time.h>` the timers Darwin does not have | 12 |
-| `libc.pthread` | `<pthread.h>` | 121 |
+| `libc.pthread` | `<pthread.h>` | 123 |
 | `libc.threads` | `<threads.h>` Linux only, the C11 threads | 40 |
 | `libc.string` | `<string.h>` | 48 |
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 47 |
@@ -164,7 +164,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1113 bindings are asked something, and the 1 that is not has a reason.
+1115 bindings are asked something, and the 1 that is not has a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -211,6 +211,11 @@ other platform's C library has no such call.
 - `pthread_spin_init`, `pthread_spin_destroy`, `pthread_spin_lock`, `pthread_spin_trylock`
   and `pthread_spin_unlock` are the lock whose wait is spun and not slept; Darwin's
   libSystem has no symbols for the spin family.
+- `pthread_setname_np` is the naming again of one thread by the name it is given; Darwin's
+  libSystem has a call of the same name that takes only the name -- the naming of the
+  thread that asks and no other -- so the thread-taking one is asked where the kernel
+  takes the thread as well, and `pthread_getname_np`, which Darwin has, is asked
+  on both.
 - `pipe2` is a pipe made with its flag word applied as it is
   made -- close-on-exec and non-blocking set before the
   descriptors exist to be raced for, which is the kernel's own
@@ -219,7 +224,7 @@ other platform's C library has no such call.
   of which eventfd's counter is the other half, and Darwin answers the same
   need with kqueue, which is a different call with different answers.
 
-Linux asks 20 bindings that Darwin passes over, and Darwin 0 that Linux
+Linux asks 21 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked

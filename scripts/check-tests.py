@@ -88,6 +88,7 @@ ASKED_ON_ONE_PLATFORM = {
     "pthread_spin_lock": "the spin lock taken by spinning -- Darwin's libSystem has no symbols for the spin family",
     "pthread_spin_trylock": "the spin lock looked at once, taken or not -- Darwin's libSystem has no symbols for the spin family",
     "pthread_spin_unlock": "the spin lock given up -- Darwin's libSystem has no symbols for the spin family",
+    "pthread_setname_np": "the naming again of one thread by the name it is given -- Darwin's libSystem has a call of the same name that takes only the name, so the thread-taking one is asked where the kernel takes the thread as well",
 }
 
 # Bindings that could be asked something and have not been. This is the list

@@ -15,6 +15,7 @@ The mutexes are in `test_mutex.mojo`.
 from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
+from libc.utils import char_ptr_to_string
 
 from libc.constant import (
     EBUSY,
@@ -23,6 +24,7 @@ from libc.constant import (
     ENOENT,
     ETIMEDOUT,
     c_int,
+    ERANGE,
     c_ptr,
     c_void,
 )
@@ -103,6 +105,8 @@ from libc.pthread import (
     pthread_spin_unlock,
     PTHREAD_PROCESS_PRIVATE,
     pthread_spinlock_t,
+    pthread_getname_np,
+    pthread_setname_np,
 )
 from libc.signal import (
     SIGWINCH,
@@ -1025,6 +1029,7 @@ def main() raises:
     test_the_refusal_for_a_semaphore_the_room_says_is_busy()
     test_a_clock_that_counts_one_thread_own_work()
     test_a_lock_spun_until_it_is_free()
+    test_a_thread_named_again_by_the_name_it_goes_by()
     print("test_pthread: ok")
 
 
@@ -1282,3 +1287,73 @@ def test_a_lock_spun_until_it_is_free() raises:
             Int(pthread_spin_destroy(odd)), 0, "and its storage is given back"
         )
         odd.unsafe_free()
+
+
+def test_a_thread_named_again_by_the_name_it_goes_by() raises:
+    """`pthread_getname_np` and `pthread_setname_np` -- the
+    thread's own word about what it is: the name it is made
+    with is the process's own, the naming again is had by the
+    ask that takes the thread, and the read-back says the name
+    the ask left. A name longer than the kernel keeps is
+    refused with `ERANGE`, and so is storage too short to hold
+    the name, both said by the return and not by `errno`.
+    The naming again is had where the kernel takes the thread
+    as well -- Darwin's libSystem has a call of the same name
+    that takes only the name.
+    """
+    var me = pthread_self()
+    var named = unsafe_alloc[UInt8](64)
+    for i in range(64):
+        named.unsafe_offset(i)[] = 0
+    assert_equal(
+        Int(pthread_getname_np(me, named, 64)),
+        0,
+        "the thread's name is had",
+    )
+    var born = char_ptr_to_string(named)
+    assert_true(born.byte_length() > 0, "and the name is something")
+    comptime if not CompilationTarget.is_macos():
+        var word = unsafe_alloc[UInt8](32)
+        for i in range(32):
+            word.unsafe_offset(i)[] = 0
+        var want = "libc-mojo-thr"
+        for i in range(want.byte_length()):
+            word.unsafe_store(i, UInt8(ord(want[byte=i])))
+        assert_equal(
+            Int(pthread_setname_np(me, word)),
+            0,
+            "the thread is named again",
+        )
+        assert_equal(
+            Int(pthread_getname_np(me, named, 64)),
+            0,
+            "and the read-back asks again",
+        )
+        var again = char_ptr_to_string(named)
+        assert_equal(
+            again, want, "and the name it says is the one it was given"
+        )
+        var long = unsafe_alloc[UInt8](32)
+        for i in range(32):
+            long.unsafe_offset(i)[] = 0
+        var toolong = "this-name-is-far-too-long"
+        for i in range(toolong.byte_length()):
+            long.unsafe_store(i, UInt8(ord(toolong[byte=i])))
+        assert_equal(
+            Int(pthread_setname_np(me, long)),
+            ERANGE,
+            "and a name longer than the kernel keeps is refused",
+        )
+        assert_equal(
+            Int(pthread_getname_np(me, word, 2)),
+            ERANGE,
+            "and storage too short for the name is refused the same way",
+        )
+        assert_equal(
+            Int(pthread_setname_np(me, named)),
+            0,
+            "and the thread is left with the name it was made with",
+        )
+        word.unsafe_free()
+        long.unsafe_free()
+    named.unsafe_free()
