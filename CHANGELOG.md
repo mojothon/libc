@@ -239,6 +239,15 @@ All notable changes to this project are documented here. The format follows
   takes the lock, is told by the try that somebody holds it, gives it up, takes it again
   with the try, and gives it back.
 
+- **`libc.pthread` gains the thread's own name and the ask that names it again.**
+  `pthread_getname_np` and `pthread_setname_np` -- the name it is made with is the
+  process's own where the kernel keeps one, and the naming again is had by the ask that
+  takes the thread. A name longer than the kernel keeps is refused with `ERANGE`, and so
+  is storage too short to hold the name, both said by the return and not by `errno`. The
+  set is asked only where the kernel takes the thread as well -- Darwin's libSystem has a
+  call of the same name that takes only the name -- and the get, which Darwin has, is
+  asked on both.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
