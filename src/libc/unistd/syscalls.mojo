@@ -6,7 +6,15 @@
 from std.ffi import external_call
 from std.sys import CompilationTarget
 from std.memory import Pointer
-from libc.constant import c_int, c_long, c_ptr, c_size_t, c_uint, c_void
+from libc.constant import (
+    c_int,
+    c_long,
+    c_ptr,
+    c_size_t,
+    c_uint,
+    c_ulong,
+    c_void,
+)
 
 
 # The number `syscall` takes for `getpid`. Linux numbers it 39 and
@@ -2695,3 +2703,49 @@ def setresgid(rgid: c_uint, egid: c_uint, sgid: c_uint) -> c_int:
     return external_call["setresgid", c_int, c_uint, c_uint, c_uint](
         rgid, egid, sgid
     )
+
+
+comptime ADDR_NO_RANDOMIZE: c_ulong = 0x00040000
+
+
+def personality(persona: c_ulong) -> c_long:
+    """C library <sys/personality.h> function `personality`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/personality.2.html
+
+    Description:
+        The persona the process keeps -- the word of how the
+        kernel presents itself to what the process does, one
+        flag of which is whether the addresses the kernel
+        hands out are shuffled or not. The asking of the
+        biggest number there is says what the persona is and
+        leaves it, and the saying of another word makes that
+        word the persona and says back the one it replaced.
+
+    Args:
+        persona: The word to keep as the persona, or the
+            biggest number there is to ask what it is and
+            leave it.
+
+    Returns:
+        The persona that was kept before the saying -- the
+        asking of the biggest number there is being answered
+        with the persona itself.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5, and
+        it is the kernel's own word and not POSIX's: what
+        POSIX says of the process is its numbers, and the
+        persona is how the kernel presents itself, which is a
+        thing a caller keeps to itself until the saying of it.
+        The flag for the shuffling of addresses is the one a
+        caller says to have the kernel hand the same addresses
+        every time, which is what a caller that is looking for
+        something that moves asks for -- and the persona that
+        was there is what the saying says back, which is the
+        thing to keep for the saying that puts it back.
+        Darwin's libSystem has no such call to ask, so the
+        persona is had where the kernel keeps it.
+    """
+    return external_call["personality", c_long, c_ulong](persona)

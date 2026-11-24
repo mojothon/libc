@@ -10,7 +10,7 @@ the bottom.
 | `libc.stdlib` | `<stdlib.h>` | 87 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.limits` | `<limits.h>` the widths of the integer types, and what a process may have | 24 |
-| `libc.unistd` | `<unistd.h>` | 219 |
+| `libc.unistd` | `<unistd.h>` | 221 |
 | `libc.file` | `<stdio.h>` file operations | 39 |
 | `libc.ctype` | `<ctype.h>` | 30 |
 | `libc.sys.socket` | `<sys/socket.h>` | 53 |
@@ -164,7 +164,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1121 bindings are asked something, and the 1 that is not has a reason.
+1122 bindings are asked something, and the 1 that is not has a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -229,6 +229,10 @@ other platform's C library has no such call.
   the word for leave what is there being the biggest number there is, and a number the
   process is not being refused with `EPERM`; Darwin's libSystem has no such call
   to say.
+- `personality` is the word of how the kernel presents itself to what the process does -- the
+  asking of the biggest number there is says what it is and leaves it, and the saying of
+  another word says back the one it replaced; Darwin's libSystem has no such call
+  to ask.
 - `pipe2` is a pipe made with its flag word applied as it is
   made -- close-on-exec and non-blocking set before the
   descriptors exist to be raced for, which is the kernel's own
@@ -237,7 +241,7 @@ other platform's C library has no such call.
   of which eventfd's counter is the other half, and Darwin answers the same
   need with kqueue, which is a different call with different answers.
 
-Linux asks 26 bindings that Darwin passes over, and Darwin 0 that Linux
+Linux asks 27 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked

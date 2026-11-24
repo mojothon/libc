@@ -16,6 +16,7 @@ from libc.fcntl import (
     open as open_with_mode,
 )
 from libc.constant import (
+    c_ulong,
     EPERM,
     UInt32,
     AT_FDCWD,
@@ -154,6 +155,8 @@ from libc.unistd import (
     getresuid,
     setresgid,
     setresuid,
+    personality,
+    ADDR_NO_RANDOMIZE,
 )
 from libc.constant import c_char, c_ptr
 from libc.errno import get_errno, set_errno
@@ -1816,6 +1819,7 @@ def main() raises:
     test_brk_and_sbrk_move_the_end_of_the_data_segment()
     test_the_three_numbers_of_the_user_and_the_group()
     test_the_saying_of_the_three_numbers()
+    test_the_persona_kept_and_said_again()
     print("test_unistd: ok")
 
 
@@ -2141,3 +2145,42 @@ def test_the_saying_of_the_three_numbers() raises:
         gr.unsafe_free()
         ge.unsafe_free()
         gs.unsafe_free()
+
+
+def test_the_persona_kept_and_said_again() raises:
+    """`personality` -- the word of how the kernel presents
+    itself to what the process does: the asking of the
+    biggest number there is says what the persona is and
+    leaves it, the saying of the word for the unshuffled
+    addresses makes that word the persona and says back the
+    one it replaced, and the saying of what the saying said
+    back puts the persona the process was keeping back where
+    it was. The asking is had where the kernel keeps it --
+    Darwin's libSystem has no such call to ask.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var born = Int(personality(c_ulong(0xFFFFFFFFFFFFFFFF)))
+        assert_true(born >= 0, "the persona is asked and the asking says it")
+        var said = Int(personality(ADDR_NO_RANDOMIZE))
+        assert_equal(
+            said,
+            born,
+            "and the saying says back the one it replaced",
+        )
+        var now = Int(personality(c_ulong(0xFFFFFFFFFFFFFFFF)))
+        assert_true(
+            (now & Int(ADDR_NO_RANDOMIZE)) != 0,
+            "and the word said is the word the persona keeps",
+        )
+        var put_back = Int(personality(c_ulong(born)))
+        assert_equal(
+            put_back,
+            now,
+            "and the saying of what was there says back what replaced it",
+        )
+        var after = Int(personality(c_ulong(0xFFFFFFFFFFFFFFFF)))
+        assert_equal(
+            after,
+            born,
+            "and the persona is what it was when the process was made",
+        )
