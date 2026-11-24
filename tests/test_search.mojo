@@ -2,7 +2,7 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
-from libc.constant import c_ptr, c_void
+from libc.constant import c_int, c_ptr, c_size_t, c_void
 from libc.search import (
     ENTER,
     ENTRY,
@@ -11,6 +11,8 @@ from libc.search import (
     hdestroy,
     hsearch,
     insque,
+    lfind,
+    lsearch,
     qelem,
     remque,
 )
@@ -113,7 +115,110 @@ def test_queue() raises:
     first.unsafe_free()
 
 
+def by_number(a: c_ptr[c_void], b: c_ptr[c_void]) -> Int32:
+    var x = a.unsafe_bitcast[c_int]()
+    var y = b.unsafe_bitcast[c_int]()
+    if x[] < y[]:
+        return -1
+    if x[] > y[]:
+        return 1
+    return 0
+
+
+def test_the_table_that_keeps_no_order() raises:
+    """`lfind` and `lsearch` -- the looking through a table
+    that is kept in no order: `lfind` says where the key is
+    or that it is not there, leaving the count as it was,
+    and `lsearch` puts the key in when it is not there, the
+    count coming back one more than it went in. A key the
+    table already holds is found where it was, and is not
+    written in again.
+    """
+    var keys = unsafe_alloc[c_int](8)
+    keys.unsafe_store(0, 10)
+    keys.unsafe_store(1, 20)
+    keys.unsafe_store(2, 30)
+    keys.unsafe_store(3, 40)
+    keys.unsafe_store(4, 50)
+    var count = unsafe_alloc[c_size_t](1)
+    count.unsafe_offset(0)[] = 5
+
+    var want = unsafe_alloc[c_int](1)
+    want.unsafe_offset(0)[] = 30
+    var hit = lfind(
+        want.unsafe_bitcast[c_void](),
+        keys.unsafe_bitcast[c_void](),
+        count,
+        4,
+        by_number,
+    )
+    assert_true(Int(hit) != 0, "a member the table holds is found")
+    assert_equal(
+        (hit.unsafe_bitcast[c_int]())[],
+        30,
+        "and what is found is the member itself, not a copy of it",
+    )
+    assert_equal(
+        Int(count.unsafe_offset(0)[]), 5, "and the count is left as it was"
+    )
+
+    want.unsafe_offset(0)[] = 35
+    hit = lfind(
+        want.unsafe_bitcast[c_void](),
+        keys.unsafe_bitcast[c_void](),
+        count,
+        4,
+        by_number,
+    )
+    assert_true(Int(hit) == 0, "a member the table does not hold is not found")
+    assert_equal(
+        Int(count.unsafe_offset(0)[]), 5, "and the looking left the count alone"
+    )
+
+    want.unsafe_offset(0)[] = 35
+    hit = lsearch(
+        want.unsafe_bitcast[c_void](),
+        keys.unsafe_bitcast[c_void](),
+        count,
+        4,
+        by_number,
+    )
+    assert_true(
+        Int(hit) != 0, "the asking of a key the table does not hold puts it in"
+    )
+    assert_equal(
+        Int(count.unsafe_offset(0)[]),
+        6,
+        "and the count is one more than it was",
+    )
+    assert_equal(
+        keys.unsafe_load(5), 35, "and the key is the member written in"
+    )
+
+    want.unsafe_offset(0)[] = 10
+    hit = lsearch(
+        want.unsafe_bitcast[c_void](),
+        keys.unsafe_bitcast[c_void](),
+        count,
+        4,
+        by_number,
+    )
+    assert_equal(
+        (hit.unsafe_bitcast[c_int]())[],
+        10,
+        "a key the table already holds is found where it was",
+    )
+    assert_equal(
+        Int(count.unsafe_offset(0)[]), 6, "and nothing was written in again"
+    )
+
+    want.unsafe_free()
+    count.unsafe_free()
+    keys.unsafe_free()
+
+
 def main() raises:
+    test_the_table_that_keeps_no_order()
     test_hsearch()
     test_queue()
     print("test_search: ok")

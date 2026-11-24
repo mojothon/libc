@@ -6,7 +6,7 @@
 from std.ffi import external_call
 from std.memory import Pointer
 
-from libc.constant import c_int, c_ptr, c_size_t
+from libc.constant import c_int, c_ptr, c_size_t, c_void
 
 
 comptime FIND: c_int = 0
@@ -162,3 +162,122 @@ struct qelem(TrivialRegisterPassable):
         self.q_forw = q_forw
         self.q_back = q_back
         self.q_data = 0
+
+
+def lfind(
+    key: c_ptr[c_void],
+    base: c_ptr[c_void],
+    count: c_ptr[c_size_t],
+    width: c_size_t,
+    compare: def(c_ptr[c_void], c_ptr[c_void]) thin -> Int32,
+) -> c_ptr[c_void]:
+    """C library <search.h> function `lfind`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/lsearch.3.html
+
+    Prototype:
+        void *lfind(const void *key, const void *base, size_t *nelp, size_t width, int (*compar)(const void *, const void *))
+
+    Description:
+        Looks a key up in a table that is kept in no order:
+        the members are handed to the comparing function one
+        after the other, and the first the function calls a
+        match is what comes back -- a pointer to the member
+        itself, not a copy of it. A key that is no member of
+        the table comes back as nothing, and the count the
+        table is said to hold is left as it was: the looking
+        does not change what it looks through.
+
+    Args:
+        key: The key to look up.
+        base: The first member of the table.
+        count: Where the table's member count is read from.
+        width: The width of one member, in bytes.
+        compare: What two members are to be compared by.
+
+    Returns:
+        A pointer to the first member the comparing function
+        calls a match with the key, or a null pointer when
+        the table holds no such member.
+
+    Notes:
+        The looking is linear -- one member after the other,
+        in the order they are kept -- which is why the table
+        is under no obligation to be sorted, and why the
+        asking costs what `bsearch` does not: a table of many
+        members is looked through the whole way when the key
+        is no member of it. The comparing function is the
+        same word `bsearch` takes, and the member it points
+        at is the one to read, whatever the count beside it
+        says the table holds.
+    """
+    return external_call[
+        "lfind",
+        c_ptr[c_void],
+        c_ptr[c_void],
+        c_ptr[c_void],
+        c_ptr[c_size_t],
+        c_size_t,
+        def(c_ptr[c_void], c_ptr[c_void]) thin -> Int32,
+    ](key, base, count, width, compare)
+
+
+def lsearch(
+    key: c_ptr[c_void],
+    base: c_ptr[c_void],
+    count: c_ptr[c_size_t],
+    width: c_size_t,
+    compare: def(c_ptr[c_void], c_ptr[c_void]) thin -> Int32,
+) -> c_ptr[c_void]:
+    """C library <search.h> function `lsearch`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/lsearch.3.html
+
+    Prototype:
+        void *lsearch(const void *key, void *base, size_t *nelp, size_t width, int (*compar)(const void *, const void *))
+
+    Description:
+        Looks a key up in a table that is kept in no order,
+        and puts the key in when it is not there: what comes
+        back is a pointer to the member found or to the slot
+        the key was written into, and the count the table is
+        said to hold is one more than it was when the key was
+        not a member. A key the table already holds is left
+        where it is, and the count is left as it was.
+
+    Args:
+        key: The key to look up, and to write in when the
+            table holds no such member.
+        base: The first member of the table, and the slot the
+            next member is written into when the key is not
+            there.
+        count: Where the table's member count is read from
+            and written to.
+        width: The width of one member, in bytes.
+        compare: What two members are to be compared by.
+
+    Returns:
+        A pointer to the member found or to the member
+        written in.
+
+    Notes:
+        The writing in is done by copying the key the width
+        of a member into the slot after the last member the
+        table was said to hold, so the room has to be there
+        before the asking is made -- the asking does not find
+        a place to put the key, it takes the one the count
+        points past. The count is written back one more than
+        it was read, which is what makes the next asking look
+        past the member written this time.
+    """
+    return external_call[
+        "lsearch",
+        c_ptr[c_void],
+        c_ptr[c_void],
+        c_ptr[c_void],
+        c_ptr[c_size_t],
+        c_size_t,
+        def(c_ptr[c_void], c_ptr[c_void]) thin -> Int32,
+    ](key, base, count, width, compare)
