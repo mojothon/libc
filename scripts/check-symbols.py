@@ -107,6 +107,12 @@ KNOWN_MISSING = {
     "pthread_atfork": "aarch64's glibc does not export it; x86-64's does, weakly",
     "ioperm": "aarch64's glibc does not export it; the ports are x86's own ground",
     "iopl": "aarch64's glibc does not export it; the ports are x86's own ground",
+    # `atexit` and `at_quick_exit` are the sayings of the going, and
+    # glibc keeps them in what stands beside the library and links
+    # them from there -- `libc_nonshared.a`, which a built form asks
+    # and a just-in-time run looks up in vain.
+    "atexit": "glibc links it from what stands beside the library; a just-in-time run looks it up in vain",
+    "at_quick_exit": "glibc links it from what stands beside the library; a just-in-time run looks it up in vain",
 }
 
 

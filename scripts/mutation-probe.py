@@ -142,6 +142,10 @@ SAME_ANSWER = {
         "`ldexp(x, n)` is `scalbn(x, n)` with FLT_RADIX written as 2, and "
         "FLT_RADIX is 2 on both platforms: the same call under two names"
     ),
+    "quick_exit->exit": (
+        "a process with no sayings of its own goes the same way through either asking, "
+        "and what it goes with is the number said"
+    ),
     "cfgetospeed->cfgetispeed": (
         "a terminal has one speed and not two: on glibc both functions read "
         "the same `CBAUD` bits of `c_cflag` -- a probe printing the flag at "

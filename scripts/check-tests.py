@@ -55,6 +55,8 @@ def load(name: str):
 # down rather than that the call is gone.
 CANNOT_ASK = {
     "ioctl": "variadic, and its third argument is the address every request writes through: `external_call` emits a fixed-argument call, which arm64 hands to a variadic callee differently, so the request reads a slot nobody wrote instead",
+    "atexit": "a name this machine's C library does not hand a just-in-time run to look up -- glibc keeps it in what stands beside the library and links it from there, which a built form asks and this run cannot",
+    "at_quick_exit": "the same keeping as atexit -- the name is linked from what stands beside the library, and a just-in-time run looks it up in vain",
 }
 
 # Bindings whose every test call sits inside a platform guard, with the

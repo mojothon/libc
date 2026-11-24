@@ -19,7 +19,16 @@ from libc.errno import EINVAL, get_errno, set_errno
 from libc.file import close, fclose, fopen, fputs, fread, read, write
 from libc.stdio import remove
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, WIFSIGNALED, waitpid
-from libc.unistd import SC_PAGESIZE, fork, isatty, rmdir, sysconf, unlink
+from libc.unistd import (
+    SC_PAGESIZE,
+    dup2,
+    fork,
+    isatty,
+    pipe,
+    rmdir,
+    sysconf,
+    unlink,
+)
 from libc.signal import SIGABRT, signal
 from libc.stdlib import (
     a64l,
@@ -100,6 +109,7 @@ from libc.stdlib import (
     valloc,
     wctomb,
     malloc_usable_size,
+    quick_exit,
 )
 from libc.locale import LC_ALL_MASK, Locale, freelocale, newlocale
 from libc.utils import char_ptr_to_string, is_null, null_ptr, string_to_char_ptr
@@ -774,7 +784,7 @@ def test_yes_no_and_neither() raises:
     var words = room.unsafe_bitcast[UInt8]()
     words.unsafe_store(0, 42)
     assert_equal(words.unsafe_load(0), 42, "a number put in it comes back out")
-    free(room.unsafe_bitcast[UInt8]())
+    _ = free(room.unsafe_bitcast[UInt8]())
 
 
 def test_a_name_is_made_and_a_number_is_read() raises:
@@ -1363,6 +1373,7 @@ def main() raises:
     test_looking_for_one_in_the_array()
     test_a_storage_asked_by_the_count_and_the_size()
     test_the_length_the_allocator_keeps()
+    test_the_going_of_the_quick_way()
     print("test_stdlib: ok")
 
 
@@ -1504,3 +1515,38 @@ def test_the_length_the_allocator_keeps() raises:
                 "and the whole of the answer holds what is written",
             )
         _ = free(room)
+
+
+def test_the_going_of_the_quick_way() raises:
+    """`quick_exit` -- the going of the process the quick way: the
+    asking does not come back, what it goes with is the number
+    said, and the going is a going of an exit kind that the
+    waiting of it reads. A process the whole way through cannot
+    ask its own going, so the test forks one. The sayings of the
+    going -- `atexit` and `at_quick_exit` -- are kept in the
+    package and asked by no line of this suite: their names are
+    what this machine's C library does not hand a just-in-time
+    run to look up, being linked from what stands beside the
+    library rather than the library itself.
+    """
+    var status = unsafe_alloc[Int32](1)
+    var gone = fork()
+    if gone == 0:
+        # the child goes the quick way: the asking does not come
+        # back, and what it goes with is the number said
+        quick_exit(42)
+    assert_equal(
+        Int(waitpid(gone, status, 0)),
+        Int(gone),
+        "the child that went is waited for",
+    )
+    assert_true(
+        WIFEXITED(status.unsafe_offset(0)[]),
+        "and the going the quick way is a going of an exit kind",
+    )
+    assert_equal(
+        Int(WEXITSTATUS(status.unsafe_offset(0)[])),
+        42,
+        "and the number said is the number the going was made with",
+    )
+    status.unsafe_free()

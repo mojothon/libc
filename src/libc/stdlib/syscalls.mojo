@@ -2514,3 +2514,103 @@ def malloc_usable_size(ptr: c_ptr[c_void]) -> c_size_t:
         C library has it.
     """
     return external_call["malloc_usable_size", c_size_t, c_ptr[c_void]](ptr)
+
+
+def atexit(function: def() thin -> None) -> c_int:
+    """C library <stdlib.h> function `atexit`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/atexit.3.html
+
+    Description:
+        Says what the process is to do when it goes: the
+        function said here is called when the process exits
+        the way an exit is -- through `exit`, or through
+        falling off the end of `main` -- and the functions
+        said later are called earlier, the last said being the
+        first called, which is the order the saying of things
+        that are undone in the order they were done is made
+        in.
+
+    Args:
+        function: The function to call when the process exits
+            the way an exit is.
+
+    Returns:
+        0 on success, a number that is not 0 if the saying
+        could not be kept.
+
+    Notes:
+        The asking is one of the things C says the process is
+        to be able to ask, and the order of the calling is
+        the saying of undoing: what was registered last is
+        called first, and a function registered twice is
+        called twice. The asking of functions that run when
+        the process exits the quick way is a saying of its
+        own, `at_quick_exit`, and the two keep what they are
+        told apart -- a function said to `atexit` is not
+        called by `quick_exit`, and one said to
+        `at_quick_exit` is not called by `exit`.
+    """
+    return external_call["atexit", c_int, def() thin -> None](function)
+
+
+def at_quick_exit(function: def() thin -> None) -> c_int:
+    """C library <stdlib.h> function `at_quick_exit`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/quick_exit.3.html
+
+    Description:
+        Says what the process is to do when it goes the quick
+        way: the function said here is called when `quick_exit`
+        is asked, and the functions said later are called
+        earlier, the last said being the first called.
+
+    Args:
+        function: The function to call when the process exits
+            the quick way.
+
+    Returns:
+        0 on success, a number that is not 0 if the saying
+        could not be kept.
+
+    Notes:
+        The asking is one of the things C says of the going
+        that is not the going of `exit`: what `quick_exit` is
+        to do is said to `at_quick_exit`, what `exit` is to do
+        is said to `atexit`, and the two keep what they are
+        told apart. A function said to the one is not called
+        by the other, which is the keeping apart the process
+        that wants its files flushed on the one road and not
+        on the other asks for.
+    """
+    return external_call["at_quick_exit", c_int, def() thin -> None](function)
+
+
+def quick_exit(status: c_int) -> None:
+    """C library <stdlib.h> function `quick_exit`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/quick_exit.3.html
+
+    Description:
+        Goes the quick way: the functions said to
+        `at_quick_exit` are called in the order of the
+        undoing, the last said first, and the process then
+        ends with the number said as what it went with. The
+        asking does not come back.
+
+    Args:
+        status: The number the process goes with.
+
+    Notes:
+        The asking is the going that skips the going of
+        `exit`: what `exit` does about open files and their
+        buffers is not done, what `atexit` said is not called,
+        and what `at_quick_exit` said is -- the road through
+        the process's own sayings and nothing else, which is
+        what a process that is leaving in a hurry and does not
+        want its files flushed asks for.
+    """
+    _ = external_call["quick_exit", c_void, c_int](status)

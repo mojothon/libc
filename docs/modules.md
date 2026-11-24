@@ -7,7 +7,7 @@ the bottom.
 | Module | C header | Symbols |
 | --- | --- | --- |
 | `libc.math` | `<math.h>` | 124 |
-| `libc.stdlib` | `<stdlib.h>` | 87 |
+| `libc.stdlib` | `<stdlib.h>` | 90 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.limits` | `<limits.h>` the widths of the integer types, and what a process may have | 24 |
 | `libc.unistd` | `<unistd.h>` | 222 |
@@ -143,7 +143,7 @@ Mojo has no 80-bit type.
 
 ## What the suite does not ask
 
-One binding is not asked anything, and the reason is about the call rather
+Three bindings are not asked anything, and the reason is about the call rather
 than about the suite:
 
 - `ioctl` is variadic, and its third argument is the address that nearly every
@@ -155,6 +155,11 @@ than about the suite:
   makes the call that opens a file here be openat rather than open.
 
 It is not known to be broken; it is simply not asked.
+- `atexit` and `at_quick_exit` are the sayings of the going, and a just-in-time run
+  looks their names up in vain: this machine's C library keeps them in what stands
+  beside it and links them from there, which a built form asks and this run cannot.
+  The going they say -- quick exit, whose name the library does hand over -- is
+  asked, and the sayings are in the package on purpose.
 
 The wide putwchar call used to be on this list, on the reading that a fork only hands a
 child the stream the suite has already oriented. That was wrong twice over:
@@ -165,7 +170,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1125 bindings are asked something, and the 1 that is not has a reason.
+1126 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -238,6 +243,12 @@ other platform's C library has no such call.
   them at once -- the asking to have the ports is refused with `EPERM` to a process that is
   not allowed to ask, and the asking to give up what it never had is answered with nothing
   done; Darwin's libSystem has no such call to say.
+- `atexit` and `at_quick_exit` say what the process is to do when it goes, the one when it
+  exits the way an exit is and the other when it goes the quick way, the functions said
+  later being called earlier, and `quick_exit` goes the quick way -- the two sayings kept
+  apart, a function said to the one not being called by the other. The two sayings are
+  asked by no line of this suite: their names are what this machine's C library does not
+  hand a just-in-time run to look up.
 - `setdomainname` is the saying again of the name of the network domain the machine stands in --
   the NIS domain and not the hostname; a process that is not allowed to say it is refused
   with `EPERM` whatever the name it says, and Darwin's libSystem has no such call
