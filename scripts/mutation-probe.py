@@ -267,6 +267,30 @@ SAME_ORDER = {
         "the group's third number being the asking of a number the other two say, "
         "as the user's is"
     ),
+    "setresuid:ruid <-> suid": (
+        "a process the whole way through as one user says three numbers that are the "
+        "same, and the words it is allowed to say are the ones it already is"
+    ),
+    "setresuid:euid <-> suid": (
+        "the same three numbers of one user, the word for leave what is there being "
+        "the word the process is not"
+    ),
+    "setresuid:ruid <-> euid": (
+        "the saying of the two the process is being the saying of the same number "
+        "twice"
+    ),
+    "setresgid:rgid <-> sgid": (
+        "the group's three are kept the way the user's are, and the saying of them "
+        "says the same numbers the process already is"
+    ),
+    "setresgid:egid <-> sgid": (
+        "the group's word for leave what is there being the word the process is not, "
+        "as the user's is"
+    ),
+    "setresgid:rgid <-> egid": (
+        "the saying of the two the process is being the saying of the same number "
+        "twice, as the user's is"
+    ),
     "pthread_equal:t1 <-> t2": (
         "whether two handles name the same thread is the same question with "
         "them either way round, and the answer is zero or not"

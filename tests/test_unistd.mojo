@@ -16,6 +16,7 @@ from libc.fcntl import (
     open as open_with_mode,
 )
 from libc.constant import (
+    EPERM,
     UInt32,
     AT_FDCWD,
     ENOMEM,
@@ -151,6 +152,8 @@ from libc.unistd import (
     writev,
     getresgid,
     getresuid,
+    setresgid,
+    setresuid,
 )
 from libc.constant import c_char, c_ptr
 from libc.errno import get_errno, set_errno
@@ -1812,6 +1815,7 @@ def main() raises:
     test_pause_comes_back_because_a_signal_arrived()
     test_brk_and_sbrk_move_the_end_of_the_data_segment()
     test_the_three_numbers_of_the_user_and_the_group()
+    test_the_saying_of_the_three_numbers()
     print("test_unistd: ok")
 
 
@@ -2038,6 +2042,98 @@ def test_the_three_numbers_of_the_user_and_the_group() raises:
         assert_true(
             Int(gs.unsafe_offset(0)[]) >= 0,
             "and the saved one is a number the process was",
+        )
+        r.unsafe_free()
+        e.unsafe_free()
+        sv.unsafe_free()
+        gr.unsafe_free()
+        ge.unsafe_free()
+        gs.unsafe_free()
+
+
+def test_the_saying_of_the_three_numbers() raises:
+    """`setresuid` and `setresgid` -- the saying of the three
+    numbers of the user and of the group: the asking of three
+    words that are all nothing leaves what is there, the
+    saying of the numbers the process already is is answered
+    with nothing done and nothing said, and the saying of
+    three numbers the process is not is refused with `EPERM`.
+    The read-back asks again, and the numbers are what they
+    were. The setting is had where the kernel keeps the third
+    number -- Darwin's libSystem has no such call to say.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var r = unsafe_alloc[UInt32](1)
+        var e = unsafe_alloc[UInt32](1)
+        var sv = unsafe_alloc[UInt32](1)
+        assert_equal(
+            Int(getresuid(r, e, sv)), 0, "the user's three numbers are had"
+        )
+        assert_equal(
+            Int(
+                setresuid(
+                    c_uint(0xFFFFFFFF), c_uint(0xFFFFFFFF), c_uint(0xFFFFFFFF)
+                )
+            ),
+            0,
+            "and the asking of three words that are nothing leaves them",
+        )
+        assert_equal(
+            Int(
+                setresuid(
+                    r.unsafe_offset(0)[],
+                    e.unsafe_offset(0)[],
+                    sv.unsafe_offset(0)[],
+                )
+            ),
+            0,
+            "and the saying of what is already said is nothing done",
+        )
+        assert_equal(
+            Int(setresuid(c_uint(0), c_uint(0), c_uint(0))),
+            -1,
+            "and the saying of numbers the process is not is refused",
+        )
+        assert_equal(
+            Int(get_errno()),
+            EPERM,
+            "and the refusal says the process may not say them",
+        )
+        var gr = unsafe_alloc[UInt32](1)
+        var ge = unsafe_alloc[UInt32](1)
+        var gs = unsafe_alloc[UInt32](1)
+        assert_equal(
+            Int(getresgid(gr, ge, gs)), 0, "the group's three numbers are had"
+        )
+        assert_equal(
+            Int(
+                setresgid(
+                    c_uint(0xFFFFFFFF), c_uint(0xFFFFFFFF), c_uint(0xFFFFFFFF)
+                )
+            ),
+            0,
+            "and the group's asking of nothing leaves them too",
+        )
+        assert_equal(
+            Int(
+                setresgid(
+                    gr.unsafe_offset(0)[],
+                    ge.unsafe_offset(0)[],
+                    gs.unsafe_offset(0)[],
+                )
+            ),
+            0,
+            "and the saying of what is already said is nothing done either",
+        )
+        assert_equal(
+            Int(setresgid(c_uint(0), c_uint(0), c_uint(0))),
+            -1,
+            "and the saying of numbers the process is not is refused the same",
+        )
+        assert_equal(
+            Int(get_errno()),
+            EPERM,
+            "and the refusal says the process may not say them",
         )
         r.unsafe_free()
         e.unsafe_free()

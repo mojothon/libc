@@ -2611,3 +2611,87 @@ def getresgid(
     return external_call[
         "getresgid", Int32, c_ptr[UInt32], c_ptr[UInt32], c_ptr[UInt32]
     ](rgid, egid, sgid)
+
+
+def setresuid(ruid: c_uint, euid: c_uint, suid: c_uint) -> c_int:
+    """C library <unistd.h> function `setresuid`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/setresuid.2.html
+
+    Description:
+        Sets the three numbers of the user the process runs
+        as -- the one it was born with, the one its permissions
+        are read by, and the one it was and could be again --
+        each to what the caller says, where a word that is
+        nothing but the biggest number there is means leave
+        what is there, and a word the process is not allowed
+        to say is refused.
+
+    Args:
+        ruid: The real number, or the biggest number there is
+            to leave what is there.
+        euid: The effective number, or the biggest number
+            there is to leave what is there.
+        suid: The saved number, or the biggest number there is
+            to leave what is there.
+
+    Returns:
+        0 on success, -1 with `errno` saying why on a failure.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5, and
+        it is the kernel's own setting rather than POSIX's:
+        what POSIX says is the pair, and the third -- the one
+        the process was and could be again -- is the kernel's
+        own word. A process that is not the user it runs as
+        cannot say a number it is not, and the asking of three
+        numbers none of them are is refused with `EPERM`, the
+        asking of the ones it already is being answered with
+        nothing done and nothing said. Darwin's libSystem has
+        no such call to say, so the setting is had where the
+        kernel keeps the third number.
+    """
+    return external_call["setresuid", c_int, c_uint, c_uint, c_uint](
+        ruid, euid, suid
+    )
+
+
+def setresgid(rgid: c_uint, egid: c_uint, sgid: c_uint) -> c_int:
+    """C library <unistd.h> function `setresgid`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/setresuid.2.html
+
+    Description:
+        Sets the three numbers of the group the process runs
+        as -- the one it was born with, the one its permissions
+        are read by, and the one it was and could be again --
+        the saying of the user's three numbers said for the
+        group it stands in.
+
+    Args:
+        rgid: The real number, or the biggest number there is
+            to leave what is there.
+        egid: The effective number, or the biggest number there
+            is to leave what is there.
+        sgid: The saved number, or the biggest number there is
+            to leave what is there.
+
+    Returns:
+        0 on success, -1 with `errno` saying why on a failure.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5, and
+        it is the kernel's own setting as the user's is: the
+        three numbers of the group are kept the way the three
+        of the user are, a process that is not the group it
+        runs as cannot say a number it is not, and the asking
+        of three numbers none of them are is refused with
+        `EPERM`. Darwin's libSystem has no such call to say,
+        so the setting is had where the kernel keeps the third
+        number.
+    """
+    return external_call["setresgid", c_int, c_uint, c_uint, c_uint](
+        rgid, egid, sgid
+    )

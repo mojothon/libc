@@ -92,6 +92,8 @@ ASKED_ON_ONE_PLATFORM = {
     "malloc_usable_size": "the length one allocation is good for, which is the allocator's own word and not a promise -- Darwin's libSystem keeps the same word under another name, so the asking is had where the C library has it",
     "getresuid": "the three numbers of the user, the third of which is the kernel's own keeping -- Darwin's libSystem has no such call to ask",
     "getresgid": "the three numbers of the group, kept the way the user's are -- Darwin's libSystem has no such call to ask",
+    "setresuid": "the saying again of the user's three numbers -- Darwin's libSystem has no such call to say",
+    "setresgid": "the saying again of the group's three numbers -- Darwin's libSystem has no such call to say",
 }
 
 # Bindings that could be asked something and have not been. This is the list
