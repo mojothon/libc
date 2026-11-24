@@ -68,6 +68,7 @@ HEADERS = [
     "pty.h",
     "regex.h", "sched.h", "search.h", "semaphore.h", "setjmp.h", "signal.h",
     "spawn.h", "stdarg.h", "stdbool.h", "stddef.h", "stdint.h", "stdio.h",
+    "malloc.h",
     "stdlib.h", "string.h", "strings.h", "sys/epoll.h", "sys/eventfd.h", "sys/timerfd.h",
     "sys/file.h", "sys/inotify.h", "sys/ioctl.h", "sys/ipc.h",
     "sys/mman.h", "sys/mount.h",

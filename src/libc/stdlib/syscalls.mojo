@@ -2477,3 +2477,40 @@ def reallocarray(
     return external_call[
         "reallocarray", c_ptr[c_void], c_ptr[c_void], c_size_t, c_size_t
     ](ptr, nmemb, size)
+
+
+def malloc_usable_size(ptr: c_ptr[c_void]) -> c_size_t:
+    """C library <malloc.h> function `malloc_usable_size`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/malloc_usable_size.3.html
+
+    Description:
+        The length of the storage one allocation is good for:
+        the asking is of the number the caller meant, and the
+        answer is at least that number -- the housekeeping the
+        allocator does rounds the asking up to what it keeps,
+        and the extra is length the caller may write into
+        without the writing being about anything but its own.
+
+    Args:
+        ptr: The storage whose length is asked for.
+
+    Returns:
+        The length the storage is good for, at least the number
+        the asking was made with.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5, and
+        it is the allocator's own word and not a promise: what
+        one allocator keeps is not what another keeps, and a
+        caller that writes the whole of the answer is a caller
+        whose asking is not portable. What the number is for is
+        the caller who would ask twice -- once of the allocator
+        for the storage and once of itself for the length --
+        and the answer saves the second asking, which is all
+        the saving there is. Darwin's libSystem keeps the same
+        word under another name, so this one is asked where the
+        C library has it.
+    """
+    return external_call["malloc_usable_size", c_size_t, c_ptr[c_void]](ptr)

@@ -7,7 +7,7 @@ the bottom.
 | Module | C header | Symbols |
 | --- | --- | --- |
 | `libc.math` | `<math.h>` | 124 |
-| `libc.stdlib` | `<stdlib.h>` | 86 |
+| `libc.stdlib` | `<stdlib.h>` | 87 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.limits` | `<limits.h>` the widths of the integer types, and what a process may have | 24 |
 | `libc.unistd` | `<unistd.h>` | 215 |
@@ -164,7 +164,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1116 bindings are asked something, and the 1 that is not has a reason.
+1117 bindings are asked something, and the 1 that is not has a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -216,6 +216,11 @@ other platform's C library has no such call.
   thread that asks and no other -- so the thread-taking one is asked where the kernel
   takes the thread as well, and `pthread_getname_np`, which Darwin has, is asked
   on both.
+- `malloc_usable_size` is the length one allocation is good for, which is the allocator's own
+  word and not a promise -- what one allocator keeps is not what another keeps, and a
+  caller that writes the whole of the answer is a caller whose asking is not portable;
+  Darwin's libSystem keeps the same word under another name (`malloc_size`), so the
+  asking is had where the C library has it.
 - `pipe2` is a pipe made with its flag word applied as it is
   made -- close-on-exec and non-blocking set before the
   descriptors exist to be raced for, which is the kernel's own
@@ -224,7 +229,7 @@ other platform's C library has no such call.
   of which eventfd's counter is the other half, and Darwin answers the same
   need with kqueue, which is a different call with different answers.
 
-Linux asks 21 bindings that Darwin passes over, and Darwin 0 that Linux
+Linux asks 22 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked

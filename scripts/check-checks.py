@@ -338,8 +338,8 @@ BREAKS = [
         "check-tests",
         "the one-platform page saying a number the count does not",
         "docs/modules.md",
-        "Linux asks 21 bindings that Darwin passes over",
         "Linux asks 22 bindings that Darwin passes over",
+        "Linux asks 23 bindings that Darwin passes over",
     ),
     Break(
         "check-tests",

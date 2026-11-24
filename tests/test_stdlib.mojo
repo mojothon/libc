@@ -99,6 +99,7 @@ from libc.stdlib import (
     unsetenv,
     valloc,
     wctomb,
+    malloc_usable_size,
 )
 from libc.locale import LC_ALL_MASK, Locale, freelocale, newlocale
 from libc.utils import char_ptr_to_string, is_null, null_ptr, string_to_char_ptr
@@ -1361,6 +1362,7 @@ def main() raises:
     test_the_made_temporary_opened_with_its_word()
     test_looking_for_one_in_the_array()
     test_a_storage_asked_by_the_count_and_the_size()
+    test_the_length_the_allocator_keeps()
     print("test_stdlib: ok")
 
 
@@ -1474,3 +1476,31 @@ def test_a_storage_asked_by_the_count_and_the_size() raises:
         )
     _ = free(grown)
     nothing.unsafe_free()
+
+
+def test_the_length_the_allocator_keeps() raises:
+    """`malloc_usable_size` -- the length one allocation is good
+    for: the answer is at least the number the asking was
+    made with, whatever the housekeeping rounds the keeping
+    to, and the storage is written through the whole of the
+    answer and read back as what was written. Darwin's
+    libSystem keeps the same word under another name, so the
+    asking is had where the C library has it.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var room = malloc(100)
+        var kept = Int(malloc_usable_size(room))
+        assert_true(
+            kept >= 100,
+            "the answer is at least the number the asking was made with",
+        )
+        var bytes = c_ptr[UInt8](unsafe_from_address=Int(room))
+        for i in range(kept):
+            bytes.unsafe_offset(i)[] = UInt8(i & 0xFF)
+        for i in range(kept):
+            assert_equal(
+                Int(bytes.unsafe_offset(i)[]),
+                Int(i & 0xFF),
+                "and the whole of the answer holds what is written",
+            )
+        _ = free(room)
