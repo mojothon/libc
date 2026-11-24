@@ -248,6 +248,14 @@ All notable changes to this project are documented here. The format follows
   call of the same name that takes only the name -- and the get, which Darwin has, is
   asked on both.
 
+- **`libc.stdlib` gains `reallocarray`.**
+  `realloc` with the length the caller means written as the count and the size of each,
+  and the refusing of what would be more than the biggest length there is: the ask that
+  is told the length already multiplied takes the word that means more than there is
+  room for as room enough, and this one does the multiplying where the refusal can be
+  had -- refused with nothing and `errno` saying there is not room enough, the thing the
+  caller had left as it was. Both platforms have the call.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
