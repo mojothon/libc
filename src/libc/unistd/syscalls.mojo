@@ -2532,3 +2532,82 @@ def closefrom(lowfd: c_int) raises:
         the span is the promise and not a list of names.
     """
     external_call["closefrom", NoneType, c_int](lowfd)
+
+
+def getresuid(
+    ruid: c_ptr[UInt32], euid: c_ptr[UInt32], suid: c_ptr[UInt32]
+) -> Int32:
+    """C library <unistd.h> function `getresuid`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/getresuid.2.html
+
+    Description:
+        The three numbers of the user the process runs as: the
+        one it was born with, the one its permissions are read
+        by, and the one it was and could be again -- the asking
+        writes all three where they are pointed at, which is
+        the asking the pair of calls that read one apiece
+        cannot do in one word.
+
+    Args:
+        ruid: Where the real number -- the one it was born with
+            -- is written.
+        euid: Where the effective number -- the one its
+            permissions are read by -- is written.
+        suid: Where the saved number -- the one it was and
+            could be again -- is written.
+
+    Returns:
+        0 on success, -1 with `errno` saying why on a failure.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5, and
+        it is the kernel's own asking rather than POSIX's: what
+        POSIX asks for is the pair of numbers, and the third --
+        the one it was and could be again -- is the kernel's
+        own keeping, had here where the kernel keeps it. A
+        process the whole way through as one user has three
+        numbers that are the same, and the asking still says
+        all three, each where it is pointed at.
+    """
+    return external_call[
+        "getresuid", Int32, c_ptr[UInt32], c_ptr[UInt32], c_ptr[UInt32]
+    ](ruid, euid, suid)
+
+
+def getresgid(
+    rgid: c_ptr[UInt32], egid: c_ptr[UInt32], sgid: c_ptr[UInt32]
+) -> Int32:
+    """C library <unistd.h> function `getresgid`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/getresuid.2.html
+
+    Description:
+        The three numbers of the group the process runs as --
+        the one it was born with, the one its permissions are
+        read by, and the one it was and could be again -- the
+        asking of the user's three numbers said for the group
+        it stands in.
+
+    Args:
+        rgid: Where the real number is written.
+        egid: Where the effective number is written.
+        sgid: Where the saved number is written.
+
+    Returns:
+        0 on success, -1 with `errno` saying why on a failure.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5, and
+        it is the kernel's own asking as the user's is: the
+        three numbers of the group are kept the way the three
+        of the user are, and the asking writes all three where
+        they are pointed at. Darwin's libSystem has no such
+        call to ask, so the asking is had where the kernel
+        keeps the third number.
+    """
+    return external_call[
+        "getresgid", Int32, c_ptr[UInt32], c_ptr[UInt32], c_ptr[UInt32]
+    ](rgid, egid, sgid)

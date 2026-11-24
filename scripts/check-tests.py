@@ -90,6 +90,8 @@ ASKED_ON_ONE_PLATFORM = {
     "pthread_spin_unlock": "the spin lock given up -- Darwin's libSystem has no symbols for the spin family",
     "pthread_setname_np": "the naming again of one thread by the name it is given -- Darwin's libSystem has a call of the same name that takes only the name, so the thread-taking one is asked where the kernel takes the thread as well",
     "malloc_usable_size": "the length one allocation is good for, which is the allocator's own word and not a promise -- Darwin's libSystem keeps the same word under another name, so the asking is had where the C library has it",
+    "getresuid": "the three numbers of the user, the third of which is the kernel's own keeping -- Darwin's libSystem has no such call to ask",
+    "getresgid": "the three numbers of the group, kept the way the user's are -- Darwin's libSystem has no such call to ask",
 }
 
 # Bindings that could be asked something and have not been. This is the list

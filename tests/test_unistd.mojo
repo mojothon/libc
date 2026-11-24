@@ -16,6 +16,7 @@ from libc.fcntl import (
     open as open_with_mode,
 )
 from libc.constant import (
+    UInt32,
     AT_FDCWD,
     ENOMEM,
     EBADF,
@@ -148,6 +149,8 @@ from libc.unistd import (
     usleep,
     write,
     writev,
+    getresgid,
+    getresuid,
 )
 from libc.constant import c_char, c_ptr
 from libc.errno import get_errno, set_errno
@@ -1808,6 +1811,7 @@ def main() raises:
     test_ualarm_is_the_timer_that_getitimer_reads()
     test_pause_comes_back_because_a_signal_arrived()
     test_brk_and_sbrk_move_the_end_of_the_data_segment()
+    test_the_three_numbers_of_the_user_and_the_group()
     print("test_unistd: ok")
 
 
@@ -1981,3 +1985,63 @@ def test_the_link_itself_and_not_where_it_leads() raises:
         )
 
         _ = unlink(path)
+
+
+def test_the_three_numbers_of_the_user_and_the_group() raises:
+    """`getresuid` and `getresgid` -- the three numbers of the
+    user and of the group, written each where they are
+    pointed at: the one the process was born with is the one
+    `getuid` says, the one its permissions are read by is the
+    one `geteuid` says, and the one it was and could be again
+    is had here and nowhere else. The asking of the group
+    says the same three for the group it stands in. The
+    asking is had where the kernel keeps the third number --
+    Darwin's libSystem has no such call to ask.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var r = unsafe_alloc[UInt32](1)
+        var e = unsafe_alloc[UInt32](1)
+        var sv = unsafe_alloc[UInt32](1)
+        assert_equal(
+            Int(getresuid(r, e, sv)), 0, "the user's three numbers are had"
+        )
+        assert_equal(
+            Int(r.unsafe_offset(0)[]),
+            Int(getuid()),
+            "and the real one is the one getuid says",
+        )
+        assert_equal(
+            Int(e.unsafe_offset(0)[]),
+            Int(geteuid()),
+            "and the effective one is the one geteuid says",
+        )
+        assert_true(
+            Int(sv.unsafe_offset(0)[]) >= 0,
+            "and the saved one is a number the process was",
+        )
+        var gr = unsafe_alloc[UInt32](1)
+        var ge = unsafe_alloc[UInt32](1)
+        var gs = unsafe_alloc[UInt32](1)
+        assert_equal(
+            Int(getresgid(gr, ge, gs)), 0, "the group's three numbers are had"
+        )
+        assert_equal(
+            Int(gr.unsafe_offset(0)[]),
+            Int(getgid()),
+            "and the real one is the one getgid says",
+        )
+        assert_equal(
+            Int(ge.unsafe_offset(0)[]),
+            Int(getegid()),
+            "and the effective one is the one getegid says",
+        )
+        assert_true(
+            Int(gs.unsafe_offset(0)[]) >= 0,
+            "and the saved one is a number the process was",
+        )
+        r.unsafe_free()
+        e.unsafe_free()
+        sv.unsafe_free()
+        gr.unsafe_free()
+        ge.unsafe_free()
+        gs.unsafe_free()
