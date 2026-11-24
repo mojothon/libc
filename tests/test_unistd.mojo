@@ -2068,7 +2068,9 @@ def test_the_saying_of_the_three_numbers() raises:
     three numbers the process is not is refused with `EPERM`.
     The read-back asks again, and the numbers are what they
     were. The setting is had where the kernel keeps the third
-    number -- Darwin's libSystem has no such call to say.
+    number -- Darwin's libSystem has no such call to say -- and the word being the machine's
+    own ground, the asking is had where the machine has ports, which
+    aarch64 does not.
     """
     comptime if not CompilationTarget.is_macos():
         var r = unsafe_alloc[UInt32](1)
