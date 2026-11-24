@@ -157,6 +157,7 @@ from libc.unistd import (
     setresuid,
     personality,
     ADDR_NO_RANDOMIZE,
+    setdomainname,
 )
 from libc.constant import c_char, c_ptr
 from libc.errno import get_errno, set_errno
@@ -1820,6 +1821,7 @@ def main() raises:
     test_the_three_numbers_of_the_user_and_the_group()
     test_the_saying_of_the_three_numbers()
     test_the_persona_kept_and_said_again()
+    test_the_saying_of_the_domain_the_machine_stands_in()
     print("test_unistd: ok")
 
 
@@ -2184,3 +2186,51 @@ def test_the_persona_kept_and_said_again() raises:
             born,
             "and the persona is what it was when the process was made",
         )
+
+
+def test_the_saying_of_the_domain_the_machine_stands_in() raises:
+    """`setdomainname` -- the saying again of the name of the
+    network domain the machine stands in, which is the NIS
+    domain and not the hostname: the saying of it is had by
+    a process that is allowed to say it, and a process that
+    is not is refused with `EPERM` whatever the name it
+    says, even the name the machine already goes by, the
+    asking of a name too long for the kernel's word being
+    refused the same way before the kernel looks at what is
+    said. The saying is had where the kernel keeps the
+    domain -- Darwin's libSystem has no such call to say.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var room = unsafe_alloc[UInt8](256)
+        for i in range(256):
+            room.unsafe_offset(i)[] = 0
+        assert_equal(
+            Int(getdomainname(room, 256)),
+            0,
+            "the domain the machine stands in is had",
+        )
+        assert_equal(
+            Int(setdomainname(room, 256)),
+            -1,
+            "and the saying of it is refused to a process that may not",
+        )
+        assert_equal(
+            Int(get_errno()),
+            EPERM,
+            "and the refusal says the process may not say it",
+        )
+        var long = unsafe_alloc[UInt8](70)
+        for i in range(70):
+            long.unsafe_offset(i)[] = UInt8(0x78)
+        assert_equal(
+            Int(setdomainname(long, 70)),
+            -1,
+            "and the saying of a name too long is refused the same way",
+        )
+        assert_equal(
+            Int(get_errno()),
+            EPERM,
+            "and the refusal comes before the kernel looks at what is said",
+        )
+        room.unsafe_free()
+        long.unsafe_free()

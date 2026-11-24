@@ -2749,3 +2749,46 @@ def personality(persona: c_ulong) -> c_long:
         persona is had where the kernel keeps it.
     """
     return external_call["personality", c_long, c_ulong](persona)
+
+
+def setdomainname(name: c_ptr[UInt8], length: c_size_t) -> c_int:
+    """C library <unistd.h> function `setdomainname`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/setdomainname.2.html
+
+    Description:
+        Says again the name of the network domain the machine
+        stands in -- the word the asking of the domain name
+        reads -- and the saying of it is not the saying of the
+        hostname: it is the NIS domain the machine is told it
+        belongs to, and a process that is not allowed to say
+        it is refused whatever it says, even the name the
+        machine already goes by.
+
+    Args:
+        name: The name, ended with nothing.
+        length: The length of the name said, not counting the
+            ending.
+
+    Returns:
+        0 on success, -1 with `errno` saying why on a failure.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5, and
+        it is the kernel's own setting and not POSIX's: what
+        POSIX says of the machine is the hostname, and the
+        domain is the word of which NIS ground the machine
+        stands in -- a thing kept where the kernel keeps it,
+        and said by a process that is allowed to say it. A
+        process that is not allowed is refused with `EPERM`
+        whatever the name it says, even the name the machine
+        already goes by, the asking of the length too long for
+        the kernel's word being refused the same way before
+        the kernel looks at what is said. Darwin's libSystem
+        has no such call to say, so the saying is had where
+        the kernel keeps the domain.
+    """
+    return external_call["setdomainname", c_int, c_ptr[UInt8], c_size_t](
+        name, length
+    )
