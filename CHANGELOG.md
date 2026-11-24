@@ -313,6 +313,13 @@ All notable changes to this project are documented here. The format follows
   with; the two sayings are asked by no line of it, their names being what this
   machine's C library does not hand a just-in-time run to look up.
 
+- **`libc.search` gains `lfind` and `lsearch`.**
+  The looking through a table that is kept in no order, one member after the other, what
+  two members are to be compared by being said with the same word `bsearch` takes. The
+  looking says where the key is or that it is not there, and leaves the count as it was;
+  the asking that puts the key in when it is not there brings the count back one more than
+  it went in, and a key the table already holds is found where it was and written nowhere.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
