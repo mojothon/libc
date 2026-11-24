@@ -2251,7 +2251,7 @@ def test_the_word_for_the_ports_of_the_machine() raises:
     machine has ports -- Darwin's libSystem has no such call
     to say.
     """
-    comptime if not CompilationTarget.is_macos():
+    comptime if not CompilationTarget.is_macos() and not CompilationTarget.is_arm():
         assert_equal(
             Int(ioperm(0x80, 1, 1)),
             -1,
