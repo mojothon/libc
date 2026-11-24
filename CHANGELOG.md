@@ -304,6 +304,15 @@ All notable changes to this project are documented here. The format follows
   is had where the machine has ports -- Darwin's libSystem has no such call to say, and
   aarch64's glibc does not export it either, the ports being x86's own ground.
 
+- **`libc.stdlib` gains `atexit`, `at_quick_exit` and `quick_exit`.**
+  What the process is to do when it goes, the one saying when it exits the way an exit is
+  and the other when it goes the quick way, the functions said later being called
+  earlier, which is the order the saying of undoing is made in -- and the two sayings
+  kept apart, a function said to the one not being called by the other. The going the
+  quick way is asked by the suite, which forks a child and reads what the child went
+  with; the two sayings are asked by no line of it, their names being what this
+  machine's C library does not hand a just-in-time run to look up.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
