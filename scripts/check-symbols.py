@@ -95,12 +95,12 @@ KNOWN_MISSING = {
     "c32rtomb": "Linux only; Darwin has no <uchar.h> at all",
     "ppoll": "Linux only; ppoll(2) is a Linux-specific call",
     "remap_file_pages": "Linux only; the man page is gone and the call is no-op on the other side",
-    # `pthread_atfork` is a name x86-64's glibc exports as a weak leftover
-    # and aarch64's does not export at all -- the third machine is what
-    # found the difference. The built form carries the answer where the
-    # symbol is missing: the linker finds no definition and the register
-    # call answers 0, which `tests/test_atfork.mojo` asserts.
-    "pthread_atfork": "aarch64's glibc does not export it; x86-64's does, weakly",
+    # The ports are the machine's own ground, and the word for them is
+    # x86's: aarch64's glibc does not export the calls at all, there
+    # being no ports to say the word about. The test is guarded and the
+    # asking is had where the machine has ports.
+    "ioperm": "aarch64's glibc does not export it; the ports are x86's own ground",
+    "iopl": "aarch64's glibc does not export it; the ports are x86's own ground",
 }
 
 
