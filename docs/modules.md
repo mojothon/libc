@@ -77,6 +77,7 @@ the bottom.
 | `libc.sys.random` | `<sys/random.h>` | 3 |
 | `libc.sys.prctl` | `<sys/prctl.h>` | 19 |
 | `libc.sys.auxv` | `<sys/auxv.h>` | 3 |
+| `libc.sys.io` | `<sys/io.h>` the ports of the machine | 2 |
 | `libc.errno` | `<errno.h>` | 6 |
 | `libc.pwd` | `<pwd.h>` | 18 |
 | `libc.termios` | `<termios.h>` how a terminal line is set | 57 |
@@ -164,7 +165,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1123 bindings are asked something, and the 1 that is not has a reason.
+1125 bindings are asked something, and the 1 that is not has a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -233,6 +234,10 @@ other platform's C library has no such call.
   asking of the biggest number there is says what it is and leaves it, and the saying of
   another word says back the one it replaced; Darwin's libSystem has no such call
   to ask.
+- `ioperm` and `iopl` are the word for the ports of the machine, for some of them and for all of
+  them at once -- the asking to have the ports is refused with `EPERM` to a process that is
+  not allowed to ask, and the asking to give up what it never had is answered with nothing
+  done; Darwin's libSystem has no such call to say.
 - `setdomainname` is the saying again of the name of the network domain the machine stands in --
   the NIS domain and not the hostname; a process that is not allowed to say it is refused
   with `EPERM` whatever the name it says, and Darwin's libSystem has no such call
@@ -245,7 +250,7 @@ other platform's C library has no such call.
   of which eventfd's counter is the other half, and Darwin answers the same
   need with kqueue, which is a different call with different answers.
 
-Linux asks 28 bindings that Darwin passes over, and Darwin 0 that Linux
+Linux asks 30 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked

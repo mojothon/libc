@@ -291,6 +291,10 @@ SAME_ORDER = {
         "the saying of the two the process is being the saying of the same number "
         "twice, as the user's is"
     ),
+    "ioperm:from_port <-> num": (
+        "the refusal comes before the kernel looks at what is said, and a port and a "
+        "count of them are refused alike"
+    ),
     "pthread_equal:t1 <-> t2": (
         "whether two handles name the same thread is the same question with "
         "them either way round, and the answer is zero or not"

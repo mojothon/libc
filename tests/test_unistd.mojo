@@ -35,6 +35,7 @@ from libc.stdlib import _Exit, exit, grantpt, posix_openpt, ptsname, unlockpt
 from libc.time import CLOCK_MONOTONIC, clock_gettime, timespec
 from libc.sys.stat import Stat, fchmod, fstat, mkdir, stat
 from libc.sys.utsname import Utsname, uname
+from libc.sys.io import ioperm, iopl
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, WIFSIGNALED, WTERMSIG, waitpid
 from libc.time import ITIMER_REAL, getitimer, itimerval, setitimer
 from libc.unistd import (
@@ -1822,6 +1823,7 @@ def main() raises:
     test_the_saying_of_the_three_numbers()
     test_the_persona_kept_and_said_again()
     test_the_saying_of_the_domain_the_machine_stands_in()
+    test_the_word_for_the_ports_of_the_machine()
     print("test_unistd: ok")
 
 
@@ -2234,3 +2236,47 @@ def test_the_saying_of_the_domain_the_machine_stands_in() raises:
         )
         room.unsafe_free()
         long.unsafe_free()
+
+
+def test_the_word_for_the_ports_of_the_machine() raises:
+    """`ioperm` and `iopl` -- the word for the ports of the
+    machine: the asking to have the ports is refused with
+    `EPERM` to a process that is not allowed to ask, and the
+    asking to give up what the process never had is answered
+    with nothing done, there being nothing to give up -- the
+    word for some ports being `ioperm` and the word for all
+    of them at once being `iopl`. The word is had where the
+    machine has ports -- Darwin's libSystem has no such call
+    to say.
+    """
+    comptime if not CompilationTarget.is_macos():
+        assert_equal(
+            Int(ioperm(0x80, 1, 1)),
+            -1,
+            "the asking to have a port is refused to a process that may not",
+        )
+        assert_equal(
+            Int(get_errno()),
+            EPERM,
+            "and the refusal says the process may not ask",
+        )
+        assert_equal(
+            Int(ioperm(0x80, 1, 0)),
+            0,
+            "and the asking to give up what was never had is nothing done",
+        )
+        assert_equal(
+            Int(iopl(3)),
+            -1,
+            "and the whole word for all the ports is refused the same way",
+        )
+        assert_equal(
+            Int(get_errno()),
+            EPERM,
+            "and the refusal says the process may not ask that either",
+        )
+        assert_equal(
+            Int(iopl(0)),
+            0,
+            "and the giving up of all of them is nothing done too",
+        )

@@ -96,6 +96,8 @@ ASKED_ON_ONE_PLATFORM = {
     "setresgid": "the saying again of the group's three numbers -- Darwin's libSystem has no such call to say",
     "personality": "the word of how the kernel presents itself to what the process does -- Darwin's libSystem has no such call to ask",
     "setdomainname": "the saying again of the name of the network domain the machine stands in -- Darwin's libSystem has no such call to say",
+    "ioperm": "the word for some of the ports of the machine -- Darwin's libSystem has no such call to say",
+    "iopl": "the word for all of the ports of the machine at once -- Darwin's libSystem has no such call to say",
 }
 
 # Bindings that could be asked something and have not been. This is the list
