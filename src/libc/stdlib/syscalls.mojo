@@ -2428,3 +2428,52 @@ def mkostemp(template: c_ptr[c_char], flags: Int32) -> c_int:
     return external_call["mkostemp", c_int, c_ptr[c_char], Int32](
         template, flags
     )
+
+
+def reallocarray(
+    ptr: c_ptr[c_void], nmemb: c_size_t, size: c_size_t
+) -> c_ptr[c_void]:
+    """C library <stdlib.h> function `reallocarray`.
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/reallocarray.3.html
+
+    Description:
+        `realloc` with the length the caller means written as
+        two words -- the count and the size of each -- and the
+        answer refused when the count of them is a number too
+        big to be had: the asking of what would be more than
+        the biggest length there is comes back as nothing, with
+        `errno` saying there is not room enough, and the thing
+        the caller had is left as it was.
+
+    Args:
+        ptr: The storage to be made bigger or smaller, which may
+            be nothing -- the asking of nothing is the making of
+            something new, as `malloc` is asked.
+        nmemb: The count of the things the storage is to hold.
+        size: The size of each of them.
+
+    Returns:
+        The storage, made to hold what the caller means, or
+        nothing with `errno` saying why on a failure.
+
+    Notes:
+        The wrapper has been in the C library since 2.2.5, and
+        it is the answer to the ask whose length overflows in
+        the arithmetic and not in the room: `realloc` is told a
+        length the caller has already multiplied, and a count
+        and a size that multiply to more than the biggest
+        number there is are a multiplication the caller did
+        wrong -- the word that means more than there is room
+        for is taken as room enough, and the storage handed
+        back is smaller than the caller thinks. This one does
+        the multiplying where the refusal can be had, and the
+        asking of an impossible length is refused instead of
+        being answered with a short one. A asking of nothing is
+        the making of something new, and the thing asked for is
+        had the way `malloc` has it.
+    """
+    return external_call[
+        "reallocarray", c_ptr[c_void], c_ptr[c_void], c_size_t, c_size_t
+    ](ptr, nmemb, size)

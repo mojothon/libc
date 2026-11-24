@@ -247,6 +247,10 @@ SAME_ORDER = {
         "the float twin of `fma`: the first two are multiplied, and a product "
         "does not remember its order"
     ),
+    "reallocarray:nmemb <-> size": (
+        "the count and the size of each multiply to one length, and a product "
+        "does not remember which word was written first"
+    ),
     "pthread_equal:t1 <-> t2": (
         "whether two handles name the same thread is the same question with "
         "them either way round, and the answer is zero or not"

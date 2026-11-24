@@ -10,6 +10,8 @@ from libc.constant import (
     c_ushort,
     c_void,
     c_wchar,
+    ENOMEM,
+    c_size_t,
 )
 from libc.fcntl import FD_CLOEXEC, F_GETFD, O_CLOEXEC, O_RDWR, fcntl, open
 from libc.math import fabs
@@ -69,6 +71,7 @@ from libc.stdlib import (
     rand_r,
     random,
     realloc,
+    reallocarray,
     realpath,
     rpmatch,
     secure_getenv,
@@ -1357,6 +1360,7 @@ def main() raises:
     test_the_order_the_comparator_asks_for()
     test_the_made_temporary_opened_with_its_word()
     test_looking_for_one_in_the_array()
+    test_a_storage_asked_by_the_count_and_the_size()
     print("test_stdlib: ok")
 
 
@@ -1416,3 +1420,57 @@ def test_the_made_temporary_opened_with_its_word() raises:
             "and the template comes back as the caller handed it",
         )
         bad.unsafe_free()
+
+
+def test_a_storage_asked_by_the_count_and_the_size() raises:
+    """`reallocarray` -- `realloc` with the length the caller
+    means written as the count and the size of each: the
+    making of something new when the asking is of nothing, the
+    making bigger when the asking is of what is had, and the
+    refusing of what would be more than the biggest length
+    there is -- refused with nothing and `errno` saying there
+    is not room enough, the thing the caller had left as it
+    was.
+    """
+    set_errno(0)
+    var nothing = unsafe_alloc[c_ptr[c_void]](1)
+    nothing.unsafe_offset(0)[] = c_ptr[c_void](unsafe_from_address=Int(0))
+    var fresh = reallocarray(nothing.unsafe_offset(0)[], 4, 16)
+    assert_equal(
+        Int(get_errno()), 0, "the making of something new is not an error"
+    )
+    assert_true(Int(fresh) != 0, "and something is had for the asking")
+    var grown = reallocarray(fresh, 8, 16)
+    assert_equal(
+        Int(get_errno()), 0, "and the making bigger is not an error either"
+    )
+    assert_true(Int(grown) != 0, "and something is had for that asking too")
+    var bytes = c_ptr[UInt8](unsafe_from_address=Int(grown))
+    for i in range(128):
+        bytes.unsafe_offset(i)[] = UInt8(i & 0xFF)
+    for i in range(128):
+        assert_equal(
+            Int(bytes.unsafe_offset(i)[]),
+            Int(i & 0xFF),
+            "and the storage holds what is written",
+        )
+    set_errno(0)
+    var refused = reallocarray(
+        grown, c_size_t(0x7FFFFFFFFFFFFFFF), c_size_t(0x7FFFFFFFFFFFFFFF)
+    )
+    assert_true(
+        Int(refused) == 0, "and the impossible length is refused with nothing"
+    )
+    assert_equal(
+        Int(get_errno()),
+        ENOMEM,
+        "and the refusal says there is not room enough",
+    )
+    for i in range(128):
+        assert_equal(
+            Int(bytes.unsafe_offset(i)[]),
+            Int(i & 0xFF),
+            "and what the caller had is left as it was",
+        )
+    _ = free(grown)
+    nothing.unsafe_free()
