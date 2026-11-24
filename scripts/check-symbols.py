@@ -99,6 +99,12 @@ KNOWN_MISSING = {
     # x86's: aarch64's glibc does not export the calls at all, there
     # being no ports to say the word about. The test is guarded and the
     # asking is had where the machine has ports.
+    # `pthread_atfork` is a name x86-64's glibc exports as a weak leftover
+    # and aarch64's does not export at all -- the third machine is what
+    # found the difference. The built form carries the answer where the
+    # symbol is missing: the linker finds no definition and the register
+    # call answers 0, which `tests/test_atfork.mojo` asserts.
+    "pthread_atfork": "aarch64's glibc does not export it; x86-64's does, weakly",
     "ioperm": "aarch64's glibc does not export it; the ports are x86's own ground",
     "iopl": "aarch64's glibc does not export it; the ports are x86's own ground",
 }
