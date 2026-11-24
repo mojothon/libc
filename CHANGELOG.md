@@ -264,6 +264,13 @@ All notable changes to this project are documented here. The format follows
   keeps -- and Darwin's libSystem keeps the same word under another name, so the asking
   is had where the C library has it.
 
+- **`libc.unistd` gains `getresuid` and `getresgid`.**
+  The three numbers of the user and of the group -- the one the process was born with,
+  the one its permissions are read by, and the one it was and could be again -- written
+  each where they are pointed at, which is the asking the pair of calls that read one
+  apiece cannot do in one word. The third is the kernel's own keeping, and Darwin's
+  libSystem has no such call to ask, so the asking is had where the kernel keeps it.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
