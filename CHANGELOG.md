@@ -229,6 +229,16 @@ All notable changes to this project are documented here. The format follows
   and has no symbol for either -- and the tests read the clocks they are named and
   find the second reading of work not smaller than the first.
 
+- **`libc.pthread` gains the spin lock and the five calls that take it.**
+  `pthread_spin_init`, `pthread_spin_destroy`, `pthread_spin_lock`, `pthread_spin_trylock`
+  and `pthread_spin_unlock` -- the lock whose wait is spun and not slept, the speed of it
+  where the wait is short and the cost of it where the wait is not. The ask that does not
+  wait looks once and is told `EBUSY` where somebody holds it, and a word that is neither
+  the private one nor the shared one is not refused. The family is asked only where the
+  C library has the calls -- Darwin's libSystem has no symbols for it -- and the test
+  takes the lock, is told by the try that somebody holds it, gives it up, takes it again
+  with the try, and gives it back.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
