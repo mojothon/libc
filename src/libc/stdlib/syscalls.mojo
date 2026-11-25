@@ -1204,6 +1204,33 @@ def realpath(
     ](path, resolved_path)
 
 
+def canonicalize_file_name(path: c_ptr[c_char]) -> c_ptr[c_char]:
+    """C library <stdlib.h> function `canonicalize_file_name`.
+
+        char *canonicalize_file_name(const char *path)
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/canonicalize_file_name.3.html
+
+    Description:
+        Resolves every symlink and `.`/`..` component in `path`,
+        the way `realpath` does it with a room the caller gives,
+        and keeps the saying in a room of its own that the
+        caller puts away with `free`. The word is glibc's own;
+        Darwin's libSystem has no such call to say.
+
+    Args:
+        path: A path to canonicalize.
+
+    Returns:
+        The canonicalized absolute path in a room of its own, or
+        null on failure with `errno` set.
+    """
+    return external_call[
+        "canonicalize_file_name", c_ptr[c_char], c_ptr[c_char]
+    ](path)
+
+
 def srandom(seed: UInt32):
     """C library <stdlib.h> function `srandom`.
 

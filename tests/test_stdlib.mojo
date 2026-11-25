@@ -23,7 +23,7 @@ from libc.fcntl import (
     open,
 )
 from libc.math import fabs
-from libc.errno import EINVAL, ENOTTY, ERANGE, get_errno, set_errno
+from libc.errno import EINVAL, ENOENT, ENOTTY, ERANGE, get_errno, set_errno
 from libc.file import close, fclose, fopen, fputs, fread, read, write
 from libc.stdio import remove
 from libc.unistd import dup2, pipe, read
@@ -55,6 +55,7 @@ from libc.stdlib import (
     _Exit,
     exit,
     system,
+    canonicalize_file_name,
     free,
     getenv,
     getloadavg,
@@ -1627,6 +1628,56 @@ def test_the_allocator_says_what_it_keeps() raises:
         room.unsafe_free()
 
 
+def test_the_canonical_saying_of_a_path() raises:
+    """`canonicalize_file_name` -- the canonical saying
+    of a path, the way `realpath` says it with a room
+    the caller gives, kept here in a room of its own
+    that the caller puts away with `free`. A symlink
+    and a `.` on the way there are said as what they
+    really are, the same saying `realpath` reads, and a
+    place that is not there is refused with nothing
+    coming back and `errno` saying why. The word is
+    glibc's own; Darwin's libSystem has no such call to
+    say.
+    """
+    comptime if not CompilationTarget.is_macos():
+        # a symlink and a dot on the way: both resolved the same
+        # way `realpath` says, and the saying opens as the place
+        # the path really lives -- what the saying is of being
+        # read, not guessed
+        var long_way = string_to_char_ptr("/bin/sh")
+        var said = canonicalize_file_name(long_way)
+        assert_true(Int(said) != 0, "the saying is made")
+        # how long the saying is
+        var said_len = Int(0)
+        while said.unsafe_offset(said_len)[] != c_char(0):
+            said_len += 1
+        # the same saying `realpath` reads, said into a room of
+        # its own that the caller gives: every byte the same
+        var room = unsafe_alloc[c_char](4096)
+        var again = realpath(long_way, room)
+        assert_true(Int(again) != 0, "realpath says the same")
+        var same = True
+        for i in range(said_len + 1):
+            if said.unsafe_offset(i)[] != again.unsafe_offset(i)[]:
+                same = False
+        assert_true(same, "and both sayings read the same")
+        # and the saying opens as the place the path really lives
+        var opened = open(said.unsafe_bitcast[UInt8](), Int32(0))
+        assert_true(opened >= 0, "and what the saying opens is really there")
+        _ = close(opened)
+        _ = free(said.unsafe_bitcast[c_void]())
+        room.unsafe_free()
+        # a place that is not there: nothing comes back, and errno
+        # says why
+        set_errno(0)
+        var miss = canonicalize_file_name(
+            string_to_char_ptr("/no/such/place/at/all")
+        )
+        assert_true(Int(miss) == 0, "and nothing comes back")
+        assert_equal(Int(get_errno()), Int(ENOENT), "with errno saying why")
+
+
 def main() raises:
     test_malloc()
     test_the_untried_calls()
@@ -1663,6 +1714,7 @@ def main() raises:
     test_the_going_of_the_quick_way()
     test_the_far_end_named_in_the_room_given()
     test_the_sorting_that_brings_a_word()
+    test_the_canonical_saying_of_a_path()
     test_the_allocator_says_what_it_keeps()
     print("test_stdlib: ok")
 
