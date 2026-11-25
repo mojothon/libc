@@ -1076,6 +1076,11 @@ the bottom.</p>
 <td>4</td>
 </tr>
 <tr>
+<td><code>libc.sys.xattr</code></td>
+<td><code>&lt;sys/xattr.h&gt;</code> the words a caller keeps with a file</td>
+<td>4</td>
+</tr>
+<tr>
 <td><code>libc.sys.statvfs</code></td>
 <td><code>&lt;sys/statvfs.h&gt;</code></td>
 <td>15</td>
@@ -1221,7 +1226,7 @@ nothing for a binding to link against whatever the callback situation is.</p>
 because Mojo has no type to pass: on x86-64 the C type is the 80-bit x87
 format. <code>libc.locale</code> has no <code>FE_DFL_ENV</code>, see <code>fenv_t</code>.</p>
 <p><code>libc.sys.epoll</code>, <code>libc.sys.prctl</code>, <code>libc.sys.sendfile</code>, <code>libc.sys.eventfd</code>, <code>libc.sys.timerfd</code>, <code>libc.sys.memfd</code>,
-<code>libc.sys.inotify</code>, <code>libc.sys.sigqueue</code>, <code>libc.sys.timer</code>, <code>libc.sys.auxv</code>,
+<code>libc.sys.xattr</code>, <code>libc.sys.inotify</code>, <code>libc.sys.sigqueue</code>, <code>libc.sys.timer</code>, <code>libc.sys.auxv</code>,
 <code>libc.sys.uio</code>,
 <code>libc.threads</code> and <code>libc.uchar</code>
 wrap Linux-only
@@ -1262,7 +1267,7 @@ pointed at whatever descriptor 1 holds. A child that points descriptor 1 at
 a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.</p>
-<p>1142 bindings are asked something, and the 3 that are not have a reason.
+<p>1146 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 <code>scripts/check-tests.py</code>, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.</p>
@@ -1384,6 +1389,12 @@ other platform's C library has no such call.</p>
   descriptor -- the saying looked for in the directory <code>fd</code> opens, or, with
   <code>AT_EMPTY_PATH</code> and an empty saying, in the very file <code>fd</code> itself opens;
   Linux's own word, and Darwin has no call that takes it.</li>
+<li><code>fsetxattr</code>, <code>fgetxattr</code>, <code>flistxattr</code> and <code>fremovexattr</code> are the words a
+  caller keeps with a file, under names of the caller's own -- a word kept,
+  taken back the same, counted, read by its size alone, and let go, after
+  which asking for it is refused the way it would be if it had never been
+  kept. All four are Linux's own words; Darwin answers different words with
+  the sayings in the other order.</li>
 <li><code>pipe2</code> is a pipe made with its flag word applied as it is
   made -- close-on-exec and non-blocking set before the
   descriptors exist to be raced for, which is the kernel's own
@@ -1392,7 +1403,7 @@ other platform's C library has no such call.</p>
   of which eventfd's counter is the other half, and Darwin answers the same
   need with kqueue, which is a different call with different answers.</li>
 </ul>
-<p>Linux asks 40 bindings that Darwin passes over, and Darwin 0 that Linux
+<p>Linux asks 44 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked
