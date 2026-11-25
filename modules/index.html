@@ -938,7 +938,7 @@ the bottom.</p>
 <tr>
 <td><code>libc.search</code></td>
 <td><code>&lt;search.h&gt;</code></td>
-<td>11</td>
+<td>19</td>
 </tr>
 <tr>
 <td><code>libc.dirent</code></td>
@@ -1262,7 +1262,7 @@ pointed at whatever descriptor 1 holds. A child that points descriptor 1 at
 a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.</p>
-<p>1129 bindings are asked something, and the 3 that are not have a reason.
+<p>1133 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 <code>scripts/check-tests.py</code>, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.</p>
