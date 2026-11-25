@@ -65,7 +65,7 @@ the bottom.
 | `libc.sys.statfs` | `<sys/statfs.h>` the kernel's own account of a file system | 15 |
 | `libc.sys.mqueue` | `<mqueue.h>` | 10 |
 | `libc.sys.memfd` | `<sys/memfd.h>` a file the kernel holds and nothing names | 4 |
-| `libc.sys.xattr` | `<sys/xattr.h>` the words a caller keeps with a file | 4 |
+| `libc.sys.xattr` | `<sys/xattr.h>` the words a caller keeps with a file | 12 |
 | `libc.sys.statvfs` | `<sys/statvfs.h>` | 15 |
 | `libc.sys.select` | `<sys/select.h>` | 9 |
 | `libc.sys.shm` | `<sys/shm.h>` shared memory | 7 |
@@ -171,7 +171,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1146 bindings are asked something, and the 3 that are not have a reason.
+1154 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -303,6 +303,12 @@ other platform's C library has no such call.
   which asking for it is refused the way it would be if it had never been
   kept. All four are Linux's own words; Darwin answers different words with
   the sayings in the other order.
+- The path sayings of the same -- `setxattr`, `getxattr`, `listxattr` and
+  `removexattr`, each by way of a path whose symlinks are followed, and
+  `lsetxattr`, `lgetxattr`, `llistxattr` and `lremovexattr`, each by way of
+  a path whose symlinks are not. The kernel keeps none of the caller's kind
+  on a link itself, so the sayings that ask the link answer with nothing
+  and `errno` saying why.
 - `pipe2` is a pipe made with its flag word applied as it is
   made -- close-on-exec and non-blocking set before the
   descriptors exist to be raced for, which is the kernel's own
@@ -311,7 +317,7 @@ other platform's C library has no such call.
   of which eventfd's counter is the other half, and Darwin answers the same
   need with kqueue, which is a different call with different answers.
 
-Linux asks 44 bindings that Darwin passes over, and Darwin 0 that Linux
+Linux asks 52 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked
