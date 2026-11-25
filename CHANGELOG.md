@@ -329,6 +329,17 @@ All notable changes to this project are documented here. The format follows
   asking is all or nothing: the refused askings wrote nothing, which the test that asks
   them reads back.
 
+- **`libc.search` gains the tree: `tsearch`, `tfind`, `tdelete` and `twalk`.**
+  The tree that is kept in the order the comparing function says, the same word `bsearch`
+  takes. The asking that looks up puts the key in when it is not there, the node coming
+  back with the key being what the node points at; the looking finds the node or says
+  nothing is there, writing nothing; the taking out unhooks the node and says what the
+  tree's keeping went through, the tree left empty and the key not being there saying
+  the same null; and the walking hands every node over -- three times for a node with
+  children and once for a leaf, the times being named `preorder`, `postorder`,
+  `endorder` and `leaf`, and how far from the root said with each. The test walks a
+  tree of six and reads the handing-overs back one letter at a time.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
