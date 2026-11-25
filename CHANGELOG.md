@@ -340,6 +340,14 @@ All notable changes to this project are documented here. The format follows
   `endorder` and `leaf`, and how far from the root said with each. The test walks a
   tree of six and reads the handing-overs back one letter at a time.
 
+- **`libc.search` gains `twalk_r` and `tdestroy`.**
+  The walk that brings the asker's own word along -- the same depth-first passing as
+  `twalk`, with a room handed with every node so a thread's own walk cannot have another
+  thread's walk handing over into the same place -- and the taking-apart that hands every
+  member back to the saying the asker brings, a tree that holds nothing coming apart
+  without a single handing-over. Both are glibc's own words, which the page's saying of
+  how many bindings one platform asks alone grows by two.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
