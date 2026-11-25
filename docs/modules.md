@@ -7,7 +7,7 @@ the bottom.
 | Module | C header | Symbols |
 | --- | --- | --- |
 | `libc.math` | `<math.h>` | 124 |
-| `libc.stdlib` | `<stdlib.h>` | 92 |
+| `libc.stdlib` | `<stdlib.h>` | 95 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.limits` | `<limits.h>` the widths of the integer types, and what a process may have | 24 |
 | `libc.unistd` | `<unistd.h>` | 222 |
@@ -170,7 +170,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1136 bindings are asked something, and the 3 that are not have a reason.
+1139 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -273,6 +273,14 @@ other platform's C library has no such call.
   to the comparator as a third argument, so a thread's own sorting cannot have
   another thread's sorting reading the same place; glibc's own word, and
   Darwin's libSystem says another word with the sayings in the other order.
+- `malloc_trim` gives the free bytes at the top of what the allocator keeps back
+  to the machine, keeping a slack the asking names, and says whether anything
+  was given back; `malloc_stats` says how many bytes of the machine's own the
+  allocator keeps and how many are in use, into the errors channel, which is
+  the channel a caller can point at another room for; and `malloc_info` says
+  the whole of what the allocator keeps in the XML saying the machine's own
+  tools read, into the stream the caller opens. All three are glibc's own
+  words; Darwin's libSystem has no such call to say.
 - `pipe2` is a pipe made with its flag word applied as it is
   made -- close-on-exec and non-blocking set before the
   descriptors exist to be raced for, which is the kernel's own
@@ -281,7 +289,7 @@ other platform's C library has no such call.
   of which eventfd's counter is the other half, and Darwin answers the same
   need with kqueue, which is a different call with different answers.
 
-Linux asks 34 bindings that Darwin passes over, and Darwin 0 that Linux
+Linux asks 37 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked

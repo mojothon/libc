@@ -13,11 +13,20 @@ from libc.constant import (
     ENOMEM,
     c_size_t,
 )
-from libc.fcntl import FD_CLOEXEC, F_GETFD, O_CLOEXEC, O_RDWR, fcntl, open
+from libc.fcntl import (
+    F_DUPFD,
+    FD_CLOEXEC,
+    F_GETFD,
+    O_CLOEXEC,
+    O_RDWR,
+    fcntl,
+    open,
+)
 from libc.math import fabs
 from libc.errno import EINVAL, ENOTTY, ERANGE, get_errno, set_errno
 from libc.file import close, fclose, fopen, fputs, fread, read, write
 from libc.stdio import remove
+from libc.unistd import dup2, pipe, read
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, WIFSIGNALED, waitpid
 from libc.unistd import (
     SC_PAGESIZE,
@@ -109,6 +118,9 @@ from libc.stdlib import (
     unsetenv,
     valloc,
     wctomb,
+    malloc_info,
+    malloc_stats,
+    malloc_trim,
     malloc_usable_size,
     quick_exit,
     ptsname_r,
@@ -1505,6 +1517,116 @@ def test_the_sorting_that_brings_a_word() raises:
         keys.unsafe_free()
 
 
+def test_the_allocator_says_what_it_keeps() raises:
+    """`malloc_trim`, `malloc_stats` and `malloc_info` --
+    the allocator's own sayings of what it keeps.
+    `malloc_trim` gives the free bytes at the top of what
+    it keeps back to the machine and says whether anything
+    was given back; `malloc_stats` says how many bytes of
+    the machine's own it keeps and how many are in use,
+    into the errors channel, which the test points at a
+    pipe for the saying to be read; and `malloc_info` says
+    the whole of what it keeps in the XML saying the
+    machine's own tools read, into the stream the test
+    opens. All three are glibc's own words; Darwin's
+    libSystem has no such call to say.
+    """
+    comptime if not CompilationTarget.is_macos():
+        # the trim: a block the allocator keeps the top of is
+        # let go, and the giving-back is said
+        var big = unsafe_alloc[UInt8](64 * 1024 * 1024)
+        big.unsafe_offset(64 * 1024 * 1024 - 1)[] = UInt8(1)
+        big.unsafe_free()
+        var trimmed = Int(malloc_trim(c_size_t(0)))
+        assert_true(trimmed == 1 or trimmed == 0, "the giving back is said")
+        # the stats: the errors channel is pointed at a pipe, the
+        # saying is read, and the channel is pointed back
+        var saved = Int(fcntl(Int32(2), F_DUPFD, Int32(100)))
+        assert_true(saved >= 100, "the errors channel has a place to hide")
+        var fds = unsafe_alloc[Int32](2)
+        assert_equal(Int(pipe(fds)), 0, "a pipe for the allocator to say into")
+        assert_equal(
+            dup2(fds.unsafe_offset(1)[], Int32(2)), 2, "the saying end takes 2"
+        )
+        _ = close(fds.unsafe_offset(1)[])
+        _ = malloc_stats()
+        assert_equal(
+            dup2(Int32(saved), Int32(2)),
+            2,
+            "and the errors channel is pointed back",
+        )
+        _ = close(Int32(saved))
+        var said = unsafe_alloc[UInt8](1024)
+        var total = Int32(0)
+        while total < Int32(4):
+            total += Int32(
+                read(
+                    fds.unsafe_offset(0)[],
+                    said.unsafe_offset(total),
+                    c_uint(Int(1024 - Int(total))),
+                )
+            )
+            if total < Int32(4):
+                break
+        # the saying starts with the arena it keeps -- `Arena ` --
+        # which is the word the machine reads first
+        var starts_arena = Int(said.unsafe_offset(0)[]) == 65
+        var is_r = Int(said.unsafe_offset(1)[]) == 114
+        var is_e = Int(said.unsafe_offset(2)[]) == 101
+        var is_n = Int(said.unsafe_offset(3)[]) == 110
+        var is_a = Int(said.unsafe_offset(4)[]) == 97
+        var is_space = Int(said.unsafe_offset(5)[]) == 32
+        assert_true(
+            starts_arena and is_r and is_e and is_n and is_a and is_space,
+            "the saying starts with the arena it keeps",
+        )
+        _ = close(fds.unsafe_offset(0)[])
+        fds.unsafe_free()
+        said.unsafe_free()
+        # the info: the XML saying goes into the stream the test
+        # opens, and what it says is what the machine's own tools
+        # read
+        var name = string_to_char_ptr("/tmp/mojo_malloc_info.xml")
+        var mode_w = string_to_char_ptr("w")
+        var stream = fopen(name, mode_w)
+        assert_true(Int(stream) != 0, "a stream for the XML saying to go into")
+        assert_equal(
+            Int(malloc_info(0, stream)),
+            0,
+            "the saying is made and nothing is refused",
+        )
+        assert_equal(Int(fclose(stream)), 0, "and the stream is closed")
+        var mode_r = string_to_char_ptr("r")
+        var back = fopen(name, mode_r)
+        assert_true(Int(back) != 0, "and the saying is there to be read")
+        var room = unsafe_alloc[c_char](8192)
+        var got = Int(
+            fread(
+                room.unsafe_bitcast[c_void](), c_size_t(1), c_size_t(8191), back
+            )
+        )
+        assert_true(got > 0, "and there is something said")
+        assert_equal(Int(fclose(back)), 0, "and the saying is closed")
+        # the marker is looked for in the raw bytes the saying
+        # was read into, which is what the XML saying opens with
+        var marker = "<malloc version="
+        var has_marker = False
+        var marker_len = marker.byte_length()
+        for i in range(got - marker_len):
+            var found = True
+            for j in range(marker_len):
+                if room.unsafe_offset(i + j)[] != UInt8(ord(marker[byte=j])):
+                    found = False
+            if found:
+                has_marker = True
+        assert_true(
+            has_marker,
+            "the saying is the XML the machine's own tools read",
+        )
+        assert_equal(Int(remove(name)), 0, "and the room is left as it was")
+        room.unsafe_free()
+
+
 def main() raises:
     test_malloc()
     test_the_untried_calls()
@@ -1541,6 +1663,7 @@ def main() raises:
     test_the_going_of_the_quick_way()
     test_the_far_end_named_in_the_room_given()
     test_the_sorting_that_brings_a_word()
+    test_the_allocator_says_what_it_keeps()
     print("test_stdlib: ok")
 
 

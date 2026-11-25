@@ -21,6 +21,7 @@ from std.memory import unsafe_stack_allocation
 
 from libc.limits import LONG_MAX, LONG_MIN, PATH_MAX, ULLONG_MAX, ULONG_MAX
 from libc.locale import locale_t
+from libc.file import FILE
 
 from libc.constant import (
     c_char,
@@ -2562,6 +2563,79 @@ def malloc_usable_size(ptr: c_ptr[c_void]) -> c_size_t:
         C library has it.
     """
     return external_call["malloc_usable_size", c_size_t, c_ptr[c_void]](ptr)
+
+
+def malloc_trim(pad: c_size_t) -> c_int:
+    """C library <malloc.h> function `malloc_trim`.
+
+        int malloc_trim(size_t pad)
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/malloc_trim.3.html
+
+    Description:
+        Gives the free bytes at the top of what the allocator
+        keeps back to the machine, keeping `pad` bytes of slack.
+        The word is glibc's own; Darwin's libSystem has no such
+        call to say.
+
+    Args:
+        pad: The slack to keep.
+
+    Returns:
+        1 when the memory was given back, and 0 when there was
+        nothing to give back.
+    """
+    return external_call["malloc_trim", c_int, c_size_t](pad)
+
+
+def malloc_stats() -> c_void:
+    """C library <malloc.h> function `malloc_stats`.
+
+        void malloc_stats(void)
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/malloc_stats.3.html
+
+    Description:
+        Says what the allocator keeps -- how many bytes of the
+        machine's own and how many in use -- into the errors
+        channel, which is the channel a caller can point at
+        another room for. The word is glibc's own; Darwin's
+        libSystem has no such call to say.
+
+    Returns:
+        Nothing.
+    """
+    return external_call["malloc_stats", c_void]()
+
+
+def malloc_info(option: c_int, stream: c_ptr[FILE]) -> c_int:
+    """C library <malloc.h> function `malloc_info`.
+
+        int malloc_info(int option, FILE *stream)
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/malloc_info.3.html
+
+    Description:
+        Says what the allocator keeps in the XML saying the
+        machine's own tools read, into the stream the caller
+        opens; the option is a word for what the saying is of,
+        and there is no saying but the whole of it, which is
+        what 0 asks. The word is glibc's own; Darwin's
+        libSystem has no such call to say.
+
+    Args:
+        option: What the saying is of; 0 is the whole of it.
+        stream: The stream the saying goes into.
+
+    Returns:
+        0 on success, or -1 on error.
+    """
+    return external_call["malloc_info", c_int, c_int, c_ptr[FILE]](
+        option, stream
+    )
 
 
 def atexit(function: def() thin -> None) -> c_int:
