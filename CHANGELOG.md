@@ -362,6 +362,14 @@ All notable changes to this project are documented here. The format follows
   read, into the stream the caller opens. All three are glibc's own words, which the
   page's saying of how many bindings one platform asks alone grows by three.
 
+- **`libc.stdlib` gains `canonicalize_file_name`.**
+  The canonical saying of a path, the way `realpath` says it with a room the caller gives,
+  kept in a room of its own that the caller puts away with `free`. A symlink on the way is
+  said as what it really is -- the same saying `realpath` reads, every byte the same -- and
+  a place that is not there is refused with nothing coming back and `errno` saying why.
+  The word is glibc's own, which the page's saying of how many bindings one platform asks
+  alone grows by one.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
