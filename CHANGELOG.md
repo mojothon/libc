@@ -383,6 +383,13 @@ All notable changes to this project are documented here. The format follows
   very file `fd` itself opens. The word is Linux's own, which the page's saying of how many
   bindings one platform asks alone grows by one.
 
+- **`libc.sys.xattr` is a new wrapping of `<sys/xattr.h>`.**
+  `fsetxattr`, `fgetxattr`, `flistxattr` and `fremovexattr` -- the words a caller keeps
+  with a file under names of the caller's own: a word kept, taken back the same, counted,
+  read by its size alone, and let go, after which asking for it is refused the way it
+  would be if it had never been kept. All four are Linux's own words, which the page's
+  saying of how many bindings one platform asks alone grows by four.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
