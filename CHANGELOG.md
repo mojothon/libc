@@ -348,6 +348,13 @@ All notable changes to this project are documented here. The format follows
   without a single handing-over. Both are glibc's own words, which the page's saying of
   how many bindings one platform asks alone grows by two.
 
+- **`libc.stdlib` gains `qsort_r`.**
+  The in-place ordering `qsort` does, with the room the asking itself says handed to the
+  comparator as a third argument, so a thread's own sorting cannot have another thread's
+  sorting reading the same place. The order is whatever the comparator says with that room
+  in hand and nothing else; an array of nothing is no asking at all. The word is glibc's
+  own; Darwin's libSystem says another word with the sayings in the other order.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
