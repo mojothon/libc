@@ -355,6 +355,13 @@ All notable changes to this project are documented here. The format follows
   in hand and nothing else; an array of nothing is no asking at all. The word is glibc's
   own; Darwin's libSystem says another word with the sayings in the other order.
 
+- **`libc.stdlib` gains `malloc_trim`, `malloc_stats` and `malloc_info`.**
+  The allocator's own sayings of what it keeps: the free bytes at the top given back to
+  the machine with a slack the asking names, the bytes kept and in use said into the
+  errors channel, and the whole of what it keeps said in the XML the machine's own tools
+  read, into the stream the caller opens. All three are glibc's own words, which the
+  page's saying of how many bindings one platform asks alone grows by three.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
