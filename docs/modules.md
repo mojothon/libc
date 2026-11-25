@@ -65,6 +65,7 @@ the bottom.
 | `libc.sys.statfs` | `<sys/statfs.h>` the kernel's own account of a file system | 15 |
 | `libc.sys.mqueue` | `<mqueue.h>` | 10 |
 | `libc.sys.memfd` | `<sys/memfd.h>` a file the kernel holds and nothing names | 4 |
+| `libc.sys.xattr` | `<sys/xattr.h>` the words a caller keeps with a file | 4 |
 | `libc.sys.statvfs` | `<sys/statvfs.h>` | 15 |
 | `libc.sys.select` | `<sys/select.h>` | 9 |
 | `libc.sys.shm` | `<sys/shm.h>` shared memory | 7 |
@@ -124,7 +125,7 @@ because Mojo has no type to pass: on x86-64 the C type is the 80-bit x87
 format. `libc.locale` has no `FE_DFL_ENV`, see `fenv_t`.
 
 `libc.sys.epoll`, `libc.sys.prctl`, `libc.sys.sendfile`, `libc.sys.eventfd`, `libc.sys.timerfd`, `libc.sys.memfd`,
-`libc.sys.inotify`, `libc.sys.sigqueue`, `libc.sys.timer`, `libc.sys.auxv`,
+`libc.sys.xattr`, `libc.sys.inotify`, `libc.sys.sigqueue`, `libc.sys.timer`, `libc.sys.auxv`,
 `libc.sys.uio`,
 `libc.threads` and `libc.uchar`
 wrap Linux-only
@@ -170,7 +171,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1142 bindings are asked something, and the 3 that are not have a reason.
+1146 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -296,6 +297,12 @@ other platform's C library has no such call.
   descriptor -- the saying looked for in the directory `fd` opens, or, with
   `AT_EMPTY_PATH` and an empty saying, in the very file `fd` itself opens;
   Linux's own word, and Darwin has no call that takes it.
+- `fsetxattr`, `fgetxattr`, `flistxattr` and `fremovexattr` are the words a
+  caller keeps with a file, under names of the caller's own -- a word kept,
+  taken back the same, counted, read by its size alone, and let go, after
+  which asking for it is refused the way it would be if it had never been
+  kept. All four are Linux's own words; Darwin answers different words with
+  the sayings in the other order.
 - `pipe2` is a pipe made with its flag word applied as it is
   made -- close-on-exec and non-blocking set before the
   descriptors exist to be raced for, which is the kernel's own
@@ -304,7 +311,7 @@ other platform's C library has no such call.
   of which eventfd's counter is the other half, and Darwin answers the same
   need with kqueue, which is a different call with different answers.
 
-Linux asks 40 bindings that Darwin passes over, and Darwin 0 that Linux
+Linux asks 44 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked

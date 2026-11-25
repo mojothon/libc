@@ -90,6 +90,7 @@ from test_wchar import main as run_wchar
 from test_utmpx import main as run_utmpx
 from test_wctype import main as run_wctype
 from test_wordexp import main as run_wordexp
+from test_xattr import main as run_xattr
 from test_version import main as run_version
 
 
@@ -186,5 +187,6 @@ def main() raises:
     run_wctype()
     run_wordexp()
     run_utmpx()
+    run_xattr()
     run_version()
     print("all tests passed")
