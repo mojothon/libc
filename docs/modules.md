@@ -314,7 +314,8 @@ other platform's C library has no such call.
   is the way a program that cannot trust the directories on the way says
   itself. What the asking of one that works says is the same as `execveat`
   with `AT_EMPTY_PATH` and an empty saying, spelled without the word that
-  carries it.
+  carries it; Linux links it from what a just-in-time run looks words up
+  in, and Darwin's libSystem keeps no such symbol to look up.
 - `pipe2` is a pipe made with its flag word applied as it is
   made -- close-on-exec and non-blocking set before the
   descriptors exist to be raced for, which is the kernel's own
@@ -323,7 +324,7 @@ other platform's C library has no such call.
   of which eventfd's counter is the other half, and Darwin answers the same
   need with kqueue, which is a different call with different answers.
 
-Linux asks 52 bindings that Darwin passes over, and Darwin 0 that Linux
+Linux asks 53 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked
