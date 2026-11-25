@@ -37,7 +37,7 @@ the bottom.
 | `libc.spawn` | `<spawn.h>` start a process without fork | 25 |
 | `libc.locale` | `<locale.h>` | 23 |
 | `libc.sys.epoll` | `<sys/epoll.h>` | 9 |
-| `libc.search` | `<search.h>` | 11 |
+| `libc.search` | `<search.h>` | 19 |
 | `libc.dirent` | `<dirent.h>` | 22 |
 | `libc.sys.wait` | `<sys/wait.h>` | 25 |
 | `libc.inttypes` | `<inttypes.h>` | 7 |
@@ -170,7 +170,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1129 bindings are asked something, and the 3 that are not have a reason.
+1133 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.

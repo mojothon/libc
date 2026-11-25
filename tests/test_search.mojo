@@ -2,11 +2,15 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
-from libc.constant import c_int, c_ptr, c_size_t, c_void
+from libc.constant import c_int, c_ptr, c_size_t, c_uint, c_void
 from libc.search import (
+    ENDORDER,
     ENTER,
     ENTRY,
     FIND,
+    LEAF,
+    POSTORDER,
+    PREORDER,
     hcreate,
     hdestroy,
     hsearch,
@@ -15,7 +19,13 @@ from libc.search import (
     lsearch,
     qelem,
     remque,
+    tdelete,
+    tfind,
+    tsearch,
+    twalk,
 )
+from libc.file import close, write
+from libc.unistd import dup2, pipe, read
 from libc.stdlib import free, malloc
 from libc.string import strcpy
 from libc.utils import char_ptr_to_string, null_ptr, string_to_char_ptr
@@ -217,7 +227,146 @@ def test_the_table_that_keeps_no_order() raises:
     keys.unsafe_free()
 
 
+def tree_by_number(a: c_ptr[c_void], b: c_ptr[c_void]) -> Int32:
+    var x = a.unsafe_bitcast[c_int]()
+    var y = b.unsafe_bitcast[c_int]()
+    if x[] < y[]:
+        return -1
+    if x[] > y[]:
+        return 1
+    return 0
+
+
+def tree_say(node: c_ptr[c_void], visit: Int32, level: Int32) -> None:
+    var word = UInt8(80)
+    if visit == Int32(POSTORDER):
+        word = UInt8(84)
+    if visit == Int32(ENDORDER):
+        word = UInt8(69)
+    if visit == Int32(LEAF):
+        word = UInt8(76)
+    var one = unsafe_alloc[UInt8](1)
+    one.unsafe_offset(0)[] = word
+    _ = write(Int32(7), one.unsafe_bitcast[c_void](), c_uint(1))
+    one.unsafe_free()
+    _ = level
+
+
+def test_the_tree_that_keeps_the_order() raises:
+    """`tsearch`, `tfind`, `tdelete` and `twalk` -- the tree
+    that is kept in the order the comparing function says.
+    The asking that looks up puts in when it has to, the
+    looking finds the node or says nothing is there, the
+    taking out unhooks the node and says what the tree's
+    keeping went through, and the walking hands every node
+    over -- three times for a node with children and once
+    for a leaf, the times being named preorder, postorder,
+    endorder and leaf.
+    """
+    var keys = unsafe_alloc[c_int](6)
+    keys.unsafe_offset(0)[] = 50
+    keys.unsafe_offset(1)[] = 30
+    keys.unsafe_offset(2)[] = 70
+    keys.unsafe_offset(3)[] = 20
+    keys.unsafe_offset(4)[] = 40
+    keys.unsafe_offset(5)[] = 60
+    var rootp = unsafe_alloc[c_ptr[c_void]](1)
+    rootp.unsafe_offset(0)[] = null_ptr[c_void]()
+
+    for i in range(6):
+        var node = tsearch(
+            keys.unsafe_offset(i).unsafe_bitcast[c_void](),
+            rootp,
+            tree_by_number,
+        )
+        assert_true(Int(node) != 0, "a key gone in comes back as a node")
+
+    var want = unsafe_alloc[c_int](1)
+    want.unsafe_offset(0)[] = 40
+    var found = tfind(want.unsafe_bitcast[c_void](), rootp, tree_by_number)
+    assert_true(Int(found) != 0, "a member the tree holds is found")
+    var node_key = found.unsafe_bitcast[c_ptr[c_int]]()[]
+    assert_equal(
+        node_key.unsafe_bitcast[c_int]()[],
+        40,
+        "and the key is what the node points at",
+    )
+
+    want.unsafe_offset(0)[] = 99
+    var miss = tfind(want.unsafe_bitcast[c_void](), rootp, tree_by_number)
+    assert_true(Int(miss) == 0, "a member the tree does not hold is not found")
+
+    # again asking for a member it holds writes nothing new
+    want.unsafe_offset(0)[] = 40
+    var again = tsearch(want.unsafe_bitcast[c_void](), rootp, tree_by_number)
+    assert_equal(
+        Int(again), Int(found), "a key the tree holds is the node already there"
+    )
+
+    # the walk, said through a pipe so the handing-overs can be read
+    var fds = unsafe_alloc[Int32](2)
+    assert_equal(Int(pipe(fds)), 0, "a pipe for the walk to say into")
+    assert_equal(
+        dup2(fds.unsafe_offset(1)[], Int32(7)), 7, "the saying end takes 7"
+    )
+    _ = twalk(rootp.unsafe_offset(0)[], tree_say)
+    _ = close(Int32(7))
+    var said = unsafe_alloc[UInt8](16)
+    var total = Int32(0)
+    while total < Int32(12):
+        total += Int32(
+            read(
+                fds.unsafe_offset(0)[],
+                said.unsafe_offset(total),
+                c_uint(Int(12 - Int(total))),
+            )
+        )
+    var words = ""
+    for i in range(12):
+        words += String(chr(Int(said.unsafe_offset(i)[])))
+    assert_equal(
+        words,
+        "PPLTLETPLTEE",
+        (
+            "the walk says pre, post and end for a node with children and leaf"
+            " for one without"
+        ),
+    )
+    _ = close(fds.unsafe_offset(0)[])
+    _ = close(fds.unsafe_offset(1)[])
+    fds.unsafe_free()
+    said.unsafe_free()
+
+    # taking a leaf out: the parent is what the keeping went through
+    want.unsafe_offset(0)[] = 20
+    var parent = tdelete(want.unsafe_bitcast[c_void](), rootp, tree_by_number)
+    assert_true(Int(parent) != 0, "a leaf taken out says its parent")
+    want.unsafe_offset(0)[] = 20
+    var gone = tfind(want.unsafe_bitcast[c_void](), rootp, tree_by_number)
+    assert_true(Int(gone) == 0, "and the member taken out is no member after")
+
+    want.unsafe_offset(0)[] = 20
+    var nothing = tdelete(want.unsafe_bitcast[c_void](), rootp, tree_by_number)
+    assert_true(
+        Int(nothing) == 0, "a member the tree does not hold is not taken out"
+    )
+
+    # a tree that holds nothing: the taking says so
+    var empty_root = unsafe_alloc[c_ptr[c_void]](1)
+    empty_root.unsafe_offset(0)[] = null_ptr[c_void]()
+    want.unsafe_offset(0)[] = 1
+    var empty = tdelete(
+        want.unsafe_bitcast[c_void](), empty_root, tree_by_number
+    )
+    assert_true(Int(empty) == 0, "a tree that holds nothing gives up nothing")
+    empty_root.unsafe_free()
+    want.unsafe_free()
+    rootp.unsafe_free()
+    keys.unsafe_free()
+
+
 def main() raises:
+    test_the_tree_that_keeps_the_order()
     test_the_table_that_keeps_no_order()
     test_hsearch()
     test_queue()
