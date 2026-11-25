@@ -370,6 +370,13 @@ All notable changes to this project are documented here. The format follows
   The word is glibc's own, which the page's saying of how many bindings one platform asks
   alone grows by one.
 
+- **`libc.fcntl` gains `sync_file_range`.**
+  The seeing-to of the bytes of a file between a start and a length, in the ways the flag
+  word says: wait for the writing already asked for, ask for the writing, and wait for the
+  writing this asking made -- all three together being what `fdatasync` does of the middle
+  of a file, without the metadata a caller may not be waiting for. The word is Linux's own,
+  which the page's saying of how many bindings one platform asks alone grows by one.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
