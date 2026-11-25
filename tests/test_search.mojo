@@ -247,7 +247,7 @@ def tree_say(node: c_ptr[c_void], visit: Int32, level: Int32) -> None:
         word = UInt8(76)
     var one = unsafe_alloc[UInt8](1)
     one.unsafe_offset(0)[] = word
-    _ = write(Int32(7), one.unsafe_bitcast[c_void](), c_uint(1))
+    _ = write(Int32(42), one.unsafe_bitcast[c_void](), c_uint(1))
     one.unsafe_free()
     _ = level
 
@@ -307,10 +307,10 @@ def test_the_tree_that_keeps_the_order() raises:
     var fds = unsafe_alloc[Int32](2)
     assert_equal(Int(pipe(fds)), 0, "a pipe for the walk to say into")
     assert_equal(
-        dup2(fds.unsafe_offset(1)[], Int32(7)), 7, "the saying end takes 7"
+        dup2(fds.unsafe_offset(1)[], Int32(42)), 42, "the saying end takes 42"
     )
     _ = twalk(rootp.unsafe_offset(0)[], tree_say)
-    _ = close(Int32(7))
+    _ = close(Int32(42))
     var said = unsafe_alloc[UInt8](16)
     var total = Int32(0)
     while total < Int32(12):
