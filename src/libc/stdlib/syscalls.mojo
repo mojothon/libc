@@ -2334,6 +2334,54 @@ def qsort(
     ](base, count, size, compare)
 
 
+def qsort_r(
+    base: c_ptr[c_void],
+    count: c_size_t,
+    size: c_size_t,
+    compare: def(c_ptr[c_void], c_ptr[c_void], c_ptr[c_void]) thin -> Int32,
+    arg: c_ptr[c_void],
+) -> c_void:
+    """C library <stdlib.h> function `qsort_r`.
+
+        void qsort_r(void *base, size_t nmemb, size_t size,
+            int (*compar)(const void *, const void *, void *), void *arg)
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/qsort.3.html
+
+    Description:
+        Sorts `count` elements of `size` bytes each, in place, the
+        way `qsort` sorts them, and what is new is the word the
+        asker brings: the third argument `compare` takes is the
+        room the asking itself says, so a thread's own sorting
+        cannot have another thread's sorting reading the same
+        place. The order is whatever `compare` says with that
+        room in hand and nothing else. The word is glibc's own;
+        Darwin's libSystem says another word with the sayings in
+        the other order, which is not the word this asks.
+
+    Args:
+        base: The first element of the array.
+        count: How many elements there are.
+        size: How many bytes one element is.
+        compare: The saying of which of two elements comes first,
+            taking the room with it.
+        arg: The room the asking brings to `compare`.
+
+    Returns:
+        Nothing.
+    """
+    return external_call[
+        "qsort_r",
+        c_void,
+        c_ptr[c_void],
+        c_size_t,
+        c_size_t,
+        def(c_ptr[c_void], c_ptr[c_void], c_ptr[c_void]) thin -> Int32,
+        c_ptr[c_void],
+    ](base, count, size, compare, arg)
+
+
 def bsearch(
     key: c_ptr[c_void],
     base: c_ptr[c_void],

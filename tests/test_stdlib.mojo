@@ -73,6 +73,7 @@ from libc.stdlib import (
     nrand48,
     posix_memalign,
     qsort,
+    qsort_r,
     posix_openpt,
     ptsname,
     putenv,
@@ -1385,6 +1386,125 @@ def test_the_far_end_named_in_the_room_given() raises:
         _ = close(master)
 
 
+def sort_by_the_word(
+    a: c_ptr[c_void],
+    b: c_ptr[c_void],
+    arg: c_ptr[c_void],
+) -> Int32:
+    # the room the asking brings says the number the keys are
+    # divided by; the reading of the room is what a thread's own
+    # sorting has that qsort's does not
+    var rule = arg.unsafe_bitcast[Int32]()
+    var x = Int(a.unsafe_bitcast[Int32]()[]) % Int(rule[])
+    var y = Int(b.unsafe_bitcast[Int32]()[]) % Int(rule[])
+    if x < y:
+        return -1
+    if x > y:
+        return 1
+    return 0
+
+
+def sort_by_the_word_wrong(a: c_ptr[c_void], b: c_ptr[c_void]) -> Int32:
+    # the two-saying comparator `qsort` takes: asked for nothing here,
+    # and the room it was never given is not read
+    _ = a
+    _ = b
+    return 0
+
+
+def test_the_sorting_that_brings_a_word() raises:
+    """`qsort_r` -- the in-place ordering `qsort` does, with
+    the room the asking itself says handed to the
+    comparator as a third argument, so a thread's own
+    sorting cannot have another thread's sorting reading
+    the same place. The order is whatever the comparator
+    says with that room in hand and nothing else: an array
+    of eight read back in the order the room's divisor
+    puts them in, and an array of nothing read in no
+    asking at all. The word is glibc's own; Darwin's
+    libSystem says another word with the sayings in the
+    other order, which is not the word this asks.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var keys = unsafe_alloc[Int32](8)
+        keys.unsafe_offset(0)[] = 9
+        keys.unsafe_offset(1)[] = 4
+        keys.unsafe_offset(2)[] = 7
+        keys.unsafe_offset(3)[] = 2
+        keys.unsafe_offset(4)[] = 8
+        keys.unsafe_offset(5)[] = 1
+        keys.unsafe_offset(6)[] = 6
+        keys.unsafe_offset(7)[] = 3
+        var rule = unsafe_alloc[Int32](1)
+        rule.unsafe_offset(0)[] = Int32(3)
+        _ = qsort_r(
+            keys.unsafe_bitcast[c_void](),
+            c_size_t(8),
+            c_size_t(4),
+            sort_by_the_word,
+            rule.unsafe_bitcast[c_void](),
+        )
+        # the order the room's divisor puts them in: the keys are
+        # grouped by the remainder of the room's dividing, and
+        # within a group the order is what the array already said
+        var answers = unsafe_alloc[Int32](8)
+        answers.unsafe_offset(0)[] = 9
+        answers.unsafe_offset(1)[] = 6
+        answers.unsafe_offset(2)[] = 3
+        answers.unsafe_offset(3)[] = 4
+        answers.unsafe_offset(4)[] = 7
+        answers.unsafe_offset(5)[] = 1
+        answers.unsafe_offset(6)[] = 2
+        answers.unsafe_offset(7)[] = 8
+        for i in range(8):
+            assert_equal(
+                Int(keys.unsafe_offset(i)[]),
+                Int(answers.unsafe_offset(i)[]),
+                "the sorting is what the room's divisor says",
+            )
+        # a room of another dividing says another order: the same
+        # array sorted by remainders of seven groups the whole
+        # array into the keys below seven and the keys above
+        rule.unsafe_offset(0)[] = Int32(7)
+        _ = qsort_r(
+            keys.unsafe_bitcast[c_void](),
+            c_size_t(8),
+            c_size_t(4),
+            sort_by_the_word,
+            rule.unsafe_bitcast[c_void](),
+        )
+        answers.unsafe_offset(0)[] = 7
+        answers.unsafe_offset(1)[] = 1
+        answers.unsafe_offset(2)[] = 8
+        answers.unsafe_offset(3)[] = 9
+        answers.unsafe_offset(4)[] = 2
+        answers.unsafe_offset(5)[] = 3
+        answers.unsafe_offset(6)[] = 4
+        answers.unsafe_offset(7)[] = 6
+        for i in range(8):
+            assert_equal(
+                Int(keys.unsafe_offset(i)[]),
+                Int(answers.unsafe_offset(i)[]),
+                "and a room of another dividing says another order",
+            )
+        # an array of nothing: the comparator is not asked at all,
+        # and the room says what was left of the asking
+        rule.unsafe_offset(0)[] = Int32(0)
+        _ = qsort_r(
+            keys.unsafe_bitcast[c_void](),
+            c_size_t(0),
+            c_size_t(4),
+            sort_by_the_word,
+            rule.unsafe_bitcast[c_void](),
+        )
+        assert_equal(
+            Int(rule.unsafe_offset(0)[]), 0, "and no member is asked about"
+        )
+        answers.unsafe_free()
+        rule.unsafe_free()
+        keys.unsafe_free()
+
+
 def main() raises:
     test_malloc()
     test_the_untried_calls()
@@ -1420,6 +1540,7 @@ def main() raises:
     test_the_length_the_allocator_keeps()
     test_the_going_of_the_quick_way()
     test_the_far_end_named_in_the_room_given()
+    test_the_sorting_that_brings_a_word()
     print("test_stdlib: ok")
 
 
