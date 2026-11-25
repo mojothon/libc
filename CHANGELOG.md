@@ -390,6 +390,15 @@ All notable changes to this project are documented here. The format follows
   would be if it had never been kept. All four are Linux's own words, which the page's
   saying of how many bindings one platform asks alone grows by four.
 
+- **`libc.sys.xattr` gains the path sayings.**
+  `setxattr`, `getxattr`, `listxattr` and `removexattr`, each by way of a path whose
+  symlinks are followed, and `lsetxattr`, `lgetxattr`, `llistxattr` and `lremovexattr`,
+  each by way of a path whose symlinks are not. A word kept by way of the link is kept
+  with the file the link really says; the sayings that ask the link itself answer with
+  nothing, the kernel keeping none of the caller's kind on a link. All eight are Linux's
+  own words, which the page's saying of how many bindings one platform asks alone grows
+  by eight.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
