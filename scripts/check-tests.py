@@ -82,6 +82,7 @@ ASKED_ON_ONE_PLATFORM = {
     "malloc_stats": "the saying of how many bytes of the machine's own the allocator keeps and how many are in use; glibc's own word, and Darwin's libSystem has no such call to say",
     "malloc_info": "the XML saying of the whole of what the allocator keeps; glibc's own word, and Darwin's libSystem has no such call to say",
     "canonicalize_file_name": "the canonical saying of a path, kept in a room of its own; glibc's own word, and Darwin's libSystem has no such call to say",
+    "sync_file_range": "the seeing-to of the middle of a file's bytes; Linux's own word, and Darwin has no call that takes it",
     "prlimit": "Linux's resource limits by process id; Darwin has setrlimit and no form of it that takes a pid",
     "sched_getaffinity": "the CPU mask is Linux's scheduler's idea; Darwin has no affinity mask to ask for",
     "secure_getenv": "a glibc extension; on Darwin the same getenv answers, and there is no setuid distinction to ask about",

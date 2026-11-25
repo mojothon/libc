@@ -23,6 +23,9 @@ from libc.fcntl import (
     O_RDWR,
     O_TRUNC,
     O_WRONLY,
+    SYNC_FILE_RANGE_WAIT_AFTER,
+    SYNC_FILE_RANGE_WAIT_BEFORE,
+    SYNC_FILE_RANGE_WRITE,
     creat,
     flock,
     lockf,
@@ -30,6 +33,7 @@ from libc.fcntl import (
     open,
     openat,
     pipe2,
+    sync_file_range,
 )
 from libc.unistd import close, read, unlink, write
 from libc.utils import string_to_char_ptr
@@ -308,6 +312,83 @@ def test_asking_a_descriptor_what_is_set_on_it() raises:
     dev.unsafe_free()
 
 
+def test_the_seeing_to_of_the_middle_of_a_file() raises:
+    """`sync_file_range` -- the seeing-to of the middle
+    of a file's bytes: wait for the writing already
+    asked for, ask for the writing, and wait for the
+    writing this asking made, all three together being
+    what `fdatasync` does of the middle of a file
+    without the metadata a caller may not be waiting
+    for. What is written and seen to is read back the
+    same, an asking of a descriptor that is not open
+    is refused with `errno` saying why, and a word the
+    kernel does not know is refused too. The word is
+    Linux's own, and Darwin has no call that takes it.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var path = string_to_char_ptr("/tmp/mojo_sync_file_range.txt")
+        _ = unlink(path)
+        # `creat` rather than `open` with `O_CREAT`: the mode is a
+        # variadic argument, and arm64 Darwin drops it
+        var fd = creat(path, 0o600)
+        assert_true(fd >= 0, "a file for the bytes to be seen to in")
+        var words = unsafe_alloc[UInt8](16)
+        var text = "seen and kept ok"
+        for i in range(16):
+            words.unsafe_offset(i)[] = UInt8(ord(text[byte=i]))
+        var put = Int(write(fd, words.unsafe_bitcast[UInt8](), UInt32(16)))
+        assert_equal(put, 16, "the bytes are written first")
+        # the whole of the seeing-to: wait, write, wait again
+        assert_equal(
+            Int(
+                sync_file_range(
+                    fd,
+                    Int64(0),
+                    Int64(16),
+                    SYNC_FILE_RANGE_WAIT_BEFORE
+                    | SYNC_FILE_RANGE_WRITE
+                    | SYNC_FILE_RANGE_WAIT_AFTER,
+                )
+            ),
+            0,
+            "the middle of the file is seen to",
+        )
+        # and what was seen to is what is read back
+        var readback = unsafe_alloc[UInt8](16)
+        _ = close(fd)
+        var second = openat(Int32(AT_FDCWD), path, O_RDONLY)
+        assert_true(second >= 0, "the file opens again")
+        var got = Int(read(second, readback, UInt32(16)))
+        assert_equal(got, 16, "and the bytes come back")
+        for i in range(16):
+            assert_equal(
+                Int(readback.unsafe_offset(i)[]),
+                Int(words.unsafe_offset(i)[]),
+                "the same bytes, seen to and read back",
+            )
+        # a word the kernel does not know: refused too
+        set_errno(0)
+        var other = sync_file_range(second, Int64(0), Int64(16), UInt32(255))
+        assert_equal(
+            Int(other), -1, "a word the kernel does not know is refused"
+        )
+        assert_equal(Int(get_errno()), Int(EINVAL), "with errno saying why")
+        _ = close(second)
+        # a descriptor that is not open: refused, with errno
+        # saying why
+        set_errno(0)
+        var refused = sync_file_range(
+            999, Int64(0), Int64(16), SYNC_FILE_RANGE_WRITE
+        )
+        assert_equal(
+            Int(refused), -1, "an asking of what is not open is refused"
+        )
+        assert_equal(Int(get_errno()), Int(EBADF), "with errno saying why")
+        _ = unlink(path)
+        words.unsafe_free()
+        readback.unsafe_free()
+
+
 def main() raises:
     test_lockf_on_what_is_not_open()
     test_asking_a_descriptor_what_is_set_on_it()
@@ -317,6 +398,7 @@ def main() raises:
     test_the_pair_made_with_its_flags()
     test_the_word_without_its_bits_makes_the_ordinary_pair()
     test_a_word_the_kernel_does_not_know_is_refused()
+    test_the_seeing_to_of_the_middle_of_a_file()
     print("test_fcntl: ok")
 
 

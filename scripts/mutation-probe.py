@@ -255,6 +255,10 @@ SAME_ORDER = {
         "the count and the size of each multiply to one length, and a product "
         "does not remember which word was written first"
     ),
+    "sync_file_range:offset <-> nbytes": (
+        "a range of a file is its start and its length, and a caller whose whole "
+        "asking is of one range is not told which word was written first"
+    ),
     "getresuid:ruid <-> suid": (
         "a process the whole way through as one user has three numbers that are the "
         "same, and the one it was and could be again is the one the other two say"

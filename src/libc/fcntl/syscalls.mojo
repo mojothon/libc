@@ -340,6 +340,9 @@ comptime SPLICE_F_MOVE: UInt32 = 1
 comptime SPLICE_F_NONBLOCK: UInt32 = 2
 comptime SPLICE_F_MORE: UInt32 = 4
 comptime SPLICE_F_GIFT: UInt32 = 8
+comptime SYNC_FILE_RANGE_WAIT_BEFORE: UInt32 = 1
+comptime SYNC_FILE_RANGE_WRITE: UInt32 = 2
+comptime SYNC_FILE_RANGE_WAIT_AFTER: UInt32 = 4
 
 
 def splice(
@@ -519,3 +522,41 @@ def pipe2(pipefd: c_ptr[Int32], flags: Int32) -> Int32:
         whatever the caller's buffer says the order should be.
     """
     return external_call["pipe2", Int32, c_ptr[Int32], Int32](pipefd, flags)
+
+
+def sync_file_range(
+    fd: Int32,
+    offset: Int64,
+    nbytes: Int64,
+    flags: UInt32,
+) -> Int32:
+    """C library <fcntl.h> function `sync_file_range`.
+
+        int sync_file_range(int fd, off64_t offset, off64_t nbytes,
+            unsigned int flags)
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/sync_file_range.2.html
+
+    Description:
+        Asks for the bytes of `fd` between `offset` and
+        `offset + nbytes` to be seen to, in the ways the flag
+        word says: wait for the writing already asked for,
+        ask for the writing, and wait for the writing this
+        asking made -- all three together being the whole of
+        what `fdatasync` does of the middle of a file, without
+        the metadata a caller may not be waiting for. The word
+        is Linux's own, and Darwin has no call that takes it.
+
+    Args:
+        fd: A file opened for writing.
+        offset: Where the bytes start.
+        nbytes: How many bytes the asking is of.
+        flags: Which of the waitings and askings to do.
+
+    Returns:
+        0 on success, or -1 on error with `errno` set.
+    """
+    return external_call["sync_file_range", Int32, Int32, Int64, Int64, UInt32](
+        fd, offset, nbytes, flags
+    )
