@@ -377,6 +377,12 @@ All notable changes to this project are documented here. The format follows
   of a file, without the metadata a caller may not be waiting for. The word is Linux's own,
   which the page's saying of how many bindings one platform asks alone grows by one.
 
+- **`libc.unistd` gains `execveat`.**
+  What `execve` does of a path, said by way of a directory descriptor -- the saying looked
+  for in the directory `fd` opens, or, with `AT_EMPTY_PATH` and an empty saying, in the
+  very file `fd` itself opens. The word is Linux's own, which the page's saying of how many
+  bindings one platform asks alone grows by one.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
