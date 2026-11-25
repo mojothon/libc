@@ -10,7 +10,7 @@ the bottom.
 | `libc.stdlib` | `<stdlib.h>` | 96 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.limits` | `<limits.h>` the widths of the integer types, and what a process may have | 24 |
-| `libc.unistd` | `<unistd.h>` | 223 |
+| `libc.unistd` | `<unistd.h>` | 224 |
 | `libc.file` | `<stdio.h>` file operations | 39 |
 | `libc.ctype` | `<ctype.h>` | 30 |
 | `libc.sys.socket` | `<sys/socket.h>` | 53 |
@@ -171,7 +171,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1154 bindings are asked something, and the 3 that are not have a reason.
+1155 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -309,6 +309,12 @@ other platform's C library has no such call.
   a path whose symlinks are not. The kernel keeps none of the caller's kind
   on a link itself, so the sayings that ask the link answer with nothing
   and `errno` saying why.
+- `fexecve` is what `execve` does of a path, said by way of the very file
+  itself, with no path at all -- the program is the file `fd` opens, which
+  is the way a program that cannot trust the directories on the way says
+  itself. What the asking of one that works says is the same as `execveat`
+  with `AT_EMPTY_PATH` and an empty saying, spelled without the word that
+  carries it.
 - `pipe2` is a pipe made with its flag word applied as it is
   made -- close-on-exec and non-blocking set before the
   descriptors exist to be raced for, which is the kernel's own

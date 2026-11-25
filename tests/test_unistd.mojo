@@ -79,6 +79,7 @@ from libc.unistd import (
     execv,
     execve,
     execveat,
+    fexecve,
     execvp,
     fchdir,
     fchown,
@@ -1888,6 +1889,65 @@ def test_the_saying_of_a_program_by_way_of_a_descriptor() raises:
         _ = close(bin)
 
 
+def test_the_program_said_by_its_own_descriptor_alone() raises:
+    """`fexecve` -- what `execve` does of a path, said
+    by way of the very file itself, with no path at
+    all: the program is the file `fd` opens, which is
+    the way a program that cannot trust the
+    directories on the way says itself. A child is
+    asked for, the saying is made, and what the child
+    comes back with is what the program it became says
+    to come back with. A descriptor that is not a
+    program is refused, and the child that could not
+    become anything comes back saying so.
+    """
+    var sh = open_with_mode(
+        string_to_char_ptr("/bin/sh").unsafe_bitcast[UInt8](), O_RDONLY
+    )
+    assert_true(sh >= 0, "the program's own descriptor is open")
+    var child = fork()
+    if child == 0:
+        var argv = unsafe_alloc[c_ptr[UInt8]](4)
+        var a0 = string_to_char_ptr("sh")
+        var a1 = string_to_char_ptr("-c")
+        var a2 = string_to_char_ptr("exit 44")
+        argv.unsafe_offset(0)[] = a0.unsafe_bitcast[UInt8]()
+        argv.unsafe_offset(1)[] = a1.unsafe_bitcast[UInt8]()
+        argv.unsafe_offset(2)[] = a2.unsafe_bitcast[UInt8]()
+        argv.unsafe_offset(3)[] = null_ptr[UInt8]()
+        var envp = unsafe_alloc[c_ptr[UInt8]](1)
+        envp.unsafe_offset(0)[] = null_ptr[UInt8]()
+        _ = fexecve(sh, argv, envp)
+        _ = _Exit(114)
+    assert_true(child > 0, "there is a child to say the program")
+    var status = unsafe_alloc[Int32](1)
+    status.unsafe_store(0, 0)
+    assert_equal(waitpid(child, status, 0), child, "and it is waited for")
+    assert_true(WIFEXITED(status.unsafe_load()), "the child went an exit")
+    assert_equal(WEXITSTATUS(status.unsafe_load()), 44, "with what it said")
+    _ = close(sh)
+    # a descriptor that is not a program: refused, and the child
+    # that could not become anything says so
+    var room = open_with_mode(
+        string_to_char_ptr("/etc/hostname").unsafe_bitcast[UInt8](), O_RDONLY
+    )
+    assert_true(room >= 0, "a file that is no program is open")
+    child = fork()
+    if child == 0:
+        var argv = unsafe_alloc[c_ptr[UInt8]](1)
+        argv.unsafe_offset(0)[] = null_ptr[UInt8]()
+        var envp = unsafe_alloc[c_ptr[UInt8]](1)
+        envp.unsafe_offset(0)[] = null_ptr[UInt8]()
+        _ = fexecve(room, argv, envp)
+        _ = _Exit(115)
+    assert_true(child > 0, "there is a child for the asking that fails")
+    status.unsafe_store(0, 0)
+    assert_equal(waitpid(child, status, 0), child, "and it is waited for")
+    assert_true(WIFEXITED(status.unsafe_load()), "the child came back")
+    assert_equal(WEXITSTATUS(status.unsafe_load()), 115, "saying it failed")
+    _ = close(room)
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -1940,6 +2000,7 @@ def main() raises:
     test_the_saying_of_the_domain_the_machine_stands_in()
     test_the_word_for_the_ports_of_the_machine()
     test_the_saying_of_a_program_by_way_of_a_descriptor()
+    test_the_program_said_by_its_own_descriptor_alone()
     print("test_unistd: ok")
 
 

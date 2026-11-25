@@ -343,6 +343,40 @@ def execveat(
     ](fd, path, argv, envp, flags)
 
 
+def fexecve(
+    fd: Int32, argv: c_ptr[c_ptr[UInt8]], envp: c_ptr[c_ptr[UInt8]]
+) -> Int32:
+    """Libc POSIX `fexecve` function.
+
+        int fexecve(int fd, char *const argv[], char *const envp[])
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/fexecve.3.html
+
+    Description:
+        What `execve` does of a path, said by way of the
+        very file itself: the program is the file `fd`
+        opens, said with no path at all -- which is the
+        way a program that cannot trust the directories
+        on the way says itself. What the asking of one
+        that works says is the same as `execveat` with
+        `AT_EMPTY_PATH` and an empty saying, spelled
+        without the word that carries it.
+
+    Args:
+        fd: The file the program is.
+        argv: Array of arguments.
+        envp: Array of environment variables.
+
+    Returns:
+        Only on error, -1 with `errno` set; the asking
+        that works does not come back.
+    """
+    return external_call[
+        "fexecve", Int32, Int32, c_ptr[c_ptr[UInt8]], c_ptr[c_ptr[UInt8]]
+    ](fd, argv, envp)
+
+
 def execv(path: c_ptr[UInt8], argv: c_ptr[c_ptr[UInt8]]) -> Int32:
     """Libc POSIX `execv` function.
 
