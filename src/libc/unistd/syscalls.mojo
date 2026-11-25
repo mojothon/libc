@@ -298,6 +298,51 @@ def execve(
     ](path, argv, envp)
 
 
+def execveat(
+    fd: Int32,
+    path: c_ptr[UInt8],
+    argv: c_ptr[c_ptr[UInt8]],
+    envp: c_ptr[c_ptr[UInt8]],
+    flags: Int32,
+) -> Int32:
+    """C library <unistd.h> function `execveat`.
+
+        int execveat(int fd, const char *path, char *const argv[],
+            char *const envp[], int flags)
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/execveat.2.html
+
+    Description:
+        What `execve` does of a path, said by way of a directory
+        descriptor: the saying is looked for in the directory `fd`
+        opens, or, with `AT_EMPTY_PATH` and an empty saying, in the
+        very file `fd` itself opens. The word is Linux's own, and
+        Darwin has no call that takes it.
+
+    Args:
+        fd: The directory the saying is looked for in, or the file
+            itself with `AT_EMPTY_PATH`.
+        path: The saying of the program, relative to `fd`.
+        argv: Array of arguments.
+        envp: Array of environment variables.
+        flags: The words the asking is said with.
+
+    Returns:
+        Only on error, -1 with `errno` set; the asking that works
+        does not come back.
+    """
+    return external_call[
+        "execveat",
+        Int32,
+        Int32,
+        c_ptr[UInt8],
+        c_ptr[c_ptr[UInt8]],
+        c_ptr[c_ptr[UInt8]],
+        Int32,
+    ](fd, path, argv, envp, flags)
+
+
 def execv(path: c_ptr[UInt8], argv: c_ptr[c_ptr[UInt8]]) -> Int32:
     """Libc POSIX `execv` function.
 

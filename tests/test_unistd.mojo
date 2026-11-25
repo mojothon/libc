@@ -11,11 +11,13 @@ from libc.fcntl import (
     O_CREAT,
     O_NOCTTY,
     O_RDONLY,
+    O_DIRECTORY,
     O_RDWR,
     fcntl,
     open as open_with_mode,
 )
 from libc.constant import (
+    AT_EMPTY_PATH,
     c_ulong,
     EPERM,
     UInt32,
@@ -76,6 +78,7 @@ from libc.unistd import (
     endusershell,
     execv,
     execve,
+    execveat,
     execvp,
     fchdir,
     fchown,
@@ -1773,6 +1776,118 @@ def test_brk_and_sbrk_move_the_end_of_the_data_segment() raises:
         )
 
 
+def test_the_saying_of_a_program_by_way_of_a_descriptor() raises:
+    """`execveat` -- what `execve` does of a path,
+    said by way of a directory descriptor: the saying
+    looked for in the directory `fd` opens, or, with
+    `AT_EMPTY_PATH` and an empty saying, in the very
+    file `fd` itself opens. A child is asked for, the
+    saying is made, and what the child comes back with
+    is what the program it became says to come back
+    with. A saying that is not there is refused, and
+    the child that could not become anything comes back
+    saying so. The word is Linux's own, and Darwin has
+    no call that takes it.
+    """
+    comptime if not CompilationTarget.is_macos():
+        # a program said by way of the directory it lives in
+        var bin = open_with_mode(
+            string_to_char_ptr("/bin").unsafe_bitcast[UInt8](),
+            O_RDONLY | O_DIRECTORY,
+        )
+        assert_true(bin >= 0, "the directory the program lives in is open")
+        var child = fork()
+        if child == 0:
+            var argv = unsafe_alloc[c_ptr[UInt8]](4)
+            var a0 = string_to_char_ptr("sh")
+            var a1 = string_to_char_ptr("-c")
+            var a2 = string_to_char_ptr("exit 42")
+            argv.unsafe_offset(0)[] = a0.unsafe_bitcast[UInt8]()
+            argv.unsafe_offset(1)[] = a1.unsafe_bitcast[UInt8]()
+            argv.unsafe_offset(2)[] = a2.unsafe_bitcast[UInt8]()
+            argv.unsafe_offset(3)[] = null_ptr[UInt8]()
+            var envp = unsafe_alloc[c_ptr[UInt8]](1)
+            envp.unsafe_offset(0)[] = null_ptr[UInt8]()
+            _ = execveat(
+                bin,
+                string_to_char_ptr("sh").unsafe_bitcast[UInt8](),
+                argv,
+                envp,
+                Int32(0),
+            )
+            # the saying that does not come back: a child that could
+            # not become anything says so with its own number
+            _ = _Exit(111)
+        assert_true(child > 0, "there is a child to say the program")
+        var status = unsafe_alloc[Int32](1)
+        status.unsafe_store(0, 0)
+        assert_equal(waitpid(child, status, 0), child, "and it is waited for")
+        assert_true(WIFEXITED(status.unsafe_load()), "the child went an exit")
+        assert_equal(WEXITSTATUS(status.unsafe_load()), 42, "with what it said")
+        _ = close(bin)
+        # a program said by way of its own descriptor, with an empty
+        # saying and `AT_EMPTY_PATH`
+        var sh = open_with_mode(
+            string_to_char_ptr("/bin/sh").unsafe_bitcast[UInt8](), O_RDONLY
+        )
+        assert_true(sh >= 0, "the program's own descriptor is open")
+        child = fork()
+        if child == 0:
+            var argv = unsafe_alloc[c_ptr[UInt8]](4)
+            var a0 = string_to_char_ptr("sh")
+            var a1 = string_to_char_ptr("-c")
+            var a2 = string_to_char_ptr("exit 43")
+            argv.unsafe_offset(0)[] = a0.unsafe_bitcast[UInt8]()
+            argv.unsafe_offset(1)[] = a1.unsafe_bitcast[UInt8]()
+            argv.unsafe_offset(2)[] = a2.unsafe_bitcast[UInt8]()
+            argv.unsafe_offset(3)[] = null_ptr[UInt8]()
+            var envp = unsafe_alloc[c_ptr[UInt8]](1)
+            envp.unsafe_offset(0)[] = null_ptr[UInt8]()
+            _ = execveat(
+                sh,
+                string_to_char_ptr("").unsafe_bitcast[UInt8](),
+                argv,
+                envp,
+                Int32(AT_EMPTY_PATH),
+            )
+            _ = _Exit(112)
+        assert_true(child > 0, "there is a child for the empty saying")
+        status.unsafe_store(0, 0)
+        assert_equal(waitpid(child, status, 0), child, "and it is waited for")
+        assert_true(WIFEXITED(status.unsafe_load()), "the child went an exit")
+        assert_equal(
+            WEXITSTATUS(status.unsafe_load()), 43, "with what the program said"
+        )
+        _ = close(sh)
+        # a saying that is not there: refused, and the child that
+        # could not become anything says so
+        bin = open_with_mode(
+            string_to_char_ptr("/bin").unsafe_bitcast[UInt8](),
+            O_RDONLY | O_DIRECTORY,
+        )
+        assert_true(bin >= 0, "the directory is open again")
+        child = fork()
+        if child == 0:
+            var argv = unsafe_alloc[c_ptr[UInt8]](1)
+            argv.unsafe_offset(0)[] = null_ptr[UInt8]()
+            var envp = unsafe_alloc[c_ptr[UInt8]](1)
+            envp.unsafe_offset(0)[] = null_ptr[UInt8]()
+            _ = execveat(
+                bin,
+                string_to_char_ptr("no/such/program").unsafe_bitcast[UInt8](),
+                argv,
+                envp,
+                Int32(0),
+            )
+            _ = _Exit(113)
+        assert_true(child > 0, "there is a child for the saying that fails")
+        status.unsafe_store(0, 0)
+        assert_equal(waitpid(child, status, 0), child, "and it is waited for")
+        assert_true(WIFEXITED(status.unsafe_load()), "the child came back")
+        assert_equal(WEXITSTATUS(status.unsafe_load()), 113, "saying it failed")
+        _ = close(bin)
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -1824,6 +1939,7 @@ def main() raises:
     test_the_persona_kept_and_said_again()
     test_the_saying_of_the_domain_the_machine_stands_in()
     test_the_word_for_the_ports_of_the_machine()
+    test_the_saying_of_a_program_by_way_of_a_descriptor()
     print("test_unistd: ok")
 
 
