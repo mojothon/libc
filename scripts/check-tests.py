@@ -75,6 +75,8 @@ ASKED_ON_ONE_PLATFORM = {
     "getauxval": "the auxiliary vector is ELF's, and Darwin's loader keeps no such table for a call to read",
     "gettid": "Linux's thread id; Darwin names its threads through pthread_threadid_np, which is a different call asking the same question, and this binding is the Linux one",
     "ptsname_r": "glibc's reentrant name of the far end; Darwin's libSystem has no such call to say, and the room-given form is what the asking there has no word for",
+    "twalk_r": "the room-carrying walk of the tree; glibc's own word, and Darwin's libSystem has no such call to say",
+    "tdestroy": "the taking-apart of the tree, every member handed over to the saying the asker brings; glibc's own word, and Darwin's libSystem has no such call to say",
     "prlimit": "Linux's resource limits by process id; Darwin has setrlimit and no form of it that takes a pid",
     "sched_getaffinity": "the CPU mask is Linux's scheduler's idea; Darwin has no affinity mask to ask for",
     "secure_getenv": "a glibc extension; on Darwin the same getenv answers, and there is no setuid distinction to ask about",

@@ -37,7 +37,7 @@ the bottom.
 | `libc.spawn` | `<spawn.h>` start a process without fork | 25 |
 | `libc.locale` | `<locale.h>` | 23 |
 | `libc.sys.epoll` | `<sys/epoll.h>` | 9 |
-| `libc.search` | `<search.h>` | 19 |
+| `libc.search` | `<search.h>` | 21 |
 | `libc.dirent` | `<dirent.h>` | 22 |
 | `libc.sys.wait` | `<sys/wait.h>` | 25 |
 | `libc.inttypes` | `<inttypes.h>` | 7 |
@@ -170,7 +170,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1133 bindings are asked something, and the 3 that are not have a reason.
+1135 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -258,6 +258,16 @@ other platform's C library has no such call.
   asking cannot have another thread's asking overwrite, a room too narrow refused
   with `ERANGE` and the writing all or nothing; Darwin's libSystem has no such
   call to say.
+- `twalk_r` is the walk that brings the asker's own word along -- the same
+  depth-first passing as `twalk`, every node with children handed over three
+  times and a leaf once, with a room the asking itself says handed with every
+  node, so a thread's own walk cannot have another thread's walk handing over
+  into the same place; Darwin's libSystem has no such call to say.
+- `tdestroy` takes the tree apart, every node handed over to the saying the
+  asker brings -- the member, which is the key the node points at, coming
+  back for the asker to put away -- and the tree that holds nothing coming
+  apart without a single handing-over; Darwin's libSystem has no such call
+  to say.
 - `pipe2` is a pipe made with its flag word applied as it is
   made -- close-on-exec and non-blocking set before the
   descriptors exist to be raced for, which is the kernel's own
@@ -266,7 +276,7 @@ other platform's C library has no such call.
   of which eventfd's counter is the other half, and Darwin answers the same
   need with kqueue, which is a different call with different answers.
 
-Linux asks 31 bindings that Darwin passes over, and Darwin 0 that Linux
+Linux asks 33 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked

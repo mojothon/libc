@@ -20,9 +20,11 @@ from libc.search import (
     qelem,
     remque,
     tdelete,
+    tdestroy,
     tfind,
     tsearch,
     twalk,
+    twalk_r,
 )
 from libc.file import close, write
 from libc.unistd import dup2, pipe, read
@@ -227,16 +229,6 @@ def test_the_table_that_keeps_no_order() raises:
     keys.unsafe_free()
 
 
-def tree_by_number(a: c_ptr[c_void], b: c_ptr[c_void]) -> Int32:
-    var x = a.unsafe_bitcast[c_int]()
-    var y = b.unsafe_bitcast[c_int]()
-    if x[] < y[]:
-        return -1
-    if x[] > y[]:
-        return 1
-    return 0
-
-
 def tree_say(node: c_ptr[c_void], visit: Int32, level: Int32) -> None:
     var word = UInt8(80)
     if visit == Int32(POSTORDER):
@@ -365,8 +357,198 @@ def test_the_tree_that_keeps_the_order() raises:
     keys.unsafe_free()
 
 
+def tree_by_number(a: c_ptr[c_void], b: c_ptr[c_void]) -> Int32:
+    var x = a.unsafe_bitcast[c_int]()
+    var y = b.unsafe_bitcast[c_int]()
+    if x[] < y[]:
+        return -1
+    if x[] > y[]:
+        return 1
+    return 0
+
+
+def tree_say_r(node: c_ptr[c_void], visit: Int32, word: c_ptr[c_void]) -> None:
+    # the letter the walk's visit is named by, and X when the room
+    # the asker brings does not come back holding what it was given
+    var letter = UInt8(80)
+    if visit == Int32(POSTORDER):
+        letter = UInt8(84)
+    if visit == Int32(ENDORDER):
+        letter = UInt8(69)
+    if visit == Int32(LEAF):
+        letter = UInt8(76)
+    if Int(word.unsafe_bitcast[c_int]()[]) != 7:
+        letter = UInt8(88)
+    var one = unsafe_alloc[UInt8](1)
+    one.unsafe_offset(0)[] = letter
+    _ = write(Int32(42), one.unsafe_bitcast[c_void](), c_uint(1))
+    one.unsafe_free()
+
+
+def tree_free_as(node: c_ptr[c_void]) -> None:
+    # the letter of the member the tree hands back: 20 is A, 30 is B,
+    # 40 is C, 50 is D, 60 is E, 70 is F -- and X for a key that is not
+    # one of the tree's own members
+    var key = Int(node.unsafe_bitcast[c_int]()[])
+    var letter = UInt8(88)
+    if key == 20:
+        letter = UInt8(65)
+    if key == 30:
+        letter = UInt8(66)
+    if key == 40:
+        letter = UInt8(67)
+    if key == 50:
+        letter = UInt8(68)
+    if key == 60:
+        letter = UInt8(69)
+    if key == 70:
+        letter = UInt8(70)
+    var one = unsafe_alloc[UInt8](1)
+    one.unsafe_offset(0)[] = letter
+    _ = write(Int32(42), one.unsafe_bitcast[c_void](), c_uint(1))
+    one.unsafe_free()
+
+
+def test_the_tree_that_comes_apart() raises:
+    """`twalk_r` and `tdestroy` -- the walk that brings the
+    asker's own word along, and the tree that is taken
+    apart with every member handed over to the saying the
+    asker brings. The walk is `twalk`'s same depth-first
+    passing with a room handed with every node; the
+    taking-apart hands the member back, which is the key
+    the node points at, for the asker to put away, and a
+    tree that holds nothing comes apart without a single
+    handing-over. Both words are glibc's own: Darwin's
+    libSystem has no such call to say.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var keys = unsafe_alloc[c_int](6)
+        # the members live here; the keys are what the nodes point at
+        keys.unsafe_offset(0)[] = 50
+        keys.unsafe_offset(1)[] = 30
+        keys.unsafe_offset(2)[] = 70
+        keys.unsafe_offset(3)[] = 20
+        keys.unsafe_offset(4)[] = 40
+        keys.unsafe_offset(5)[] = 60
+        var rootp = unsafe_alloc[c_ptr[c_void]](1)
+        rootp.unsafe_offset(0)[] = null_ptr[c_void]()
+        for i in range(6):
+            _ = tsearch(
+                keys.unsafe_offset(i).unsafe_bitcast[c_void](),
+                rootp,
+                tree_by_number,
+            )
+        # the walk, said through a pipe so the handing-overs can be
+        # read; the room the asker brings comes back checked with
+        # every node
+        var word = unsafe_alloc[c_int](1)
+        word.unsafe_offset(0)[] = Int32(7)
+        var fds = unsafe_alloc[Int32](2)
+        assert_equal(Int(pipe(fds)), 0, "a pipe for the walk to say into")
+        assert_equal(
+            dup2(fds.unsafe_offset(1)[], Int32(42)),
+            42,
+            "the saying end takes 42",
+        )
+        _ = twalk_r(
+            rootp.unsafe_offset(0)[], tree_say_r, word.unsafe_bitcast[c_void]()
+        )
+        _ = close(Int32(42))
+        var said = unsafe_alloc[UInt8](16)
+        var total = Int32(0)
+        while total < Int32(12):
+            total += Int32(
+                read(
+                    fds.unsafe_offset(0)[],
+                    said.unsafe_offset(total),
+                    c_uint(Int(12 - Int(total))),
+                )
+            )
+        var words = ""
+        for i in range(12):
+            words += String(chr(Int(said.unsafe_offset(i)[])))
+        assert_equal(
+            words,
+            "PPLTLETPLTEE",
+            "the room-carrying walk says what twalk says",
+        )
+        _ = close(fds.unsafe_offset(0)[])
+        _ = close(fds.unsafe_offset(1)[])
+        fds.unsafe_free()
+        said.unsafe_free()
+        word.unsafe_free()
+        # the taking apart, said through a pipe again; the members
+        # come back in the order the machine keeps, and the order is
+        # what the C experiment read: the left side first, the root
+        # last
+        var fds2 = unsafe_alloc[Int32](2)
+        assert_equal(
+            Int(pipe(fds2)), 0, "a pipe for the taking apart to say into"
+        )
+        assert_equal(
+            dup2(fds2.unsafe_offset(1)[], Int32(42)),
+            42,
+            "the saying end takes 42",
+        )
+        _ = tdestroy(rootp.unsafe_offset(0)[], tree_free_as)
+        _ = close(Int32(42))
+        var freed = unsafe_alloc[UInt8](16)
+        var got = Int32(0)
+        while got < Int32(6):
+            got += Int32(
+                read(
+                    fds2.unsafe_offset(0)[],
+                    freed.unsafe_offset(got),
+                    c_uint(Int(6 - Int(got))),
+                )
+            )
+        var letters = ""
+        for i in range(6):
+            letters += String(chr(Int(freed.unsafe_offset(i)[])))
+        assert_equal(
+            letters,
+            "ACBEFD",
+            "the tree comes apart with every member handed over to the saying",
+        )
+        # the taking-apart is all the saying: the root the tree
+        # kept is not a tree any more, and looking in what it
+        # left behind is not an asking the page makes
+        _ = close(fds2.unsafe_offset(0)[])
+        _ = close(fds2.unsafe_offset(1)[])
+        fds2.unsafe_free()
+        freed.unsafe_free()
+        rootp.unsafe_free()
+        keys.unsafe_free()
+        # a tree that holds nothing comes apart without a single
+        # handing-over; the pipe is made and read empty
+        var empty_root = unsafe_alloc[c_ptr[c_void]](1)
+        empty_root.unsafe_offset(0)[] = null_ptr[c_void]()
+        var fds3 = unsafe_alloc[Int32](2)
+        assert_equal(
+            Int(pipe(fds3)), 0, "a pipe for the empty tree to say into"
+        )
+        assert_equal(
+            dup2(fds3.unsafe_offset(1)[], Int32(42)),
+            42,
+            "the saying end takes 42",
+        )
+        _ = tdestroy(empty_root.unsafe_offset(0)[], tree_free_as)
+        _ = close(Int32(42))
+        _ = close(fds3.unsafe_offset(1)[])
+        var none = unsafe_alloc[UInt8](4)
+        var asked = Int32(read(fds3.unsafe_offset(0)[], none, c_uint(4)))
+        # the asking gives up: the saying end is closed and nothing
+        # was said
+        assert_equal(asked, 0, "an empty tree comes apart without a saying")
+        _ = close(fds3.unsafe_offset(0)[])
+        fds3.unsafe_free()
+        none.unsafe_free()
+        empty_root.unsafe_free()
+
+
 def main() raises:
     test_the_tree_that_keeps_the_order()
+    test_the_tree_that_comes_apart()
     test_the_table_that_keeps_no_order()
     test_hsearch()
     test_queue()

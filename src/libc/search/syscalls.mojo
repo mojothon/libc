@@ -497,6 +497,73 @@ def twalk(
     ](root, action)
 
 
+def tdestroy(
+    root: c_ptr[c_void],
+    free_node: def(c_ptr[c_void]) thin -> None,
+) -> c_void:
+    """C library <search.h> function `tdestroy`.
+
+        int tdestroy(void *root, void (*free_node)(void *nodep))
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/tsearch.3.html
+
+    The tree is taken apart, and every node it kept is
+    handed over to the saying the asker brings: the
+    member, which is the key the node points at, comes
+    back for the asker to put away. What the asking
+    brings is not the room the tree keeps -- it is what
+    says where the members live. The tree that holds
+    nothing comes apart without a single handing-over.
+
+    Returns:
+        Nothing.
+    """
+    return external_call[
+        "tdestroy",
+        c_void,
+        c_ptr[c_void],
+        def(c_ptr[c_void]) thin -> None,
+    ](root, free_node)
+
+
+def twalk_r(
+    root: c_ptr[c_void],
+    action: def(c_ptr[c_void], Int32, c_ptr[c_void]) thin -> None,
+    closure: c_ptr[c_void],
+) -> c_void:
+    """C library <search.h> function `twalk_r`.
+
+        void twalk_r(const void *root,
+            void (*action)(const void *nodep, int which, void *closure),
+            void *closure)
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/tsearch.3.html
+
+    The tree is walked the way `twalk` walks it -- the
+    same depth-first passing, every node with children
+    handed over three times and a leaf once, the times
+    being named preorder, postorder, endorder and leaf --
+    and what is new is the word the asker brings: the
+    closure, a room the asking itself says, handed with
+    every node so a thread's own walk cannot have
+    another thread's walk handing over into the same
+    place. The node handed over is read the way `tfind`
+    says: the key is what the node points at.
+
+    Returns:
+        Nothing.
+    """
+    return external_call[
+        "twalk_r",
+        c_void,
+        c_ptr[c_void],
+        def(c_ptr[c_void], Int32, c_ptr[c_void]) thin -> None,
+        c_ptr[c_void],
+    ](root, action, closure)
+
+
 comptime PREORDER: c_int = 0
 comptime POSTORDER: c_int = 1
 comptime ENDORDER: c_int = 2
