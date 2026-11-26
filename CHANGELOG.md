@@ -435,6 +435,13 @@ All notable changes to this project are documented here. The format follows
   word is GNU's own, which the page's saying of how many bindings one platform asks alone
   grows by one.
 
+- **`libc.string` gains `strverscmp`.**
+  What `strcmp` does of letters, said of the numbers inside -- a run of digits is said as
+  the number it is, not as the letters it is made of, so that versions sort the way
+  versions do. What a difference is made of is not said; only which side of zero it falls
+  on. The word is GNU's own, which the page's saying of how many bindings one platform
+  asks alone grows by one.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
