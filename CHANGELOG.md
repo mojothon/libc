@@ -399,6 +399,15 @@ All notable changes to this project are documented here. The format follows
   own words, which the page's saying of how many bindings one platform asks alone grows
   by eight.
 
+- **`libc.unistd` gains `fexecve`.**
+  What `execve` does of a path, said by way of the very file itself, with no path at all --
+  the program is the file `fd` opens, which is the way a program that cannot trust the
+  directories on the way says itself. What the asking of one that works says is the same
+  as `execveat` with `AT_EMPTY_PATH` and an empty saying, spelled without the word that
+  carries it. Linux links it from what a just-in-time run looks words up in; Darwin's
+  libSystem keeps no such symbol to look up, which the page's saying of how many bindings
+  one platform asks alone grows by one.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
