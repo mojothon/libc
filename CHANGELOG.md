@@ -408,6 +408,13 @@ All notable changes to this project are documented here. The format follows
   libSystem keeps no such symbol to look up, which the page's saying of how many bindings
   one platform asks alone grows by one.
 
+- **`libc.stdlib` gains `getpt`.**
+  A pseudo-terminal master, given out with no saying at all -- what `posix_openpt` does
+  of the flag word, said without one, the kernel taking the flags it likes and leaving
+  the caller with what it gives: a descriptor that does not close itself when a program
+  is said. The word is GNU's own, which the page's saying of how many bindings one
+  platform asks alone grows by one.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
