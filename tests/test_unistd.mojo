@@ -2128,22 +2128,30 @@ def test_the_root_said_again() raises:
     being no longer where the saying of it finds
     anything.
     """
-    # a root that is not there
-    set_errno(0)
-    assert_equal(
-        Int(chroot(string_to_char_ptr("/no/such/root/at/all"))),
-        -1,
-        "a root that is not there is refused",
-    )
-    assert_equal(Int(get_errno()), Int(ENOENT), "with errno saying so")
-    # a file that is not a directory
-    set_errno(0)
-    assert_equal(
-        Int(chroot(string_to_char_ptr("/etc/hostname"))),
-        -1,
-        "a file that is not a directory is refused",
-    )
-    assert_equal(Int(get_errno()), Int(ENOTDIR), "with errno saying so")
+    # what is refused before the privilege is asked is said
+    # differently by the two platforms: Linux checks the saying
+    # first and refuses a root that is not there or a file that
+    # is not a directory, while Darwin asks after the privilege
+    # and refuses a caller without it, whatever the saying said
+    comptime if not CompilationTarget.is_macos():
+        # a root that is not there
+        # a root that is not there
+        set_errno(0)
+        assert_equal(
+            Int(chroot(string_to_char_ptr("/no/such/root/at/all"))),
+            -1,
+            "a root that is not there is refused",
+        )
+        assert_equal(Int(get_errno()), Int(ENOENT), "with errno saying so")
+        # a file that is not a directory
+        set_errno(0)
+        assert_equal(
+            Int(chroot(string_to_char_ptr("/etc/hostname"))),
+            -1,
+            "a file that is not a directory is refused",
+        )
+        assert_equal(Int(get_errno()), Int(ENOTDIR), "with errno saying so")
+
     # a directory there is: the privileged saying. Where the
     # asking may say it, the root moves and the file outside is
     # no longer found; where it may not, the refusal is said.
