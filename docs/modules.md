@@ -10,7 +10,7 @@ the bottom.
 | `libc.stdlib` | `<stdlib.h>` | 97 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.limits` | `<limits.h>` the widths of the integer types, and what a process may have | 24 |
-| `libc.unistd` | `<unistd.h>` | 228 |
+| `libc.unistd` | `<unistd.h>` | 229 |
 | `libc.file` | `<stdio.h>` file operations | 39 |
 | `libc.ctype` | `<ctype.h>` | 30 |
 | `libc.sys.socket` | `<sys/socket.h>` | 53 |
@@ -171,7 +171,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1163 bindings are asked something, and the 3 that are not have a reason.
+1164 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -348,6 +348,11 @@ other platform's C library has no such call.
   -1 -- they only say who it is; said with who it already is, the
   answer is who it was. Nothing they refuse is said as a refusal.
   Both words are GNU's own, and Darwin has no call that says either.
+- `chroot` is where / begins, said again -- the directory the saying
+  says becomes the asking's own root, and everything said after is
+  looked for under it, whatever stands above being no longer part of
+  the view. What the asking has open stays open, which is what a jail
+  is careful about. Both platforms say it.
 - `pipe2` is a pipe made with its flag word applied as it is
   made -- close-on-exec and non-blocking set before the
   descriptors exist to be raced for, which is the kernel's own

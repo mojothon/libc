@@ -24,6 +24,7 @@ from libc.constant import (
     AT_FDCWD,
     ENOMEM,
     EBADF,
+    ENOTDIR,
     ENOENT,
     ERANGE,
     c_ptr,
@@ -83,6 +84,7 @@ from libc.unistd import (
     execvpe,
     syncfs,
     setfsgid,
+    chroot,
     setfsuid,
     execvp,
     fchdir,
@@ -2112,6 +2114,63 @@ def test_the_file_keeping_said_as_something_beside() raises:
         )
 
 
+def test_the_root_said_again() raises:
+    """`chroot` -- where / begins, said again: the
+    directory the saying says becomes the asking's
+    own root, and everything said after is looked for
+    under it, whatever stands above it being no
+    longer part of the view. A root that is not
+    there is refused with `errno` saying so; a file
+    that is not a directory is refused the same way;
+    and a directory there is -- which is a saying the
+    kernel keeps for the privileged -- is answered by
+    the root moving, the file that stood outside
+    being no longer where the saying of it finds
+    anything.
+    """
+    # a root that is not there
+    set_errno(0)
+    assert_equal(
+        Int(chroot(string_to_char_ptr("/no/such/root/at/all"))),
+        -1,
+        "a root that is not there is refused",
+    )
+    assert_equal(Int(get_errno()), Int(ENOENT), "with errno saying so")
+    # a file that is not a directory
+    set_errno(0)
+    assert_equal(
+        Int(chroot(string_to_char_ptr("/etc/hostname"))),
+        -1,
+        "a file that is not a directory is refused",
+    )
+    assert_equal(Int(get_errno()), Int(ENOTDIR), "with errno saying so")
+    # a directory there is: the privileged saying. Where the
+    # asking may say it, the root moves and the file outside is
+    # no longer found; where it may not, the refusal is said.
+    _ = mkdir(string_to_char_ptr("/tmp/mojo_jail_root"), 0o755)
+    set_errno(0)
+    var moved = chroot(string_to_char_ptr("/tmp/mojo_jail_root"))
+    if moved == 0:
+        assert_true(
+            Int(open(string_to_char_ptr("/etc/hostname"), Int32(0))) < 0,
+            "the file that stood outside is no longer found",
+        )
+        assert_equal(
+            Int(get_errno()), Int(ENOENT), "because / now begins under the jail"
+        )
+    else:
+        assert_equal(
+            Int(get_errno()),
+            Int(EPERM),
+            "the saying is kept for the privileged",
+        )
+        assert_equal(
+            Int(rmdir(string_to_char_ptr("/tmp/mojo_jail_root"))),
+            0,
+            "and the room is taken back",
+        )
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -2168,6 +2227,7 @@ def main() raises:
     test_the_saying_looked_for_in_the_path_and_said_its_own_names()
     test_the_whole_mount_waited_for_by_way_of_one_file()
     test_the_file_keeping_said_as_something_beside()
+    test_the_root_said_again()
     print("test_unistd: ok")
 
 

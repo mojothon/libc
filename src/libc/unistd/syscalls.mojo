@@ -544,6 +544,34 @@ def setfsgid(gid: Int32) -> Int32:
     return external_call["setfsgid", Int32, Int32](gid)
 
 
+def chroot(path: c_ptr[UInt8]) -> Int32:
+    """Libc POSIX `chroot` function.
+
+        int chroot(const char *path)
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/chroot.2.html
+
+    Description:
+        Where / begins, said again -- the directory
+        `path` says becomes the asking's own root, and
+        everything said after is looked for under it,
+        whatever stands above it being no longer part
+        of the asking's view of the tree. What the
+        asking has open stays open: the saying is of
+        the sayings looked for, not of the files
+        already taken, which is what a jail is careful
+        about.
+
+    Args:
+        path: The directory that becomes the root.
+
+    Returns:
+        0 on success, or -1 on error with `errno` set.
+    """
+    return external_call["chroot", Int32, c_ptr[UInt8]](path)
+
+
 def fork() -> Int32:
     """Libc POSIX `fork` function.
 
