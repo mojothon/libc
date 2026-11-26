@@ -421,6 +421,13 @@ All notable changes to this project are documented here. The format follows
   what the caller says, not what the shell around it keeps. The word is GNU's own, which
   the page's saying of how many bindings one platform asks alone grows by one.
 
+- **`libc.fcntl` gains `name_to_handle_at` and `open_by_handle_at`.**
+  A handle said of a file, kept by the filesystem itself -- not a saying the caller makes,
+  but the filesystem's own name of the file, as long as the filesystem says. A room too
+  small is refused with the size said where the answer will fit, and the file said back by
+  the handle alone is the cap the kernel keeps for the privileged. Both are Linux's own
+  words, which the page's saying of how many bindings one platform asks alone grows by two.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
