@@ -415,6 +415,12 @@ All notable changes to this project are documented here. The format follows
   is said. The word is GNU's own, which the page's saying of how many bindings one
   platform asks alone grows by one.
 
+- **`libc.unistd` gains `execvpe`.**
+  What `execvp` does of a file said with no path, looked for in the directories the PATH
+  keeps, said with the caller's own room of names -- the program the file becomes is told
+  what the caller says, not what the shell around it keeps. The word is GNU's own, which
+  the page's saying of how many bindings one platform asks alone grows by one.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
