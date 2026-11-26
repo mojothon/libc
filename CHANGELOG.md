@@ -449,6 +449,13 @@ All notable changes to this project are documented here. The format follows
   was, and nothing they refuse is said as a refusal. Both words are GNU's own, which the
   page's saying of how many bindings one platform asks alone grows by two.
 
+- **`libc.unistd` gains `chroot`.**
+  Where / begins, said again -- the directory the saying says becomes the asking's own
+  root, and everything said after is looked for under it, whatever stands above being no
+  longer part of the view. What the asking has open stays open, which is what a jail is
+  careful about. Both platforms say it; what is refused before the privilege is asked is
+  said in each platform's own order.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
