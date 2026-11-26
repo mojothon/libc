@@ -399,6 +399,39 @@ def strcmp(s1: c_ptr[UInt8], s2: c_ptr[UInt8]) -> c_int:
     return external_call["strcmp", c_int, c_ptr[UInt8], c_ptr[UInt8]](s1, s2)
 
 
+def strverscmp(s1: c_ptr[UInt8], s2: c_ptr[UInt8]) -> c_int:
+    """Libc GNU `strverscmp` function.
+
+        int strverscmp(const char *s1, const char *s2)
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/strverscmp.3.html
+
+    Description:
+        What `strcmp` does of letters, said of the
+        numbers inside: a run of digits is said as the
+        number it is, not as the letters it is made of,
+        so that the version after comes where the number
+        after says, which is why a version said with it
+        sorts the way versions do. What a difference is
+        made of is not said -- only which side of zero
+        it falls on, a word said the same way coming
+        back with anything at all. The word is GNU's
+        own, and Darwin has no call that says it.
+
+    Args:
+        s1: The first version.
+        s2: The second version.
+
+    Returns:
+        A negative, zero or positive value as `s1` sorts
+        before, with, or after `s2`.
+    """
+    return external_call["strverscmp", c_int, c_ptr[UInt8], c_ptr[UInt8]](
+        s1, s2
+    )
+
+
 @inline(.nodebug)
 def strncmp(s1: c_ptr[UInt8], s2: c_ptr[UInt8], n: c_size_t) -> c_int:
     """Libc C89 `strncmp` function.

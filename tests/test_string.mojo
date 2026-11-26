@@ -1,4 +1,5 @@
 from std.memory.alloc import unsafe_alloc
+from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
 from libc.stdlib import free
@@ -26,6 +27,7 @@ from libc.string import (
     strcat,
     strchr,
     strcmp,
+    strverscmp,
     strcoll,
     strcoll_l,
     strcpy,
@@ -748,6 +750,90 @@ def test_finding_a_substring_without_minding_the_case() raises:
     empty.unsafe_free()
 
 
+def test_the_numbers_inside_said_as_numbers() raises:
+    """`strverscmp` -- what `strcmp` does of letters,
+    said of the numbers inside: a run of digits is
+    said as the number it is, not as the letters it is
+    made of, so that the version after comes where the
+    number after says. The way versions sort is the
+    way this says: the ten after the nine, whichever
+    side of the saying each stands on. What a
+    difference is made of is not said -- only which
+    side of zero it falls on -- and the saying of two
+    words alike but for a zero before a digit proves
+    it, coming back with more than the comparing of
+    the same two words the other way. The word is
+    GNU's own, and Darwin has no call that says it.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var said = strverscmp(
+            string_to_char_ptr("1.10").unsafe_bitcast[UInt8](),
+            string_to_char_ptr("1.9").unsafe_bitcast[UInt8](),
+        )
+        assert_true(said > 0, "the ten sorts after the nine")
+        assert_true(
+            Int(
+                strverscmp(
+                    string_to_char_ptr("1.9").unsafe_bitcast[UInt8](),
+                    string_to_char_ptr("1.10").unsafe_bitcast[UInt8](),
+                )
+            )
+            < 0,
+            "and the nine before the ten, either way around",
+        )
+        assert_equal(
+            Int(
+                strverscmp(
+                    string_to_char_ptr("1.2.3").unsafe_bitcast[UInt8](),
+                    string_to_char_ptr("1.2.3").unsafe_bitcast[UInt8](),
+                )
+            ),
+            0,
+            "a word with itself is no difference",
+        )
+        assert_true(
+            Int(
+                strverscmp(
+                    string_to_char_ptr("2").unsafe_bitcast[UInt8](),
+                    string_to_char_ptr("10").unsafe_bitcast[UInt8](),
+                )
+            )
+            < 0,
+            "two sorts before ten, where letters would say after",
+        )
+        assert_true(
+            Int(
+                strverscmp(
+                    string_to_char_ptr("jan10").unsafe_bitcast[UInt8](),
+                    string_to_char_ptr("jan1").unsafe_bitcast[UInt8](),
+                )
+            )
+            > 0,
+            "and the digits after letters are said as numbers too",
+        )
+        # what a difference is made of is not said: a zero before
+        # a digit makes the saying come back with more than the
+        # comparing of the same two words the other way
+        var with_zero = Int(
+            strverscmp(
+                string_to_char_ptr("1.007").unsafe_bitcast[UInt8](),
+                string_to_char_ptr("1.7").unsafe_bitcast[UInt8](),
+            )
+        )
+        var without = Int(
+            strverscmp(
+                string_to_char_ptr("1.7").unsafe_bitcast[UInt8](),
+                string_to_char_ptr("1.007").unsafe_bitcast[UInt8](),
+            )
+        )
+        assert_true(
+            with_zero < 0, "the digit with a zero before it sorts after"
+        )
+        assert_true(without > 0, "and the same the other way around")
+        # how much either says is nothing the page undertakes -- only
+        # which side of zero -- so nothing is said of it here
+
+
 def main() raises:
     test_strlen()
     test_copying()
@@ -768,4 +854,5 @@ def main() raises:
     test_copying_up_to_a_byte()
     test_strsep()
     test_ffs()
+    test_the_numbers_inside_said_as_numbers()
     print("test_string: ok")
