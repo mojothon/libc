@@ -442,6 +442,13 @@ All notable changes to this project are documented here. The format follows
   on. The word is GNU's own, which the page's saying of how many bindings one platform
   asks alone grows by one.
 
+- **`libc.unistd` gains `setfsuid` and `setfsgid`.**
+  Who the file-keeping is said as -- the user and the group the kernel checks a file's
+  keeping against when a file is opened, kept beside the asking's own. Said with nothing
+  -- a -1 -- they only say who it is; said with who it already is, the answer is who it
+  was, and nothing they refuse is said as a refusal. Both words are GNU's own, which the
+  page's saying of how many bindings one platform asks alone grows by two.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
