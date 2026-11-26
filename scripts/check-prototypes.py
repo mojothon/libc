@@ -70,7 +70,7 @@ HEADERS = [
     "spawn.h", "stdarg.h", "stdbool.h", "stddef.h", "stdint.h", "stdio.h",
     "malloc.h",
     "stdlib.h", "string.h", "strings.h", "sys/epoll.h", "sys/eventfd.h", "sys/timerfd.h",
-    "sys/file.h", "sys/inotify.h", "sys/io.h", "sys/ioctl.h", "sys/ipc.h",
+    "sys/file.h", "sys/fsuid.h", "sys/inotify.h", "sys/io.h", "sys/ioctl.h", "sys/ipc.h",
     "sys/mman.h", "sys/mount.h",
     "sys/msg.h", "sys/prctl.h", "sys/resource.h", "sys/select.h",
     "sys/sem.h", "sys/sendfile.h", "sys/shm.h", "sys/socket.h",

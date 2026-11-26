@@ -103,6 +103,8 @@ ASKED_ON_ONE_PLATFORM = {
     "open_by_handle_at": "the file said back by the handle alone, the cap the kernel keeps for the privileged; Linux's own word, and Darwin has no call that takes it",
     "syncfs": "the whole mount waited for by way of one file on it; GNU's own word, and Darwin has no call that says it",
     "strverscmp": "the numbers inside said as numbers, so versions sort the way versions do; GNU's own word, and Darwin has no call that says it",
+    "setfsuid": "the user the file-keeping is said as, said with nothing to only ask who it is; GNU's own word, and Darwin has no call that says it",
+    "setfsgid": "the group the file-keeping is said as, said with nothing to only ask what it is; GNU's own word, and Darwin has no call that says it",
     "prlimit": "Linux's resource limits by process id; Darwin has setrlimit and no form of it that takes a pid",
     "sched_getaffinity": "the CPU mask is Linux's scheduler's idea; Darwin has no affinity mask to ask for",
     "secure_getenv": "a glibc extension; on Darwin the same getenv answers, and there is no setuid distinction to ask about",

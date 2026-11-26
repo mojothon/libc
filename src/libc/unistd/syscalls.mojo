@@ -478,6 +478,72 @@ def syncfs(fd: Int32) -> Int32:
     return external_call["syncfs", Int32, Int32](fd)
 
 
+def setfsuid(uid: Int32) -> Int32:
+    """Libc GNU `setfsuid` function.
+
+        int setfsuid(uid_t fsuid)
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/setfsuid.2.html
+
+    Description:
+        Who the file-keeping is said as -- the user the
+        kernel checks a file's keeping against when a
+        file is opened, kept beside the user the asking
+        runs as, which is the one a permission may be
+        dropped from without the asking losing its right
+        to say itself. The answer is always who it was:
+        said with a user, the asking comes back with the
+        one before; said with nothing -- a -1 -- it only
+        says who it is. Nothing the asking refuses is
+        said as a refusal; what it could not do it says
+        back the same way it would have, and the caller
+        asks again to be told. The word is GNU's own,
+        and Darwin has no call that says it.
+
+    Args:
+        uid: The user the file-keeping is said as, or -1
+            to only ask who it is.
+
+    Returns:
+        Who the file-keeping was said as before.
+    """
+    return external_call["setfsuid", Int32, Int32](uid)
+
+
+def setfsgid(gid: Int32) -> Int32:
+    """Libc GNU `setfsgid` function.
+
+        int setfsgid(gid_t fsgid)
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/setfsgid.2.html
+
+    Description:
+        What `setfsuid` does of a user, said of a
+        group: who the file-keeping is said as -- the
+        group the kernel checks a file's keeping
+        against when a file is opened, kept beside the
+        group the asking runs as. The answer is always
+        what it was: said with a group, the asking
+        comes back with the one before; said with
+        nothing -- a -1 -- it only says what it is.
+        Nothing the asking refuses is said as a
+        refusal; what it could not do it says back the
+        same way it would have, and the caller asks
+        again to be told. The word is GNU's own, and
+        Darwin has no call that says it.
+
+    Args:
+        gid: The group the file-keeping is said as, or
+            -1 to only ask what it is.
+
+    Returns:
+        What the file-keeping was said as before.
+    """
+    return external_call["setfsgid", Int32, Int32](gid)
+
+
 def fork() -> Int32:
     """Libc POSIX `fork` function.
 

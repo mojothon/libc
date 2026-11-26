@@ -82,6 +82,8 @@ from libc.unistd import (
     fexecve,
     execvpe,
     syncfs,
+    setfsgid,
+    setfsuid,
     execvp,
     fchdir,
     fchown,
@@ -2066,6 +2068,50 @@ def test_the_whole_mount_waited_for_by_way_of_one_file() raises:
         assert_equal(Int(get_errno()), Int(EBADF), "with errno saying so")
 
 
+def test_the_file_keeping_said_as_something_beside() raises:
+    """`setfsuid` and `setfsgid` -- who the
+    file-keeping is said as: the user and the group
+    the kernel checks a file's keeping against when a
+    file is opened, kept beside the user and the
+    group the asking runs as. Said with nothing -- a
+    -1 -- the asking only says who it is; said with
+    who it already is, the answer is who it was,
+    which is the same, twice; and asking again finds
+    what the first saying left, still there. Nothing
+    the asking refuses is said as a refusal, so the
+    test asks again and the second answer is what the
+    first saying made. Both words are GNU's own, and
+    Darwin has no call that says either.
+    """
+    comptime if not CompilationTarget.is_macos():
+        # said with nothing: only who it is
+        var who = setfsuid(Int32(-1))
+        assert_true(who >= 0, "the asking says who the file-keeping is said as")
+        var what = setfsgid(Int32(-1))
+        assert_true(what >= 0, "and what group, said the same way")
+        # said with who it already is: the answer is who it was,
+        # which is the same
+        var said = setfsuid(who)
+        assert_equal(
+            Int(said),
+            Int(who),
+            "said back where it was, the answer is who it was",
+        )
+        var said_g = setfsgid(what)
+        assert_equal(
+            Int(said_g), Int(what), "and the group, said back, the same"
+        )
+        # and asking again finds what the first saying left
+        var left = setfsuid(Int32(-1))
+        assert_equal(
+            Int(left), Int(who), "the saying left what it found, still there"
+        )
+        var left_g = setfsgid(Int32(-1))
+        assert_equal(
+            Int(left_g), Int(what), "and the group, still what it found"
+        )
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -2121,6 +2167,7 @@ def main() raises:
     test_the_program_said_by_its_own_descriptor_alone()
     test_the_saying_looked_for_in_the_path_and_said_its_own_names()
     test_the_whole_mount_waited_for_by_way_of_one_file()
+    test_the_file_keeping_said_as_something_beside()
     print("test_unistd: ok")
 
 
