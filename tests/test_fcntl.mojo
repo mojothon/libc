@@ -2,7 +2,19 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
-from libc.constant import AT_FDCWD, EAGAIN, EBADF, EEXIST, EINVAL, ENOENT
+from libc.constant import (
+    AT_FDCWD,
+    EAGAIN,
+    EBADF,
+    EEXIST,
+    EINVAL,
+    ENOENT,
+    EOVERFLOW,
+    EPERM,
+    c_int,
+    c_uint,
+    c_void,
+)
 from libc.errno import errno_message, get_errno, set_errno
 from libc.sys.stat import Stat, fchmod, fstat
 from libc.fcntl import (
@@ -28,6 +40,8 @@ from libc.fcntl import (
     SYNC_FILE_RANGE_WRITE,
     creat,
     flock,
+    name_to_handle_at,
+    open_by_handle_at,
     lockf,
     fcntl,
     open,
@@ -389,6 +403,103 @@ def test_the_seeing_to_of_the_middle_of_a_file() raises:
         readback.unsafe_free()
 
 
+def test_the_handle_the_filesystem_itself_keeps() raises:
+    """`name_to_handle_at` and `open_by_handle_at` -- a
+    handle said of a file, kept by the filesystem
+    itself: not a saying the caller makes, but the
+    filesystem's own name of the file, as long as the
+    filesystem says. A room too small is refused with
+    the size said where the answer will fit; the
+    asking made again into a room the size the
+    refusing said is answered; and the file said back
+    by the handle alone is the cap the kernel keeps
+    for the privileged, which a caller without is
+    refused with `errno` saying so. Both are Linux's
+    own words, and Darwin has no call that takes
+    either.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var room = unsafe_alloc[UInt8](8 + 128)
+        var handle_bytes = room.unsafe_bitcast[c_uint]()
+        var mount_id = unsafe_alloc[Int32](1)
+        mount_id.unsafe_offset(0)[] = 0
+        handle_bytes.unsafe_offset(0)[] = 0
+        set_errno(0)
+        assert_equal(
+            Int(
+                name_to_handle_at(
+                    Int32(AT_FDCWD),
+                    string_to_char_ptr("/bin/sh").unsafe_bitcast[UInt8](),
+                    room.unsafe_bitcast[c_void](),
+                    mount_id,
+                    Int32(0),
+                )
+            ),
+            -1,
+            "a room too small is refused",
+        )
+        assert_equal(Int(get_errno()), Int(EOVERFLOW), "with errno saying so")
+        var wants = Int(handle_bytes.unsafe_offset(0)[])
+        assert_true(wants > 0, "and the size said where the answer will fit")
+        assert_true(
+            Int(mount_id.unsafe_offset(0)[]) != 0, "the mount said even so"
+        )
+        handle_bytes.unsafe_offset(0)[] = UInt32(wants)
+        set_errno(0)
+        assert_equal(
+            Int(
+                name_to_handle_at(
+                    Int32(AT_FDCWD),
+                    string_to_char_ptr("/bin/sh").unsafe_bitcast[UInt8](),
+                    room.unsafe_bitcast[c_void](),
+                    mount_id,
+                    Int32(0),
+                )
+            ),
+            0,
+            "the asking made again is answered",
+        )
+        assert_equal(Int(get_errno()), 0, "with no word of refusal")
+        var kind = Int(room.unsafe_offset(4).unsafe_bitcast[c_int]()[])
+        assert_true(kind >= 0, "the filesystem says what kind it keeps")
+        var root = open(
+            string_to_char_ptr("/").unsafe_bitcast[UInt8](),
+            O_RDONLY | O_DIRECTORY,
+        )
+        assert_true(root >= 0, "the mount said by any file on it")
+        set_errno(0)
+        var said_back = open_by_handle_at(
+            root, room.unsafe_bitcast[c_void](), O_RDONLY
+        )
+        assert_equal(Int(said_back), -1, "the saying back is refused")
+        assert_equal(
+            Int(get_errno()),
+            Int(EPERM),
+            "with errno saying it is the cap kept for the privileged",
+        )
+        _ = close(root)
+        handle_bytes.unsafe_offset(0)[] = UInt32(wants)
+        set_errno(0)
+        assert_equal(
+            Int(
+                name_to_handle_at(
+                    Int32(AT_FDCWD),
+                    string_to_char_ptr("/no/such/path/at/all").unsafe_bitcast[
+                        UInt8
+                    ](),
+                    room.unsafe_bitcast[c_void](),
+                    mount_id,
+                    Int32(0),
+                )
+            ),
+            -1,
+            "a saying that is not there is refused",
+        )
+        assert_equal(Int(get_errno()), Int(ENOENT), "with errno saying so")
+        room.unsafe_free()
+        mount_id.unsafe_free()
+
+
 def main() raises:
     test_lockf_on_what_is_not_open()
     test_asking_a_descriptor_what_is_set_on_it()
@@ -399,6 +510,7 @@ def main() raises:
     test_the_word_without_its_bits_makes_the_ordinary_pair()
     test_a_word_the_kernel_does_not_know_is_refused()
     test_the_seeing_to_of_the_middle_of_a_file()
+    test_the_handle_the_filesystem_itself_keeps()
     print("test_fcntl: ok")
 
 

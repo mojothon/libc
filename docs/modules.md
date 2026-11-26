@@ -55,7 +55,7 @@ the bottom.
 | `libc.libgen` | `<libgen.h>` cutting a path in two | 2 |
 | `libc.logging` | `<syslog.h>` | 6 |
 | `libc.pty` | `<pty.h>` a terminal a program can hold | 4 |
-| `libc.fcntl` | `<fcntl.h>` | 61 |
+| `libc.fcntl` | `<fcntl.h>` | 63 |
 | `libc.getopt` | `<getopt.h>` taking a command line apart | 12 |
 | `libc.dlfcn` | `<dlfcn.h>` | 9 |
 | `libc.wchar` | `<wchar.h>` | 99 |
@@ -171,7 +171,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1157 bindings are asked something, and the 3 that are not have a reason.
+1159 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -326,6 +326,13 @@ other platform's C library has no such call.
   names -- the program the file becomes is told what the caller says, not
   what the shell around it keeps. The word is GNU's own, and Darwin has
   no call that says it.
+- `name_to_handle_at` and `open_by_handle_at` are a handle said of a file,
+  kept by the filesystem itself -- not a saying the caller makes, but the
+  filesystem's own name of the file, as long as the filesystem says; a
+  room too small is refused with the size said where the answer will fit,
+  and the file said back by the handle alone is the cap the kernel keeps
+  for the privileged. Both are Linux's own words, and Darwin has no call
+  that takes either.
 - `pipe2` is a pipe made with its flag word applied as it is
   made -- close-on-exec and non-blocking set before the
   descriptors exist to be raced for, which is the kernel's own
@@ -334,7 +341,7 @@ other platform's C library has no such call.
   of which eventfd's counter is the other half, and Darwin answers the same
   need with kqueue, which is a different call with different answers.
 
-Linux asks 55 bindings that Darwin passes over, and Darwin 0 that Linux
+Linux asks 57 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked

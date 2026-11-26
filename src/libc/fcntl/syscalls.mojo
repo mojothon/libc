@@ -6,7 +6,7 @@
 from std.memory import Pointer
 from std.ffi import external_call
 from std.sys import CompilationTarget
-from libc.constant import AT_FDCWD, c_ptr
+from libc.constant import AT_FDCWD, c_int, c_ptr, c_uint, c_void
 from libc.sys.socket import iovec
 
 
@@ -560,3 +560,87 @@ def sync_file_range(
     return external_call["sync_file_range", Int32, Int32, Int64, Int64, UInt32](
         fd, offset, nbytes, flags
     )
+
+
+def name_to_handle_at(
+    dirfd: Int32,
+    pathname: c_ptr[UInt8],
+    handle: c_ptr[c_void],
+    mount_id: c_ptr[Int32],
+    flags: Int32,
+) -> Int32:
+    """C library <fcntl.h> function `name_to_handle_at`.
+
+        int name_to_handle_at(int dirfd, const char *pathname,
+            struct file_handle *handle, int *mount_id, int flags)
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/open_by_handle_at.2.html
+
+    Description:
+        A handle said of a file, kept by the filesystem
+        itself -- not a saying the caller makes, but the
+        filesystem's own name of the file, as long as the
+        filesystem says. How long that is is asked with a
+        room too small, which the asking refuses with
+        `errno` saying so and the size said in `handle_bytes`
+        where the answer will fit. Which mount the file is on
+        is said beside it, for the saying back by handle is
+        made on the mount the handle came from. The word is
+        Linux's own, and Darwin has no call that takes it.
+
+    Args:
+        dirfd: The directory the saying is looked for in, or
+            `AT_FDCWD` for the caller's own.
+        pathname: The saying of the file.
+        handle: The room for the handle, led by `handle_bytes`
+            and `handle_type`.
+        mount_id: Where the mount's own number is said.
+        flags: The words the asking is said with.
+
+    Returns:
+        0 on success, or -1 on error with `errno` set.
+    """
+    return external_call[
+        "name_to_handle_at",
+        Int32,
+        Int32,
+        c_ptr[UInt8],
+        c_ptr[c_void],
+        c_ptr[Int32],
+        Int32,
+    ](dirfd, pathname, handle, mount_id, flags)
+
+
+def open_by_handle_at(
+    mount_fd: Int32, handle: c_ptr[c_void], flags: Int32
+) -> Int32:
+    """C library <fcntl.h> function `open_by_handle_at`.
+
+        int open_by_handle_at(int mount_fd, struct file_handle *handle,
+            int flags)
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/open_by_handle_at.2.html
+
+    Description:
+        What `open` does of a path, said by way of the
+        handle the filesystem itself keeps -- the file on
+        the mount `mount_fd` opens that the handle is the
+        name of, said without a path at all. The saying
+        back is the cap the kernel keeps for the privileged,
+        and a caller without it is refused. The word is
+        Linux's own, and Darwin has no call that takes it.
+
+    Args:
+        mount_fd: Any file or directory on the mount the
+            handle came from.
+        handle: The handle the filesystem said.
+        flags: The words the opening is said with.
+
+    Returns:
+        A descriptor, or -1 on error with `errno` set.
+    """
+    return external_call[
+        "open_by_handle_at", Int32, Int32, c_ptr[c_void], Int32
+    ](mount_fd, handle, flags)

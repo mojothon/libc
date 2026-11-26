@@ -263,6 +263,10 @@ SAME_ORDER = {
         "a process the whole way through as one user has three numbers that are the "
         "same, and the one it was and could be again is the one the other two say"
     ),
+    "open_by_handle_at:mount_fd <-> flags": (
+        "the cap the kernel keeps for the privileged is asked before any descriptor is, so a "
+        "caller without it is refused the same way either word around"
+    ),
     "getresuid:euid <-> suid": (
         "the same three numbers of one user, the asking of the third being the "
         "asking of a number the other two say"
