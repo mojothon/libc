@@ -2228,6 +2228,30 @@ def posix_openpt(oflag: Int32) -> Int32:
     return external_call["posix_openpt", Int32, Int32](oflag)
 
 
+def getpt() -> Int32:
+    """Libc GNU `getpt` function.
+
+        int getpt(void)
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/getpt.3.html
+
+    Description:
+        A pseudo-terminal master, given out with no saying
+        at all -- what `posix_openpt` does of the flag word,
+        said without one, the kernel taking the flags it
+        likes and leaving the caller with what it gives:
+        a descriptor that does not close itself when a
+        program is said, where `posix_openpt` asked with
+        the flag that says so would.
+
+    Returns:
+        A descriptor for the master end, or -1 with `errno`
+        set.
+    """
+    return external_call["getpt", Int32]()
+
+
 def grantpt(fildes: Int32) -> Int32:
     """Libc POSIX `grantpt` function.
 

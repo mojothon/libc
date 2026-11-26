@@ -18,6 +18,7 @@ from libc.fcntl import (
     FD_CLOEXEC,
     F_GETFD,
     O_CLOEXEC,
+    O_NONBLOCK,
     O_RDWR,
     fcntl,
     open,
@@ -29,6 +30,7 @@ from libc.stdio import remove
 from libc.unistd import dup2, pipe, read
 from libc.sys.wait import WEXITSTATUS, WIFEXITED, WIFSIGNALED, waitpid
 from libc.unistd import (
+    usleep,
     SC_PAGESIZE,
     dup2,
     fork,
@@ -85,6 +87,7 @@ from libc.stdlib import (
     qsort,
     qsort_r,
     posix_openpt,
+    getpt,
     ptsname,
     putenv,
     rand,
@@ -1678,6 +1681,63 @@ def test_the_canonical_saying_of_a_path() raises:
         assert_equal(Int(get_errno()), Int(ENOENT), "with errno saying why")
 
 
+def test_the_master_given_out_with_no_saying() raises:
+    """`getpt` -- a pseudo-terminal master, given out
+    with no saying at all: what `posix_openpt` does of
+    the flag word, said without one, the kernel taking
+    the flags it likes and leaving the caller with
+    what it gives. The master the asking hands over
+    carries the same chain the saying way does: the
+    far end is granted and unlocked, its name is said,
+    and a byte written at the master comes out at the
+    far end. What the asking hands over does not
+    close itself when a program is said -- the flag
+    the saying way is asked with is not set. The word
+    is GNU's own, and Darwin has no call that says
+    it.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var master = getpt()
+        assert_true(master >= 0, "a master is given out")
+        assert_equal(
+            Int(fcntl(master, F_GETFD, 0) & FD_CLOEXEC),
+            0,
+            "and it does not close itself when a program is said",
+        )
+        assert_equal(Int(grantpt(master)), 0, "the far end is granted")
+        assert_equal(Int(unlockpt(master)), 0, "and unlocked")
+        var room = unsafe_alloc[c_char](256)
+        assert_equal(
+            Int(ptsname_r(master, room, UInt64(256))), 0, "its name is said"
+        )
+        var far = open(
+            string_to_char_ptr("/dev/pts/0").unsafe_bitcast[UInt8](), Int32(0)
+        )
+        _ = close(far)
+        # the name said opens, and what it opens is a terminal: a
+        # byte written at the master comes out at the far end
+        var slave = open(room.unsafe_bitcast[UInt8](), O_RDWR | O_NONBLOCK)
+        assert_true(slave >= 0, "the name said opens")
+        var said = string_to_char_ptr("hi\n")
+        var written = Int(
+            write(master, said.unsafe_bitcast[UInt8](), c_uint(3))
+        )
+        assert_equal(written, 3, "the byte goes out at the master")
+        var taken = unsafe_alloc[UInt8](8)
+        _ = usleep(c_uint(200000))
+        var got = Int(read(slave, taken.unsafe_bitcast[c_void](), c_uint(8)))
+        assert_equal(got, 3, "and comes out at the far end")
+        assert_equal(
+            Int(taken.unsafe_offset(0)[]),
+            Int(ord("h")),
+            "the same byte, out and in",
+        )
+        _ = close(slave)
+        _ = close(master)
+        taken.unsafe_free()
+        room.unsafe_free()
+
+
 def main() raises:
     test_malloc()
     test_the_untried_calls()
@@ -1716,6 +1776,7 @@ def main() raises:
     test_the_sorting_that_brings_a_word()
     test_the_canonical_saying_of_a_path()
     test_the_allocator_says_what_it_keeps()
+    test_the_master_given_out_with_no_saying()
     print("test_stdlib: ok")
 
 
