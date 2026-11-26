@@ -452,6 +452,32 @@ def execvpe(
     ](file, argv, envp)
 
 
+def syncfs(fd: Int32) -> Int32:
+    """Libc GNU `syncfs` function.
+
+        int syncfs(int fd)
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/syncfs.2.html
+
+    Description:
+        What `sync` does of every file at once, said of
+        one: the writing the file `fd` opens waits for is
+        waited for -- all of it, the whole mount the file
+        lives on -- and everything the mount still owes its
+        way to the storage is handed over before the asking
+        comes back. The word is GNU's own, and Darwin has
+        no call that says it.
+
+    Args:
+        fd: Any file on the mount to be waited for.
+
+    Returns:
+        0 on success, or -1 on error with `errno` set.
+    """
+    return external_call["syncfs", Int32, Int32](fd)
+
+
 def fork() -> Int32:
     """Libc POSIX `fork` function.
 

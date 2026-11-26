@@ -81,6 +81,7 @@ from libc.unistd import (
     execveat,
     fexecve,
     execvpe,
+    syncfs,
     execvp,
     fchdir,
     fchown,
@@ -2025,6 +2026,46 @@ def test_the_saying_looked_for_in_the_path_and_said_its_own_names() raises:
         assert_equal(WEXITSTATUS(status.unsafe_load()), 117, "saying it failed")
 
 
+def test_the_whole_mount_waited_for_by_way_of_one_file() raises:
+    """`syncfs` -- what `sync` does of every file at
+    once, said of one: the writing the file `fd` opens
+    waits for is waited for, all of it, the whole
+    mount the file lives on. A file written to is
+    waited for by way of itself, and the asking comes
+    back having handed over everything the mount owes
+    its way to the storage; a descriptor that is not a
+    file is refused with `errno` saying so. The word
+    is GNU's own, and Darwin has no call that says
+    it.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var path = string_to_char_ptr("/tmp/mojo_syncfs.txt")
+        _ = unlink(path)
+        var fd = open_with_mode(path, O_CREAT | O_RDWR, 0o600)
+        assert_true(fd >= 0, "a file on the mount to be waited for")
+        var said = string_to_char_ptr("flush me")
+        _ = write(fd, said, c_uint(8))
+        set_errno(0)
+        assert_equal(Int(syncfs(fd)), 0, "the whole mount is waited for")
+        assert_equal(Int(get_errno()), 0, "with no word of refusal")
+        # and the file is still open: the asking waited, it did not
+        # take the file away
+        assert_true(
+            Int(write(fd, said, c_uint(8))) >= 0,
+            "the file the mount was waited for by way of is still open",
+        )
+        _ = close(fd)
+        _ = unlink(path)
+        # a descriptor that is not a file is refused
+        set_errno(0)
+        assert_equal(
+            Int(syncfs(Int32(999999))),
+            -1,
+            "a descriptor that is not a file is refused",
+        )
+        assert_equal(Int(get_errno()), Int(EBADF), "with errno saying so")
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -2079,6 +2120,7 @@ def main() raises:
     test_the_saying_of_a_program_by_way_of_a_descriptor()
     test_the_program_said_by_its_own_descriptor_alone()
     test_the_saying_looked_for_in_the_path_and_said_its_own_names()
+    test_the_whole_mount_waited_for_by_way_of_one_file()
     print("test_unistd: ok")
 
 
