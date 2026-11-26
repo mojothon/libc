@@ -80,6 +80,7 @@ from libc.unistd import (
     execve,
     execveat,
     fexecve,
+    execvpe,
     execvp,
     fchdir,
     fchown,
@@ -1953,6 +1954,77 @@ def test_the_program_said_by_its_own_descriptor_alone() raises:
         _ = close(room)
 
 
+def test_the_saying_looked_for_in_the_path_and_said_its_own_names() raises:
+    """`execvpe` -- what `execvp` does of a file said
+    with no path, looked for in the directories the
+    PATH keeps, said with the caller's own room of
+    names: the program the file becomes is told what
+    the caller says, not what the shell around it
+    keeps. A child is asked for, the saying is made,
+    and what the child comes back with is what the
+    program it became says to come back with -- which
+    the program only says if the names really arrived.
+    A file that is not in the directories the PATH
+    keeps is refused, and the child that could not
+    become anything comes back saying so. The word is
+    GNU's own, and Darwin has no call that says it.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var child = fork()
+        if child == 0:
+            var argv = unsafe_alloc[c_ptr[UInt8]](4)
+            var a0 = string_to_char_ptr("sh")
+            var a1 = string_to_char_ptr("-c")
+            var a2 = string_to_char_ptr(
+                'test "$MYWORD" = from_envp && exit 45 || exit 46'
+            )
+            argv.unsafe_offset(0)[] = a0.unsafe_bitcast[UInt8]()
+            argv.unsafe_offset(1)[] = a1.unsafe_bitcast[UInt8]()
+            argv.unsafe_offset(2)[] = a2.unsafe_bitcast[UInt8]()
+            argv.unsafe_offset(3)[] = null_ptr[UInt8]()
+            var envp = unsafe_alloc[c_ptr[UInt8]](2)
+            var e0 = string_to_char_ptr("MYWORD=from_envp")
+            envp.unsafe_offset(0)[] = e0.unsafe_bitcast[UInt8]()
+            envp.unsafe_offset(1)[] = null_ptr[UInt8]()
+            _ = execvpe(
+                string_to_char_ptr("sh").unsafe_bitcast[UInt8](),
+                argv,
+                envp,
+            )
+            _ = _Exit(116)
+        assert_true(child > 0, "there is a child to say the program")
+        var status = unsafe_alloc[Int32](1)
+        status.unsafe_store(0, 0)
+        assert_equal(waitpid(child, status, 0), child, "and it is waited for")
+        assert_true(WIFEXITED(status.unsafe_load()), "the child went an exit")
+        # 45 is what the program says only if the name really
+        # arrived in the room the caller gave
+        assert_equal(
+            WEXITSTATUS(status.unsafe_load()), 45, "with what the name carried"
+        )
+        # a file that is not in the directories the PATH keeps:
+        # refused, and the child says so
+        child = fork()
+        if child == 0:
+            var argv = unsafe_alloc[c_ptr[UInt8]](1)
+            argv.unsafe_offset(0)[] = null_ptr[UInt8]()
+            var envp = unsafe_alloc[c_ptr[UInt8]](1)
+            envp.unsafe_offset(0)[] = null_ptr[UInt8]()
+            _ = execvpe(
+                string_to_char_ptr("no-such-program-at-all").unsafe_bitcast[
+                    UInt8
+                ](),
+                argv,
+                envp,
+            )
+            _ = _Exit(117)
+        assert_true(child > 0, "there is a child for the saying that fails")
+        status.unsafe_store(0, 0)
+        assert_equal(waitpid(child, status, 0), child, "and it is waited for")
+        assert_true(WIFEXITED(status.unsafe_load()), "the child came back")
+        assert_equal(WEXITSTATUS(status.unsafe_load()), 117, "saying it failed")
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -2006,6 +2078,7 @@ def main() raises:
     test_the_word_for_the_ports_of_the_machine()
     test_the_saying_of_a_program_by_way_of_a_descriptor()
     test_the_program_said_by_its_own_descriptor_alone()
+    test_the_saying_looked_for_in_the_path_and_said_its_own_names()
     print("test_unistd: ok")
 
 

@@ -420,6 +420,38 @@ def execvp(file: c_ptr[UInt8], argv: c_ptr[c_ptr[UInt8]]) -> Int32:
     )
 
 
+def execvpe(
+    file: c_ptr[UInt8], argv: c_ptr[c_ptr[UInt8]], envp: c_ptr[c_ptr[UInt8]]
+) -> Int32:
+    """Libc GNU `execvpe` function.
+
+        int execvpe(const char *file, char *const argv[], char *const envp[])
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/exec.3.html
+
+    Description:
+        What `execvp` does of a file said with no path,
+        looked for in the directories the PATH keeps,
+        said with the caller's own room of names: the
+        program the file becomes is told what the caller
+        says, not what the shell around it keeps.
+
+    Args:
+        file: The name looked for in the directories the
+            PATH keeps.
+        argv: Array of arguments.
+        envp: Array of environment variables.
+
+    Returns:
+        Only on error, -1 with `errno` set; the asking
+        that works does not come back.
+    """
+    return external_call[
+        "execvpe", Int32, c_ptr[UInt8], c_ptr[c_ptr[UInt8]], c_ptr[c_ptr[UInt8]]
+    ](file, argv, envp)
+
+
 def fork() -> Int32:
     """Libc POSIX `fork` function.
 

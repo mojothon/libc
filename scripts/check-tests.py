@@ -98,6 +98,7 @@ ASKED_ON_ONE_PLATFORM = {
     "lremovexattr": "the word let go from the link itself; Linux's own word, and Darwin answers a different word with the sayings in the other order",
     "fexecve": "the program said by its own descriptor alone; Linux links it from what a just-in-time run looks words up in, and Darwin's libSystem keeps no such symbol to look up",
     "getpt": "a pseudo-terminal master given out with no saying at all; GNU's own word, and Darwin has no call that says it",
+    "execvpe": "the file looked for in the directories the PATH keeps, said with the caller's own room of names; GNU's own word, and Darwin has no call that says it",
     "prlimit": "Linux's resource limits by process id; Darwin has setrlimit and no form of it that takes a pid",
     "sched_getaffinity": "the CPU mask is Linux's scheduler's idea; Darwin has no affinity mask to ask for",
     "secure_getenv": "a glibc extension; on Darwin the same getenv answers, and there is no setuid distinction to ask about",
