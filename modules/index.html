@@ -803,7 +803,7 @@ the bottom.</p>
 <tr>
 <td><code>libc.unistd</code></td>
 <td><code>&lt;unistd.h&gt;</code></td>
-<td>228</td>
+<td>229</td>
 </tr>
 <tr>
 <td><code>libc.file</code></td>
@@ -1267,7 +1267,7 @@ pointed at whatever descriptor 1 holds. A child that points descriptor 1 at
 a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.</p>
-<p>1163 bindings are asked something, and the 3 that are not have a reason.
+<p>1164 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 <code>scripts/check-tests.py</code>, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.</p>
@@ -1440,6 +1440,11 @@ other platform's C library has no such call.</p>
   -1 -- they only say who it is; said with who it already is, the
   answer is who it was. Nothing they refuse is said as a refusal.
   Both words are GNU's own, and Darwin has no call that says either.</li>
+<li><code>chroot</code> is where / begins, said again -- the directory the saying
+  says becomes the asking's own root, and everything said after is
+  looked for under it, whatever stands above being no longer part of
+  the view. What the asking has open stays open, which is what a jail
+  is careful about. Both platforms say it.</li>
 <li><code>pipe2</code> is a pipe made with its flag word applied as it is
   made -- close-on-exec and non-blocking set before the
   descriptors exist to be raced for, which is the kernel's own
