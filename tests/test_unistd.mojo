@@ -2298,13 +2298,18 @@ def test_the_keeping_said_by_way_of_a_directory() raises:
         Int(get_errno()), Int(ENOENT), "and is refused, it being nowhere"
     )
     _ = unlink(string_to_char_ptr("/tmp/mojo_fco_link"))
-    # who keeps what is left as it is, said with nothing to change
+    # who keeps what is left as it is, said with nothing to change --
+    # the file the asking itself made, whose keeping is its own to say
+    var kept = string_to_char_ptr("/tmp/mojo_fco_kept.txt")
+    var kfd = open_with_mode(kept, O_CREAT | O_RDWR, 0o600)
+    assert_true(kfd >= 0, "a file whose keeping is the asking's own to say")
+    _ = close(kfd)
     set_errno(0)
     assert_equal(
         Int(
             fchownat(
                 Int32(AT_FDCWD),
-                string_to_char_ptr("/etc/hostname"),
+                kept,
                 Int32(-1),
                 Int32(-1),
                 Int32(0),
@@ -2314,6 +2319,7 @@ def test_the_keeping_said_by_way_of_a_directory() raises:
         "said with nothing to change, the file answers",
     )
     assert_equal(Int(get_errno()), 0, "with no word of refusal")
+    _ = unlink(kept)
 
 
 def main() raises:
