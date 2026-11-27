@@ -34,6 +34,7 @@ from libc.constant import (
     c_void,
 )
 from libc.signal import SIGALRM, SIGKILL, kill
+from libc.string import strcmp
 from libc.stdlib import _Exit, exit, grantpt, posix_openpt, ptsname, unlockpt
 from libc.time import CLOCK_MONOTONIC, clock_gettime, timespec
 from libc.sys.stat import Stat, fchmod, fstat, mkdir, stat
@@ -104,6 +105,7 @@ from libc.unistd import (
     getgroups,
     gethostid,
     gethostname,
+    sethostname,
     getlogin,
     getlogin_r,
     getopt,
@@ -2179,6 +2181,52 @@ def test_the_root_said_again() raises:
         )
 
 
+def test_the_machine_said_its_name_again() raises:
+    """`sethostname` -- who the machine says it is,
+    said again: the name the asking of a host comes
+    back with is what the saying makes it, for the
+    length that goes with it. The name as it stands
+    is asked for first, and said back where it
+    already is -- which, where the asking may say
+    it, the machine keeps, coming back having said
+    the same; and where the asking may not, the
+    refusal is what is said, the name being what it
+    was either way, which the asking of it after
+    proves.
+    """
+    var room = unsafe_alloc[c_char](256)
+    assert_equal(
+        Int(gethostname(room, 256)),
+        0,
+        "who the machine says it is is asked for first",
+    )
+    var said = sethostname(room, 256)
+    if said == 0:
+        # the machine keeps its name, having said the same
+        var again = unsafe_alloc[c_char](256)
+        assert_equal(Int(gethostname(again, 256)), 0, "the asking comes back")
+        assert_equal(
+            Int(strcmp(again, room)),
+            0,
+            "with the name the saying left, which is the one it had",
+        )
+    else:
+        assert_equal(
+            Int(get_errno()),
+            Int(EPERM),
+            "the saying is the kernel's own keeping",
+        )
+        var again = unsafe_alloc[c_char](256)
+        assert_equal(
+            Int(gethostname(again, 256)), 0, "the asking comes back after"
+        )
+        assert_equal(
+            Int(strcmp(again, room)),
+            0,
+            "and the name is what it was",
+        )
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -2236,6 +2284,7 @@ def main() raises:
     test_the_whole_mount_waited_for_by_way_of_one_file()
     test_the_file_keeping_said_as_something_beside()
     test_the_root_said_again()
+    test_the_machine_said_its_name_again()
     print("test_unistd: ok")
 
 

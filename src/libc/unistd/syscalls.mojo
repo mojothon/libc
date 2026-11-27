@@ -572,6 +572,36 @@ def chroot(path: c_ptr[UInt8]) -> Int32:
     return external_call["chroot", Int32, c_ptr[UInt8]](path)
 
 
+def sethostname(name: c_ptr[UInt8], length: c_size_t) -> c_int:
+    """Libc POSIX `sethostname` function.
+
+        int sethostname(const char *name, size_t length)
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/sethostname.2.html
+
+    Description:
+        Who the machine says it is, said again -- the
+        name the asking of a host comes back with is
+        what the saying makes it, for the length that
+        goes with it. Who may say it is the kernel's
+        own keeping; a caller without it is refused
+        with `errno` saying so, and the name is what
+        it was. Said back where it already is, the
+        machine keeps its name.
+
+    Args:
+        name: The name the machine is said as.
+        length: How much of `name` is the name.
+
+    Returns:
+        0 on success, or -1 on error with `errno` set.
+    """
+    return external_call["sethostname", c_int, c_ptr[UInt8], c_size_t](
+        name, length
+    )
+
+
 def fork() -> Int32:
     """Libc POSIX `fork` function.
 

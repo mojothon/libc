@@ -10,7 +10,7 @@ the bottom.
 | `libc.stdlib` | `<stdlib.h>` | 97 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.limits` | `<limits.h>` the widths of the integer types, and what a process may have | 24 |
-| `libc.unistd` | `<unistd.h>` | 229 |
+| `libc.unistd` | `<unistd.h>` | 230 |
 | `libc.file` | `<stdio.h>` file operations | 39 |
 | `libc.ctype` | `<ctype.h>` | 30 |
 | `libc.sys.socket` | `<sys/socket.h>` | 53 |
@@ -171,7 +171,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1164 bindings are asked something, and the 3 that are not have a reason.
+1165 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -353,6 +353,11 @@ other platform's C library has no such call.
   looked for under it, whatever stands above being no longer part of
   the view. What the asking has open stays open, which is what a jail
   is careful about. Both platforms say it.
+- `sethostname` is who the machine says it is, said again -- the name
+  the asking of a host comes back with is what the saying makes it.
+  Who may say it is the kernel's own keeping; a caller without it is
+  refused with `errno` saying so, and the name is what it was. Both
+  platforms say it.
 - `pipe2` is a pipe made with its flag word applied as it is
   made -- close-on-exec and non-blocking set before the
   descriptors exist to be raced for, which is the kernel's own

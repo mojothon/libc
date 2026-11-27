@@ -146,6 +146,12 @@ SAME_ANSWER = {
         "a process with no sayings of its own goes the same way through either asking, "
         "and what it goes with is the number said"
     ),
+    "sethostname->gethostname": (
+        "the saying of who the machine is and the saying of who to make it are the same "
+        "asking of a room and a length, and a caller without the privilege to say it is "
+        "refused by one and answered the name by the other, which the asking after "
+        "cannot tell apart"
+    ),
     "cfgetospeed->cfgetispeed": (
         "a terminal has one speed and not two: on glibc both functions read "
         "the same `CBAUD` bits of `c_cflag` -- a probe printing the flag at "
