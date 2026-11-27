@@ -8,6 +8,7 @@ from libc.errno import get_errno, set_errno
 from libc.unistd import geteuid
 from libc.sys.stat import timeval
 from libc.time import (
+    dysize,
     CLOCK_MONOTONIC,
     CLOCK_REALTIME,
     ITIMER_REAL,
@@ -590,6 +591,42 @@ def test_a_timer_that_is_set_and_taken_back() raises:
     current.unsafe_free()
 
 
+def test_the_saying_of_how_long_a_year_is() raises:
+    """`dysize` -- how many days the saying of a
+    year keeps: three hundred and sixty-six where
+    the year is said long, three hundred and
+    sixty-five where it is not. The saying about
+    which years are long has three turns to it --
+    the four-year saying, the hundred saying no to
+    the year the four turns reach, and the four
+    hundred taking it back -- which the asking of
+    the four years proves: the year the four
+    reaches, the year the hundred refuses, the
+    year the four hundred takes back, and the year
+    none of them reaches. The word is GNU's own,
+    and Darwin has no call that says it.
+    """
+    comptime if not CompilationTarget.is_macos():
+        # the year the four-year saying reaches
+        assert_equal(
+            Int(dysize(2024)), 366, "the four-year saying says the year long"
+        )
+        # the year the hundred refuses
+        assert_equal(
+            Int(dysize(1900)),
+            365,
+            "the hundred says no to the year the four reaches",
+        )
+        # the year the four hundred takes back
+        assert_equal(Int(dysize(2000)), 366, "the four hundred takes it back")
+        # the year none of them reaches
+        assert_equal(
+            Int(dysize(2026)),
+            365,
+            "the year none of them reaches is said short",
+        )
+
+
 def main() raises:
     test_clock_settime_is_refused_to_an_ordinary_process()
     test_clock_and_time()
@@ -607,6 +644,7 @@ def main() raises:
     test_a_timer_that_is_set_and_taken_back()
     test_a_clock_that_counts_the_process_own_work()
     test_asking_the_clock_how_far_it_is_to_move()
+    test_the_saying_of_how_long_a_year_is()
     print("test_time: ok")
 
 

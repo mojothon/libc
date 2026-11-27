@@ -2,7 +2,7 @@
 
 This is a binding, so what it can call is a subset of what C can call and
 will stay that way. What can be counted exactly is how much is here: this
-binds 1171 C symbols, every one checked against the header it comes from. C
+binds 1172 C symbols, every one checked against the header it comes from. C
 offers more, and calling more of it is not what this is for.
 
 How much of what C offers that is, is not a number that holds still. `nm -D

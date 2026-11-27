@@ -196,6 +196,36 @@ def difftime(time1: c_long, time0: c_long) -> Float64:
     return external_call["difftime", Float64, c_long, c_long](time1, time0)
 
 
+def dysize(year: c_int) -> c_int:
+    """Libc GNU `dysize` function.
+
+        int dysize(int year)
+
+    Reference:
+        https://www.gnu.org/software/libc/manual/html_node/General-Time.html
+
+    Description:
+        How many days the saying of a year
+        keeps: the four-year saying, with its own
+        saying about the years the hundred says
+        no to, and the year the four hundred
+        takes back -- which is to say, three
+        hundred and sixty-six where the year is
+        said long and three hundred and
+        sixty-five where it is not. The word is
+        GNU's own, and Darwin has no call that
+        says it.
+
+    Args:
+        year: The year, said whole.
+
+    Returns:
+        366 where the year is said long, 365
+        where it is not.
+    """
+    return external_call["dysize", c_int, c_int](year)
+
+
 def gmtime(timep: c_ptr[c_long]) -> c_ptr[tm]:
     """Libc C89 `gmtime` function.
 

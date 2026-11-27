@@ -17,7 +17,7 @@ the bottom.
 | `libc.sys.uio` | `<sys/uio.h>` | 2 |
 | `libc.sys.stat` | `<sys/stat.h>` | 72 |
 | `libc.sys.times` | `<sys/times.h>` | 2 |
-| `libc.time` | `<time.h>` | 42 |
+| `libc.time` | `<time.h>` | 43 |
 | `libc.fenv` | `<fenv.h>` | 26 |
 | `libc.sys.mman` | `<sys/mman.h>` | 19 |
 | `libc.sys.sigqueue` | `<signal.h>` a signal sent with a number, and the two waits | 5 |
@@ -171,7 +171,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1170 bindings are asked something, and the 3 that are not have a reason.
+1171 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -372,6 +372,11 @@ other platform's C library has no such call.
   entry, each with the length that takes the asking to the next -- which
   the asking walks and proves comes out even. The word is Linux's own,
   and Darwin has no call that says it.
+- `dysize` is how many days the saying of a year keeps: three hundred and
+  sixty-six where the year is said long, three hundred and sixty-five
+  where it is not -- the four-year saying, the hundred refusing, the four
+  hundred taking back. The word is GNU's own, and Darwin has no call
+  that says it.
 - `siggetmask` is what stands between the asking and the saying, as a
   word: the blocked set said in the one machine word the old sayings
   trade in, with one bit for each signal. `sigprocmask` is what to say
@@ -389,7 +394,7 @@ other platform's C library has no such call.
   of which eventfd's counter is the other half, and Darwin answers the same
   need with kqueue, which is a different call with different answers.
 
-Linux asks 66 bindings that Darwin passes over, and Darwin 0 that Linux
+Linux asks 67 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked
