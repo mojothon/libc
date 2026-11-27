@@ -602,6 +602,34 @@ def sethostname(name: c_ptr[UInt8], length: c_size_t) -> c_int:
     )
 
 
+def get_current_dir_name() -> c_ptr[UInt8]:
+    """Libc GNU `get_current_dir_name` function.
+
+        char *get_current_dir_name(void)
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/get_current_dir_name.3.html
+
+    Description:
+        What the asking's own room of names is said
+        as now -- the way `getcwd` says it, with the
+        room made for the saying and handed back,
+        which is the asking's to take back with
+        `free` when the saying is done with. Where
+        the asking is said to be by what stands
+        around it -- the `PWD` the shell keeps -- is
+        looked at first, and said if it is what the
+        tree says too. The word is GNU's own, and
+        Darwin has no call that says it.
+
+    Returns:
+        The name of the asking's own room, in a room
+        the saying made, which the asking takes back
+        with `free`.
+    """
+    return external_call["get_current_dir_name", c_ptr[UInt8]]()
+
+
 def fork() -> Int32:
     """Libc POSIX `fork` function.
 

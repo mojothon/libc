@@ -35,7 +35,15 @@ from libc.constant import (
 )
 from libc.signal import SIGALRM, SIGKILL, kill
 from libc.string import strcmp
-from libc.stdlib import _Exit, exit, grantpt, posix_openpt, ptsname, unlockpt
+from libc.stdlib import (
+    _Exit,
+    exit,
+    free,
+    grantpt,
+    posix_openpt,
+    ptsname,
+    unlockpt,
+)
 from libc.time import CLOCK_MONOTONIC, clock_gettime, timespec
 from libc.sys.stat import Stat, fchmod, fstat, mkdir, stat
 from libc.sys.utsname import Utsname, uname
@@ -91,6 +99,7 @@ from libc.unistd import (
     fchdir,
     fchown,
     fchownat,
+    get_current_dir_name,
     fork,
     fpathconf,
     fsync,
@@ -2322,6 +2331,48 @@ def test_the_keeping_said_by_way_of_a_directory() raises:
     _ = unlink(kept)
 
 
+def test_the_room_said_by_what_stands_around_it() raises:
+    """`get_current_dir_name` -- what the asking's
+    own room of names is said as now: the way
+    `getcwd` says it, with the room made for the
+    saying and handed back, which is the asking's to
+    take back with `free`. The saying agrees with
+    what `getcwd` says of the same, and moves when
+    the asking moves -- which the asking of it after
+    a move proves. What stands around it is looked
+    at first, but what the tree says is what comes
+    back when the two are one. The word is GNU's
+    own, and Darwin has no call that says it.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var said = get_current_dir_name()
+        assert_true(Int(said) != 0, "the saying of the room comes back")
+        var room = unsafe_alloc[UInt8](4096)
+        assert_true(
+            Int(getcwd(room, 4096)) != 0,
+            "and getcwd says the same of the same room",
+        )
+        assert_equal(
+            Int(strcmp(said, room)),
+            0,
+            "the two sayings of one room say one name",
+        )
+        _ = free(said)
+        # and the saying moves when the asking moves
+        assert_equal(
+            Int(chdir(string_to_char_ptr("/tmp"))), 0, "the asking moves"
+        )
+        var moved = get_current_dir_name()
+        assert_true(Int(moved) != 0, "the saying of the room comes back again")
+        assert_equal(
+            Int(strcmp(moved, string_to_char_ptr("/tmp"))),
+            0,
+            "and says where the asking has moved to",
+        )
+        _ = free(moved)
+        assert_equal(Int(chdir(string_to_char_ptr("/"))), 0, "and moves back")
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -2381,6 +2432,7 @@ def main() raises:
     test_the_root_said_again()
     test_the_machine_said_its_name_again()
     test_the_keeping_said_by_way_of_a_directory()
+    test_the_room_said_by_what_stands_around_it()
     print("test_unistd: ok")
 
 
