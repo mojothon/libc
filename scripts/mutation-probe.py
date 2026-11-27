@@ -254,6 +254,11 @@ SAME_ORDER = {
         "the smaller of two numbers does not know which was written first, for "
         "the reason `fmax` does not"
     ),
+    "nftw:depth <-> flags": (
+        "the depth and the flags say how many doors the walking keeps open and how it "
+        "walks, and the saying of a tree that fits in one hand holds at the numbers the "
+        "asking gives, where either saying of the two is the same walk"
+    ),
     "hypotf:x <-> y": (
         "the float twin of `hypot`, and a sum of squares does not remember "
         "which addend came first"

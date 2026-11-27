@@ -8,6 +8,7 @@ from std.memory import Pointer
 from std.sys import CompilationTarget
 
 from libc.constant import *
+from libc.sys.stat import Stat
 
 # `struct dirent` is not laid out the same way everywhere:
 #
@@ -449,6 +450,121 @@ def readdir_r(
     return external_call[
         "readdir_r", Int32, c_ptr[DIR], c_ptr[dirent], c_ptr[c_ptr[dirent]]
     ](arg, entry, result)
+
+
+# The `FTW_*` of `<ftw.h>`: what the walking says a thing it
+# stood on is, said as a number. The three a test can count
+# on are the file, the directory, and the one the walking
+# could not say anything of.
+comptime FTW_F: Int32 = 0
+comptime FTW_D: Int32 = 1
+comptime FTW_NS: Int32 = 3
+
+
+struct FTW:
+    """What the walking says of where it stood,
+    said to the saying the asking gave it: how
+    far into the name the part it stands on
+    starts, and how deep in the walk it is.
+    """
+
+    var base: Int32
+    var level: Int32
+
+
+def ftw(
+    path: c_ptr[UInt8],
+    say: def(c_ptr[UInt8], c_ptr[Stat], Int32) thin -> Int32,
+    depth: Int32,
+) -> Int32:
+    """Libc POSIX `ftw` function.
+
+        int ftw(const char *path, int (*fn)(const char *, const struct stat *, int), int depth)
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/ftw.3.html
+
+    Description:
+        The tree, walked: for each thing the
+        walking stands on, the saying the asking
+        gave is said with the name, what the file
+        is said as by the file's own keeping, and
+        the kind the walking says it is. What the
+        saying answers is what the walking takes
+        on: 0 keeps it walking, anything else
+        brings it back, and the answer of the
+        walking is the saying's answer or -1
+        where the walking itself could not go on.
+        The depth is how many sayings the walking
+        may keep open at once, which is at least
+        one and best as deep as the tree has
+        branches. `nftw` is what to say now; this
+        is the older word, which says no where the
+        walking stood or how deep it is.
+
+    Args:
+        path: The tree, said by its root.
+        say: The saying, said once per thing stood on.
+        depth: How many the walking keeps open.
+
+    Returns:
+        0 where the walk was walked whole, the
+        saying's answer where it said to stop, or
+        -1 where the walking could not go on.
+    """
+    return external_call[
+        "ftw",
+        Int32,
+        c_ptr[UInt8],
+        def(c_ptr[UInt8], c_ptr[Stat], Int32) thin -> Int32,
+        Int32,
+    ](path, say, depth)
+
+
+def nftw(
+    path: c_ptr[UInt8],
+    say: def(c_ptr[UInt8], c_ptr[Stat], Int32, c_ptr[FTW]) thin -> Int32,
+    depth: Int32,
+    flags: Int32,
+) -> Int32:
+    """Libc POSIX `nftw` function.
+
+        int nftw(const char *path, int (*fn)(const char *, const struct stat *, int, struct FTW *), int depth, int flags)
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/nftw.3.html
+
+    Description:
+        The tree, walked, with more said of where
+        the walking stood: the saying the asking
+        gave is said the name, the file's own
+        keeping, the kind, and how deep in the
+        walk and how far into the name the part
+        stood on starts -- which is what the
+        asking of a tree wants when the asking
+        has to know where it is, and not only
+        what is there. What the saying answers is
+        what the walking takes on, as `ftw` says.
+
+    Args:
+        path: The tree, said by its root.
+        say: The saying, said once per thing stood on.
+        depth: How many the walking keeps open.
+        flags: How the walking is told to walk.
+
+    Returns:
+        0 where the walk was walked whole, the
+        saying's answer where it said to stop, or
+        -1 where the walking could not go on.
+    """
+    return external_call[
+        "nftw",
+        Int32,
+        c_ptr[UInt8],
+        def(c_ptr[UInt8], c_ptr[Stat], Int32, c_ptr[FTW]) thin -> Int32,
+        Int32,
+        Int32,
+    ](path, say, depth, flags)
 
 
 def getdents64(fd: Int32, buf: c_ptr[UInt8], count: UInt64) -> Int64:

@@ -1,3 +1,4 @@
+from std.ffi import c_char
 from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
@@ -8,6 +9,11 @@ from libc.fcntl import O_CREAT, O_RDONLY, O_TRUNC, O_WRONLY, O_RDWR, O_DIRECTORY
 from libc.dirent import (
     DT_DIR,
     getdents64,
+    ftw,
+    nftw,
+    FTW_F,
+    FTW_D,
+    FTW,
     DT_REG,
     DIRENT_BYTES,
     DIRENT_NAME_OFFSET,
@@ -435,6 +441,93 @@ def test_what_the_directory_says_raw() raises:
         _ = rmdir(string_to_char_ptr("/tmp/mojo_gd64"))
 
 
+
+
+
+
+
+
+# The sayings the walk is given, one to keep
+# walking and one to stop where the deep name is
+# said: what the walk brings back proves what the
+# saying was said of, without the saying keeping
+# anything of its own.
+def keep_walking(path: c_ptr[UInt8], about: c_ptr[Stat], kind: Int32) -> Int32:
+    return 0
+
+def keep_walking_deep(
+    path: c_ptr[UInt8], about: c_ptr[Stat], kind: Int32, where: c_ptr[FTW]
+) -> Int32:
+    return 0
+
+
+def stop_at_the_deep_name(
+    path: c_ptr[UInt8], about: c_ptr[Stat], kind: Int32, where: c_ptr[FTW]
+) -> Int32:
+    if strcmp(path, string_to_char_ptr("/tmp/mojo_ftw/sub/beta")) == 0:
+        # the name said deep in the room: the walk has
+        # to have stood two levels down to say it
+        if Int(where.unsafe_offset(0)[].level) == 2:
+            return 42
+        return 7
+    return 0
+
+
+def stop_at_the_root_name(
+    path: c_ptr[UInt8], about: c_ptr[Stat], kind: Int32
+) -> Int32:
+    if strcmp(path, string_to_char_ptr("/tmp/mojo_ftw/alpha")) == 0:
+        return 42
+    return 0
+
+
+def test_the_tree_walked() raises:
+    """`ftw` and `nftw` -- the tree, walked: for
+    each thing the walking stands on, the saying
+    the asking gave is said with the name, what
+    the file is said as, and the kind. What the
+    saying answers is what the walk brings back,
+    and the asking of a tree of its own proves
+    the walk was walked by the answers: a saying
+    that keeps walking brings back nothing, and
+    a saying that stops at a name brings the
+    answer it gave -- at the root with `ftw`, and
+    two levels down with `nftw`, which is the
+    one that says where the walk stood.
+    """
+    comptime if not CompilationTarget.is_macos():
+        _ = mkdir(string_to_char_ptr("/tmp/mojo_ftw"), Int32(0o700))
+        _ = mkdir(string_to_char_ptr("/tmp/mojo_ftw/sub"), Int32(0o700))
+        var a = open(string_to_char_ptr("/tmp/mojo_ftw/alpha"), O_CREAT | O_RDWR, 0o600)
+        assert_true(a >= 0, "a name said at the root")
+        _ = close(a)
+        var b = open(string_to_char_ptr("/tmp/mojo_ftw/sub/beta"), O_CREAT | O_RDWR, 0o600)
+        assert_true(b >= 0, "a name said into the room")
+        _ = close(b)
+        # the newer word: a saying that keeps walking brings back nothing
+        assert_equal(
+            Int(nftw(string_to_char_ptr("/tmp/mojo_ftw"), keep_walking_deep, 8, 0)),
+            0,
+            "a saying that keeps walking is walked whole",
+        )
+        # a saying that stops at the name said two levels down,
+        # which the walk reaches and the `FTW` it is said proves
+        assert_equal(
+            Int(nftw(string_to_char_ptr("/tmp/mojo_ftw"), stop_at_the_deep_name, 8, 0)),
+            42,
+            "the walk stands two levels down where the deep name is",
+        )
+        # the older word: the same walk, stopped at the name at the root
+        assert_equal(
+            Int(ftw(string_to_char_ptr("/tmp/mojo_ftw"), stop_at_the_root_name, 8)),
+            42,
+            "the older word walks the same walk and answers what it is told",
+        )
+        _ = unlink(string_to_char_ptr("/tmp/mojo_ftw/alpha"))
+        _ = unlink(string_to_char_ptr("/tmp/mojo_ftw/sub/beta"))
+        _ = rmdir(string_to_char_ptr("/tmp/mojo_ftw/sub"))
+        _ = rmdir(string_to_char_ptr("/tmp/mojo_ftw"))
+
 def main() raises:
     test_opendir_readdir()
     test_dirfd()
@@ -446,4 +539,6 @@ def main() raises:
     test_readdir_r_reads_what_readdir_reads()
     test_the_type_of_each_entry_and_the_room_its_record_takes()
     test_what_the_directory_says_raw()
+    test_the_tree_walked()
+    test_the_tree_walked()
     print("test_dirent: ok")
