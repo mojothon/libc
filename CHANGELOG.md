@@ -489,6 +489,12 @@ All notable changes to this project are documented here. The format follows
   Both words are Linux's own, which the page's saying of how many bindings one platform
   asks alone grows by two.
 
+- **`libc.time` gains `dysize`.**
+  How many days the saying of a year keeps: three hundred and sixty-six where the year is
+  said long, three hundred and sixty-five where it is not -- the four-year saying, the
+  hundred refusing, the four hundred taking back. The word is GNU's own, which the page's
+  saying of how many bindings one platform asks alone grows by one.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
