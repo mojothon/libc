@@ -456,6 +456,12 @@ All notable changes to this project are documented here. The format follows
   careful about. Both platforms say it; what is refused before the privilege is asked is
   said in each platform's own order.
 
+- **`libc.unistd` gains `sethostname`.**
+  Who the machine says it is, said again -- the name the asking of a host comes back with
+  is what the saying makes it. Who may say it is the kernel's own keeping; a caller
+  without it is refused with `errno` saying so, and the name is what it was. Both
+  platforms say it.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
