@@ -449,3 +449,45 @@ def readdir_r(
     return external_call[
         "readdir_r", Int32, c_ptr[DIR], c_ptr[dirent], c_ptr[c_ptr[dirent]]
     ](arg, entry, result)
+
+
+def getdents64(fd: Int32, buf: c_ptr[UInt8], count: UInt64) -> Int64:
+    """Libc Linux `getdents64` function.
+
+        ssize_t getdents64(unsigned int fd, void *buffer, size_t count)
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/getdents.2.html
+
+    Description:
+        What a directory keeps, read raw: the room
+        the asking gives is filled with the saying
+        the directory keeps itself, entry after
+        entry, each with the length that takes the
+        asking to the next -- the asking of the
+        names walking the room by saying how far
+        each stands from where it starts, which the
+        asking proves by walking it. The word
+        `readdir` says is what the library makes of
+        this; this is what the kernel says, and
+        what the asking reads when the library's
+        room is not what it wants. A fd that is not
+        a directory is refused with `errno` saying
+        so; a room read to the end says nothing the
+        second time. The word is Linux's own, and
+        Darwin has no call that says it.
+
+    Args:
+        fd: The directory, open for the reading.
+        buf: The room the saying fills, entry after
+            entry.
+        count: How much room the asking gives.
+
+    Returns:
+        How many bytes the saying filled, or -1 on
+            error with `errno` set. A directory read
+            to the end comes back with 0.
+    """
+    return external_call["getdents64", Int64, Int32, c_ptr[UInt8], UInt64](
+        fd, buf, count
+    )

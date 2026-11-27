@@ -2,10 +2,12 @@ from std.memory.alloc import unsafe_alloc
 from std.sys import CompilationTarget
 from std.testing import assert_equal, assert_true
 
-from libc.constant import c_ptr, c_void
-from libc.fcntl import O_CREAT, O_RDONLY, O_TRUNC, O_WRONLY
+from libc.constant import c_ptr, c_void, ENOTDIR
+from libc.errno import get_errno, set_errno
+from libc.fcntl import O_CREAT, O_RDONLY, O_TRUNC, O_WRONLY, O_RDWR, O_DIRECTORY
 from libc.dirent import (
     DT_DIR,
+    getdents64,
     DT_REG,
     DIRENT_BYTES,
     DIRENT_NAME_OFFSET,
@@ -355,6 +357,84 @@ def test_the_type_of_each_entry_and_the_room_its_record_takes() raises:
     assert_equal(rmdir(room), 0, "and the room with it")
 
 
+def test_what_the_directory_says_raw() raises:
+    """`getdents64` -- what a directory keeps, read
+    raw: the room the asking gives is filled with
+    the saying the directory keeps itself, entry
+    after entry, each with the length that takes
+    the asking to the next. The asking walks the
+    room by that length and proves the walk comes
+    out even at the byte the saying said it filled.
+    The names it said are there, and the kinds the
+    saying gives are the ones the files are. A room
+    read to the end says nothing the second time.
+    A fd that is not a directory is refused with
+    `errno` saying so. The word is Linux's own, and
+    Darwin has no call that says it.
+    """
+    comptime if not CompilationTarget.is_macos():
+        # a directory of the asking's own, with names said in it
+        _ = mkdir(string_to_char_ptr("/tmp/mojo_gd64"), Int32(0o700))
+        var made = string_to_char_ptr("/tmp/mojo_gd64/alpha")
+        var a = open(made, O_CREAT | O_RDWR, 0o600)
+        assert_true(a >= 0, "a name said into the directory")
+        _ = close(a)
+        var fd = open(
+            string_to_char_ptr("/tmp/mojo_gd64"), O_RDONLY | O_DIRECTORY, 0
+        )
+        assert_true(fd >= 0, "the directory, open for the reading")
+        var room = unsafe_alloc[UInt8](4096)
+        var said = Int(getdents64(Int32(fd), room, 4096))
+        assert_true(
+            said > 0, "the saying fills the room with what the directory keeps"
+        )
+        # walk by the length each entry says, and find the names
+        var walked = 0
+        var off = 0
+        var found_alpha = False
+        while off < said:
+            # the length stands at byte 16, two bytes little-endian
+            var reclen = Int(room.unsafe_offset(off + 16)[]) + (
+                Int(room.unsafe_offset(off + 17)[]) << 8
+            )
+            assert_true(
+                reclen >= 24, "an entry is at least the room the saying says"
+            )
+            # the kind stands at byte 18, one byte, after the length
+            var kind = room.unsafe_offset(off + 18)[]
+            var nm = room.unsafe_offset(off + 19)
+            if strcmp(nm, string_to_char_ptr("alpha")) == 0:
+                found_alpha = True
+                assert_equal(
+                    Int(kind), 8, "the name said as a file is said as one"
+                )
+            walked += reclen
+            off += reclen
+        assert_true(found_alpha, "the name said into it comes back out of it")
+        assert_equal(
+            walked, said, "the walk comes out even where the saying stopped"
+        )
+        # a room read to the end says nothing the second time
+        var second = Int(getdents64(Int32(fd), room, 4096))
+        assert_equal(
+            second, 0, "a room read to the end says nothing the second time"
+        )
+        _ = close(fd)
+        # a fd that is not a directory
+        var plain = open(string_to_char_ptr("/etc/hostname"), O_RDONLY, 0)
+        assert_true(plain >= 0, "a file that is not a directory, open")
+        set_errno(0)
+        assert_equal(
+            Int(getdents64(Int32(plain), room, 4096)),
+            -1,
+            "a fd that is not a directory is refused",
+        )
+        assert_equal(Int(get_errno()), Int(ENOTDIR), "with errno saying so")
+        _ = close(plain)
+        _ = unlink(made)
+        _ = rmdir(string_to_char_ptr("/tmp/mojo_gd64"))
+
+
 def main() raises:
     test_opendir_readdir()
     test_dirfd()
@@ -365,4 +445,5 @@ def main() raises:
     test_alphasort_puts_two_names_where_strcmp_puts_them()
     test_readdir_r_reads_what_readdir_reads()
     test_the_type_of_each_entry_and_the_room_its_record_takes()
+    test_what_the_directory_says_raw()
     print("test_dirent: ok")
