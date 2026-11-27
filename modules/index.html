@@ -918,7 +918,7 @@ the bottom.</p>
 <tr>
 <td><code>libc.signal</code></td>
 <td><code>&lt;signal.h&gt;</code> an action, and a handler as its number</td>
-<td>67</td>
+<td>68</td>
 </tr>
 <tr>
 <td><code>libc.spawn</code></td>
@@ -1267,7 +1267,7 @@ pointed at whatever descriptor 1 holds. A child that points descriptor 1 at
 a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.</p>
-<p>1166 bindings are asked something, and the 3 that are not have a reason.
+<p>1167 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 <code>scripts/check-tests.py</code>, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.</p>
@@ -1454,6 +1454,11 @@ other platform's C library has no such call.</p>
   as now -- the way <code>getcwd</code> says it, with the room made for the saying
   and handed back, which is the asking's to take back with <code>free</code>. The
   word is GNU's own, and Darwin has no call that says it.</li>
+<li><code>sigset</code> is what standing before the saying was, coming back as the
+  answer: the action said for a signal is what the saying makes it, and
+  the answer is the action that was there. Said again, the answer is
+  what the last saying left. The word is System V's own, and Darwin has
+  no call that says it.</li>
 <li><code>pipe2</code> is a pipe made with its flag word applied as it is
   made -- close-on-exec and non-blocking set before the
   descriptors exist to be raced for, which is the kernel's own
@@ -1462,7 +1467,7 @@ other platform's C library has no such call.</p>
   of which eventfd's counter is the other half, and Darwin answers the same
   need with kqueue, which is a different call with different answers.</li>
 </ul>
-<p>Linux asks 62 bindings that Darwin passes over, and Darwin 0 that Linux
+<p>Linux asks 63 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked
