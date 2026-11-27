@@ -458,7 +458,7 @@ def readdir_r(
 # could not say anything of.
 comptime FTW_F: Int32 = 0
 comptime FTW_D: Int32 = 1
-comptime FTW_NS: Int32 = 3
+comptime FTW_NS: Int32 = 4 if CompilationTarget.is_macos() else 3
 
 
 struct FTW:
