@@ -106,6 +106,7 @@ from libc.unistd import (
     gethostid,
     gethostname,
     sethostname,
+    fchownat,
     getlogin,
     getlogin_r,
     getopt,
@@ -2227,6 +2228,94 @@ def test_the_machine_said_its_name_again() raises:
         )
 
 
+def test_the_keeping_said_by_way_of_a_directory() raises:
+    """`fchownat` -- who keeps the file, said by way
+    of a directory: the saying of `path` is looked
+    for beside the file `fd` opens, or beside the
+    root of the asking when `fd` is `AT_FDCWD`. A
+    saying with no file under it is refused with
+    `errno` saying so; a link leading nowhere, said
+    with `AT_SYMLINK_NOFOLLOW`, is answered -- the
+    keeping of the link itself, which is there
+    whether the file it leads to is or not; and said
+    without, the saying looks for the file the link
+    leads to, which is nowhere, and is refused the
+    same way a saying of nothing is. Who keeps what
+    is left as it is, said with nothing to change --
+    which the file answers.
+    """
+    # a saying with no file under it
+    set_errno(0)
+    assert_equal(
+        Int(
+            fchownat(
+                Int32(AT_FDCWD),
+                string_to_char_ptr("/no/such/file/at/all"),
+                Int32(-1),
+                Int32(-1),
+                Int32(0),
+            )
+        ),
+        -1,
+        "a saying with no file under it is refused",
+    )
+    assert_equal(Int(get_errno()), Int(ENOENT), "with errno saying so")
+    # a link leading nowhere: said as a link, answered;
+    # said through, refused
+    _ = symlink(
+        string_to_char_ptr("/no/target/at/all"),
+        string_to_char_ptr("/tmp/mojo_fco_link"),
+    )
+    set_errno(0)
+    assert_equal(
+        Int(
+            fchownat(
+                Int32(AT_FDCWD),
+                string_to_char_ptr("/tmp/mojo_fco_link"),
+                Int32(-1),
+                Int32(-1),
+                Int32(AT_SYMLINK_NOFOLLOW),
+            )
+        ),
+        0,
+        "the link itself is who is said, and the saying is answered",
+    )
+    set_errno(0)
+    assert_equal(
+        Int(
+            fchownat(
+                Int32(AT_FDCWD),
+                string_to_char_ptr("/tmp/mojo_fco_link"),
+                Int32(-1),
+                Int32(-1),
+                Int32(0),
+            )
+        ),
+        -1,
+        "said through, the saying looks for what the link leads to",
+    )
+    assert_equal(
+        Int(get_errno()), Int(ENOENT), "and is refused, it being nowhere"
+    )
+    _ = unlink(string_to_char_ptr("/tmp/mojo_fco_link"))
+    # who keeps what is left as it is, said with nothing to change
+    set_errno(0)
+    assert_equal(
+        Int(
+            fchownat(
+                Int32(AT_FDCWD),
+                string_to_char_ptr("/etc/hostname"),
+                Int32(-1),
+                Int32(-1),
+                Int32(0),
+            )
+        ),
+        0,
+        "said with nothing to change, the file answers",
+    )
+    assert_equal(Int(get_errno()), 0, "with no word of refusal")
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -2285,6 +2374,7 @@ def main() raises:
     test_the_file_keeping_said_as_something_beside()
     test_the_root_said_again()
     test_the_machine_said_its_name_again()
+    test_the_keeping_said_by_way_of_a_directory()
     print("test_unistd: ok")
 
 
