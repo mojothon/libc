@@ -468,6 +468,13 @@ All notable changes to this project are documented here. The format follows
   The word is GNU's own, which the page's saying of how many bindings one platform asks
   alone grows by one.
 
+- **`libc.signal` gains `sigset`.**
+  What standing before the saying was, coming back as the answer -- the action said for a
+  signal is what the saying makes it, and said again, the answer is what the last saying
+  left. A handler of one's own is out of reach, as for `signal`; what is reachable is the
+  two that are not functions. The word is System V's own, which the page's saying of how
+  many bindings one platform asks alone grows by one.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
