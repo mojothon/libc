@@ -602,6 +602,35 @@ def sethostname(name: c_ptr[UInt8], length: c_size_t) -> c_int:
     )
 
 
+def sethostid(id: c_long) -> c_int:
+    """Libc Linux `sethostid` function.
+
+        int sethostid(long id)
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/gethostid.3.html
+
+    Description:
+        What the asking says it is, as a number,
+        said again: the saying is written where
+        the asking of it later reads, and who may
+        say it is the tree's own keeping -- a
+        caller without the say is refused with
+        `errno` saying so. Said back where it
+        was, the number is what it was either
+        way. The word is Linux's own, and Darwin
+        has no call that says it.
+
+    Args:
+        id: The number the asking is said as.
+
+    Returns:
+        0 on success, or -1 on error with `errno`
+        set.
+    """
+    return external_call["sethostid", c_int, c_long](id)
+
+
 def get_current_dir_name() -> c_ptr[UInt8]:
     """Libc GNU `get_current_dir_name` function.
 

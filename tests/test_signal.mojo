@@ -34,6 +34,7 @@ from libc.signal import (
     sighold,
     sigignore,
     sigset,
+    siggetmask,
     siginterrupt,
     sigismember,
     sigpause,
@@ -889,6 +890,44 @@ def test_the_saying_comes_back_as_the_answer() raises:
         )
 
 
+def test_the_word_the_old_sayings_say() raises:
+    """`siggetmask` -- what stands between the
+    asking and the saying, as a word: the blocked
+    set said in the one machine word `sigblock` and
+    `sigsetmask` trade in, with one bit for each
+    signal. Said with nothing blocked, the word is
+    the empty word; said with a signal blocked, the
+    word gains the bit that signal stands for --
+    which the asking of it again proves, and the
+    asking said back to where it was undoes. The
+    word is the same what `sigprocmask` says of the
+    same set, said small.
+    """
+    comptime if not CompilationTarget.is_macos():
+        # said with nothing blocked: the empty word
+        assert_equal(
+            Int(siggetmask()), 0, "nothing stands between, said as a word"
+        )
+        # said with a signal blocked: the word gains the bit
+        var was = sigblock(Int32(1) << Int32(SIGUSR1 - 1))
+        assert_equal(Int(was), 0, "what stood before was the empty word")
+        assert_equal(
+            Int(siggetmask()),
+            Int(1) << Int(SIGUSR1 - 1),
+            "the word gains the bit the signal stands for",
+        )
+        # said back to where it was: the word comes off
+        var back = sigsetmask(was)
+        assert_equal(
+            Int(back),
+            Int(1) << Int(SIGUSR1 - 1),
+            "said back, the answer is what the saying between made",
+        )
+        assert_equal(
+            Int(siggetmask()), 0, "and the word is the empty word again"
+        )
+
+
 def main() raises:
     test_the_four_old_ones_hold_release_ignore_and_pause()
     test_sigaddset_round_trips_through_sigismember()
@@ -907,4 +946,5 @@ def main() raises:
     test_sigwait_takes_one_that_is_already_waiting()
     test_sigsuspend_swaps_in_a_mask_and_takes_what_was_waiting()
     test_the_saying_comes_back_as_the_answer()
+    test_the_word_the_old_sayings_say()
     print("signal ok")

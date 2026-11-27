@@ -757,6 +757,32 @@ def sigset(sig: Int32, disp: c_ptr[UInt8]) -> c_ptr[UInt8]:
     return external_call["sigset", c_ptr[UInt8], Int32, c_ptr[UInt8]](sig, disp)
 
 
+def siggetmask() -> Int32:
+    """Libc Linux `siggetmask` function (obsolete).
+
+        int siggetmask(void)
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sigblock.3.html
+
+    Description:
+        What stands between the asking and the
+        saying, as a word: the blocked set said in
+        the one machine word `sigblock` and
+        `sigsetmask` trade in, with one bit for
+        each signal. The word is the same the two
+        old sayings answer with, and what
+        `sigprocmask` says of the same set, said
+        small. `sigprocmask` is what to say now;
+        this is the word the old sayings keep
+        saying.
+
+    Returns:
+        The blocked set, as the one word it is.
+    """
+    return external_call["siggetmask", Int32]()
+
+
 def sigpause(sig: Int32) -> Int32:
     """Libc BSD `sigpause` function.
 

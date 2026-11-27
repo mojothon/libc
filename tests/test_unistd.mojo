@@ -20,6 +20,7 @@ from libc.constant import (
     AT_EMPTY_PATH,
     c_ulong,
     EPERM,
+    EACCES,
     UInt32,
     AT_FDCWD,
     ENOMEM,
@@ -115,6 +116,7 @@ from libc.unistd import (
     gethostid,
     gethostname,
     sethostname,
+    sethostid,
     fchownat,
     getlogin,
     getlogin_r,
@@ -2373,6 +2375,42 @@ def test_the_room_said_by_what_stands_around_it() raises:
         assert_equal(Int(chdir(string_to_char_ptr("/"))), 0, "and moves back")
 
 
+def test_the_number_said_where_it_was() raises:
+    """`sethostid` -- what the asking says it is,
+    as a number, said again: the saying is written
+    where the asking of it later reads, and who may
+    say it is the tree's own keeping. Said back
+    where it was, the number is what it was either
+    way -- which, where the asking may say it, the
+    asking of it after proves; and where the asking
+    may not, the refusal is what is said, the
+    number being what it was either way, which the
+    asking of it after proves too. The word is
+    Linux's own, and Darwin has no call that says
+    it.
+    """
+    comptime if not CompilationTarget.is_macos():
+        # what the asking says it is, as a number
+        var said = gethostid()
+        # said back where it was: kept where it may be said
+        var again = sethostid(said)
+        if again == 0:
+            assert_equal(
+                Int(gethostid()), Int(said), "the number is what it was"
+            )
+        else:
+            assert_equal(
+                Int(get_errno()),
+                Int(EACCES),
+                "who may say it is the tree's keeping",
+            )
+            assert_equal(
+                Int(gethostid()),
+                Int(said),
+                "and the number is what it was either way",
+            )
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -2433,6 +2471,7 @@ def main() raises:
     test_the_machine_said_its_name_again()
     test_the_keeping_said_by_way_of_a_directory()
     test_the_room_said_by_what_stands_around_it()
+    test_the_number_said_where_it_was()
     print("test_unistd: ok")
 
 
