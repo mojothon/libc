@@ -495,6 +495,13 @@ All notable changes to this project are documented here. The format follows
   hundred refusing, the four hundred taking back. The word is GNU's own, which the page's
   saying of how many bindings one platform asks alone grows by one.
 
+- **`libc.dirent` gains `ftw` and `nftw`.**
+  The tree, walked: for each thing the walking stands on, the saying the asking gave is
+  said with the name, the file's own keeping, and the kind -- `nftw` adding where the walk
+  stood and how deep. What the saying answers is what the walk brings back. The newer word
+  is the one to say now; both are POSIX's own, which the page's saying of how many
+  bindings one platform asks alone grows by two.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
