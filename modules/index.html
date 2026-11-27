@@ -803,7 +803,7 @@ the bottom.</p>
 <tr>
 <td><code>libc.unistd</code></td>
 <td><code>&lt;unistd.h&gt;</code></td>
-<td>229</td>
+<td>230</td>
 </tr>
 <tr>
 <td><code>libc.file</code></td>
@@ -1267,7 +1267,7 @@ pointed at whatever descriptor 1 holds. A child that points descriptor 1 at
 a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.</p>
-<p>1164 bindings are asked something, and the 3 that are not have a reason.
+<p>1165 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 <code>scripts/check-tests.py</code>, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.</p>
@@ -1445,6 +1445,11 @@ other platform's C library has no such call.</p>
   looked for under it, whatever stands above being no longer part of
   the view. What the asking has open stays open, which is what a jail
   is careful about. Both platforms say it.</li>
+<li><code>sethostname</code> is who the machine says it is, said again -- the name
+  the asking of a host comes back with is what the saying makes it.
+  Who may say it is the kernel's own keeping; a caller without it is
+  refused with <code>errno</code> saying so, and the name is what it was. Both
+  platforms say it.</li>
 <li><code>pipe2</code> is a pipe made with its flag word applied as it is
   made -- close-on-exec and non-blocking set before the
   descriptors exist to be raced for, which is the kernel's own
