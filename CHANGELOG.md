@@ -475,6 +475,13 @@ All notable changes to this project are documented here. The format follows
   two that are not functions. The word is System V's own, which the page's saying of how
   many bindings one platform asks alone grows by one.
 
+- **`libc.dirent` gains `getdents64`.**
+  What a directory keeps, read raw: the room the asking gives is filled with the saying the
+  directory keeps itself, entry after entry, each with the length that takes the asking to
+  the next -- which the asking walks and proves comes out even. `readdir` is what the
+  library makes of this; this is what the kernel says. The word is Linux's own, which the
+  page's saying of how many bindings one platform asks alone grows by one.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
