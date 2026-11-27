@@ -3,6 +3,7 @@ from std.testing import assert_equal, assert_true
 
 from libc.constant import EINTR, EINVAL, c_ptr
 from libc.errno import get_errno, set_errno
+from std.sys import CompilationTarget
 from libc.signal import (
     SA_RESTART,
     SIGALRM,
@@ -32,6 +33,7 @@ from libc.signal import (
     sigfillset,
     sighold,
     sigignore,
+    sigset,
     siginterrupt,
     sigismember,
     sigpause,
@@ -839,6 +841,54 @@ def test_the_four_old_ones_hold_release_ignore_and_pause() raises:
     status.unsafe_free()
 
 
+def test_the_saying_comes_back_as_the_answer() raises:
+    """`sigset` -- what standing before the saying
+    was, comes back as the answer: the action said
+    for a signal is what the saying makes it, and
+    the answer is the action that was there. Said
+    with the ignoring, the answer is how the signal
+    stood before, which is as the default; said
+    again, the answer is what the last saying left,
+    which is the ignoring; and said back to the
+    default, the answer is what the saying between
+    them made. A signal no kernel knows is refused
+    with `errno` saying so. The word is System V's
+    own, and Darwin has no call that says it.
+    """
+    comptime if not CompilationTarget.is_macos():
+        # said with the ignoring: the answer is how it stood
+        # SIG_IGN is 1 and SIG_DFL is 0, said as a pointer-sized
+        # word: the word is held in a slot and read out as a pointer
+        # SIG_IGN is 1, said as a pointer-sized word: the word
+        # itself is the value the saying reads
+        var ignore = c_ptr[UInt8](unsafe_from_address=Int(SIG_IGN))
+        # whatever stood before is the first answer, said back at the end
+        var was = sigset(Int32(SIGUSR1), ignore)
+        # said again: the answer is what the last saying left
+        var again = sigset(Int32(SIGUSR1), ignore)
+        assert_equal(Int(again), 1, "what the last saying left is the ignoring")
+        # said back to the default: the answer is the ignoring
+        var back = sigset(Int32(SIGUSR1), null_ptr[UInt8]())
+        assert_equal(
+            Int(back), 1, "said back, the answer is what the saying made"
+        )
+        # a signal no kernel knows
+        set_errno(0)
+        assert_equal(
+            Int(sigset(Int32(9999), ignore)),
+            -1,
+            "a signal no kernel knows is refused",
+        )
+        assert_equal(Int(get_errno()), Int(EINVAL), "with errno saying so")
+        # and what stood before is put back, which the asking agrees to
+        # the saying before the restore was the default the last
+        # saying left, and that is what the restore answers with
+        var restore = sigset(Int32(SIGUSR1), was)
+        assert_equal(
+            Int(restore), 0, "the saying before was the default, said away"
+        )
+
+
 def main() raises:
     test_the_four_old_ones_hold_release_ignore_and_pause()
     test_sigaddset_round_trips_through_sigismember()
@@ -856,4 +906,5 @@ def main() raises:
     test_signal_zero_asks_whether_a_group_is_there()
     test_sigwait_takes_one_that_is_already_waiting()
     test_sigsuspend_swaps_in_a_mask_and_takes_what_was_waiting()
+    test_the_saying_comes_back_as_the_answer()
     print("signal ok")

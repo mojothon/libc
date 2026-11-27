@@ -105,6 +105,7 @@ ASKED_ON_ONE_PLATFORM = {
     "strverscmp": "the numbers inside said as numbers, so versions sort the way versions do; GNU's own word, and Darwin has no call that says it",
     "setfsuid": "the user the file-keeping is said as, said with nothing to only ask who it is; GNU's own word, and Darwin has no call that says it",
     "get_current_dir_name": "what the asking's own room is said as now, in a room the saying makes and hands back; GNU's own word, and Darwin has no call that says it",
+    "sigset": "what standing before the saying was, comes back as the answer; System V's own word, and Darwin has no call that says it",
     "setfsgid": "the group the file-keeping is said as, said with nothing to only ask what it is; GNU's own word, and Darwin has no call that says it",
     "prlimit": "Linux's resource limits by process id; Darwin has setrlimit and no form of it that takes a pid",
     "sched_getaffinity": "the CPU mask is Linux's scheduler's idea; Darwin has no affinity mask to ask for",

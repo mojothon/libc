@@ -140,8 +140,10 @@ NOT_DECLARED_HERE = {
 RETURN_EXCEPTIONS = {
     # `signal` returns the handler that was there before, which is a pointer
     # to a function. Mojo has no type for one, so the binding returns its
-    # address instead.
+    # address instead. `sigset` says the same word, the System V saying
+    # of it.
     "signal",
+    "sigset",
 }
 
 # (symbol, argument position) pairs that pass something other than what C

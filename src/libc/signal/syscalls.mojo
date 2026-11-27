@@ -721,6 +721,42 @@ def sigignore(sig: Int32) -> Int32:
     return external_call["sigignore", Int32, Int32](sig)
 
 
+def sigset(sig: Int32, disp: c_ptr[UInt8]) -> c_ptr[UInt8]:
+    """Libc POSIX `sigset` function (System V).
+
+        sighandler_t sigset(int sig, sighandler_t disp)
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/sigset.3.html
+
+    Description:
+        What standing before the saying was, comes
+        back as the answer: the action said for a
+        signal -- ignored, or as the default -- is
+        what the saying makes it, and the answer is
+        the action that was there. Said again, the
+        answer is what the last saying left; said
+        back to how it was, the answer is what the
+        saying between them made. A signal no kernel
+        knows is refused with `errno` saying so. A
+        handler of one's own is out of reach, as for
+        `signal`: what is reachable is the two that
+        are not functions. The word is System V's
+        own, and Darwin has no call that says it.
+
+    Args:
+        sig: The signal, as a number: see `kill`.
+        disp: The action, as bytes, which in practice
+            means 0 for `SIG_DFL` or 1 for `SIG_IGN`
+            written as a pointer-sized value, a handler
+            of one's own being out of reach.
+
+    Returns:
+        The action that was there before, as bytes.
+    """
+    return external_call["sigset", c_ptr[UInt8], Int32, c_ptr[UInt8]](sig, disp)
+
+
 def sigpause(sig: Int32) -> Int32:
     """Libc BSD `sigpause` function.
 
