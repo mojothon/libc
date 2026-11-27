@@ -462,6 +462,12 @@ All notable changes to this project are documented here. The format follows
   without it is refused with `errno` saying so, and the name is what it was. Both
   platforms say it.
 
+- **`libc.unistd` gains `get_current_dir_name`.**
+  What the asking's own room of names is said as now -- the way `getcwd` says it, with the
+  room made for the saying and handed back, which is the asking's to take back with `free`.
+  The word is GNU's own, which the page's saying of how many bindings one platform asks
+  alone grows by one.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
