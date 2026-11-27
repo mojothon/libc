@@ -482,6 +482,13 @@ All notable changes to this project are documented here. The format follows
   library makes of this; this is what the kernel says. The word is Linux's own, which the
   page's saying of how many bindings one platform asks alone grows by one.
 
+- **`libc.signal` gains `siggetmask`, `libc.unistd` gains `sethostid`.**
+  What stands between the asking and the saying, said as the one machine word the old
+  sayings trade in; and what the asking says it is, as a number, said again -- the saying
+  written where the asking of it later reads, the number being what it was either way.
+  Both words are Linux's own, which the page's saying of how many bindings one platform
+  asks alone grows by two.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
