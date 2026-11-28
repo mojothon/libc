@@ -502,6 +502,13 @@ All notable changes to this project are documented here. The format follows
   is the one to say now; both are POSIX's own, which the page's saying of how many
   bindings one platform asks alone grows by two.
 
+- **`libc.signal` gains `sysv_signal`.**
+  What standing before the saying was, comes back as the answer: the round `signal` walks,
+  walked with the saying System V keeps -- a signal that comes in while its saying runs
+  sets the saying back to what stood before it. The word is GNU's own saying of System
+  V's saying, which the page's saying of how many bindings one platform asks alone grows
+  by one.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
