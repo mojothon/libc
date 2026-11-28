@@ -533,6 +533,11 @@ All notable changes to this project are documented here. The format follows
   this platform says it in the same room either way. The words are GNU's own, which the
   page's saying of how many bindings one platform asks alone grows by two.
 
+- **`libc.unistd` gains `fdatasync`.**
+  What the saying of a file wrote, said down as far as the data: the words the saying
+  said are down on the disk, and the saying of where the file is said to stand waits,
+  where `fsync` says both. The word is POSIX's own, and both platforms say it.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
