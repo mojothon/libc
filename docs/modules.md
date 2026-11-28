@@ -81,7 +81,7 @@ the bottom.
 | `libc.sys.io` | `<sys/io.h>` the ports of the machine | 2 |
 | `libc.errno` | `<errno.h>` | 6 |
 | `libc.pwd` | `<pwd.h>` | 18 |
-| `libc.termios` | `<termios.h>` how a terminal line is set | 57 |
+| `libc.termios` | `<termios.h>` how a terminal line is set | 60 |
 | `libc.tcp` | `<netinet/tcp.h>` the options a connection keeps | 4 |
 | `libc.sys.un` | `<sys/un.h>` an address that is a path | 4 |
 | `libc.sys.ipc` | `<sys/ipc.h>` keys for System V objects | 9 |
@@ -171,7 +171,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1181 bindings are asked something, and the 3 that are not have a reason.
+1183 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -414,6 +414,11 @@ other platform's C library has no such call.
 - `fdatasync` is what the saying of a file wrote, said down as far as the
   data: the words the saying said are down on the disk, and the saying of
   where the file is said to stand waits, where `fsync` says both.
+- `gtty` and `stty` are how a terminal line is set, said the way the old
+  sayings say it: the room the two old sayings of the line trade in, read
+  out of the line the asking names and said back to it. This machine's
+  word keeps the sayings and never answers them; `tcgetattr` and
+  `tcsetattr` are what to say now.
 - `sethostid` is what the asking says it is, as a number, said again:
   the saying is written where the asking of it later reads, and who may
   say it is the tree's own keeping. Said back where it was, the number

@@ -175,6 +175,15 @@ SAME_ANSWER = {
         "the same walk, and on this platform the file's own keeping is the same word "
         "either way it is said, so the walk answers the same by either saying"
     ),
+    "gtty->stty": (
+        "the same room said out of the line and said back to it, and this machine's "
+        "word keeps the saying and never answers it, so both sayings are refused the "
+        "same way"
+    ),
+    "stty->gtty": (
+        "the saying back of the same room the saying out of reads, and the refusal "
+        "this machine's word gives either saying is the same refusal"
+    ),
     "cfgetospeed->cfgetispeed": (
         "a terminal has one speed and not two: on glibc both functions read "
         "the same `CBAUD` bits of `c_cflag` -- a probe printing the flag at "

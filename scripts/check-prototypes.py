@@ -79,7 +79,7 @@ HEADERS = [
     "sys/auxv.h", "sys/random.h", "sys/sysinfo.h", "sys/types.h",
     "sys/uio.h", "sys/un.h", "sys/utsname.h", "sys/wait.h",
     "sys/xattr.h",
-    "syslog.h", "termios.h",
+    "sgtty.h", "syslog.h", "termios.h",
     "threads.h", "time.h", "uchar.h",     "ucontext.h", "ulimit.h", "unistd.h", "util.h", "utime.h", "utmp.h",
     "utmpx.h", "wchar.h", "wctype.h", "wordexp.h",
 ]

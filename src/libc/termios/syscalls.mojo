@@ -282,6 +282,81 @@ struct Termios:
         self._set_byte(TERMIOS_CC_OFFSET + at, to)
 
 
+# The word the old sayings say a terminal
+# line with: the room the two old
+# sayings of the line trade in. C
+# leaves the struct unnamed where the
+# words are said, so the room is said
+# here, as a word, and the asking of
+# it reads it out by the byte.
+struct Sgttyb(TrivialRegisterPassable):
+    var raw: UInt64
+
+    def __init__(out self):
+        self.raw = 0
+
+
+def gtty(fd: Int32, params: c_ptr[Sgttyb]) -> Int32:
+    """Libc POSIX-archaic `gtty` function.
+
+        int gtty(int fd, struct sgttyb *params)
+
+    Reference:
+        https://www.gnu.org/software/libc/manual/html_node/Terminal-Devices.html
+
+    Description:
+        How a terminal line is set, said the
+        way the old sayings say it: the
+        room the two old sayings of the
+        line trade in, read out of the line
+        the asking names. A number that is
+        no line of the kind the room is
+        about is refused, and `errno` says
+        so. `tcgetattr` is what to say
+        now; this is the word the old
+        sayings keep saying.
+
+    Args:
+        fd: The line, said by its number.
+        params: Where the room is said.
+
+    Returns:
+        0 where the room is said, or -1 on
+        failure with `errno` set.
+    """
+    return external_call["gtty", Int32, Int32, c_ptr[Sgttyb]](fd, params)
+
+
+def stty(fd: Int32, params: c_ptr[Sgttyb]) -> Int32:
+    """Libc POSIX-archaic `stty` function.
+
+        int stty(int fd, const struct sgttyb *params)
+
+    Reference:
+        https://www.gnu.org/software/libc/manual/html_node/Terminal-Devices.html
+
+    Description:
+        How a terminal line is set, said
+        back the way the old sayings say
+        it: the room said to the line the
+        asking names. A number that is no
+        line of the kind the room is about
+        is refused, and `errno` says so.
+        `tcsetattr` is what to say now;
+        this is the word the old sayings
+        keep saying.
+
+    Args:
+        fd: The line, said by its number.
+        params: The room to say.
+
+    Returns:
+        0 where the room is said, or -1 on
+        failure with `errno` set.
+    """
+    return external_call["stty", Int32, Int32, c_ptr[Sgttyb]](fd, params)
+
+
 def tcgetattr(fildes: c_int, termios_p: c_ptr[Termios]) -> c_int:
     """C library <termios.h> function `tcgetattr`.
 

@@ -28,6 +28,9 @@ from libc.termios import (
     TCSADRAIN,
     TCSAFLUSH,
     TCSANOW,
+    gtty,
+    stty,
+    Sgttyb,
     TCIFLUSH,
     TCIOFF,
     TCIOFLUSH,
@@ -519,6 +522,31 @@ def test_the_calls_that_need_a_real_line() raises:
     _ = close(master)
 
 
+def test_the_old_sayings_of_the_line() raises:
+    """`gtty` and `stty` -- how a terminal line is
+    set, said the way the old sayings say it: the
+    room the two old sayings of the line trade in,
+    read out of the line the asking names, and said
+    back to it. On this machine's word the old
+    saying is kept but never answered -- every
+    asking is refused, and `errno` says the word
+    has no saying here. The word is the one the
+    old sayings keep saying; `tcgetattr` and
+    `tcsetattr` are what to say now.
+    """
+    var room = unsafe_alloc[Sgttyb](1)
+    room.unsafe_offset(0)[] = Sgttyb()
+    set_errno(0)
+    assert_equal(Int(gtty(0, room)), -1, "the old saying is refused")
+    var why = get_errno()
+    assert_true(why > 0, "and errno says why")
+    set_errno(0)
+    assert_equal(Int(stty(0, room)), -1, "the saying back is refused too")
+    why = get_errno()
+    assert_true(why > 0, "and errno says so here as well")
+    room.unsafe_free()
+
+
 def main() raises:
     test_cfsetospeed_then_cfgetospeed()
     test_cfsetispeed_then_cfgetispeed()
@@ -529,4 +557,6 @@ def main() raises:
     test_the_queue_and_action_constants_are_which_they_say()
     test_the_settings_accessors_against_the_line_itself()
     test_the_calls_that_need_a_real_line()
+    test_the_old_sayings_of_the_line()
+    test_the_old_sayings_of_the_line()
     print("test_termios: ok")
