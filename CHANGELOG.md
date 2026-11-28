@@ -509,6 +509,12 @@ All notable changes to this project are documented here. The format follows
   V's saying, which the page's saying of how many bindings one platform asks alone grows
   by one.
 
+- **`libc.dirent` gains `ftw64` and `nftw64`.**
+  The same walks `ftw` and `nftw` walk, said with the file's own keeping as the word the
+  wide room says it in, which on this platform is the word the tree's own keeping says.
+  The words are GNU's own, which the page's saying of how many bindings one platform asks
+  alone grows by two.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
