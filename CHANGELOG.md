@@ -515,6 +515,13 @@ All notable changes to this project are documented here. The format follows
   The words are GNU's own, which the page's saying of how many bindings one platform asks
   alone grows by two.
 
+- **`libc.unistd` gains `ulimit`.**
+  What the asking says a name it says may keep, as a count: the largest word a file may
+  be said in, asked with the command that asks and changed with the command that says the
+  new count. `setrlimit` is what to say now; this is the older word, which says of one
+  kind only. The word is POSIX's own, which the page's saying of how many bindings one
+  platform asks alone grows by one.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
