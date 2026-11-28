@@ -156,6 +156,12 @@ ARGUMENT_EXCEPTIONS = {
     # instead, which is the same eight bytes in the same integer register
     # on every ABI this package targets.
     ("fclose", 1),
+    # `getrlimit64` and `setrlimit64` say the wide room, whose
+    # `struct rlimit64` is the same room the tree's own `Rlimit`
+    # spells on every platform here, so the word either way says
+    # the same eight bytes in the same two fields.
+    ("getrlimit64", 2),
+    ("setrlimit64", 2),
 }
 
 
@@ -952,7 +958,7 @@ def main() -> int:
                 )
 
             named = struct_mismatch(inner_c, inner_mojo, structs)
-            if named:
+            if named and (symbol, place) not in ARGUMENT_EXCEPTIONS:
                 problems.append(
                     f"{where} with {mojo_param} as argument {place}, where C"
                     f" takes {c_param}, which points at `struct {named[0]}`"

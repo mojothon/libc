@@ -41,7 +41,7 @@ the bottom.
 | `libc.dirent` | `<dirent.h>` | 31 |
 | `libc.sys.wait` | `<sys/wait.h>` | 25 |
 | `libc.inttypes` | `<inttypes.h>` | 7 |
-| `libc.sys.resource` | `<sys/resource.h>` | 15 |
+| `libc.sys.resource` | `<sys/resource.h>` | 17 |
 | `libc.network` | `<arpa/inet.h>` byte order and address conversion | 16 |
 | `libc.netdb` | `<netdb.h>` name and service lookup | 66 |
 | `libc.netif` | `<net/if.h>` interface names and numbers | 9 |
@@ -171,7 +171,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1178 bindings are asked something, and the 3 that are not have a reason.
+1180 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -407,6 +407,10 @@ other platform's C library has no such call.
   place says to every holder but itself that the line is gone, and what
   may say it is the tree's own keeping. The word is Linux's own, and
   Darwin has no call that says it.
+- `getrlimit64` and `setrlimit64` are the room between, said with the two
+  counts it holds, said in the wide word, which on this platform says it
+  in the same room either way. The words are GNU's own, and Darwin has no
+  call that says either.
 - `sethostid` is what the asking says it is, as a number, said again:
   the saying is written where the asking of it later reads, and who may
   say it is the tree's own keeping. Said back where it was, the number
@@ -420,7 +424,7 @@ other platform's C library has no such call.
   of which eventfd's counter is the other half, and Darwin answers the same
   need with kqueue, which is a different call with different answers.
 
-Linux asks 74 bindings that Darwin passes over, and Darwin 0 that Linux
+Linux asks 76 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked

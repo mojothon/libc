@@ -162,6 +162,15 @@ SAME_ANSWER = {
         "the saying where they part -- the reset that System V keeps -- happens only "
         "when a handler is said, which no caller here can make"
     ),
+    "getrlimit64->getrlimit": (
+        "the same room, and on this platform the wide word says it in the same two "
+        "fields, so the counts read out the same by either saying"
+    ),
+    "setrlimit64->getrlimit": (
+        "the wide word says the same room the ordinary reading says, and the room "
+        "said back where it was stands as it stood, which is the answer the reading "
+        "of it after proves either way"
+    ),
     "ftw64->ftw": (
         "the same walk, and on this platform the file's own keeping is the same word "
         "either way it is said, so the walk answers the same by either saying"

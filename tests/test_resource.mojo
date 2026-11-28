@@ -10,10 +10,12 @@ from libc.sys.resource import (
     Rlimit,
     getpriority,
     getrlimit,
+    getrlimit64,
     nice,
     prlimit,
     setpriority,
     setrlimit,
+    setrlimit64,
 )
 from libc.utils import null_ptr
 
@@ -145,9 +147,45 @@ def test_setrlimit_asked_for_a_limit_one_lower() raises:
     after.unsafe_free()
 
 
+def test_the_wide_room_between() raises:
+    """`getrlimit64` and `setrlimit64` -- the same
+    room the words `getrlimit` and `setrlimit` say,
+    said in the wide word, which on this platform
+    says it in the same room either way. The limit
+    is read through the wide word, said back where
+    it was, and read again to see the two words say
+    the same. The words are GNU's own, and Darwin
+    has no call that says either.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var here = unsafe_alloc[Rlimit](1)
+        here.unsafe_offset(0)[] = Rlimit()
+        assert_equal(
+            getrlimit64(RLIMIT_NOFILE, here), 0, "the wide word reads the room"
+        )
+        # the same room read the ordinary way: the two words say the same
+        var same = unsafe_alloc[Rlimit](1)
+        same.unsafe_offset(0)[] = Rlimit()
+        assert_equal(
+            getrlimit(RLIMIT_NOFILE, same), 0, "the ordinary word reads it too"
+        )
+        assert_equal(
+            Int(here.unsafe_offset(0)[].rlim_cur),
+            Int(same.unsafe_offset(0)[].rlim_cur),
+            "and the two words say the same room",
+        )
+        # said back where it was, the room stands as it stood
+        assert_equal(
+            setrlimit64(RLIMIT_NOFILE, here), 0, "and said back where it was"
+        )
+        here.unsafe_free()
+        same.unsafe_free()
+
+
 def main() raises:
     test_getpriority_and_nice_agree_on_who_the_caller_is()
     test_setpriority_can_only_be_moved_this_way()
     test_a_which_that_is_not_one_of_the_three_is_refused()
     test_setrlimit_asked_for_a_limit_one_lower()
+    test_the_wide_room_between()
     print("resource ok")

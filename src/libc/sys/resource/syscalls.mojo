@@ -88,6 +88,71 @@ def setrlimit(resource: Int32, rlimit: c_ptr[Rlimit]) -> Int32:
     )
 
 
+def getrlimit64(resource: Int32, rlimit: c_ptr[Rlimit]) -> Int32:
+    """Libc GNU `getrlimit64` function.
+
+        int getrlimit64(int resource, struct rlimit64 *rlimit)
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/getrlimit.2.html
+
+    Description:
+        What a name may keep, said with the two
+        counts the room between holds -- the
+        most and the least the asking says of
+        it -- read from the same room the
+        word `getrlimit` reads, the wide word
+        saying it in the room this platform
+        says it in either way. The word is
+        GNU's own, and Darwin has no call
+        that says it.
+
+    Args:
+        resource: Which room is being asked
+            about: see the names of the limits.
+        rlimit: Where the two counts are said,
+            the least first and the most second.
+
+    Returns:
+        0 where the counts are said, or -1 on
+        failure with `errno` set.
+    """
+    return external_call["getrlimit64", Int32, Int32, c_ptr[Rlimit]](
+        resource, rlimit
+    )
+
+
+def setrlimit64(resource: Int32, rlimit: c_ptr[Rlimit]) -> Int32:
+    """Libc GNU `setrlimit64` function.
+
+        int setrlimit64(int resource, const struct rlimit64 *rlimit)
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/setrlimit.2.html
+
+    Description:
+        What a name may keep, said back to the
+        two counts the asking gives -- the same
+        room the word `setrlimit` says, said in
+        the wide word, which says it in the
+        room this platform says it in either
+        way. The word is GNU's own, and Darwin
+        has no call that says it.
+
+    Args:
+        resource: Which room is being said.
+        rlimit: The two counts, the least first
+            and the most second.
+
+    Returns:
+        0 where the counts are said, or -1 on
+        failure with `errno` set.
+    """
+    return external_call["setrlimit64", Int32, Int32, c_ptr[Rlimit]](
+        resource, rlimit
+    )
+
+
 def prlimit(
     pid: Int32,
     resource: Int32,
