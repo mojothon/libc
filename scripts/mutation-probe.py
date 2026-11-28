@@ -157,6 +157,11 @@ SAME_ANSWER = {
         "saying where they part -- a handler of one's own -- is one no caller here can "
         "make, so the saying of the two that are not functions is told the same by either"
     ),
+    "sysv_signal->signal": (
+        "GNU's saying of System V's saying walks the same round `signal` walks, and "
+        "the saying where they part -- the reset that System V keeps -- happens only "
+        "when a handler is said, which no caller here can make"
+    ),
     "cfgetospeed->cfgetispeed": (
         "a terminal has one speed and not two: on glibc both functions read "
         "the same `CBAUD` bits of `c_cflag` -- a probe printing the flag at "

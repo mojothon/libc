@@ -757,6 +757,44 @@ def sigset(sig: Int32, disp: c_ptr[UInt8]) -> c_ptr[UInt8]:
     return external_call["sigset", c_ptr[UInt8], Int32, c_ptr[UInt8]](sig, disp)
 
 
+def sysv_signal(sig: Int32, disp: c_ptr[UInt8]) -> c_ptr[UInt8]:
+    """Libc GNU `sysv_signal` function.
+
+        sighandler_t sysv_signal(int sig, sighandler_t handler)
+
+    Reference:
+        https://www.gnu.org/software/libc/manual/html_node/Basic-Signal-Handling.html
+
+    Description:
+        What standing before the saying was,
+        comes back as the answer -- the same
+        round `signal` walks, walked with the
+        saying System V keeps: a signal that
+        comes in while its saying runs sets the
+        saying back to what stood before it,
+        which is to say, a handler of one's own
+        is said once, and what was standing
+        before is what stands after. As with
+        `sigset`, what is reachable is the two
+        that are not functions. The word is
+        GNU's own saying of System V's saying,
+        and Darwin has no call that says it.
+
+    Args:
+        sig: The signal, as a number: see `kill`.
+        disp: The action, as bytes, which in practice
+            means 0 for `SIG_DFL` or 1 for `SIG_IGN`
+            written as a pointer-sized value, a handler
+            of one's own being out of reach.
+
+    Returns:
+        The action that was there before, as bytes.
+    """
+    return external_call["sysv_signal", c_ptr[UInt8], Int32, c_ptr[UInt8]](
+        sig, disp
+    )
+
+
 def siggetmask() -> Int32:
     """Libc Linux `siggetmask` function (obsolete).
 

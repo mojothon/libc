@@ -35,6 +35,7 @@ from libc.signal import (
     sigignore,
     sigset,
     siggetmask,
+    sysv_signal,
     siginterrupt,
     sigismember,
     sigpause,
@@ -928,6 +929,43 @@ def test_the_word_the_old_sayings_say() raises:
         )
 
 
+def test_the_system_five_saying() raises:
+    """`sysv_signal` -- what standing before the
+    saying was, comes back as the answer, the
+    same round `sigset` walks, walked with the
+    saying System V keeps: the saying is said,
+    what stood before comes back, said again the
+    answer is what the last saying left, said
+    back to how it was the round is undone. A
+    signal no kernel knows is refused, and the
+    round stands as it stood. The word is GNU's
+    own saying of System V's saying, and Darwin
+    has no call that says it.
+    """
+    comptime if not CompilationTarget.is_macos():
+        var ignore = c_ptr[UInt8](unsafe_from_address=Int(SIG_IGN))
+        var dfl = c_ptr[UInt8](unsafe_from_address=Int(SIG_DFL))
+        # what stood before is what comes back -- said here without
+        # saying how it stood, for whatever the runtime stood here
+        var was = sysv_signal(Int32(SIGUSR1), ignore)
+        # said again, the answer is what the last saying left
+        var again = sysv_signal(Int32(SIGUSR1), ignore)
+        assert_equal(Int(again), 1, "the ignoring came back")
+        # said back to how it was: the answer is the ignoring that stood
+        var back = sysv_signal(Int32(SIGUSR1), was)
+        assert_equal(
+            Int(back), 1, "saying the old answer back answers the ignoring"
+        )
+        # a signal no kernel knows is refused, and the round stands as it stood
+        set_errno(0)
+        var refused = sysv_signal(Int32(9999), dfl)
+        assert_equal(get_errno(), EINVAL, "the refusal leaves errno saying why")
+        var after = sysv_signal(Int32(SIGUSR1), dfl)
+        assert_equal(
+            Int(after), Int(was), "the refusal left the saying as it stood"
+        )
+
+
 def main() raises:
     test_the_four_old_ones_hold_release_ignore_and_pause()
     test_sigaddset_round_trips_through_sigismember()
@@ -947,4 +985,5 @@ def main() raises:
     test_sigsuspend_swaps_in_a_mask_and_takes_what_was_waiting()
     test_the_saying_comes_back_as_the_answer()
     test_the_word_the_old_sayings_say()
+    test_the_system_five_saying()
     print("signal ok")

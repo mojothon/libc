@@ -144,6 +144,7 @@ RETURN_EXCEPTIONS = {
     # of it.
     "signal",
     "sigset",
+    "sysv_signal",
 }
 
 # (symbol, argument position) pairs that pass something other than what C

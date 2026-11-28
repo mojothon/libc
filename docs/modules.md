@@ -33,7 +33,7 @@ the bottom.
 | `libc.stdio` | `<stdio.h>` output, buffering, pipes | 47 |
 | `libc.complex` | `<complex.h>` | 46 |
 | `libc.sched` | `<sched.h>` | 17 |
-| `libc.signal` | `<signal.h>` an action, and a handler as its number | 69 |
+| `libc.signal` | `<signal.h>` an action, and a handler as its number | 70 |
 | `libc.spawn` | `<spawn.h>` start a process without fork | 25 |
 | `libc.locale` | `<locale.h>` | 23 |
 | `libc.sys.epoll` | `<sys/epoll.h>` | 9 |
@@ -171,7 +171,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1173 bindings are asked something, and the 3 that are not have a reason.
+1174 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -388,6 +388,11 @@ other platform's C library has no such call.
   word: the blocked set said in the one machine word the old sayings
   trade in, with one bit for each signal. `sigprocmask` is what to say
   now; this is the word the old sayings keep saying.
+- `sysv_signal` is what standing before the saying was, comes back as the
+  answer, the round `signal` walks, walked with the saying System V keeps:
+  a signal that comes in while its saying runs sets the saying back to
+  what stood before it. The word is GNU's own saying of System V's
+  saying, and Darwin has no call that says it.
 - `sethostid` is what the asking says it is, as a number, said again:
   the saying is written where the asking of it later reads, and who may
   say it is the tree's own keeping. Said back where it was, the number
@@ -401,7 +406,7 @@ other platform's C library has no such call.
   of which eventfd's counter is the other half, and Darwin answers the same
   need with kqueue, which is a different call with different answers.
 
-Linux asks 69 bindings that Darwin passes over, and Darwin 0 that Linux
+Linux asks 70 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked
