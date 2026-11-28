@@ -602,6 +602,39 @@ def sethostname(name: c_ptr[UInt8], length: c_size_t) -> c_int:
     )
 
 
+def ulimit(cmd: Int32, newlimit: c_long) -> c_long:
+    """Libc POSIX `ulimit` function.
+
+        long ulimit(int cmd, long newlimit)
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/ulimit.3.html
+
+    Description:
+        What the asking says a name it says may
+        keep, as a count: the largest word a
+        file may be said in, asked with the
+        command that asks and changed with the
+        command that says the new count, and
+        the answer is what the count is either
+        way. A command no saying knows is
+        refused, and `errno` says why. `setrlimit`
+        is what to say now; this is the older
+        word, which says of one kind only. The
+        word is POSIX's own, and Darwin has no
+        call that says it.
+
+    Args:
+        cmd: What is being asked: 1 to ask, 2 to say.
+        newlimit: The new count, where the command says.
+
+    Returns:
+        The count as it is after the asking, or
+        -1 on failure with `errno` set.
+    """
+    return external_call["ulimit", c_long, Int32, c_long](cmd, newlimit)
+
+
 def sethostid(id: c_long) -> c_int:
     """Libc Linux `sethostid` function.
 

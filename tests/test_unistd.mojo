@@ -21,6 +21,7 @@ from libc.constant import (
     c_ulong,
     EPERM,
     EACCES,
+    EINVAL,
     UInt32,
     AT_FDCWD,
     ENOMEM,
@@ -117,6 +118,7 @@ from libc.unistd import (
     gethostname,
     sethostname,
     sethostid,
+    ulimit,
     fchownat,
     getlogin,
     getlogin_r,
@@ -2411,6 +2413,37 @@ def test_the_number_said_where_it_was() raises:
             )
 
 
+def test_the_word_a_file_may_be_said_in() raises:
+    """`ulimit` -- what the asking says a name
+    it says may keep, as a count: the largest
+    word a file may be said in, asked with the
+    command that asks and changed with the
+    command that says the new count, the
+    answer being what the count is either way.
+    Said back to where it was, the count is
+    what it was, which the asking of it after
+    proves. A command no saying knows is
+    refused, and `errno` says why. The word is
+    POSIX's own, and Darwin has no call that
+    says it.
+    """
+    comptime if not CompilationTarget.is_macos():
+        # the asking: what the count is
+        var was = ulimit(1, 0)
+        assert_true(was > 0, "the largest word a file may be said in is asked")
+        # said back to where it was: the answer is the new count
+        var said = ulimit(2, was)
+        assert_equal(Int(said), Int(was), "the count said back is what it was")
+        # the asking of it after proves it stands as it stood
+        var again = ulimit(1, 0)
+        assert_equal(Int(again), Int(was), "the count stands as it stood")
+        # a command no saying knows is refused
+        set_errno(0)
+        var refused = ulimit(99, 1)
+        assert_equal(Int(refused), -1, "the refusal is said in the answer")
+        assert_equal(get_errno(), EINVAL, "errno says why")
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -2472,6 +2505,7 @@ def main() raises:
     test_the_keeping_said_by_way_of_a_directory()
     test_the_room_said_by_what_stands_around_it()
     test_the_number_said_where_it_was()
+    test_the_word_a_file_may_be_said_in()
     print("test_unistd: ok")
 
 

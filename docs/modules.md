@@ -10,7 +10,7 @@ the bottom.
 | `libc.stdlib` | `<stdlib.h>` | 97 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.limits` | `<limits.h>` the widths of the integer types, and what a process may have | 24 |
-| `libc.unistd` | `<unistd.h>` | 232 |
+| `libc.unistd` | `<unistd.h>` | 233 |
 | `libc.file` | `<stdio.h>` file operations | 39 |
 | `libc.ctype` | `<ctype.h>` | 30 |
 | `libc.sys.socket` | `<sys/socket.h>` | 53 |
@@ -171,7 +171,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1176 bindings are asked something, and the 3 that are not have a reason.
+1177 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -397,6 +397,12 @@ other platform's C library has no such call.
   with the file's own keeping as the word the wide room says it in, which
   on this platform is the word the tree's own keeping says. The words are
   GNU's own, and Darwin has no call that says either.
+- `ulimit` is what the asking says a name it says may keep, as a count:
+  the largest word a file may be said in, asked with the command that asks
+  and changed with the command that says the new count, the answer being
+  what the count is either way. `setrlimit` is what to say now; this is
+  the older word, which says of one kind only. The word is POSIX's own,
+  and Darwin has no call that says it.
 - `sethostid` is what the asking says it is, as a number, said again:
   the saying is written where the asking of it later reads, and who may
   say it is the tree's own keeping. Said back where it was, the number
@@ -410,7 +416,7 @@ other platform's C library has no such call.
   of which eventfd's counter is the other half, and Darwin answers the same
   need with kqueue, which is a different call with different answers.
 
-Linux asks 72 bindings that Darwin passes over, and Darwin 0 that Linux
+Linux asks 73 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked
