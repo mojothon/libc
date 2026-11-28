@@ -111,6 +111,8 @@ ASKED_ON_ONE_PLATFORM = {
     "dysize": "how many days the saying of a year keeps, with the three turns to which years are said long; GNU's own word, and Darwin has no call that says it",
     "ftw": "the tree, walked, with the saying told only what it stood on; the older word, and Darwin has no call that says it",
     "sysv_signal": "what standing before the saying was, comes back as the answer, said as System V says it; GNU's word, and Darwin has no call that says it",
+    "ftw64": "the tree, walked, said with the keeping the wide room says it in; GNU's word, and Darwin has no call that says it",
+    "nftw64": "the tree, walked with where it stood, said in the wide room's word; GNU's word, and Darwin has no call that says it",
     "nftw": "the tree, walked, with the walk said where it stood and how deep; the newer word, and Darwin has no call that says it",
     "sethostid": "what the asking says it is, as a number, said again; Linux's own word, and Darwin has no call that says it",
     "setfsgid": "the group the file-keeping is said as, said with nothing to only ask what it is; GNU's own word, and Darwin has no call that says it",

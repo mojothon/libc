@@ -162,6 +162,10 @@ SAME_ANSWER = {
         "the saying where they part -- the reset that System V keeps -- happens only "
         "when a handler is said, which no caller here can make"
     ),
+    "ftw64->ftw": (
+        "the same walk, and on this platform the file's own keeping is the same word "
+        "either way it is said, so the walk answers the same by either saying"
+    ),
     "cfgetospeed->cfgetispeed": (
         "a terminal has one speed and not two: on glibc both functions read "
         "the same `CBAUD` bits of `c_cflag` -- a probe printing the flag at "
@@ -263,6 +267,10 @@ SAME_ORDER = {
         "the depth and the flags say how many doors the walking keeps open and how it "
         "walks, and the saying of a tree that fits in one hand holds at the numbers the "
         "asking gives, where either saying of the two is the same walk"
+    ),
+    "nftw64:depth <-> flags": (
+        "the same walk in the wide room's word, and the same two sayings that hold at "
+        "the numbers the asking gives"
     ),
     "hypotf:x <-> y": (
         "the float twin of `hypot`, and a sum of squares does not remember "

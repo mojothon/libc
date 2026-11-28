@@ -567,6 +567,89 @@ def nftw(
     ](path, say, depth, flags)
 
 
+def ftw64(
+    path: c_ptr[UInt8],
+    say: def(c_ptr[UInt8], c_ptr[Stat], Int32) thin -> Int32,
+    depth: Int32,
+) -> Int32:
+    """Libc GNU `ftw64` function.
+
+        int ftw64(const char *path, int (*fn)(const char *, const struct stat64 *, int), int depth)
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/ftw.3.html
+
+    Description:
+        The same walk `ftw` walks, said with the
+        file's own keeping as the word the wide
+        room says it in, which on this platform
+        is the word the tree's own keeping says.
+        The word is GNU's own, and Darwin has no
+        call that says it.
+
+    Args:
+        path: The tree, said by its root.
+        say: The saying, said once per thing stood on.
+        depth: How many the walking keeps open.
+
+    Returns:
+        0 where the walk was walked whole, the
+        saying's answer where it said to stop, or
+        -1 where the walking could not go on.
+    """
+    return external_call[
+        "ftw64",
+        Int32,
+        c_ptr[UInt8],
+        def(c_ptr[UInt8], c_ptr[Stat], Int32) thin -> Int32,
+        Int32,
+    ](path, say, depth)
+
+
+def nftw64(
+    path: c_ptr[UInt8],
+    say: def(c_ptr[UInt8], c_ptr[Stat], Int32, c_ptr[FTW]) thin -> Int32,
+    depth: Int32,
+    flags: Int32,
+) -> Int32:
+    """Libc GNU `nftw64` function.
+
+        int nftw64(const char *path, int (*fn)(const char *, const struct stat64 *, int, struct FTW *), int depth, int flags)
+
+    Reference:
+        https://man7.org/linux/man-pages/man3/nftw.3.html
+
+    Description:
+        The same walk `nftw` walks, said with the
+        file's own keeping as the word the wide
+        room says it in, which on this platform
+        is the word the tree's own keeping says:
+        the name, the keeping, the kind, and where
+        the walk stood and how deep. The word is
+        GNU's own, and Darwin has no call that
+        says it.
+
+    Args:
+        path: The tree, said by its root.
+        say: The saying, said once per thing stood on.
+        depth: How many the walking keeps open.
+        flags: How the walking is told to walk.
+
+    Returns:
+        0 where the walk was walked whole, the
+        saying's answer where it said to stop, or
+        -1 where the walking could not go on.
+    """
+    return external_call[
+        "nftw64",
+        Int32,
+        c_ptr[UInt8],
+        def(c_ptr[UInt8], c_ptr[Stat], Int32, c_ptr[FTW]) thin -> Int32,
+        Int32,
+        Int32,
+    ](path, say, depth, flags)
+
+
 def getdents64(fd: Int32, buf: c_ptr[UInt8], count: UInt64) -> Int64:
     """Libc Linux `getdents64` function.
 

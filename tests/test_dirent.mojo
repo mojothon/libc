@@ -9,7 +9,9 @@ from libc.fcntl import O_CREAT, O_RDONLY, O_TRUNC, O_WRONLY, O_RDWR, O_DIRECTORY
 from libc.dirent import (
     DT_DIR,
     getdents64,
+    ftw64,
     ftw,
+    nftw64,
     nftw,
     FTW_F,
     FTW_D,
@@ -528,6 +530,66 @@ def test_the_tree_walked() raises:
         _ = rmdir(string_to_char_ptr("/tmp/mojo_ftw/sub"))
         _ = rmdir(string_to_char_ptr("/tmp/mojo_ftw"))
 
+
+
+
+def stop_at_the_deep_name_wide(
+    path: c_ptr[UInt8], about: c_ptr[Stat], kind: Int32, where: c_ptr[FTW]
+) -> Int32:
+    if strcmp(path, string_to_char_ptr("/tmp/mojo_ftw64/sub/beta")) == 0:
+        if Int(where.unsafe_offset(0)[].level) == 2:
+            return 42
+        return 7
+    return 0
+
+
+def stop_at_the_root_name_wide(
+    path: c_ptr[UInt8], about: c_ptr[Stat], kind: Int32
+) -> Int32:
+    if strcmp(path, string_to_char_ptr("/tmp/mojo_ftw64/alpha")) == 0:
+        return 42
+    return 0
+
+
+def test_the_wide_room_walk() raises:
+    """`ftw64` and `nftw64` -- the same walk
+    `ftw` and `nftw` walk, said with the file's
+    own keeping as the word the wide room says
+    it in, which on this platform is the word
+    the tree's own keeping says. The asking of
+    a tree of its own proves the walk by the
+    answers, the same way: a saying that stops
+    at the name at the root, and one that stops
+    at the name two levels down. The words are
+    GNU's own, and Darwin has no call that says
+    either.
+    """
+    comptime if not CompilationTarget.is_macos():
+        _ = mkdir(string_to_char_ptr("/tmp/mojo_ftw64"), Int32(0o700))
+        _ = mkdir(string_to_char_ptr("/tmp/mojo_ftw64/sub"), Int32(0o700))
+        var a = open(string_to_char_ptr("/tmp/mojo_ftw64/alpha"), O_CREAT | O_RDWR, 0o600)
+        assert_true(a >= 0, "a name said at the root")
+        _ = close(a)
+        var b = open(string_to_char_ptr("/tmp/mojo_ftw64/sub/beta"), O_CREAT | O_RDWR, 0o600)
+        assert_true(b >= 0, "a name said into the room")
+        _ = close(b)
+        # the newer word, said in the wide room's word
+        assert_equal(
+            Int(nftw64(string_to_char_ptr("/tmp/mojo_ftw64"), stop_at_the_deep_name_wide, 8, 0)),
+            42,
+            "the wide room's word walks the same walk and stands two deep",
+        )
+        # the older word, said the same way
+        assert_equal(
+            Int(ftw64(string_to_char_ptr("/tmp/mojo_ftw64"), stop_at_the_root_name_wide, 8)),
+            42,
+            "the older word walks the same walk and answers what it is told",
+        )
+        _ = unlink(string_to_char_ptr("/tmp/mojo_ftw64/alpha"))
+        _ = unlink(string_to_char_ptr("/tmp/mojo_ftw64/sub/beta"))
+        _ = rmdir(string_to_char_ptr("/tmp/mojo_ftw64/sub"))
+        _ = rmdir(string_to_char_ptr("/tmp/mojo_ftw64"))
+
 def main() raises:
     test_opendir_readdir()
     test_dirfd()
@@ -540,5 +602,6 @@ def main() raises:
     test_the_type_of_each_entry_and_the_room_its_record_takes()
     test_what_the_directory_says_raw()
     test_the_tree_walked()
+    test_the_wide_room_walk()
     test_the_tree_walked()
     print("test_dirent: ok")
