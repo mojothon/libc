@@ -105,6 +105,7 @@ from libc.unistd import (
     fork,
     fpathconf,
     fsync,
+    fdatasync,
     ftruncate,
     getcwd,
     brk,
@@ -2466,6 +2467,34 @@ def test_the_talking_place_hung_up() raises:
         assert_equal(get_errno(), EPERM, "errno says the saying is not ours")
 
 
+def test_what_the_saying_wrote_said_down() raises:
+    """`fdatasync` -- what the saying of a file
+    wrote, said down as far as the data: the
+    words the saying said are down on the
+    disk, and the saying of where the file is
+    said to stand waits, where `fsync` says
+    both. A saying that fits in one hand asks
+    for the data and reads the answer that
+    says it is there, and asks of a number
+    that is no file, which is refused with
+    `errno` saying so.
+    """
+    var path = string_to_char_ptr("/tmp/mojo_fdatasync")
+    _ = unlink(path)
+    var fd = open_with_mode(path, O_CREAT | O_RDWR, 0o644)
+    assert_true(fd >= 0, "the file is there to be written")
+    assert_equal(
+        write(fd, string_to_char_ptr("hello"), 5), 5, "wrote five bytes"
+    )
+    assert_equal(fdatasync(fd), 0, "what the saying wrote is down on the disk")
+    assert_equal(close(fd), 0, "and the file is closed")
+    # a number that is no file is refused
+    set_errno(0)
+    assert_equal(fdatasync(9999), -1, "the refusal is said in the answer")
+    assert_equal(get_errno(), EBADF, "errno says there is no file there")
+    _ = unlink(path)
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -2529,6 +2558,7 @@ def main() raises:
     test_the_number_said_where_it_was()
     test_the_word_a_file_may_be_said_in()
     test_the_talking_place_hung_up()
+    test_what_the_saying_wrote_said_down()
     print("test_unistd: ok")
 
 

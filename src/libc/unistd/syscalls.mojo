@@ -798,6 +798,30 @@ def fpathconf(fd: Int32, name: Int32) -> Int64:
     return external_call["fpathconf", Int64, Int32, Int32](fd, name)
 
 
+def fdatasync(fd: Int32) -> Int32:
+    """Libc POSIX `fdatasync` function.
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/fdatasync.2.html
+
+    Description:
+        What the saying of a file wrote, said
+        down as far as the data: the words the
+        saying said are down on the disk, and
+        the saying of where the file is said
+        to stand waits, where `fsync` says
+        both. A number that is no file is
+        refused, and `errno` says so.
+
+    Args:
+        fd: File descriptor.
+
+    Returns:
+        0 on success, -1 on error.
+    """
+    return external_call["fdatasync", Int32, Int32](fd)
+
+
 def fsync(fd: Int32) -> Int32:
     """Libc POSIX `fsync` function.
 

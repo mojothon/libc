@@ -10,7 +10,7 @@ the bottom.
 | `libc.stdlib` | `<stdlib.h>` | 97 |
 | `libc.float` | `<float.h>` | 30 |
 | `libc.limits` | `<limits.h>` the widths of the integer types, and what a process may have | 24 |
-| `libc.unistd` | `<unistd.h>` | 234 |
+| `libc.unistd` | `<unistd.h>` | 235 |
 | `libc.file` | `<stdio.h>` file operations | 39 |
 | `libc.ctype` | `<ctype.h>` | 30 |
 | `libc.sys.socket` | `<sys/socket.h>` | 53 |
@@ -171,7 +171,7 @@ a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.
 
-1180 bindings are asked something, and the 3 that are not have a reason.
+1181 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 `scripts/check-tests.py`, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.
@@ -411,6 +411,9 @@ other platform's C library has no such call.
   counts it holds, said in the wide word, which on this platform says it
   in the same room either way. The words are GNU's own, and Darwin has no
   call that says either.
+- `fdatasync` is what the saying of a file wrote, said down as far as the
+  data: the words the saying said are down on the disk, and the saying of
+  where the file is said to stand waits, where `fsync` says both.
 - `sethostid` is what the asking says it is, as a number, said again:
   the saying is written where the asking of it later reads, and who may
   say it is the tree's own keeping. Said back where it was, the number
