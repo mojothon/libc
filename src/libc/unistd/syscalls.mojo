@@ -602,6 +602,34 @@ def sethostname(name: c_ptr[UInt8], length: c_size_t) -> c_int:
     )
 
 
+def vhangup() -> Int32:
+    """Libc Linux `vhangup` function.
+
+        int vhangup(void)
+
+    Reference:
+        https://man7.org/linux/man-pages/man2/vhangup.2.html
+
+    Description:
+        The terminal, hung up: the asking that
+        holds the talking place says to every
+        holder but itself that the line is
+        gone. What may say it is the tree's
+        own keeping, and every asking less
+        than that is refused, which is what
+        the asking here says -- said by a
+        caller who keeps no tree, the answer
+        is the refusal, and `errno` says why.
+        The word is Linux's own, and Darwin
+        has no call that says it.
+
+    Returns:
+        0 where the hanging up was said, or -1
+        on failure with `errno` set.
+    """
+    return external_call["vhangup", Int32]()
+
+
 def ulimit(cmd: Int32, newlimit: c_long) -> c_long:
     """Libc POSIX `ulimit` function.
 

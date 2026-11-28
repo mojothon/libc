@@ -113,6 +113,7 @@ ASKED_ON_ONE_PLATFORM = {
     "sysv_signal": "what standing before the saying was, comes back as the answer, said as System V says it; GNU's word, and Darwin has no call that says it",
     "ftw64": "the tree, walked, said with the keeping the wide room says it in; GNU's word, and Darwin has no call that says it",
     "ulimit": "what the asking says a name it says may keep, as a count, said of one kind only; the older word, and Darwin has no call that says it",
+    "vhangup": "the terminal, hung up: the saying that only the tree's own keeping may say; Linux's word, and Darwin has no call that says it",
     "nftw64": "the tree, walked with where it stood, said in the wide room's word; GNU's word, and Darwin has no call that says it",
     "nftw": "the tree, walked, with the walk said where it stood and how deep; the newer word, and Darwin has no call that says it",
     "sethostid": "what the asking says it is, as a number, said again; Linux's own word, and Darwin has no call that says it",

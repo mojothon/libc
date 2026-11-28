@@ -119,6 +119,7 @@ from libc.unistd import (
     sethostname,
     sethostid,
     ulimit,
+    vhangup,
     fchownat,
     getlogin,
     getlogin_r,
@@ -2444,6 +2445,27 @@ def test_the_word_a_file_may_be_said_in() raises:
         assert_equal(get_errno(), EINVAL, "errno says why")
 
 
+def test_the_talking_place_hung_up() raises:
+    """`vhangup` -- the terminal, hung up: the
+    asking that holds the talking place says to
+    every holder but itself that the line is
+    gone, and what may say it is the tree's own
+    keeping. Said by a caller who keeps no
+    tree, the answer is the refusal, and
+    `errno` says why. The word is Linux's own,
+    and Darwin has no call that says it.
+    """
+    comptime if not CompilationTarget.is_macos():
+        # a caller who keeps no tree is refused, and the refusal
+        # is the answer the asking can afford without a tree
+        set_errno(0)
+        var said = vhangup()
+        assert_equal(
+            Int(said), -1, "the asking less than the tree's keeping is refused"
+        )
+        assert_equal(get_errno(), EPERM, "errno says the saying is not ours")
+
+
 def main() raises:
     test_getcwd()
     test_descriptors_and_offsets()
@@ -2506,6 +2528,7 @@ def main() raises:
     test_the_room_said_by_what_stands_around_it()
     test_the_number_said_where_it_was()
     test_the_word_a_file_may_be_said_in()
+    test_the_talking_place_hung_up()
     print("test_unistd: ok")
 
 
