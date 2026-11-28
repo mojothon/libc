@@ -803,7 +803,7 @@ the bottom.</p>
 <tr>
 <td><code>libc.unistd</code></td>
 <td><code>&lt;unistd.h&gt;</code></td>
-<td>233</td>
+<td>234</td>
 </tr>
 <tr>
 <td><code>libc.file</code></td>
@@ -1267,7 +1267,7 @@ pointed at whatever descriptor 1 holds. A child that points descriptor 1 at
 a pipe, reopens, turns the stream wide, and only then makes the wide write
 gets a real wide standard output to write to, and the pipe receives what
 the call wrote. The reasons on this page are claims, and claims get tested.</p>
-<p>1177 bindings are asked something, and the 3 that are not have a reason.
+<p>1178 bindings are asked something, and the 3 that are not have a reason.
 Both numbers are read back out of this page by
 <code>scripts/check-tests.py</code>, and so is every call named above: the page fails
 the run as soon as it says a call is not asked and a test starts asking it.</p>
@@ -1495,6 +1495,10 @@ other platform's C library has no such call.</p>
   what the count is either way. <code>setrlimit</code> is what to say now; this is
   the older word, which says of one kind only. The word is POSIX's own,
   and Darwin has no call that says it.</li>
+<li><code>vhangup</code> is the terminal, hung up: the asking that holds the talking
+  place says to every holder but itself that the line is gone, and what
+  may say it is the tree's own keeping. The word is Linux's own, and
+  Darwin has no call that says it.</li>
 <li><code>sethostid</code> is what the asking says it is, as a number, said again:
   the saying is written where the asking of it later reads, and who may
   say it is the tree's own keeping. Said back where it was, the number
@@ -1508,7 +1512,7 @@ other platform's C library has no such call.</p>
   of which eventfd's counter is the other half, and Darwin answers the same
   need with kqueue, which is a different call with different answers.</li>
 </ul>
-<p>Linux asks 73 bindings that Darwin passes over, and Darwin 0 that Linux
+<p>Linux asks 74 bindings that Darwin passes over, and Darwin 0 that Linux
 passes over. Both numbers are read back out of this page too, and so is
 every call named here: the page fails the run when a binding goes
 one-platform without a reason, and when one of these starts being asked
