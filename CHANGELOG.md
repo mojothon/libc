@@ -522,6 +522,12 @@ All notable changes to this project are documented here. The format follows
   kind only. The word is POSIX's own, which the page's saying of how many bindings one
   platform asks alone grows by one.
 
+- **`libc.unistd` gains `vhangup`.**
+  The terminal, hung up: the asking that holds the talking place says to every holder
+  but itself that the line is gone, and what may say it is the tree's own keeping. The
+  word is Linux's own, which the page's saying of how many bindings one platform asks
+  alone grows by one.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
