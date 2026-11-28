@@ -558,5 +558,4 @@ def main() raises:
     test_the_settings_accessors_against_the_line_itself()
     test_the_calls_that_need_a_real_line()
     test_the_old_sayings_of_the_line()
-    test_the_old_sayings_of_the_line()
     print("test_termios: ok")

@@ -324,7 +324,10 @@ def gtty(fd: Int32, params: c_ptr[Sgttyb]) -> Int32:
         0 where the room is said, or -1 on
         failure with `errno` set.
     """
-    return external_call["gtty", Int32, Int32, c_ptr[Sgttyb]](fd, params)
+    comptime if not CompilationTarget.is_macos():
+        return external_call["gtty", Int32, Int32, c_ptr[Sgttyb]](fd, params)
+    else:
+        return -1
 
 
 def stty(fd: Int32, params: c_ptr[Sgttyb]) -> Int32:
@@ -354,7 +357,10 @@ def stty(fd: Int32, params: c_ptr[Sgttyb]) -> Int32:
         0 where the room is said, or -1 on
         failure with `errno` set.
     """
-    return external_call["stty", Int32, Int32, c_ptr[Sgttyb]](fd, params)
+    comptime if not CompilationTarget.is_macos():
+        return external_call["stty", Int32, Int32, c_ptr[Sgttyb]](fd, params)
+    else:
+        return -1
 
 
 def tcgetattr(fildes: c_int, termios_p: c_ptr[Termios]) -> c_int:
