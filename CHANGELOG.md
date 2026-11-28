@@ -528,6 +528,11 @@ All notable changes to this project are documented here. The format follows
   word is Linux's own, which the page's saying of how many bindings one platform asks
   alone grows by one.
 
+- **`libc.sys.resource` gains `getrlimit64` and `setrlimit64`.**
+  The room between, said with the two counts it holds, said in the wide word, which on
+  this platform says it in the same room either way. The words are GNU's own, which the
+  page's saying of how many bindings one platform asks alone grows by two.
+
 ## [0.14.4] - 2026-11-20
 
 ### Added
